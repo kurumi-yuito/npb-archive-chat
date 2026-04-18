@@ -1,0 +1,22 @@
+---
+description: Core instructions for this repository
+alwaysApply: true
+---
+
+This repository uses:
+- Nuxt 3
+- TypeScript
+- pnpm workspace
+- Cloudflare Workers / D1 / R2
+
+Follow these constraints:
+- Do not invent infrastructure outside the stack above
+- Do not switch framework
+- Do not remove raw HTML persistence
+- Do not bypass schemas
+- Do not put direct SQL in route handlers when a repository/service layer exists
+- Keep changes narrow and task-focused
+- When uncertain, write docs and TODOs instead of making destructive assumptions
+- Prefer explicit types
+- Prefer zod validation for external/parsing boundaries
+- Add tests when changing parser, crawler, or DB behavior
