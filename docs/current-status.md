@@ -58,7 +58,7 @@ update:bis-current
 
 ## Not Implemented
 
-詳細な手順は [production-todo.md](./production-todo.md) を正とする。
+実際のデプロイ手順は [deploy.md](./deploy.md) を正とする。残作業と完了条件は [production-todo.md](./production-todo.md) にまとめる。
 
 - UI のアクセシビリティ監査・analytics
 - 更新ジョブの監視、リトライ、通知

@@ -1,147 +1,91 @@
-# Production TODO / Runbook
+# Production TODO
 
-現在アプリ機能として残している TODO はない。ここに残るのは、Cloudflare 本番環境で運用するために人間が実アカウントで実行する作業である。
+このファイルは、本番運用に残っている作業と完了条件を確認するための一覧である。Cloudflare への具体的な実行手順は [deploy.md](./deploy.md) を正とする。
 
-## 事前確認
+## 読み分け
 
-repo root で確認する。
+| 目的 | 参照先 |
+|------|--------|
+| Cloudflare へ実際に deploy する | [deploy.md](./deploy.md) |
+| 日次更新ジョブの仕様と GitHub Actions | [update-job.md](./update-job.md) |
+| usage / plan / account の仕様 | [usage-limit.md](./usage-limit.md) |
+| UI の構成と変更箇所 | [ui-chat.md](./ui-chat.md) |
+| 現在の実装状態 | [current-status.md](./current-status.md) |
 
-```bash
-pnpm --filter @npb/db test
-pnpm --filter @npb/web test
-pnpm --filter @npb/web typecheck
-```
+## 残作業
 
-ローカルで起動確認する。
+### 1. Cloudflare 実リソース設定
 
-```bash
-export NPB_SQLITE_PATH="$PWD/data/npb-2025.sqlite"
-export NPB_SQLITE_DIR="$PWD/data"
-pnpm dev
-```
+Not implemented in repository:
 
-## 1. Cloudflare リソース作成
+- 本番 Cloudflare account 上の Worker 作成/確認
+- D1 database 作成
+- R2 bucket 作成
+- root `wrangler.toml` の D1 `database_id` / R2 `bucket_name` の実値確認
+- production secrets 設定
+- 必要なら custom domain / route 設定
 
-1. Cloudflare account / project を決める。
-2. D1 database を作成する。
-3. R2 bucket を作成する。
-4. `apps/web/wrangler.toml` の D1 `database_id` と R2 `bucket_name` を実値に置き換える。
+完了条件:
 
-詳細: [deploy.md](./deploy.md)
+- `wrangler deploy` が対象 account に対して成功する。
+- 本番 URL で `/api/account` / `/api/chat/usage` / `/api/chat` が応答する。
 
-## 2. Secrets 設定
+### 2. D1 本番データ投入
 
-production では `NPB_AUTH_SHARED_SECRET` が必須。
+Not implemented in repository:
 
-```bash
-cd apps/web
-wrangler secret put NPB_AUTH_SHARED_SECRET
-```
+- SQLite から D1 へ 2016-2026 の normalized rows を全量投入する専用コマンド
+- D1 import 後の自動件数検証コマンド
 
-LLM を使う場合のみ設定する。
+現状:
 
-```bash
-wrangler secret put CHAT_QUERY_LLM_API_KEY
-wrangler secret put CHAT_ANSWER_LLM_API_KEY
-```
+- migration SQL は `packages/db/migrations/` にある。
+- アプリの query layer は D1 binding `NPB_DB` に対応済み。
+- 本番 D1 への全量投入は運用作業として残る。
 
-`CHAT_QUERY_LLM_MODEL` / `CHAT_ANSWER_LLM_MODEL` は deploy 環境の vars で設定する。
+完了条件:
 
-## 3. D1 migration 適用
+- D1 に `games` / `events` / `current_team_roster` / `player_batting_stats` などの本番データが入っている。
+- 本番 `/api/chat` が D1 上のデータを根拠に回答する。
 
-`packages/db/migrations/*.sql` を D1 に適用する。
+### 3. R2 正規保存先化
 
-```bash
-cd apps/web
-wrangler d1 execute <D1_NAME> --remote --file ../../packages/db/migrations/0001_initial.sql
-wrangler d1 execute <D1_NAME> --remote --file ../../packages/db/migrations/0002_chat_usage.sql
-wrangler d1 execute <D1_NAME> --remote --file ../../packages/db/migrations/0003_scores_calendar_rebuild.sql
-wrangler d1 execute <D1_NAME> --remote --file ../../packages/db/migrations/0004_bis_current.sql
-wrangler d1 execute <D1_NAME> --remote --file ../../packages/db/migrations/0005_chat_accounts.sql
-```
+Not implemented in repository:
 
-ランタイムでは D1 migration を実行しない。適用はデプロイ前の作業にする。
+- R2 を raw HTML / structured JSON の正規保存先にする storage adapter
+- `update:daily` が R2 へ raw / structured を読み書きする経路
 
-## 4. 本番データ投入
+現状:
 
-現状の正規データ基盤はローカル SQLite にある。D1 への 2016-2026 全量投入は本番運用作業として実施する。
+- R2 binding `NPB_R2_RAW` の deploy scaffold はある。
+- 現行の検索/チャット API は D1/SQLite の normalized DB を読む。
 
-最低限の手順:
+完了条件:
 
-1. 対象年の `data/npb-{year}.sqlite` が揃っていることを確認する。
-2. D1 に投入するための export / import 方針を決める。
-3. 投入前に D1 backup を取る。
-4. 投入後、件数確認を行う。
+- raw HTML を削除せず R2 に保存できる。
+- structured JSON を R2 に保存できる。
+- normalized DB は R2 上の raw / structured から再構築できる。
 
-確認例:
+### 4. Cloudflare Cron 単体運用
 
-```sql
-SELECT COUNT(*) FROM games;
-SELECT COUNT(*) FROM events;
-SELECT COUNT(*) FROM current_team_roster;
-SELECT COUNT(*) FROM player_batting_stats;
-SELECT COUNT(*) FROM chat_accounts;
-```
+Not implemented in repository:
 
-注意:
+- Worker `scheduled` handler で `update:daily` 相当を完結させる実装
+- Cloudflare Cron trigger 設定
 
-- raw HTML と structured JSON は削除しない。
-- R2 を raw / structured の正規保存先にする場合は storage adapter が必要。現状は本番運用 TODO。
+現状:
 
-## 5. Deploy
+- `pnpm --filter @npb/db run update:daily` は Node CLI として実装済み。
+- `.github/workflows/daily-update.yml` に GitHub Actions schedule / workflow_dispatch は実装済み。
 
-```bash
-cd apps/web
-pnpm build:cf
-wrangler deploy
-```
+完了条件:
 
-確認:
+- GitHub Actions または Cloudflare Cron のどちらかで、人間が毎日手動実行しなくても差分更新される。
+- 失敗時に non-zero / failed status になり、summary log が残る。
 
-```bash
-curl -s https://<worker-domain>/api/account
-curl -s https://<worker-domain>/api/chat/usage
-curl -s https://<worker-domain>/api/chat \
-  -H 'Content-Type: application/json' \
-  -d '{"message":"藤浪晋太郎の所属チームは"}'
-```
+## 本番確認チェックリスト
 
-production では通常 request に `X-NPB-Plan` は使わない。プランは `chat_accounts.plan` のみを正とする。
-
-## 6. 日次更新の自動実行
-
-GitHub Actions schedule は入口として実装済み。運用時は secrets と実行環境を設定する。
-
-確認するもの:
-
-1. workflow の schedule が有効か。
-2. workflow_dispatch で手動実行できるか。
-3. 失敗時に non-zero で落ちるか。
-4. summary log が保存されるか。
-
-詳細: [update-job.md](./update-job.md)
-
-Cloudflare Cron 単体で `update:daily` 相当を完結させる Worker scheduled handler は未実装。設計は [deploy.md](./deploy.md) に記載。
-
-## 7. Backup / Rollback
-
-D1:
-
-- migration 前に export / backup を取る。
-- destructive migration は作らない。
-- rollback は追加 migration で戻す。
-
-Worker:
-
-- `wrangler deployments list` で直近 deployment を確認する。
-- Cloudflare dashboard または Wrangler で直前 version に戻す。
-
-R2:
-
-- raw HTML は削除しない。
-- lifecycle rule を設定する場合も raw / structured の削除は禁止。
-
-## 8. 本番確認チェックリスト
+deploy 後に確認する。
 
 - `/` が `/chat` に遷移する。
 - `/api/account` が account を作成/取得する。
@@ -151,4 +95,4 @@ R2:
 - pro で `limit: null` / `remaining: null` になる。
 - `/api/chat` が source URL 付きで回答する。
 - ambiguous は候補提示のみで検索しない。
-- D1 上で `/api/search/*` と `/api/chat` が同じ `QueryDatabase` 境界で動く。
+- production request では `X-NPB-Plan` header に依存しない。

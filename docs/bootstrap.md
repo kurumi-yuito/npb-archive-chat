@@ -87,9 +87,9 @@ Not implemented:
 ## この初期化でやっていなかったこと（履歴）
 
 - 外部サイト API やスクレイパー実装の追加（`packages/crawler` 等は別途）
-- Cloudflare Workers 上での本番運用（`wrangler.toml` の雛形と [`deploy.md`](deploy.md) の手順のみ。ローカル SQLite は従来どおり）
+- Cloudflare Workers 上での本番運用（root `wrangler.toml` と [`deploy.md`](deploy.md) の手順のみ。ローカル SQLite は従来どおり）
 
-**Cloudflare 向けの雛形**（`apps/web/wrangler.toml`、`pnpm build:cf`）とデプロイ・migration 手順は [`deploy.md`](deploy.md) を参照。
+**Cloudflare 向けの雛形**（root `wrangler.toml`、`pnpm build:cf`）とデプロイ・migration 手順は [`deploy.md`](deploy.md) を参照。
 
 ## 次にやるとよいこと（提案）
 

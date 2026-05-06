@@ -14,6 +14,8 @@
     "eval:chat-queries": "vitest run -c vitest.eval.config.ts"
   },
   "dependencies": {
+    "@vue/server-renderer": "^3.5.13",
+    "@vue/shared": "^3.5.13",
     "@npb/db": "workspace:*",
     "@npb/schemas": "workspace:*",
     "nuxt": "^3.15.4",

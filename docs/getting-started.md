@@ -10,7 +10,7 @@
 - チャット API の仕様: [chat-backend.md](./chat-backend.md)
 - usage / plan / 認証境界: [usage-limit.md](./usage-limit.md)
 - 日次更新ジョブ: [update-job.md](./update-job.md)
-- Cloudflare / D1 / R2 / deploy: [deploy.md](./deploy.md)
+- Cloudflare / D1 / R2 / デプロイ手順: [deploy.md](./deploy.md)
 - 本番運用に残る作業: [production-todo.md](./production-todo.md)
 
 ## 前提

@@ -8,8 +8,8 @@
 |------|--------------|
 | ローカルで起動して触る | [getting-started.md](./getting-started.md) |
 | 現在の実装状態を確認する | [current-status.md](./current-status.md) |
-| 本番運用に残っている作業を確認する | [production-todo.md](./production-todo.md) |
 | Cloudflare へデプロイする | [deploy.md](./deploy.md) |
+| 本番運用に残っている作業を確認する | [production-todo.md](./production-todo.md) |
 
 ## 機能別
 
@@ -48,4 +48,4 @@
 
 プロダクト機能としてのチャット、account/profile、subscription、usage は実装済み。
 
-残っているのは主に本番インフラ運用作業であり、手順は [production-todo.md](./production-todo.md) に集約する。各詳細ドキュメント内の `Not implemented` は個別領域の補足で、最終的な作業一覧は `production-todo.md` を正とする。
+残っているのは主に本番インフラ運用作業です。実際のデプロイ手順は [deploy.md](./deploy.md) を正とし、残作業と完了条件の一覧は [production-todo.md](./production-todo.md) に置きます。各詳細ドキュメント内の `Not implemented` は個別領域の補足です。
