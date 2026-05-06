@@ -1,0 +1,31 @@
+{
+  "name": "@npb/web",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "nuxt build",
+    "dev": "nuxt dev",
+    "generate": "nuxt generate",
+    "preview": "nuxt preview",
+    "postinstall": "nuxt prepare",
+    "lint": "eslint -c ../../eslint.config.mjs .",
+    "typecheck": "vue-tsc --noEmit -p tsconfig.json",
+    "test": "vitest run -c vitest.config.ts",
+    "eval:chat-queries": "vitest run -c vitest.eval.config.ts"
+  },
+  "dependencies": {
+    "@npb/db": "workspace:*",
+    "@npb/schemas": "workspace:*",
+    "nuxt": "^3.15.4",
+    "vue": "^3.5.13",
+    "vue-router": "^4.5.0",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20241230.0",
+    "eslint": "^9.16.0",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8",
+    "vue-tsc": "^2.2.0"
+  }
+}

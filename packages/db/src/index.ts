@@ -1,0 +1,129 @@
+import { parserPackage } from '@npb/parser'
+import {
+  parseEnrichScoresCalendarArgs,
+  runScoresCalendarEnrichment,
+} from './enrich-scores-calendar'
+import {
+  parseBackfillScoresCanonicalArgs,
+  runBackfillScoresCanonical,
+} from './backfill-scores-canonical'
+import {
+  listGamesByDate,
+  aggregateBattingLines,
+  aggregateEvents,
+  aggregatePitchingLines,
+  FREE_CHAT_MONTHLY_LIMIT,
+  currentUsageMonthKey,
+  getOrCreateChatAccount,
+  getChatAccount,
+  listEventsByGameId,
+  listLoadedGameIdsByYear,
+  listSourceSnapshotsByGameIds,
+  getChatUsageCount,
+  incrementChatUsageForFreeUser,
+  updateChatAccountPlan,
+  updateChatAccountProfile,
+  searchPlayerCandidates,
+  searchPlayerAffiliations,
+  searchBattingLines,
+  searchGameDetails,
+  searchEvents,
+  searchGames,
+  searchPitchingLines,
+  searchRosterEntries,
+} from './repository/index'
+import {
+  parseUpdateYearArgs,
+  runIncrementalUpdate,
+} from './update-job'
+import {
+  parseUpdateDailyArgs,
+  resolveDailyDateRange,
+  runDailyUpdate,
+} from './update-daily'
+import {
+  BIS_TEAMS,
+  loadBisCurrentDataset,
+  parseUpdateBisCurrentArgs,
+  runBisCurrentUpdate,
+} from './bis-current'
+import { migrateDatabase, resolveMigrationsDir } from './migrations'
+import { sqliteDatabaseToQuery, withTransactionAsync } from './query-driver'
+import { openDatabase } from './sqlite'
+import {
+  createMultiYearQueryService,
+  createSingleDatabaseQueryService,
+  DEFAULT_CHAT_QUERY_YEARS,
+} from './multi-year-query-service'
+
+export const upstreamParserPackage: () => string = parserPackage
+
+export function dbPackage(): string {
+  return '@npb/db'
+}
+
+export type { SqliteDatabase } from './sqlite'
+export type { QueryDatabase, QueryStatement } from './query-driver'
+export type {
+  AggregateRow,
+  BattingLineRow,
+  EventRow,
+  GameDetailRow,
+  GameSummaryRow,
+  PitchingLineRow,
+  PlayerCandidate,
+  PlayerAffiliationRow,
+  RosterEntryRow,
+  SourceSnapshotRow,
+  ChatAccountRow,
+  UpdateChatAccountInput,
+  SearchPlayerCandidatesFilters,
+} from './repository/index'
+export type { ChatQueryService } from './multi-year-query-service'
+
+export {
+  BIS_TEAMS,
+  FREE_CHAT_MONTHLY_LIMIT,
+  currentUsageMonthKey,
+  listGamesByDate,
+  aggregateBattingLines,
+  aggregateEvents,
+  aggregatePitchingLines,
+  createMultiYearQueryService,
+  createSingleDatabaseQueryService,
+  DEFAULT_CHAT_QUERY_YEARS,
+  getChatUsageCount,
+  getOrCreateChatAccount,
+  getChatAccount,
+  incrementChatUsageForFreeUser,
+  updateChatAccountPlan,
+  updateChatAccountProfile,
+  listEventsByGameId,
+  listLoadedGameIdsByYear,
+  listSourceSnapshotsByGameIds,
+  loadBisCurrentDataset,
+  migrateDatabase,
+  resolveMigrationsDir,
+  openDatabase,
+  sqliteDatabaseToQuery,
+  withTransactionAsync,
+  parseUpdateYearArgs,
+  parseUpdateDailyArgs,
+  parseUpdateBisCurrentArgs,
+  resolveDailyDateRange,
+  parseBackfillScoresCanonicalArgs,
+  parseEnrichScoresCalendarArgs,
+  runBackfillScoresCanonical,
+  runIncrementalUpdate,
+  runDailyUpdate,
+  runBisCurrentUpdate,
+  runScoresCalendarEnrichment,
+  searchBattingLines,
+  searchEvents,
+  searchGameDetails,
+  searchGames,
+  searchPitchingLines,
+  searchPlayerAffiliations,
+  searchPlayerCandidates,
+  searchRosterEntries,
+}

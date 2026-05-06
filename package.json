@@ -1,0 +1,31 @@
+{
+  "name": "npb-archive-chat",
+  "private": true,
+  "packageManager": "pnpm@9.15.4",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "node apps/web/node_modules/nuxt/bin/nuxt.mjs dev apps/web",
+    "build": "node apps/web/node_modules/nuxt/bin/nuxt.mjs build apps/web",
+    "build:cf": "node scripts/build-cf.mjs",
+    "crawler:discover": "pnpm --filter @npb/crawler discover",
+    "crawler:download": "pnpm --filter @npb/crawler download",
+    "lint": "eslint eslint.config.mjs apps/web packages scripts",
+    "typecheck": "node scripts/typecheck.mjs",
+    "test": "vitest run",
+    "enrich:calendar:2025": "node scripts/run-calendar-enrich.mjs"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.16.0",
+    "@types/node": "^24.6.0",
+    "eslint": "^9.16.0",
+    "eslint-plugin-vue": "^9.32.0",
+    "globals": "^15.13.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2",
+    "typescript-eslint": "^8.18.0",
+    "vitest": "^2.1.8",
+    "vue-eslint-parser": "^9.4.3"
+  }
+}

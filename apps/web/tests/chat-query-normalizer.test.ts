@@ -1,0 +1,55 @@
+import { describe, expect, it } from 'vitest'
+import {
+  normalizeChatStructuredQuery,
+  normalizeFreeText,
+  normalizePlayerName,
+  normalizeTeamName,
+} from '../server/services/chat-query-normalizer'
+
+describe('chat-query-normalizer', () => {
+  it('normalizes representative team aliases to DB-friendly short names', () => {
+    expect(normalizeTeamName('千葉ロッテマリーンズ')).toBe('ロッテ')
+    expect(normalizeTeamName('オリックス・バッファローズ')).toBe('オリックス')
+    expect(normalizeTeamName('  東京ヤクルトスワローズ  ')).toBe('ヤクルト')
+  })
+
+  it('normalizes player names with basic whitespace and width normalization', () => {
+    expect(normalizePlayerName(' 山 村 ')).toBe('山村')
+    expect(normalizePlayerName(' 益　田 ')).toBe('益田')
+    expect(normalizePlayerName('ｻｻｷ ﾛｳｷ')).toBe('ササキロウキ')
+  })
+
+  it('applies dictionary aliases after basic text normalization', () => {
+    expect(normalizePlayerName('高松')).toBe('髙松')
+  })
+
+  it('keeps unknown values after basic normalization', () => {
+    expect(normalizeTeamName('架空チーム')).toBe('架空チーム')
+    expect(normalizePlayerName(' 謎 の 選手 ')).toBe('謎の選手')
+    expect(normalizeFreeText('   ')).toBeUndefined()
+  })
+
+  it('normalizes only the configured chat query fields before DB search', () => {
+    expect(
+      normalizeChatStructuredQuery({
+        intent: 'search_events',
+        filters: {
+          team: '千葉 ロッテ マリーンズ',
+          batter_name: ' 山 村 ',
+          pitcher_name: ' 益　田 ',
+          runner_name: '高松',
+          event_subtype: 'stolen_base',
+        },
+      }),
+    ).toEqual({
+      intent: 'search_events',
+      filters: {
+        team: 'ロッテ',
+        batter_name: '山村',
+        pitcher_name: '益田',
+        runner_name: '髙松',
+        event_subtype: 'stolen_base',
+      },
+    })
+  })
+})

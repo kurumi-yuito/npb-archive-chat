@@ -1,0 +1,398 @@
+import { mkdir, readFile, writeFile } from 'node:fs/promises'
+import path from 'node:path'
+import { findWorkspaceRoot } from '@npb/crawler'
+import {
+  emptyBisCurrentDataset,
+  parseBisGenericTeamTableHtml,
+  parseBisPlayerStatsHtml,
+  parseBisTeamMonthlyResultsHtml,
+  parseBisTeamRosterHtml,
+  type BisCurrentDataset,
+  type BisSourceSnapshot,
+  type BisSourceType,
+  type BisTeamInfo,
+} from '@npb/parser'
+import { migrateDatabase } from './migrations'
+import { openDatabase, type SqliteDatabase } from './sqlite'
+import { withTransaction } from './sqlite'
+
+const DEFAULT_SQLITE_DIR = 'data'
+const DEFAULT_USER_AGENT = 'npb-archive-chat/0.1 (+https://npb.jp/)'
+
+export const BIS_TEAMS: BisTeamInfo[] = [
+  { teamId: 'g', teamName: '読売ジャイアンツ' },
+  { teamId: 's', teamName: '東京ヤクルトスワローズ' },
+  { teamId: 'db', teamName: '横浜DeNAベイスターズ' },
+  { teamId: 'd', teamName: '中日ドラゴンズ' },
+  { teamId: 't', teamName: '阪神タイガース' },
+  { teamId: 'c', teamName: '広島東洋カープ' },
+  { teamId: 'f', teamName: '北海道日本ハムファイターズ' },
+  { teamId: 'e', teamName: '東北楽天ゴールデンイーグルス' },
+  { teamId: 'l', teamName: '埼玉西武ライオンズ' },
+  { teamId: 'm', teamName: '千葉ロッテマリーンズ' },
+  { teamId: 'b', teamName: 'オリックス・バファローズ' },
+  { teamId: 'h', teamName: '福岡ソフトバンクホークス' },
+]
+
+export type UpdateBisCurrentArgs = {
+  year?: number
+  team?: string
+  sqlitePath?: string
+  sqliteDir?: string
+  workspaceRoot?: string
+  delayMs?: number
+  userAgent?: string
+  dryRun?: boolean
+}
+
+export type UpdateBisCurrentResult = {
+  year: number
+  teams: number
+  sourceSnapshots: number
+  currentTeamRoster: number
+  teamIndex: number
+  teamYearlyStats: number
+  playerBattingStats: number
+  playerPitchingStats: number
+  playerFieldingStats: number
+  teamMonthlyResults: number
+  sqlitePath: string
+  rawDir: string
+  structuredPath: string
+  dryRun: boolean
+}
+
+export function parseUpdateBisCurrentArgs(argv: string[]): UpdateBisCurrentArgs {
+  const args = [...argv]
+  while (args[0] === '--') {
+    args.shift()
+  }
+  const result: UpdateBisCurrentArgs = {}
+  while (args.length > 0) {
+    const arg = args.shift()
+    if (arg === '--year') {
+      result.year = parsePositiveInteger(args.shift(), 'year')
+      continue
+    }
+    if (arg?.startsWith('--year=')) {
+      result.year = parsePositiveInteger(arg.slice('--year='.length), 'year')
+      continue
+    }
+    if (arg === '--team') {
+      result.team = args.shift()
+      continue
+    }
+    if (arg?.startsWith('--team=')) {
+      result.team = arg.slice('--team='.length)
+      continue
+    }
+    if (arg === '--sqlite-path') {
+      result.sqlitePath = args.shift()
+      continue
+    }
+    if (arg?.startsWith('--sqlite-path=')) {
+      result.sqlitePath = arg.slice('--sqlite-path='.length)
+      continue
+    }
+    if (arg === '--sqlite-dir') {
+      result.sqliteDir = args.shift()
+      continue
+    }
+    if (arg?.startsWith('--sqlite-dir=')) {
+      result.sqliteDir = arg.slice('--sqlite-dir='.length)
+      continue
+    }
+    if (arg === '--workspace-root') {
+      result.workspaceRoot = args.shift()
+      continue
+    }
+    if (arg?.startsWith('--workspace-root=')) {
+      result.workspaceRoot = arg.slice('--workspace-root='.length)
+      continue
+    }
+    if (arg === '--delay-ms') {
+      result.delayMs = parseNonNegativeInteger(args.shift(), 'delay-ms')
+      continue
+    }
+    if (arg?.startsWith('--delay-ms=')) {
+      result.delayMs = parseNonNegativeInteger(arg.slice('--delay-ms='.length), 'delay-ms')
+      continue
+    }
+    if (arg === '--user-agent') {
+      result.userAgent = args.shift()
+      continue
+    }
+    if (arg?.startsWith('--user-agent=')) {
+      result.userAgent = arg.slice('--user-agent='.length)
+      continue
+    }
+    if (arg === '--dry-run') {
+      result.dryRun = true
+      continue
+    }
+    throw new Error(`Unknown argument: ${arg}`)
+  }
+  return result
+}
+
+export async function runBisCurrentUpdate(options: UpdateBisCurrentArgs): Promise<UpdateBisCurrentResult> {
+  const year = options.year ?? new Date().getFullYear()
+  const workspaceRoot = path.resolve(options.workspaceRoot ?? (await findWorkspaceRoot(process.cwd())))
+  const sqlitePath = options.sqlitePath ?? path.join(options.sqliteDir ?? DEFAULT_SQLITE_DIR, `npb-${year}.sqlite`)
+  const rawDir = path.join(workspaceRoot, 'data', 'raw', 'bis', String(year))
+  const structuredPath = path.join(workspaceRoot, 'data', 'structured', 'bis', String(year), 'bis-current.json')
+  const teams = selectTeams(options.team)
+
+  if (options.dryRun) {
+    return emptyResult(year, teams.length, sqlitePath, rawDir, structuredPath, true)
+  }
+
+  const dataset = emptyBisCurrentDataset(year)
+  dataset.teams.push(...teams)
+  await mkdir(rawDir, { recursive: true })
+
+  for (const team of teams) {
+    await loadTeamBisPages(dataset, { year, team, rawDir, delayMs: options.delayMs, userAgent: options.userAgent })
+  }
+
+  await mkdir(path.dirname(structuredPath), { recursive: true })
+  for (const snapshot of dataset.sourceSnapshots) {
+    snapshot.structuredPath = path.relative(workspaceRoot, structuredPath)
+  }
+  await writeFile(structuredPath, `${JSON.stringify(dataset, null, 2)}\n`, 'utf8')
+
+  const db = openDatabase(sqlitePath)
+  try {
+    migrateDatabase(db)
+    loadBisCurrentDataset(db, dataset)
+  } finally {
+    db.close()
+  }
+
+  return {
+    year,
+    teams: teams.length,
+    sourceSnapshots: dataset.sourceSnapshots.length,
+    currentTeamRoster: dataset.currentTeamRoster.length,
+    teamIndex: dataset.teamIndex.length,
+    teamYearlyStats: dataset.teamYearlyStats.length,
+    playerBattingStats: dataset.playerBattingStats.length,
+    playerPitchingStats: dataset.playerPitchingStats.length,
+    playerFieldingStats: dataset.playerFieldingStats.length,
+    teamMonthlyResults: dataset.teamMonthlyResults.length,
+    sqlitePath,
+    rawDir,
+    structuredPath,
+    dryRun: false,
+  }
+}
+
+export function loadBisCurrentDataset(database: SqliteDatabase, dataset: BisCurrentDataset): void {
+  withTransaction(database, () => {
+    for (const source of dataset.sourceSnapshots) {
+      database.prepare(
+        `INSERT OR REPLACE INTO bis_source_snapshots (
+          source_key, year, team_id, source_type, source_url, raw_path, structured_path, fetched_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      ).run(source.sourceKey, dataset.year, source.sourceKey.split(':')[2] ?? null, source.sourceType, source.sourceUrl, source.rawPath ?? null, source.structuredPath ?? null, source.fetchedAt)
+    }
+    for (const row of dataset.currentTeamRoster) {
+      database.prepare(
+        `INSERT OR REPLACE INTO current_team_roster (
+          year, team_id, team_name, player_key, player_id, player_name, position,
+          uniform_number, bats, throws, source_url
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      ).run(row.year, row.teamId, row.teamName, playerKey(row.playerId, row.playerName), row.playerId, row.playerName, row.position, row.uniformNumber, row.bats, row.throws, row.sourceUrl)
+    }
+    insertGenericRows(database, 'team_index', dataset.teamIndex)
+    insertGenericRows(database, 'team_yearly_stats', dataset.teamYearlyStats)
+    insertPlayerStatsRows(database, 'player_batting_stats', dataset.playerBattingStats)
+    insertPlayerStatsRows(database, 'player_pitching_stats', dataset.playerPitchingStats)
+    insertPlayerStatsRows(database, 'player_fielding_stats', dataset.playerFieldingStats)
+    for (const row of dataset.teamMonthlyResults) {
+      database.prepare(
+        `INSERT OR REPLACE INTO team_monthly_results (
+          year, team_id, team_name, month, row_index, game_date, values_json, source_url
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      ).run(row.year, row.teamId, row.teamName, row.month, row.rowIndex, row.gameDate, JSON.stringify(row.values), row.sourceUrl)
+    }
+  })
+}
+
+async function loadTeamBisPages(
+  dataset: BisCurrentDataset,
+  input: { year: number; team: BisTeamInfo; rawDir: string; delayMs?: number; userAgent?: string },
+) {
+  const pages = buildTeamPages(input.year, input.team.teamId)
+  for (const page of pages) {
+    let html: string
+    try {
+      html = await fetchOrReadRaw(page.url, path.join(input.rawDir, `${page.key}.html`), input.userAgent)
+    } catch (error) {
+      if (page.sourceType === 'team_monthly_results' && error instanceof Error && error.message.includes(' 404 ')) {
+        continue
+      }
+      throw error
+    }
+    const rawPath = path.join('data', 'raw', 'bis', String(input.year), `${page.key}.html`)
+    dataset.sourceSnapshots.push({
+      sourceKey: `bis:${input.year}:${input.team.teamId}:${page.key}`,
+      sourceType: page.sourceType,
+      sourceUrl: page.url,
+      rawPath,
+      fetchedAt: new Date().toISOString(),
+    })
+    const common = { year: input.year, teamId: input.team.teamId, teamName: input.team.teamName, sourceUrl: page.url }
+    if (page.sourceType === 'team_roster') {
+      dataset.currentTeamRoster.push(...parseBisTeamRosterHtml(html, common))
+    } else if (page.sourceType === 'team_index') {
+      dataset.teamIndex.push(...parseBisGenericTeamTableHtml(html, common))
+    } else if (page.sourceType === 'team_yearly_stats') {
+      dataset.teamYearlyStats.push(...parseBisGenericTeamTableHtml(html, common))
+    } else if (page.sourceType === 'player_batting_stats') {
+      dataset.playerBattingStats.push(...parseBisPlayerStatsHtml(html, common))
+    } else if (page.sourceType === 'player_pitching_stats') {
+      dataset.playerPitchingStats.push(...parseBisPlayerStatsHtml(html, common))
+    } else if (page.sourceType === 'player_fielding_stats') {
+      dataset.playerFieldingStats.push(...parseBisPlayerStatsHtml(html, common))
+    } else {
+      dataset.teamMonthlyResults.push(...parseBisTeamMonthlyResultsHtml(html, { ...common, month: page.month ?? 0 }))
+    }
+    if (input.delayMs) {
+      await new Promise((resolve) => setTimeout(resolve, input.delayMs))
+    }
+  }
+}
+
+function buildTeamPages(year: number, teamId: string): Array<{ key: string; url: string; sourceType: BisSourceType; month?: number }> {
+  return [
+    { key: `rst_${teamId}`, url: `https://npb.jp/bis/teams/rst_${teamId}.html`, sourceType: 'team_roster' },
+    { key: `index_${teamId}`, url: `https://npb.jp/bis/teams/index_${teamId}.html`, sourceType: 'team_index' },
+    { key: `yearly_${teamId}`, url: `https://npb.jp/bis/teams/yearly_${teamId}.html`, sourceType: 'team_yearly_stats' },
+    { key: `idb1_${teamId}`, url: `https://npb.jp/bis/${year}/stats/idb1_${teamId}.html`, sourceType: 'player_batting_stats' },
+    { key: `idp1_${teamId}`, url: `https://npb.jp/bis/${year}/stats/idp1_${teamId}.html`, sourceType: 'player_pitching_stats' },
+    { key: `idf1_${teamId}`, url: `https://npb.jp/bis/${year}/stats/idf1_${teamId}.html`, sourceType: 'player_fielding_stats' },
+    ...[3, 4, 5, 6, 7, 8, 9, 10].map((month) => ({
+      key: `results_${teamId}_${String(month).padStart(2, '0')}`,
+      url: `https://npb.jp/bis/teams/results_${teamId}_${String(month).padStart(2, '0')}.html`,
+      sourceType: 'team_monthly_results' as const,
+      month,
+    })),
+  ]
+}
+
+async function fetchOrReadRaw(url: string, filePath: string, userAgent?: string): Promise<string> {
+  try {
+    const existing = await readFile(filePath, 'utf8')
+    if (existing.trim()) {
+      return existing
+    }
+  } catch {
+    // Fetch below.
+  }
+  const response = await fetch(url, { headers: { 'user-agent': userAgent ?? DEFAULT_USER_AGENT } })
+  if (!response.ok) {
+    throw new Error(`BIS fetch failed: ${response.status} ${url}`)
+  }
+  const html = await response.text()
+  await mkdir(path.dirname(filePath), { recursive: true })
+  await writeFile(filePath, html, 'utf8')
+  return html
+}
+
+function selectTeams(team: string | undefined): BisTeamInfo[] {
+  if (!team) {
+    return BIS_TEAMS
+  }
+  const normalized = team.toLowerCase()
+  const found = BIS_TEAMS.find((item) =>
+    item.teamId.toLowerCase() === normalized ||
+    item.teamName.toLowerCase().includes(normalized) ||
+    teamAliases(item.teamId).includes(team),
+  )
+  if (!found) {
+    throw new Error(`Unknown BIS team: ${team}`)
+  }
+  return [found]
+}
+
+function teamAliases(teamId: string): string[] {
+  const aliases: Record<string, string[]> = {
+    db: ['DeNA', '横浜DeNA', '横浜'],
+    s: ['ヤクルト', '東京ヤクルト'],
+    g: ['巨人', '読売'],
+    t: ['阪神'],
+    d: ['中日'],
+    c: ['広島'],
+    b: ['オリックス'],
+    h: ['ソフトバンク'],
+    l: ['西武'],
+    m: ['ロッテ'],
+    f: ['日本ハム'],
+    e: ['楽天'],
+  }
+  return aliases[teamId] ?? []
+}
+
+function insertGenericRows(database: SqliteDatabase, table: 'team_index' | 'team_yearly_stats', rows: BisCurrentDataset['teamIndex']): void {
+  for (const row of rows) {
+    const statYear = table === 'team_yearly_stats' ? Number(row.values.年度 ?? row.values.年) || null : null
+    database.prepare(
+      `INSERT OR REPLACE INTO ${table} (
+        year, team_id, team_name, ${table === 'team_yearly_stats' ? 'stat_year, ' : ''}row_index,
+        ${table === 'team_index' ? 'label, ' : ''}values_json, source_url
+      ) VALUES (${table === 'team_yearly_stats' ? '?, ?, ?, ?, ?, ?, ?' : '?, ?, ?, ?, ?, ?, ?'})`,
+    ).run(
+      ...(table === 'team_yearly_stats'
+        ? [row.year, row.teamId, row.teamName, statYear, row.rowIndex, JSON.stringify(row.values), row.sourceUrl]
+        : [row.year, row.teamId, row.teamName, row.rowIndex, row.label, JSON.stringify(row.values), row.sourceUrl]),
+    )
+  }
+}
+
+function insertPlayerStatsRows(database: SqliteDatabase, table: 'player_batting_stats' | 'player_pitching_stats' | 'player_fielding_stats', rows: BisCurrentDataset['playerBattingStats']): void {
+  for (const row of rows) {
+    database.prepare(
+      `INSERT OR REPLACE INTO ${table} (
+        year, team_id, team_name, player_key, player_id, player_name, row_index, values_json, source_url
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    ).run(row.year, row.teamId, row.teamName, playerKey(row.playerId, row.playerName), row.playerId, row.playerName, row.rowIndex, JSON.stringify(row.values), row.sourceUrl)
+  }
+}
+
+function playerKey(playerId: string | null, playerName: string): string {
+  return playerId || `name:${playerName}`
+}
+
+function emptyResult(year: number, teams: number, sqlitePath: string, rawDir: string, structuredPath: string, dryRun: boolean): UpdateBisCurrentResult {
+  return {
+    year,
+    teams,
+    sourceSnapshots: 0,
+    currentTeamRoster: 0,
+    teamIndex: 0,
+    teamYearlyStats: 0,
+    playerBattingStats: 0,
+    playerPitchingStats: 0,
+    playerFieldingStats: 0,
+    teamMonthlyResults: 0,
+    sqlitePath,
+    rawDir,
+    structuredPath,
+    dryRun,
+  }
+}
+
+function parsePositiveInteger(value: string | undefined, label: string): number {
+  if (!value || !/^\d+$/.test(value)) {
+    throw new Error(`Invalid ${label}: ${value ?? '(missing)'}`)
+  }
+  return Number.parseInt(value, 10)
+}
+
+function parseNonNegativeInteger(value: string | undefined, label: string): number {
+  if (!value || !/^\d+$/.test(value)) {
+    throw new Error(`Invalid ${label}: ${value ?? '(missing)'}`)
+  }
+  return Number.parseInt(value, 10)
+}

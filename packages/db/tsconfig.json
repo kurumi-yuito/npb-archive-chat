@@ -1,0 +1,14 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "allowImportingTsExtensions": true,
+    "baseUrl": ".",
+    "noEmit": true,
+    "paths": {
+      "@npb/crawler": ["./node_modules/@npb/crawler/src/index.ts"],
+      "@npb/parser": ["./node_modules/@npb/parser/src/index.ts"],
+      "@npb/schemas": ["./node_modules/@npb/schemas/src/index.ts"]
+    }
+  },
+  "include": ["src/**/*.ts"]
+}

@@ -1,0 +1,100 @@
+name: Daily NPB Scores Update
+
+on:
+  schedule:
+    # 10:05 / 16:05 / 22:05 JST
+    - cron: '5 1,7,13 * * *'
+  workflow_dispatch:
+    inputs:
+      date:
+        description: 'Single JST date (YYYY-MM-DD)'
+        required: false
+        type: string
+      from:
+        description: 'Start JST date (YYYY-MM-DD)'
+        required: false
+        type: string
+      to:
+        description: 'End JST date (YYYY-MM-DD)'
+        required: false
+        type: string
+      days:
+        description: 'Inclusive days ending today JST'
+        required: false
+        default: '3'
+        type: string
+      strict:
+        description: 'Fail on normal 404 warnings'
+        required: false
+        default: false
+        type: boolean
+      dry_run:
+        description: 'Plan date/year targets without DB/network updates'
+        required: false
+        default: false
+        type: boolean
+
+jobs:
+  update-daily:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Run update:daily
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p data/logs
+          args=()
+          if [ -n "${{ inputs.date }}" ]; then
+            args+=(--date "${{ inputs.date }}")
+          elif [ -n "${{ inputs.from }}" ] || [ -n "${{ inputs.to }}" ]; then
+            args+=(--from "${{ inputs.from }}" --to "${{ inputs.to }}")
+          else
+            args+=(--days "${{ inputs.days || '3' }}")
+          fi
+          if [ "${{ inputs.strict || false }}" = "true" ]; then
+            args+=(--strict)
+          fi
+          if [ "${{ inputs.dry_run || false }}" = "true" ]; then
+            args+=(--dry-run)
+          fi
+          pnpm --filter @npb/db run update:daily -- "${args[@]}" | tee data/logs/update-daily-action.log
+
+      - name: Write summary
+        if: always()
+        shell: bash
+        run: |
+          {
+            echo '## Daily NPB Scores Update'
+            echo
+            echo '- schedule: 10:05 / 16:05 / 22:05 JST'
+            echo '- summary: `data/logs/update-daily-summary.json`'
+            echo
+            if [ -f data/logs/update-daily-summary.json ]; then
+              echo '```json'
+              cat data/logs/update-daily-summary.json
+              echo '```'
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: daily-update-logs
+          path: |
+            data/logs/update-daily-action.log
+            data/logs/update-daily-summary.json
+            data/logs/update-job.log
+            data/logs/enrich-scores-calendar.log
+          if-no-files-found: ignore

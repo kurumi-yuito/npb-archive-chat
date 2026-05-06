@@ -1,0 +1,394 @@
+import type {
+  ChatResponse,
+  ChatSource,
+  ChatStructuredQuery,
+  PlayerCandidate,
+} from '@npb/schemas'
+import type {
+  AggregateRow,
+  BattingLineRow,
+  GameDetailRow,
+  GameSummaryRow,
+  PlayerAffiliationRow,
+  PitchingLineRow,
+  RosterEntryRow,
+} from '@npb/db'
+import type { PlayerResolution } from './player-resolution'
+
+type FormatChatAnswerInput = {
+  question: string
+  structuredQuery: ChatStructuredQuery
+  results: ChatResponse['results']
+  sources: ChatSource[]
+  playerResolution?: PlayerResolution | null
+}
+
+type EventSummaryRow = ChatResponse['results']['events'][number]
+
+export function formatChatAnswer({
+  structuredQuery,
+  results,
+  sources,
+  playerResolution = null,
+}: FormatChatAnswerInput): ChatResponse['answer'] {
+  const sourceUrls = Array.from(new Set([
+    ...sources.map((source) => source.source_url),
+    ...results.affiliations.flatMap((row) => row.sourceUrl ? [row.sourceUrl] : []),
+    ...results.batting.flatMap((row) => row.sourceUrl ? [row.sourceUrl] : []),
+  ]))
+  const resultCount =
+    structuredQuery.intent === 'search_events'
+      ? results.events.length
+      : structuredQuery.intent === 'search_games'
+        ? results.games.length
+        : structuredQuery.intent === 'search_batting'
+          ? results.batting.length
+          : structuredQuery.intent === 'search_pitching'
+            ? results.pitching.length
+            : structuredQuery.intent === 'search_roster'
+              ? results.roster.length
+              : structuredQuery.intent === 'player_affiliation'
+                ? results.affiliations.length
+              : structuredQuery.intent === 'game_detail'
+        ? results.gameDetails.length
+        : results.aggregates.length
+  const remainingCount = structuredQuery.intent === 'search_events'
+    ? Math.max(0, resultCount - SEARCH_EVENTS_SUMMARY_LIMIT)
+    : 0
+
+  return {
+    summary: buildSummary(structuredQuery, results, resultCount, playerResolution),
+    result_count: resultCount,
+    ...(remainingCount > 0 ? { remaining_count: remainingCount } : {}),
+    source_urls: sourceUrls,
+    resolved_player: playerResolution,
+    applied_filters: structuredQuery.filters,
+  }
+}
+
+const SEARCH_EVENTS_SUMMARY_LIMIT = 20
+
+function buildSummary(
+  structuredQuery: ChatStructuredQuery,
+  results: ChatResponse['results'],
+  resultCount: number,
+  playerResolution: PlayerResolution | null,
+): string {
+  if (playerResolution?.status === 'not_found') {
+    return `選手を特定できないため検索できませんでした。入力「${playerResolution.input}」に一致する選手候補はDB内に見つかりません。`
+  }
+  if (playerResolution?.status === 'ambiguous') {
+    return `どの${playerResolution.input}ですか。選手候補が複数あるため検索を実行しませんでした。候補: ${formatCandidates(playerResolution.candidates)}`
+  }
+
+  if (resultCount === 0) {
+    if (structuredQuery.intent === 'search_games') {
+      return '条件に一致する試合は見つかりませんでした。'
+    }
+    if (structuredQuery.intent === 'search_batting' || structuredQuery.intent === 'aggregate_batting') {
+      return '条件に一致する打撃成績は見つかりませんでした。DB結果にないため、推測では回答しません。'
+    }
+    if (structuredQuery.intent === 'search_pitching') {
+      return '条件に一致する投手成績は見つかりませんでした。'
+    }
+    if (structuredQuery.intent === 'aggregate_pitching') {
+      return '条件に一致する投手集計は見つかりませんでした。DB結果にないため、推測では回答しません。'
+    }
+    if (structuredQuery.intent === 'search_roster') {
+      return '条件に一致するロスターは見つかりませんでした。DB結果にないため、推測では回答しません。'
+    }
+    if (structuredQuery.intent === 'player_affiliation') {
+      return '条件に一致する所属チーム情報は見つかりませんでした。DB結果にないため、推測では回答しません。'
+    }
+    if (structuredQuery.intent === 'game_detail') {
+      return '条件に一致する試合詳細は見つかりませんでした。DB結果にないため、推測では回答しません。'
+    }
+    if (structuredQuery.intent === 'aggregate_events') {
+      return '条件に一致するイベント集計は見つかりませんでした。DB結果にないため、推測では回答しません。'
+    }
+    return '条件に一致するイベントは見つかりませんでした。'
+  }
+
+  if (structuredQuery.intent === 'search_games') {
+    const first = results.games[0] as GameSummaryRow
+    return `条件に一致する試合が${resultCount}件あります。先頭は${first.date}の${first.matchupText}です。`
+  }
+
+  if (structuredQuery.intent === 'search_pitching') {
+    const first = results.pitching[0] as PitchingLineRow
+    return `条件に一致する投手成績が${resultCount}件あります。先頭は${first.gameDate}の${first.pitcherName}で、${first.inningsPitched}回 ${first.strikeouts}奪三振です。`
+  }
+
+  if (structuredQuery.intent === 'search_batting') {
+    const first = results.batting[0] as BattingLineRow
+    if (first.sourceKind === 'bis_batting') {
+      return formatBisBattingSummary(first, resultCount)
+    }
+    return `条件に一致する打撃成績が${resultCount}件あります。先頭は${first.gameDate} ${first.gameId} の${first.playerName}で、${first.atBats}打数${first.hits}安打${first.runsBattedIn}打点です。`
+  }
+
+  if (structuredQuery.intent === 'search_roster') {
+    const first = results.roster[0] as RosterEntryRow
+    const starter = first.starter === true ? 'スタメン' : '登録'
+    return `条件に一致するロスターが${resultCount}件あります。先頭は${first.gameDate} ${first.gameId} の${first.team} ${first.playerName}（${starter}）です。`
+  }
+
+  if (structuredQuery.intent === 'player_affiliation') {
+    return formatPlayerAffiliationSummary(structuredQuery, results.affiliations, playerResolution)
+  }
+
+  if (structuredQuery.intent === 'game_detail') {
+    const first = results.gameDetails[0] as GameDetailRow
+    return `条件に一致する試合詳細が${resultCount}件あります。先頭は${first.date} ${first.gameId}、${first.matchupText}（${first.venue}）です。`
+  }
+
+  if (
+    structuredQuery.intent === 'aggregate_batting' ||
+    structuredQuery.intent === 'aggregate_pitching' ||
+    structuredQuery.intent === 'aggregate_events'
+  ) {
+    const first = results.aggregates[0] as AggregateRow
+    return `条件に一致する集計結果が${resultCount}件あります。先頭は${first.label}で、対象件数は${first.total}件です。数値はDB集計結果のみを使っています。`
+  }
+
+  return formatEventListSummary(structuredQuery, results.events, resultCount, playerResolution)
+}
+
+function formatBisBattingSummary(row: BattingLineRow, resultCount: number): string {
+  const year = row.gameDate.slice(0, 4)
+  const stats = parseStatsJson(row.statsJson ?? row.rawText)
+  const statLine = [
+    statPart(stats, '試合', '試合'),
+    statPart(stats, '打席', '打席'),
+    statPart(stats, '打数', '打数'),
+    statPart(stats, '安打', '安打'),
+    statPart(stats, '本塁打', '本塁打'),
+    statPart(stats, '打点', '打点'),
+    statPart(stats, '盗塁', '盗塁'),
+    statPart(stats, '打率', '打率'),
+    statPart(stats, '出塁率', '出塁率'),
+    statPart(stats, '長打率', '長打率'),
+  ].filter(Boolean)
+  return [
+    `${year}年の${row.team} ${row.playerName}の打撃成績です。`,
+    ...(statLine.length > 0 ? [statLine.join('、')] : []),
+    ...(resultCount > 1 ? [`同条件の成績行が${resultCount}件あります。`] : []),
+    ...(row.sourceUrl ? [`source: ${row.sourceUrl}`] : []),
+  ].join('\n')
+}
+
+function parseStatsJson(value: string | null | undefined): Record<string, unknown> {
+  if (!value) {
+    return {}
+  }
+  try {
+    const parsed = JSON.parse(value)
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed)
+      ? parsed as Record<string, unknown>
+      : {}
+  } catch {
+    return {}
+  }
+}
+
+function statPart(stats: Record<string, unknown>, key: string, label: string): string | undefined {
+  const value = stats[key]
+  if (value === null || value === undefined || value === '') {
+    return undefined
+  }
+  return `${label}${String(value)}`
+}
+
+function formatPlayerAffiliationSummary(
+  structuredQuery: ChatStructuredQuery,
+  affiliations: PlayerAffiliationRow[],
+  playerResolution: PlayerResolution | null,
+): string {
+  const latestYear = Math.max(...affiliations.map((row) => row.year))
+  const latestRows = affiliations.filter((row) => row.year === latestYear)
+  const preferredRows = latestRows.some((row) => row.sourceKind === 'bis_roster')
+    ? latestRows.filter((row) => row.sourceKind === 'bis_roster')
+    : latestRows
+  const teams = affiliationTeams(preferredRows)
+  const teamText = teams.join('、')
+  const filters = structuredQuery.filters as { year?: number; player_name?: string }
+  const playerName = playerResolution?.status === 'resolved'
+    ? playerResolution.input || playerResolution.name || filters.player_name
+    : filters.player_name
+  const yearPrefix = filters.year
+    ? `${filters.year}年では`
+    : `DB上の最新確認年（${latestYear}年）では`
+  const evidence = preferredRows.find((row) => row.sourceKind === 'bis_roster') ??
+    latestRows.find((row) => row.sourceKind === 'roster') ??
+    latestRows[0]!
+  return [
+    `${yearPrefix}、${playerName}は${teamText}に所属しています。`,
+    ...(evidence.sourceUrl ? [`source: ${evidence.sourceUrl}`] : []),
+  ].join('\n')
+}
+
+function affiliationTeams(rows: PlayerAffiliationRow[]): string[] {
+  const teams = new Map<string, { display: string; count: number; roster: boolean }>()
+  for (const row of rows) {
+    const key = teamAliasKey(row.team)
+    const current = teams.get(key)
+    if (!current) {
+      teams.set(key, { display: row.team, count: 1, roster: row.sourceKind === 'roster' })
+      continue
+    }
+    current.count += 1
+    if (
+      (!current.roster && row.sourceKind === 'roster') ||
+      (current.roster === (row.sourceKind === 'roster') && row.team.length > current.display.length)
+    ) {
+      current.display = row.team
+      current.roster = row.sourceKind === 'roster'
+    }
+  }
+  return [...teams.values()]
+    .sort((a, b) => b.count - a.count || a.display.localeCompare(b.display, 'ja'))
+    .map((team) => team.display)
+}
+
+function teamAliasKey(team: string): string {
+  const normalized = team.replace(/[・･.\-_\s　]/gu, '')
+  const aliases: Record<string, string> = {
+    横浜DeNAベイスターズ: 'DeNA',
+    DeNA: 'DeNA',
+    東京ヤクルトスワローズ: 'ヤクルト',
+    ヤクルト: 'ヤクルト',
+    読売ジャイアンツ: '巨人',
+    巨人: '巨人',
+    阪神タイガース: '阪神',
+    阪神: '阪神',
+    中日ドラゴンズ: '中日',
+    中日: '中日',
+    広島東洋カープ: '広島',
+    広島: '広島',
+    オリックスバファローズ: 'オリックス',
+    オリックス: 'オリックス',
+    埼玉西武ライオンズ: '西武',
+    西武: '西武',
+    福岡ソフトバンクホークス: 'ソフトバンク',
+    ソフトバンク: 'ソフトバンク',
+    千葉ロッテマリーンズ: 'ロッテ',
+    ロッテ: 'ロッテ',
+    北海道日本ハムファイターズ: '日本ハム',
+    日本ハム: '日本ハム',
+    東北楽天ゴールデンイーグルス: '楽天',
+    楽天: '楽天',
+  }
+  return aliases[normalized] ?? normalized
+}
+
+function formatEventListSummary(
+  structuredQuery: ChatStructuredQuery,
+  events: EventSummaryRow[],
+  resultCount: number,
+  playerResolution: PlayerResolution | null,
+): string {
+  const title = describeEventSearch(structuredQuery, playerResolution)
+  const visibleEvents = events.slice(0, SEARCH_EVENTS_SUMMARY_LIMIT)
+  const remainingCount = Math.max(0, resultCount - visibleEvents.length)
+  const lines = [
+    `${title}は${resultCount}件です。`,
+    '',
+    ...visibleEvents.flatMap((event, index) => formatEventListItem(event, index + 1)),
+  ]
+
+  if (remainingCount > 0) {
+    lines.push('', `ほか${remainingCount}件は省略しています。`)
+  }
+
+  return lines.join('\n')
+}
+
+function describeEventSearch(
+  structuredQuery: ChatStructuredQuery,
+  playerResolution: PlayerResolution | null,
+): string {
+  const filters = structuredQuery.filters as {
+    year?: number
+    year_from?: number
+    year_to?: number
+    team?: string
+    batter_name?: string
+    pitcher_name?: string
+    runner_name?: string
+    player_name?: string
+    result_text_contains?: string
+    event_type?: string
+    event_subtype?: string
+  }
+  const parts: string[] = []
+
+  if (filters.year) {
+    parts.push(`${filters.year}年`)
+  } else if (filters.year_from && filters.year_to) {
+    parts.push(`${filters.year_from}-${filters.year_to}年`)
+  } else if (filters.year_from) {
+    parts.push(`${filters.year_from}年以降`)
+  } else if (filters.year_to) {
+    parts.push(`${filters.year_to}年以前`)
+  }
+
+  if (filters.team) {
+    parts.push(filters.team)
+  }
+
+  const batterName = playerResolution?.status === 'resolved' && filters.batter_name
+    ? playerResolution.name ?? filters.batter_name
+    : filters.batter_name
+  if (batterName) {
+    parts.push(`${batterName}が打った`)
+  } else if (filters.pitcher_name) {
+    parts.push(`${filters.pitcher_name}から打った`)
+  } else if (filters.runner_name) {
+    parts.push(`${filters.runner_name}の`)
+  } else if (filters.player_name) {
+    parts.push(`${filters.player_name}の`)
+  }
+
+  if (filters.result_text_contains) {
+    parts.push(filters.result_text_contains)
+  } else if (filters.event_subtype) {
+    parts.push(filters.event_subtype)
+  } else if (filters.event_type) {
+    parts.push(filters.event_type)
+  } else {
+    parts.push('イベント')
+  }
+
+  return parts.length > 0 ? parts.join('') : '条件に一致するイベント'
+}
+
+function formatEventListItem(event: EventSummaryRow, index: number): string[] {
+  const half = event.half === 'top' ? '表' : '裏'
+  const result = event.pitcherName
+    ? `${event.pitcherName}から${event.resultText}`
+    : event.resultText
+  const lines = [
+    `${index}. ${event.gameDate} ${event.gameId} ${event.inning}回${half}`,
+    `   ${result}`,
+  ]
+
+  if (event.sourceUrl) {
+    lines.push(`   source: ${event.sourceUrl}`)
+  }
+
+  return lines
+}
+
+function formatCandidates(candidates: PlayerCandidate[]): string {
+  return candidates
+    .slice(0, 10)
+    .map((candidate) => {
+      const years = candidate.years.length > 0
+        ? `${Math.min(...candidate.years)}-${Math.max(...candidate.years)}`
+        : 'year不明'
+      const team = candidate.primary_team ?? candidate.teams[0] ?? 'team不明'
+      const playerId = candidate.player_id ?? 'player_id不明'
+      return `${candidate.name}(player_id=${playerId}, ${team}, ${years})`
+    })
+    .join('、')
+}

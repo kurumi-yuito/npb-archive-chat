@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "year": 2026,
+  "generatedAt": "2026-04-18T01:23:45.000Z",
+  "games": [
+    {
+      "year": 2026,
+      "date": "2026-03-27",
+      "mmdd": "0327",
+      "gameId": "r20260327g-t-01",
+      "gameNumber": 1,
+      "competition": "regular",
+      "listingType": "scores",
+      "listingStatus": "listed",
+      "startsAt": null,
+      "venue": "Tokyo Dome",
+      "homeTeam": {
+        "code": "g",
+        "label": "Yomiuri"
+      },
+      "awayTeam": {
+        "code": "t",
+        "label": "Hanshin"
+      },
+      "source": {
+        "calendarPageUrl": "https://npb.jp/bis/eng/2026/calendar/",
+        "dailyPageUrl": "https://npb.jp/bis/eng/2026/games/gm20260327.html"
+      },
+      "downloader": {
+        "scoreBaseUrl": "https://npb.jp/scores/2026/0327/g-t-01",
+        "pages": {
+          "index": "https://example.test/g-t-01/index.html",
+          "playByPlay": "https://example.test/g-t-01/playbyplay.html",
+          "box": "https://example.test/g-t-01/box.html",
+          "roster": "https://example.test/g-t-01/roster.html"
+        }
+      }
+    }
+  ]
+}

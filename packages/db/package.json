@@ -1,0 +1,45 @@
+{
+  "name": "@npb/db",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "import": "./src/index.ts",
+      "default": "./src/index.ts"
+    },
+    "./query-driver": {
+      "types": "./src/query-driver.ts",
+      "import": "./src/query-driver.ts",
+      "default": "./src/query-driver.ts"
+    },
+    "./sqlite-stack": {
+      "types": "./src/sqlite-stack.ts",
+      "import": "./src/sqlite-stack.ts",
+      "default": "./src/sqlite-stack.ts"
+    }
+  },
+  "dependencies": {
+    "@npb/crawler": "workspace:*",
+    "@npb/parser": "workspace:*",
+    "@npb/schemas": "workspace:*"
+  },
+  "scripts": {
+    "backfill:scores-canonical": "tsx ./src/cli.ts backfill:scores-canonical",
+    "enrich:scores-calendar": "tsx ./src/cli.ts enrich:scores-calendar",
+    "lint": "eslint -c ../../eslint.config.mjs .",
+    "migrate": "tsx ./src/cli.ts migrate",
+    "update:bis-current": "tsx ./src/cli.ts update:bis-current",
+    "update:daily": "tsx ./src/cli.ts update:daily",
+    "update:year": "tsx ./src/cli.ts update-year",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run -c vitest.config.ts"
+  },
+  "devDependencies": {
+    "eslint": "^9.16.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  }
+}

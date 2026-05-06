@@ -1,0 +1,5 @@
+# wrangler dev 用（任意）。本番のシークレットは Cloudflare ダッシュボードまたは wrangler secret で設定する。
+# このファイルをコピーして .dev.vars を作り、値を入れる（.dev.vars は .gitignore 済み）。
+#
+# 例（将来、Workers 上で vars を使う場合）:
+# SOME_PUBLIC_VAR=example

@@ -1,0 +1,28 @@
+{
+  "name": "@npb/crawler",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "import": "./src/index.ts",
+      "default": "./src/index.ts"
+    }
+  },
+  "dependencies": {
+    "@npb/schemas": "workspace:*"
+  },
+  "scripts": {
+    "discover": "node --experimental-strip-types src/cli.ts discover",
+    "download": "node --experimental-strip-types src/cli.ts download",
+    "lint": "eslint -c ../../eslint.config.mjs .",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run -c vitest.config.ts"
+  },
+  "devDependencies": {
+    "eslint": "^9.16.0",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  }
+}

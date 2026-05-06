@@ -1,0 +1,524 @@
+[
+  {
+    "id": "events-pinch-hitter-basic",
+    "message": "2025-08-15の8回裏、team=ロッテ batter_name=山村 の代打イベントを教えて",
+    "expected_raw": {
+      "intent": "search_events",
+      "filters": {
+        "game_date": "2025-08-15",
+        "inning": 8,
+        "half": "bottom",
+        "team": "ロッテ",
+        "batter_name": "山村",
+        "event_type": "plate_appearance",
+        "event_subtype": "pinch_hitter"
+      }
+    },
+    "expected_normalized": {
+      "intent": "search_events",
+      "filters": {
+        "game_date": "2025-08-15",
+        "inning": 8,
+        "half": "bottom",
+        "team": "ロッテ",
+        "batter_name": "山村",
+        "event_type": "plate_appearance",
+        "event_subtype": "pinch_hitter"
+      }
+    }
+  },
+  {
+    "id": "events-team-alias-lotte",
+    "message": "2025-08-15の8回裏、team=千葉ロッテマリーンズ batter_name=山村 の代打イベントを教えて",
+    "expected_raw": {
+      "intent": "search_events",
+      "filters": {
+        "game_date": "2025-08-15",
+        "inning": 8,
+        "half": "bottom",
+        "team": "千葉ロッテマリーンズ",
+        "batter_name": "山村",
+        "event_type": "plate_appearance",
+        "event_subtype": "pinch_hitter"
+      }
+    },
+    "expected_normalized": {
+      "intent": "search_events",
+      "filters": {
+        "game_date": "2025-08-15",
+        "inning": 8,
+        "half": "bottom",
+        "team": "ロッテ",
+        "batter_name": "山村",
+        "event_type": "plate_appearance",
+        "event_subtype": "pinch_hitter"
+      }
+    }
+  },
+  {
+    "id": "events-team-alias-buffaloes",
+    "message": "2025-08-15の8回裏、team=オリックス・バッファローズ batter_name=山村 の代打イベントを教えて",
+    "expected_raw": {
+      "intent": "search_events",
+      "filters": {
+        "game_date": "2025-08-15",
+        "inning": 8,
+        "half": "bottom",
+        "team": "オリックス・バッファローズ",
+        "batter_name": "山村",
+        "event_type": "plate_appearance",
+        "event_subtype": "pinch_hitter"
+      }
+    },
+    "expected_normalized": {
+      "intent": "search_events",
+      "filters": {
+        "game_date": "2025-08-15",
+        "inning": 8,
+        "half": "bottom",
+        "team": "オリックス",
+        "batter_name": "山村",
+        "event_type": "plate_appearance",
+        "event_subtype": "pinch_hitter"
+      }
+    }
+  },
+  {
+    "id": "events-batter-space-normalization",
+    "message": "2025-08-15の8回裏、team=ロッテ batter_name=山 村 の代打イベントを教えて",
+    "expected_raw": {
+      "intent": "search_events",
+      "filters": {
+        "game_date": "2025-08-15",
+        "inning": 8,
+        "half": "bottom",
+        "team": "ロッテ",
+        "batter_name": "山村",
+        "event_type": "plate_appearance",
+        "event_subtype": "pinch_hitter"
+      }
+    },
+    "expected_normalized": {
+      "intent": "search_events",
+      "filters": {
+        "game_date": "2025-08-15",
+        "inning": 8,
+        "half": "bottom",
+        "team": "ロッテ",
+        "batter_name": "山村",
+        "event_type": "plate_appearance",
+        "event_subtype": "pinch_hitter"
+      }
+    }
+  },
+  {
+    "id": "events-runner-stolen-base",
+    "message": "2025-08-15の8回裏、runner_name=髙松 の盗塁イベントを教えて",
+    "expected_raw": {
+      "intent": "search_events",
+      "filters": {
+        "game_date": "2025-08-15",
+        "inning": 8,
+        "half": "bottom",
+        "runner_name": "髙松",
+        "event_type": "runner_event",
+        "event_subtype": "stolen_base"
+      }
+    },
+    "expected_normalized": {
+      "intent": "search_events",
+      "filters": {
+        "game_date": "2025-08-15",
+        "inning": 8,
+        "half": "bottom",
+        "runner_name": "髙松",
+        "event_type": "runner_event",
+        "event_subtype": "stolen_base"
+      }
+    }
+  },
+  {
+    "id": "events-runner-alias-takamatsu",
+    "message": "2025-08-15の8回裏、runner_name=高松 の盗塁イベントを教えて",
+    "expected_raw": {
+      "intent": "search_events",
+      "filters": {
+        "game_date": "2025-08-15",
+        "inning": 8,
+        "half": "bottom",
+        "runner_name": "高松",
+        "event_type": "runner_event",
+        "event_subtype": "stolen_base"
+      }
+    },
+    "expected_normalized": {
+      "intent": "search_events",
+      "filters": {
+        "game_date": "2025-08-15",
+        "inning": 8,
+        "half": "bottom",
+        "runner_name": "髙松",
+        "event_type": "runner_event",
+        "event_subtype": "stolen_base"
+      }
+    }
+  },
+  {
+    "id": "events-starting-pitcher",
+    "message": "2025-08-15の先発投手で pitcher_name=益田 を教えて",
+    "expected_raw": {
+      "intent": "search_events",
+      "filters": {
+        "game_date": "2025-08-15",
+        "pitcher_name": "益田",
+        "event_type": "game_note",
+        "event_subtype": "starting_pitcher"
+      }
+    },
+    "expected_normalized": {
+      "intent": "search_events",
+      "filters": {
+        "game_date": "2025-08-15",
+        "pitcher_name": "益田",
+        "event_type": "game_note",
+        "event_subtype": "starting_pitcher"
+      }
+    }
+  },
+  {
+    "id": "events-pitching-change",
+    "message": "2025-08-15の投手交代で pitcher_name=益田 を教えて",
+    "expected_raw": {
+      "intent": "search_events",
+      "filters": {
+        "game_date": "2025-08-15",
+        "pitcher_name": "益田",
+        "event_type": "substitution",
+        "event_subtype": "pitching_change"
+      }
+    },
+    "expected_normalized": {
+      "intent": "search_events",
+      "filters": {
+        "game_date": "2025-08-15",
+        "pitcher_name": "益田",
+        "event_type": "substitution",
+        "event_subtype": "pitching_change"
+      }
+    }
+  },
+  {
+    "id": "events-batter-phrase",
+    "message": "2025-08-15の8回裏に山村が代打したイベントを教えて",
+    "expected_raw": {
+      "intent": "search_events",
+      "filters": {
+        "game_date": "2025-08-15",
+        "inning": 8,
+        "half": "bottom",
+        "batter_name": "山村",
+        "event_type": "plate_appearance",
+        "event_subtype": "pinch_hitter"
+      }
+    },
+    "expected_normalized": {
+      "intent": "search_events",
+      "filters": {
+        "game_date": "2025-08-15",
+        "inning": 8,
+        "half": "bottom",
+        "batter_name": "山村",
+        "event_type": "plate_appearance",
+        "event_subtype": "pinch_hitter"
+      }
+    }
+  },
+  {
+    "id": "events-runner-phrase",
+    "message": "2025-08-15の8回裏に高松が盗塁したイベントを教えて",
+    "expected_raw": {
+      "intent": "search_events",
+      "filters": {
+        "game_date": "2025-08-15",
+        "inning": 8,
+        "half": "bottom",
+        "runner_name": "高松",
+        "event_type": "runner_event",
+        "event_subtype": "stolen_base"
+      }
+    },
+    "expected_normalized": {
+      "intent": "search_events",
+      "filters": {
+        "game_date": "2025-08-15",
+        "inning": 8,
+        "half": "bottom",
+        "runner_name": "髙松",
+        "event_type": "runner_event",
+        "event_subtype": "stolen_base"
+      }
+    }
+  },
+  {
+    "id": "events-player-name-filter",
+    "message": "2025-08-15のplayer_name=益田のイベントを教えて",
+    "expected_raw": {
+      "intent": "search_events",
+      "filters": {
+        "game_date": "2025-08-15",
+        "player_name": "益田"
+      }
+    },
+    "expected_normalized": {
+      "intent": "search_events",
+      "filters": {
+        "game_date": "2025-08-15",
+        "player_name": "益田"
+      }
+    }
+  },
+  {
+    "id": "events-limit-explicit",
+    "message": "2025-08-15の8回裏、team=ロッテ batter_name=山村 の代打イベントを limit=5 で教えて",
+    "expected_raw": {
+      "intent": "search_events",
+      "filters": {
+        "game_date": "2025-08-15",
+        "inning": 8,
+        "half": "bottom",
+        "team": "ロッテ",
+        "batter_name": "山村",
+        "event_type": "plate_appearance",
+        "event_subtype": "pinch_hitter",
+        "limit": 5
+      }
+    },
+    "expected_normalized": {
+      "intent": "search_events",
+      "filters": {
+        "game_date": "2025-08-15",
+        "inning": 8,
+        "half": "bottom",
+        "team": "ロッテ",
+        "batter_name": "山村",
+        "event_type": "plate_appearance",
+        "event_subtype": "pinch_hitter",
+        "limit": 5
+      }
+    }
+  },
+  {
+    "id": "pitching-basic",
+    "message": "2025/08/15の投手成績で team=ロッテ pitcher_name=益田 を見せて",
+    "expected_raw": {
+      "intent": "search_pitching",
+      "filters": {
+        "game_date": "2025-08-15",
+        "team": "ロッテ",
+        "pitcher_name": "益田"
+      }
+    },
+    "expected_normalized": {
+      "intent": "search_pitching",
+      "filters": {
+        "game_date": "2025-08-15",
+        "team": "ロッテ",
+        "pitcher_name": "益田"
+      }
+    }
+  },
+  {
+    "id": "pitching-team-alias",
+    "message": "2025/08/15の投手成績で team=福岡ソフトバンクホークス pitcher_name=益田 を見せて",
+    "expected_raw": {
+      "intent": "search_pitching",
+      "filters": {
+        "game_date": "2025-08-15",
+        "team": "福岡ソフトバンクホークス",
+        "pitcher_name": "益田"
+      }
+    },
+    "expected_normalized": {
+      "intent": "search_pitching",
+      "filters": {
+        "game_date": "2025-08-15",
+        "team": "ソフトバンク",
+        "pitcher_name": "益田"
+      }
+    }
+  },
+  {
+    "id": "pitching-pitcher-space-normalization",
+    "message": "2025/08/15の投手成績で team=ロッテ pitcher_name=益 田 を見せて",
+    "expected_raw": {
+      "intent": "search_pitching",
+      "filters": {
+        "game_date": "2025-08-15",
+        "team": "ロッテ",
+        "pitcher_name": "益田"
+      }
+    },
+    "expected_normalized": {
+      "intent": "search_pitching",
+      "filters": {
+        "game_date": "2025-08-15",
+        "team": "ロッテ",
+        "pitcher_name": "益田"
+      }
+    }
+  },
+  {
+    "id": "events-explicit-runner-trailing-text",
+    "message": "2025-08-15の8回裏、runner_name=高松が盗塁したイベントを教えて",
+    "expected_raw": {
+      "intent": "search_events",
+      "filters": {
+        "game_date": "2025-08-15",
+        "inning": 8,
+        "half": "bottom",
+        "runner_name": "高松",
+        "event_type": "runner_event",
+        "event_subtype": "stolen_base"
+      }
+    },
+    "expected_normalized": {
+      "intent": "search_events",
+      "filters": {
+        "game_date": "2025-08-15",
+        "inning": 8,
+        "half": "bottom",
+        "runner_name": "髙松",
+        "event_type": "runner_event",
+        "event_subtype": "stolen_base"
+      }
+    }
+  },
+  {
+    "id": "pitching-explicit-team-space",
+    "message": "2025/08/15の投手成績で team=福岡 ソフトバンク ホークス pitcher_name=益田 を見せて",
+    "expected_raw": {
+      "intent": "search_pitching",
+      "filters": {
+        "game_date": "2025-08-15",
+        "team": "福岡ソフトバンクホークス",
+        "pitcher_name": "益田"
+      }
+    },
+    "expected_normalized": {
+      "intent": "search_pitching",
+      "filters": {
+        "game_date": "2025-08-15",
+        "team": "ソフトバンク",
+        "pitcher_name": "益田"
+      }
+    }
+  },
+  {
+    "id": "pitching-name-phrase",
+    "message": "2025-08-15の益田の投手成績を見せて",
+    "expected_raw": {
+      "intent": "search_pitching",
+      "filters": {
+        "game_date": "2025-08-15",
+        "pitcher_name": "益田"
+      }
+    },
+    "expected_normalized": {
+      "intent": "search_pitching",
+      "filters": {
+        "game_date": "2025-08-15",
+        "pitcher_name": "益田"
+      }
+    }
+  },
+  {
+    "id": "pitching-limit-explicit",
+    "message": "2025-08-15の投手成績で team=ロッテ pitcher_name=益田 limit=3 を見せて",
+    "expected_raw": {
+      "intent": "search_pitching",
+      "filters": {
+        "game_date": "2025-08-15",
+        "team": "ロッテ",
+        "pitcher_name": "益田",
+        "limit": 3
+      }
+    },
+    "expected_normalized": {
+      "intent": "search_pitching",
+      "filters": {
+        "game_date": "2025-08-15",
+        "team": "ロッテ",
+        "pitcher_name": "益田",
+        "limit": 3
+      }
+    }
+  },
+  {
+    "id": "games-basic",
+    "message": "2025-08-15の試合一覧を教えて",
+    "expected_raw": {
+      "intent": "search_games",
+      "filters": {
+        "game_date": "2025-08-15"
+      }
+    },
+    "expected_normalized": {
+      "intent": "search_games",
+      "filters": {
+        "game_date": "2025-08-15"
+      }
+    }
+  },
+  {
+    "id": "games-explicit-intent",
+    "message": "intent=games 2025-08-15の試合を教えて",
+    "expected_raw": {
+      "intent": "search_games",
+      "filters": {
+        "game_date": "2025-08-15"
+      }
+    },
+    "expected_normalized": {
+      "intent": "search_games",
+      "filters": {
+        "game_date": "2025-08-15"
+      }
+    }
+  },
+  {
+    "id": "games-game-id",
+    "message": "intent=games 2025-08-15の試合で game_id=r20250815b-l-17 を教えて",
+    "expected_raw": {
+      "intent": "search_games",
+      "filters": {
+        "game_date": "2025-08-15",
+        "game_id": "r20250815b-l-17"
+      }
+    },
+    "expected_normalized": {
+      "intent": "search_games",
+      "filters": {
+        "game_date": "2025-08-15",
+        "game_id": "r20250815b-l-17"
+      }
+    }
+  },
+  {
+    "id": "games-limit-explicit",
+    "message": "intent=games 2025-08-15の試合を limit=10 で教えて",
+    "expected_raw": {
+      "intent": "search_games",
+      "filters": {
+        "game_date": "2025-08-15",
+        "limit": 10
+      }
+    },
+    "expected_normalized": {
+      "intent": "search_games",
+      "filters": {
+        "game_date": "2025-08-15",
+        "limit": 10
+      }
+    }
+  }
+]

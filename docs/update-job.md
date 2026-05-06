@@ -1,0 +1,150 @@
+# Update Job
+
+## 前提
+
+- repo root で `pnpm install` 済み
+- SQLite ファイルを書き込める
+
+## 役割分担
+
+現在の正規データフローは次に統一する。
+
+```text
+discover
+→ update:year
+→ backfill:scores-canonical
+→ enrich:scores-calendar
+```
+
+`crawler:download` は raw HTML の個別取得用 CLI として残っているが、年次 DB 更新の正規導線ではない。
+
+`update:year`:
+
+- 年単位の discovery を取得し、`games` の土台を作る
+- raw HTML を `data/raw/{year}/{mmdd}/{game_id}/...` に保存する
+- 正規化 DB に投入する
+
+`backfill:scores-canonical`:
+
+- `games.canonical_url` が scores URL でない試合に対して、全年度共通の候補生成と存在確認で scores index URL を補完する
+- 200 確認できた URL だけを `games.canonical_url` に保存する
+
+`enrich:scores-calendar`:
+
+- `backfill:scores-canonical` 済みの `games.canonical_url` を正規 scores index URL として使う
+- sibling URL から `index.html` / `playbyplay.html` / `box.html` / `roster.html` を取得する
+- raw HTML を `data/raw/{year}/{mmdd}/{game_id}/...` に保存する
+- structured JSON を `data/structured/{year}/{mmdd}/{game_id}/...` に保存する
+- `events` / `batting_lines` / `pitching_lines` / `roster_entries` / `source_snapshots` を補完する
+
+`update:bis-current`:
+
+- scores enrichment とは別に `npb.jp/bis` の最新系ページを取得する
+- raw HTML を `data/raw/bis/{year}/...` に保存する
+- structured JSON を `data/structured/bis/{year}/bis-current.json` に保存する
+- `current_team_roster` / stats 系テーブル / `bis_source_snapshots` に upsert する
+
+## 実行順
+
+```bash
+pnpm crawler:discover --year 2025
+pnpm --filter @npb/db run update:year --year 2025 --sqlite-path ./data/npb-2025.sqlite
+pnpm --filter @npb/db run backfill:scores-canonical --year 2025 --sqlite-path ./data/npb-2025.sqlite --league regular
+pnpm --filter @npb/db run enrich:scores-calendar --year 2025 --sqlite-path ./data/npb-2025.sqlite
+pnpm --filter @npb/db run update:bis-current -- --year 2025 --sqlite-path ./data/npb-2025.sqlite
+```
+
+live smoke を少数件で確認する場合:
+
+```bash
+pnpm --filter @npb/db run enrich:scores-calendar --year 2025 --sqlite-path ./data/npb-2025.sqlite --league regular --limit 20
+```
+
+## 日次更新
+
+本番運用では人間が毎日手動実行する前提にしない。日次差分は `update:daily` を scheduler から呼ぶ。
+
+```bash
+pnpm --filter @npb/db run update:daily
+```
+
+既定値:
+
+- JST 基準
+- 今日を含む直近 3 日
+- SQLite は `data/npb-{year}.sqlite`
+- `backfill:scores-canonical --source calendar-live --league regular`
+- `enrich:scores-calendar --league regular`
+
+オプション:
+
+```bash
+pnpm --filter @npb/db run update:daily -- --date 2025-04-05
+pnpm --filter @npb/db run update:daily -- --from 2025-04-05 --to 2025-04-07
+pnpm --filter @npb/db run update:daily -- --days 5
+pnpm --filter @npb/db run update:daily -- --strict
+pnpm --filter @npb/db run update:daily -- --date 2025-04-05 --dry-run
+pnpm --filter @npb/db run update:daily -- --sqlite-dir ./data
+pnpm --filter @npb/db run update:daily -- --include-bis-current
+```
+
+挙動:
+
+- 対象日の `games` / scores 4HTML / detail tables だけを更新する。
+- 再実行しても同じ `game_id` の normalized rows は差し替えられる。
+- rain cancelled は正常な skip として扱う。
+- 404 は通常 warning、`--strict` では non-zero。
+- parse failure / DB write failure は non-zero。
+- `data/logs/update-daily-summary.json` に集計と warning / error 理由を残す。
+- `--dry-run` は対象 date range / year / sqlite path だけを summary に出し、DB / network 更新を実行しない。
+- `--include-bis-current` を付けると、対象年ごとに `update:bis-current` も実行する。BIS current は scores より重いため、必要な scheduler run だけで有効化する。
+
+## 自動実行
+
+GitHub Actions workflow:
+
+- `.github/workflows/daily-update.yml`
+- cron: `5 1,7,13 * * *`（10:05 / 16:05 / 22:05 JST）
+- `workflow_dispatch` で `date` / `from` / `to` / `days` / `strict` を指定可能
+- コマンドが non-zero なら workflow も失敗する
+- logs と summary は artifact / Step Summary に残る
+
+## 保存先
+
+- `data/discovery/{year}.json`
+- `data/raw/{year}/{mmdd}/{game_id}/...`
+- `data/structured/{year}/{mmdd}/{game_id}/...`
+- SQLite: `games`, `events`, `batting_lines`, `pitching_lines`, `roster_entries`, `source_snapshots`
+- BIS current: `data/raw/bis/{year}/...`, `data/structured/bis/{year}/bis-current.json`, `current_team_roster`, stats 系テーブル, `bis_source_snapshots`
+
+## 確認
+
+```bash
+sqlite3 ./data/npb-2025.sqlite "SELECT COUNT(*) FROM games WHERE canonical_url LIKE 'https://npb.jp/scores/%';"
+sqlite3 ./data/npb-2025.sqlite "SELECT COUNT(*) FROM events;"
+sqlite3 ./data/npb-2025.sqlite "SELECT COUNT(*) FROM batting_lines;"
+sqlite3 ./data/npb-2025.sqlite "SELECT COUNT(*) FROM pitching_lines;"
+sqlite3 ./data/npb-2025.sqlite "SELECT COUNT(*) FROM roster_entries;"
+sqlite3 ./data/npb-2025.sqlite "SELECT COUNT(*) FROM source_snapshots;"
+sqlite3 ./data/npb-2025.sqlite "SELECT COUNT(*) FROM current_team_roster;"
+```
+
+詳細は [scores-calendar-enrichment.md](./scores-calendar-enrichment.md) を参照。
+
+## 実装状況
+
+Done:
+
+- 2016-2026 の年別 SQLite データ基盤
+- `discover` / `update:year` / `backfill:scores-canonical` / `enrich:scores-calendar` のローカル CLI
+- `update:daily` のローカル CLI
+- `update:bis-current` のローカル CLI
+- GitHub Actions schedule / workflow_dispatch
+- scores 4HTML の raw 保存、structured JSON 保存、DB 補完
+- BIS current の raw 保存、structured JSON 保存、DB 補完
+
+Not implemented:
+
+- Cloudflare Cron / Workers 単体での更新ジョブ完結
+- 本番運用での監視、リトライ、通知
+- R2 を正規保存先にした更新ジョブ
