@@ -1,6 +1,13 @@
 # Production TODO
 
-このファイルは、本番運用に残っている作業と完了条件を確認するための一覧である。Cloudflare への具体的な実行手順は [deploy.md](./deploy.md) を正とする。
+このファイルは、本番運用に残っている作業と完了条件を確認するための一覧である。
+Cloudflare への具体的な実行手順は [deploy.md](./deploy.md) を正とする。
+
+重要:
+
+- チャット、account/profile、subscription、usage はアプリ実装として完了している。
+- したがって、account / billing についての残作業は「本番 secret と本番環境の確認」に限る。
+- ここに書く残作業は、主に本番データ投入と運用基盤である。
 
 ## 読み分け
 
@@ -13,6 +20,17 @@
 | 現在の実装状態 | [current-status.md](./current-status.md) |
 
 ## 残作業
+
+### 0. 本番に入れる前の最終確認
+
+まず、アプリ側に未完了の account / billing 実装がないことを確認する。
+
+- `GET /api/account`
+- `PATCH /api/account`
+- `PUT /api/billing/subscription`
+- `GET /api/chat/usage`
+
+これらは実装済みである。残っているのは本番環境に値を入れて確認することだけである。
 
 ### 1. Cloudflare 実リソース設定
 
@@ -32,16 +50,11 @@ Not implemented in repository:
 
 ### 2. D1 本番データ投入
 
-Not implemented in repository:
+Implemented in repository:
 
-- SQLite から D1 へ 2016-2026 の normalized rows を全量投入する専用コマンド
-- D1 import 後の自動件数検証コマンド
-
-現状:
-
-- migration SQL は `packages/db/migrations/` にある。
-- アプリの query layer は D1 binding `NPB_DB` に対応済み。
-- 本番 D1 への全量投入は運用作業として残る。
+- `pnpm --filter @npb/db run sync:d1` で、年別 SQLite から D1 へ normalized rows を投入できる
+- `data/logs/d1-sync/summary.json` に件数サマリーが残る
+- deploy 手順に D1 import / 件数検証コマンドを明記済み
 
 完了条件:
 
@@ -68,20 +81,37 @@ Not implemented in repository:
 
 ### 4. Cloudflare Cron 単体運用
 
-Not implemented in repository:
+Implemented in repository:
 
-- Worker `scheduled` handler で `update:daily` 相当を完結させる実装
-- Cloudflare Cron trigger 設定
-
-現状:
-
-- `pnpm --filter @npb/db run update:daily` は Node CLI として実装済み。
-- `.github/workflows/daily-update.yml` に GitHub Actions schedule / workflow_dispatch は実装済み。
+- Worker `scheduled` handler で Cloudflare Cron から GitHub Actions workflow dispatch を起動する実装
+- root `wrangler.toml` の Cloudflare Cron trigger 設定
+- `.github/workflows/daily-update.yml` の `workflow_dispatch`
 
 完了条件:
 
-- GitHub Actions または Cloudflare Cron のどちらかで、人間が毎日手動実行しなくても差分更新される。
+- GitHub Actions の `workflow_dispatch` を Cloudflare Cron または手動から起動できる。
 - 失敗時に non-zero / failed status になり、summary log が残る。
+
+### 5. 完了済みだが本番で確認すべき項目
+
+以下は実装済みなので、やることは本番 smoke test だけである。
+
+- account / profile 保存
+- subscription plan 切り替え
+- usage 上限 429
+- dev header fallback
+- production signed-cookie identity
+- `/api/chat` の deterministic formatter / LLM fallback
+
+確認コマンド:
+
+```bash
+curl -s https://<worker-domain>/api/account
+curl -s https://<worker-domain>/api/chat/usage
+curl -s https://<worker-domain>/api/chat \
+  -H 'Content-Type: application/json' \
+  -d '{"message":"藤浪晋太郎の所属チームは"}'
+```
 
 ## 本番確認チェックリスト
 

@@ -371,7 +371,7 @@ Not implemented:
 
 - `players` 専用マスタテーブル
 - venue / competition などの高度な検索条件
-- D1 への本番データ投入・更新運用の自動化
+- D1 本番接続時の adapter 分離
 
 
 ## 次に人間が確認すべき点

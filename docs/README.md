@@ -27,7 +27,7 @@
 | 領域 | ドキュメント | 主な内容 |
 |------|--------------|----------|
 | 正規データフロー | [current-status.md](./current-status.md) | `discover → update:year → backfill:scores-canonical → enrich:scores-calendar` |
-| 日次更新 | [update-job.md](./update-job.md) | `update:daily`、GitHub Actions schedule |
+| 日次更新 | [update-job.md](./update-job.md) | `update:daily`、Cloudflare Cron / workflow_dispatch |
 | DB schema / repository | [db.md](./db.md) | テーブル、検索DB、migration |
 | source構造 | [source-structure.md](./source-structure.md) | scores / BIS source の役割 |
 | parser | [parser.md](./parser.md) | raw HTML → structured JSON |
@@ -46,6 +46,6 @@
 
 ## 残作業の扱い
 
-プロダクト機能としてのチャット、account/profile、subscription、usage は実装済み。
+プロダクト機能としてのチャット、account/profile、subscription、usage は実装済みである。
 
-残っているのは主に本番インフラ運用作業です。実際のデプロイ手順は [deploy.md](./deploy.md) を正とし、残作業と完了条件の一覧は [production-todo.md](./production-todo.md) に置きます。各詳細ドキュメント内の `Not implemented` は個別領域の補足です。
+残っているのは主に本番インフラ運用作業である。D1 の本番データ同期手段 `sync:d1` は実装済みで、実行手順は [deploy.md](./deploy.md) にある。残作業と完了条件の一覧は [production-todo.md](./production-todo.md) に置く。各詳細ドキュメント内の `Not implemented` は個別領域の補足である。

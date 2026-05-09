@@ -4,22 +4,161 @@
 
 本番用の secret はリポジトリに含めない。`wrangler.toml` の D1 / R2 設定は、Cloudflare で作成した実リソースに合わせる。
 
-## 全体手順
+## 先に結論
 
-1. ローカルで test / typecheck を通す。
-2. Cloudflare の D1 database と R2 bucket を作る。
-3. root の `wrangler.toml` を実リソースに合わせる。
-4. Cloudflare Workers secrets / vars を設定する。
-5. D1 migration を順番に適用する。
-6. 本番 D1 に検索データを投入する。
-7. `pnpm build:cf` で Cloudflare 用に build する。
-8. `wrangler deploy` で Worker を deploy する。
-9. `/api/account` / `/api/chat/usage` / `/api/chat` を確認する。
-10. GitHub Actions の `update:daily` schedule を有効化し、手動 dispatch で確認する。
+このプロジェクトでは repo root の `wrangler.toml` だけを使う。
+
+やることは次の順番だけ。
+
+1. D1 / R2 を確認する
+2. `wrangler.toml` を埋める
+3. secret を入れる
+4. D1 migration を流す
+5. `pnpm build:cf`
+6. `wrangler deploy`
+
+Cloudflare 側で新しい Git リポジトリを作る手順は使わない。
+
+## 実行順
+
+### 1. ローカル確認
+
+repo root で実行する。
+
+```bash
+pnpm install
+pnpm --filter @npb/db test
+pnpm --filter @npb/web test
+pnpm --filter @npb/web typecheck
+```
+
+### 2. Cloudflare リソース作成
+
+Cloudflare dashboard で以下を作る。
+
+- Worker
+- D1 database（検索データ用）
+- D1 database（account / usage 用）
+- R2 bucket
+
+手元のコマンドで作るなら:
+
+```bash
+wrangler login
+wrangler d1 create npb-archive-chat-import
+wrangler r2 bucket create npb-archive-chat-raw
+```
+
+既に存在する場合は作り直さない。`wrangler d1 list` と `wrangler r2 bucket list` で既存のものを確認して、その `database_id` / `bucket_name` を使う。
+
+### 3. `wrangler.toml` を埋める
+
+repo root の [wrangler.toml](../wrangler.toml) を編集する。
+
+必ず確認する項目:
+
+- `name`
+- `database_id`
+- `bucket_name`
+- `main = "apps/web/.output/server/index.mjs"`
+- `directory = "apps/web/.output/public"`
+
+このリポジトリでは、既存の D1 は `npb-archive-chat-import` / `14c099c3-03ac-4307-9704-7a770b31d108`、既存の R2 は `npb-archive-chat-raw` を使う。
+
+### 4. secrets を設定する
+
+```bash
+wrangler secret put NPB_AUTH_SHARED_SECRET
+```
+
+LLM を使うなら追加で:
+
+```bash
+wrangler secret put CHAT_QUERY_LLM_API_KEY
+wrangler secret put CHAT_ANSWER_LLM_API_KEY
+```
+
+### 5. D1 migration を適用する
+
+これは **schema の適用** だけである。**本番データの投入ではない**。
+
+```bash
+wrangler d1 execute npb-archive-chat-import --remote --file=packages/db/migrations/0001_initial.sql
+wrangler d1 execute npb-archive-chat-import --remote --file=packages/db/migrations/0002_chat_usage.sql
+wrangler d1 execute npb-archive-chat-import --remote --file=packages/db/migrations/0003_scores_calendar_rebuild.sql
+wrangler d1 execute npb-archive-chat-import --remote --file=packages/db/migrations/0004_bis_current.sql
+wrangler d1 execute npb-archive-chat-import --remote --file=packages/db/migrations/0005_chat_accounts.sql
+```
+
+このコマンドで D1 の schema を揃える。`games` / `events` / `current_team_roster` などの実データは次の `sync:d1` で入れる。
+
+### 5-2. 本番データを D1 に流し込む
+
+以下のコマンドで、`data/npb-2016.sqlite` から `data/npb-2026.sqlite` までの年別 SQLite をまとめて remote D1 に同期する。
+
+```bash
+pnpm --filter @npb/db run sync:d1 -- --sqlite-dir ./data --d1-database npb-archive-chat-import --keep-files
+```
+
+このコマンドは次を行う。
+
+- `data/npb-YYYY.sqlite` を export 前に migrate する
+- `data/npb-YYYY.sqlite` を年ごとに読み込む
+- D1 用 SQL を `data/logs/d1-sync/YYYY.sql` に生成する
+- 年ごとのデータを remote D1 に `wrangler d1 execute` で流し込む
+- `data/logs/d1-sync/summary.json` に件数サマリーを残す
+
+### 5-3. D1 import 後の件数検証
+
+`sync:d1` は import 後に各 table の件数を自動で検証し、`data/logs/d1-sync/summary.json` に残す。
+scores 由来の履歴テーブルは年をまたいで累積され、`bis_source_snapshots` / `current_team_roster` / `team_index` / `team_yearly_stats` / `player_batting_stats` / `player_pitching_stats` / `player_fielding_stats` / `team_monthly_results` は最新 BIS スナップショットとして検証される。
+
+verify を明示したいなら `--verify` を付ける。検証を省略したい場合のみ `--no-verify` を使う。
+
+```bash
+pnpm --filter @npb/db run sync:d1 -- --sqlite-dir ./data --d1-database npb-archive-chat-import --keep-files --verify
+```
+
+`summary.json` が出ていて、コマンドが non-zero で落ちていなければ、本番データ投入は完了とみなせる。
+
+### 6. build する
+
+```bash
+pnpm build:cf
+```
+
+### 7. deploy する
+
+```bash
+wrangler deploy
+```
+
+### 8. 動作確認する
+
+```bash
+curl -s https://<worker-domain>/api/account
+curl -s https://<worker-domain>/api/chat/usage
+curl -s https://<worker-domain>/api/chat \
+  -H 'Content-Type: application/json' \
+  -d '{"message":"藤浪晋太郎の所属チームは"}'
+```
+
+確認ポイント:
+
+- `/api/account` が 200 で account を返す
+- `/api/chat/usage` が plan に応じた usage を返す
+- `/api/chat` が source URL 付きで応答する
+- free で上限到達時に 429 になる
+- `X-NPB-Plan` header ではなく `chat_accounts.plan` が正になる
+- 0件 / ambiguous では LLM に逃がさず deterministic fallback になる
+
+### 9. 更新ジョブを有効化する
+
+Cloudflare Cron を有効にし、GitHub Actions の `workflow_dispatch` で手動再実行できるようにする。
 
 ## Wrangler 設定ファイル
 
-Cloudflare の Git リポジトリ連携は、既定では repo root の `wrangler.toml` を探す。そのため、このリポジトリでは root の [wrangler.toml](../wrangler.toml) を正とする。
+repo root の [wrangler.toml](../wrangler.toml) を使う。
 
 ```text
 wrangler.toml
@@ -27,17 +166,16 @@ apps/web/.output/server/index.mjs
 apps/web/.output/public
 ```
 
-`apps/web/wrangler.toml` は使わない。Wrangler コマンドは repo root から実行する。
-
 ## ローカル（Node）と Cloudflare の違い
 
 | 項目 | ローカル開発・従来ビルド | Cloudflare 向けビルド |
 |------|-------------------------|------------------------|
 | Nitro プリセット | `node-server`（既定） | `cloudflare_module`（`pnpm build:cf`） |
-| DB（検索・チャット） | `NPB_SQLITE_PATH` → `openDatabase` → **`sqliteDatabaseToQuery`**（`QueryDatabase`） | **`event.context.cloudflare.env.NPB_DB`**（D1）→ **`createQueryDatabaseFromD1`**（同じ `QueryDatabase`） |
+| DB（検索） | `NPB_SQLITE_PATH` → `openDatabase` → **`sqliteDatabaseToQuery`**（`QueryDatabase`） | **`event.context.cloudflare.env.NPB_DB`**（D1）→ **`createQueryDatabaseFromD1`**（同じ `QueryDatabase`） |
+| DB（account / usage） | `NPB_SQLITE_PATH` → `openDatabase` → **`sqliteDatabaseToQuery`** | **`event.context.cloudflare.env.NPB_META_DB`**（D1）→ **`createQueryDatabaseFromD1`**。未設定時だけ `NPB_DB` に fallback。 |
 | マイグレーション（スキーマ） | 起動時に `migrateDatabase`（同期・SQLite ファイル） | **デプロイ前に** `wrangler d1 execute ...` で適用（ランタイムでは D1 に migrate しない） |
 | オブジェクトストレージ | 未使用（データはワークスペースの `data/`） | **R2**（`NPB_R2_RAW` binding は雛形のみ。raw / structured 配置の本番運用は未実装） |
-| ランタイム設定 | `runtimeConfig.npbSqlitePath` が必須（SQLite パス） | D1 利用時は **`NPB_DB` があれば `npbSqlitePath` は未設定でも可** |
+| ランタイム設定 | `runtimeConfig.npbSqlitePath` が必須（SQLite パス） | D1 利用時は **`NPB_DB` と `NPB_META_DB` があれば `npbSqlitePath` は未設定でも可** |
 
 ## 実装状況
 
@@ -47,15 +185,26 @@ Done:
 - D1 adapter（`createQueryDatabaseFromD1`）
 - root `wrangler.toml`
 - SQLite / D1 の query boundary
-- GitHub Actions schedule による `update:daily`
+- Cloudflare Cron / GitHub Actions workflow_dispatch による `update:daily`
 - production signed-cookie identity のコード
 
 Not implemented:
 
 - 実アカウント上の Worker / D1 / R2 / secrets / domain 設定
-- D1 への 2016-2026 データ投入手順の自動化
 - R2 を raw / structured の正規保存先にする実装
-- Cloudflare Cron だけで `update:daily` 相当を完結させる Worker 実装
+- Cloudflare Cron で `update:daily` を自動起動する Worker 実装
+
+## ここまでやれば「本番 deploy 完了」
+
+1. `wrangler.toml` の `database_id` と `bucket_name` を実リソースに合わせる。
+2. `wrangler secret put NPB_AUTH_SHARED_SECRET` を入れる。
+3. D1 migration を適用する。
+4. `pnpm --filter @npb/db run sync:d1 -- --sqlite-dir ./data --d1-database npb-archive-chat-import --keep-files --verify` を通す。
+5. `summary.json` に件数サマリーと verification が出ることを確認する。
+6. `pnpm build:cf` を通す。
+7. `wrangler deploy` を通す。
+8. `/api/account` / `/api/chat/usage` / `/api/chat` を確認する。
+9. Cloudflare Cron を有効化し、GitHub Actions は必要なら手動再実行用に使う。
 
 残作業の一覧は [production-todo.md](./production-todo.md) にある。ただし実行手順はこの `deploy.md` を読む。
 
@@ -73,18 +222,9 @@ Not implemented:
 - [Wrangler](https://developers.cloudflare.com/workers/wrangler/)（`npm i -g wrangler` または `pnpm dlx wrangler`）
 - Cloudflare アカウント（Workers / D1 / R2 を利用可能）
 
-## 0. 事前確認
+## ローカル確認
 
-repo root で実行する。
-
-```bash
-pnpm install
-pnpm --filter @npb/db test
-pnpm --filter @npb/web test
-pnpm --filter @npb/web typecheck
-```
-
-ローカル起動も確認する。
+ローカルの動作確認だけしたい場合は、repo root で次を実行する。
 
 ```bash
 export NPB_SQLITE_PATH="$PWD/data/npb-2025.sqlite"
@@ -92,7 +232,7 @@ export NPB_SQLITE_DIR="$PWD/data"
 pnpm dev
 ```
 
-別 shell で確認する。
+別 shell で:
 
 ```bash
 curl -s http://127.0.0.1:3000/api/account
@@ -102,50 +242,17 @@ curl -s http://127.0.0.1:3000/api/chat \
   -d '{"message":"藤浪晋太郎の所属チームは"}'
 ```
 
-## ローカル起動
-
-リポジトリルートで:
-
-```bash
-pnpm install
-```
-
-SQLite のパスを環境変数で渡してから（例）:
-
-```bash
-# Windows PowerShell の例
-$env:NPB_SQLITE_PATH = "C:\path\to\npb-2025.sqlite"
-$env:NPB_SQLITE_DIR = "C:\path\to\data"
-pnpm dev
-```
-
-```bash
-# bash の例
-export NPB_SQLITE_PATH="$PWD/data/npb-2025.sqlite"
-export NPB_SQLITE_DIR="$PWD/data"
-pnpm dev
-```
-
-- 未設定の場合、`getServerDatabase` が失敗し API は 503 になります。
-- 検索 API・チャット API・usage 制限の挙動は従来どおりです。
+`NPB_SQLITE_PATH` が無いと API は 503 になる。
 
 ## 1. Cloudflare リソース作成
 
-Cloudflare dashboard または Wrangler で次を作成する。
+Cloudflare dashboard または Wrangler で作成するもの:
 
-1. Worker: `npb-archive-chat-web`
-2. D1 database: 例 `npb-archive-chat-import`
-3. R2 bucket: 例 `npb-archive-chat-raw`
+- Worker
+- D1 database
+- R2 bucket
 
-Wrangler の例:
-
-```bash
-wrangler login
-wrangler d1 create npb-archive-chat-import
-wrangler r2 bucket create npb-archive-chat-raw
-```
-
-作成後、root の `wrangler.toml` を確認する。
+作成後、root の `wrangler.toml` を埋める。
 
 ```toml
 [[d1_databases]]
@@ -153,12 +260,17 @@ binding = "NPB_DB"
 database_name = "npb-archive-chat-import"
 database_id = "<Cloudflare が発行した D1 database UUID>"
 
+[[d1_databases]]
+binding = "NPB_META_DB"
+database_name = "npb-archive-chat-meta"
+database_id = "<Cloudflare が発行した D1 database UUID>"
+
 [[r2_buckets]]
 binding = "NPB_R2_RAW"
 bucket_name = "npb-archive-chat-raw"
 ```
 
-`binding` はアプリ側が参照する名前なので、変更する場合はコード側も合わせる。通常は `NPB_DB` / `NPB_R2_RAW` のままにする。
+`binding` はアプリ側が参照する名前なので、通常は `NPB_DB` / `NPB_META_DB` / `NPB_R2_RAW` のままにする。
 
 ## 2. 環境変数 / secrets
 
@@ -183,6 +295,11 @@ bucket_name = "npb-archive-chat-raw"
 | `CHAT_ANSWER_LLM_BASE_URL` | `https://api.openai.com/v1` | final answer LLM の base URL。 |
 | `CHAT_ANSWER_LLM_API_KEY` | 空 | 未設定時は deterministic formatter fallback。 |
 | `CHAT_ANSWER_LLM_MODEL` | 空 | final answer LLM model。 |
+| `NPB_DAILY_UPDATE_GITHUB_OWNER` | 空 | Cloudflare Cron が `workflow_dispatch` する GitHub owner。 |
+| `NPB_DAILY_UPDATE_GITHUB_REPO` | 空 | Cloudflare Cron が `workflow_dispatch` する GitHub repo。 |
+| `NPB_DAILY_UPDATE_GITHUB_WORKFLOW` | `daily-update.yml` | 叩く workflow file 名。 |
+| `NPB_DAILY_UPDATE_GITHUB_REF` | `main` | `workflow_dispatch` の ref。 |
+| `NPB_DAILY_UPDATE_GITHUB_TOKEN` | 空 | `actions: write` 権限を持つ token。Cloudflare Cron で必須。 |
 
 missing env:
 
@@ -200,6 +317,16 @@ LLM を使う場合のみ API key を設定する。未設定時は deterministi
 ```bash
 wrangler secret put CHAT_QUERY_LLM_API_KEY
 wrangler secret put CHAT_ANSWER_LLM_API_KEY
+```
+
+Cloudflare Cron を使う場合は GitHub workflow dispatch 用の secret も設定する。
+
+```bash
+wrangler secret put NPB_DAILY_UPDATE_GITHUB_OWNER
+wrangler secret put NPB_DAILY_UPDATE_GITHUB_REPO
+wrangler secret put NPB_DAILY_UPDATE_GITHUB_WORKFLOW
+wrangler secret put NPB_DAILY_UPDATE_GITHUB_REF
+wrangler secret put NPB_DAILY_UPDATE_GITHUB_TOKEN
 ```
 
 model / base URL は secret ではなく `[vars]` で管理してよい。必要なら root の `wrangler.toml` に追加する。
@@ -230,68 +357,35 @@ pnpm --filter @npb/db migrate -- ./data/npb.sqlite
 
 ### Cloudflare D1
 
-マイグレーションをファイル順に適用する。
+検索 D1 には検索データ用 schema を適用する。
 
 ```bash
-wrangler d1 execute npb-archive-chat --remote --file=packages/db/migrations/0001_initial.sql
-wrangler d1 execute npb-archive-chat --remote --file=packages/db/migrations/0002_chat_usage.sql
-wrangler d1 execute npb-archive-chat --remote --file=packages/db/migrations/0003_scores_calendar_rebuild.sql
-wrangler d1 execute npb-archive-chat --remote --file=packages/db/migrations/0004_bis_current.sql
-wrangler d1 execute npb-archive-chat --remote --file=packages/db/migrations/0005_chat_accounts.sql
+wrangler d1 execute npb-archive-chat-import --remote --file=packages/db/migrations/0001_initial.sql
+wrangler d1 execute npb-archive-chat-import --remote --file=packages/db/migrations/0003_scores_calendar_rebuild.sql
+wrangler d1 execute npb-archive-chat-import --remote --file=packages/db/migrations/0004_bis_current.sql
 ```
 
-- `npb-archive-chat` は `wrangler.toml` の `database_name` と一致させる。
-- 新しいマイグレーションが増えたら、**同様に順番に `execute`** する（ローカル SQLite と同じ順序を維持）。
+メタ D1 には account / usage 用 schema を適用する。
+
+```bash
+wrangler d1 execute npb-archive-chat-meta --remote --file=packages/db/migrations/0002_chat_usage.sql
+wrangler d1 execute npb-archive-chat-meta --remote --file=packages/db/migrations/0005_chat_accounts.sql
+```
+
+- `npb-archive-chat-import` / `npb-archive-chat-meta` は `wrangler.toml` の `database_name` と一致させる。
+- 新しいマイグレーションが増えたら、**同様に順番に `execute`** する。
 - ランタイムでは D1 migration を実行しない。デプロイ前に適用する。
 
-## 4. 本番 D1 へのデータ投入
-
-現在の正規データ基盤はローカル SQLite にある。D1 への 2016-2026 全量投入は、Cloudflare アカウント上で実施する本番運用作業である。
-
-最低限の確認手順:
-
-1. 対象年の `data/npb-{year}.sqlite` が揃っていることを確認する。
-2. D1 への export / import 方針を決める。
-3. 投入前に D1 backup を取る。
-4. 投入後に件数確認を行う。
-
-確認 SQL:
-
-```sql
-SELECT COUNT(*) FROM games;
-SELECT COUNT(*) FROM events;
-SELECT COUNT(*) FROM current_team_roster;
-SELECT COUNT(*) FROM player_batting_stats;
-SELECT COUNT(*) FROM chat_accounts;
-```
-
-TODO: SQLite から D1 へ 2016-2026 の normalized rows を自動投入する専用コマンドは未実装。現状は本番作業として import 方針を決めて実施する。
-
-## 5. Cloudflare 向けビルド
-
-リポジトリルートで:
+## 4. build と deploy
 
 ```bash
 pnpm build:cf
-```
-
-- 内部で `NITRO_PRESET=cloudflare_module` を設定し、`apps/web/.output` を生成します。
-- 通常の `pnpm build` は **`node-server` プリセットのまま**（ローカル検証・従来フロー用）。
-
-## 6. Worker デプロイ
-
-repo root で実行する。
-
-```bash
 wrangler deploy
 ```
 
-- 初回は `wrangler login` が必要な場合があります。
-- 静的アセットは `[assets]` で `.output/public` をバインドしています（Nitro の `cloudflare_module` 出力に合わせた雛形）。
+`wrangler deploy` の結果に `Your Worker has access to the following bindings` が出れば、Cloudflare は設定を読めている。
 
-## 7. 本番確認
-
-`<worker-domain>` は Cloudflare が発行した Workers domain または設定済み custom domain に置き換える。
+## 5. 本番確認
 
 ```bash
 curl -s https://<worker-domain>/api/account
@@ -303,15 +397,11 @@ curl -s https://<worker-domain>/api/chat \
 
 確認項目:
 
-- `/` が `/chat` に遷移する。
-- `/api/account` が account を作成/取得する。
-- `/api/billing/subscription` で `free` / `pro` が切り替わる。
-- `/api/chat/usage` が DB の account plan を読む。
-- free で月間上限到達時に 429 になる。
-- pro で `limit: null` / `remaining: null` になる。
-- `/api/chat` が source URL 付きで回答する。
-- ambiguous は候補提示のみで検索しない。
-- `X-NPB-Plan` header ではなく `chat_accounts.plan` が plan の正になる。
+- `/api/account` が account を作成/取得する
+- `/api/chat/usage` が DB の account plan を読む
+- `/api/chat` が source URL 付きで回答する
+- ambiguous は候補提示のみで検索しない
+- `X-NPB-Plan` header ではなく `chat_accounts.plan` が plan の正になる
 
 ## 関連ファイル
 
@@ -335,7 +425,7 @@ curl -s https://<worker-domain>/api/chat \
 
 `wrangler dev` で D1 をローカルにバインドする場合は、Cloudflare のドキュメントに従い、`NPB_DB` がコンテキストに載ることを確認する。
 
-## 8. 差分更新ジョブ
+## 6. 差分更新ジョブ
 
 `update:daily` は GitHub Actions から自動実行する入口を実装済みです。
 
@@ -344,23 +434,22 @@ curl -s https://<worker-domain>/api/chat \
 - manual: `workflow_dispatch` で `date` / `from` / `to` / `days` / `strict`
 - summary: `data/logs/update-daily-summary.json`
 
-Cloudflare Cron で実行する場合の設計:
+Cloudflare Cron は `scheduled` handler から GitHub Actions の `workflow_dispatch` を叩く。
 
-1. Worker の `scheduled` handler で JST の対象日範囲を決める。
-2. R2 から raw / structured を読み書きする storage adapter を使う。
-3. D1 に canonical / structured rows を upsert する write adapter を使う。
-4. `update:daily` と同じ failure policy（rain_cancelled 正常、404 warning、strict 相当では error）を適用する。
-5. 実行 summary を R2 または Cloudflare Logs に保存する。
+Cloudflare Cron の動作:
 
-TODO: 現在の `update:daily` は Node CLI 実装であり、Cloudflare Cron 単体で動く Worker scheduled handler は未実装。実アカウントの D1/R2 作成、secrets、Cron trigger 設定も本番作業として残る。
+1. `wrangler.toml` の `[triggers].crons` が発火する。
+2. Worker の `scheduled` handler が GitHub Actions の `daily-update.yml` を `workflow_dispatch` する。
+3. GitHub Actions が `pnpm --filter @npb/db run update:daily` を実行する。
+4. 失敗時は workflow が non-zero で落ち、summary / artifact に残る。
 
-## 9. Rollback
+## 7. Rollback
 
 - Worker: `wrangler deployments list` で直近 deployment を確認し、Cloudflare dashboard または Wrangler で直前 version に戻す。
 - D1 schema: destructive migration は作らず、追加 migration で戻す。適用前に backup を取る。
 - データ: `update:daily` は idempotent な差分更新なので、壊れた日付範囲は修正後に同じ `--date` / `--from --to` で再実行する。
 
-## 10. Backup
+## 8. Backup
 
 - SQLite: `data/npb-{year}.sqlite` を release artifact または object storage に保存する。
 - D1: 本番投入前後に `wrangler d1 export` 相当で backup を取得する。

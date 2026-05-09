@@ -9,11 +9,13 @@ import { createQueryDatabaseFromD1 } from './d1-query-database'
 type CloudflareContext = {
   env?: {
     NPB_DB?: D1Database
+    NPB_META_DB?: D1Database
   }
 }
 
 let sqliteCache: { path: string; db: QueryDatabase } | null = null
 let d1Cache: QueryDatabase | null = null
+let metaD1Cache: QueryDatabase | null = null
 let multiYearCache: { dir: string; service: ChatQueryService } | null = null
 
 async function getSqlite() {
@@ -52,6 +54,22 @@ export async function getServerDatabase(
   const db = sqliteDatabaseToQuery(raw)
   sqliteCache = { path: sqlitePath, db }
   return db
+}
+
+export async function getServerMetaDatabase(
+  event: H3Event,
+  sqlitePath: string,
+): Promise<QueryDatabase> {
+  const cloudflare = event.context.cloudflare as CloudflareContext | undefined
+  const d1 = cloudflare?.env?.NPB_META_DB
+  if (d1) {
+    if (!metaD1Cache) {
+      metaD1Cache = createQueryDatabaseFromD1(d1)
+    }
+    return metaD1Cache
+  }
+
+  return getServerDatabase(event, sqlitePath)
 }
 
 export async function getServerChatQueryService(

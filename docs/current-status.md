@@ -44,7 +44,8 @@ update:bis-current
 - `player_affiliation` intent と `current_team_roster` 優先の所属チーム回答
 - `update:daily` CLI（JST / 直近3日既定 / 日付範囲 / strict / summary log）
 - `update:bis-current` CLI
-- GitHub Actions schedule による日次自動更新入口
+- `sync:d1` CLI（年別 SQLite → remote D1 同期）
+- GitHub Actions `workflow_dispatch` と Cloudflare Cron による日次自動更新入口
 - `chat_accounts` による account/profile/subscription 永続化
 - free / pro plan と monthly usage 永続化
 - dev user header fallback と production signed-cookie identity
@@ -62,7 +63,5 @@ update:bis-current
 
 - UI のアクセシビリティ監査・analytics
 - 更新ジョブの監視、リトライ、通知
-- D1 への本番データ初期投入・差分 import 自動化
 - R2 を raw / structured の正規保存先にする実装
 - Cloudflare アカウント上の本番 Worker / D1 / R2 / secrets / domain 設定
-- Cloudflare Cron だけで `update:daily` 相当を完結させる Worker 実装

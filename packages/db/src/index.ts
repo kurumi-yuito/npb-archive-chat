@@ -37,6 +37,10 @@ import {
   runIncrementalUpdate,
 } from './update-job'
 import {
+  parseSyncD1Args,
+  runD1Sync,
+} from './d1-sync'
+import {
   parseUpdateDailyArgs,
   resolveDailyDateRange,
   runDailyUpdate,
@@ -110,6 +114,7 @@ export {
   parseUpdateYearArgs,
   parseUpdateDailyArgs,
   parseUpdateBisCurrentArgs,
+  parseSyncD1Args,
   resolveDailyDateRange,
   parseBackfillScoresCanonicalArgs,
   parseEnrichScoresCalendarArgs,
@@ -117,6 +122,7 @@ export {
   runIncrementalUpdate,
   runDailyUpdate,
   runBisCurrentUpdate,
+  runD1Sync,
   runScoresCalendarEnrichment,
   searchBattingLines,
   searchEvents,

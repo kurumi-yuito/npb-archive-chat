@@ -101,13 +101,26 @@ pnpm --filter @npb/db run update:daily -- --include-bis-current
 
 ## 自動実行
 
-GitHub Actions workflow:
+Cloudflare Cron と GitHub Actions の manual dispatch を組み合わせる。
 
-- `.github/workflows/daily-update.yml`
-- cron: `5 1,7,13 * * *`（10:05 / 16:05 / 22:05 JST）
-- `workflow_dispatch` で `date` / `from` / `to` / `days` / `strict` を指定可能
+- Cloudflare Cron: root `wrangler.toml` の `[triggers].crons = ["5 1,7,13 * * *"]`
+- Cloudflare Worker の `scheduled` handler が GitHub Actions の `workflow_dispatch` を叩く
+- `.github/workflows/daily-update.yml` は `workflow_dispatch` 専用
+- `workflow_dispatch` で `date` / `from` / `to` / `days` / `strict` / `dry_run` を指定可能
 - コマンドが non-zero なら workflow も失敗する
 - logs と summary は artifact / Step Summary に残る
+
+Cloudflare Cron の本番設定:
+
+```bash
+wrangler secret put NPB_DAILY_UPDATE_GITHUB_OWNER
+wrangler secret put NPB_DAILY_UPDATE_GITHUB_REPO
+wrangler secret put NPB_DAILY_UPDATE_GITHUB_WORKFLOW
+wrangler secret put NPB_DAILY_UPDATE_GITHUB_REF
+wrangler secret put NPB_DAILY_UPDATE_GITHUB_TOKEN
+```
+
+`NPB_DAILY_UPDATE_GITHUB_WORKFLOW` の既定値は `daily-update.yml`、`NPB_DAILY_UPDATE_GITHUB_REF` の既定値は `main` である。
 
 ## 保存先
 
@@ -139,12 +152,12 @@ Done:
 - `discover` / `update:year` / `backfill:scores-canonical` / `enrich:scores-calendar` のローカル CLI
 - `update:daily` のローカル CLI
 - `update:bis-current` のローカル CLI
-- GitHub Actions schedule / workflow_dispatch
+- GitHub Actions workflow_dispatch
+- Cloudflare Cron からの workflow_dispatch 発火
 - scores 4HTML の raw 保存、structured JSON 保存、DB 補完
 - BIS current の raw 保存、structured JSON 保存、DB 補完
 
 Not implemented:
 
-- Cloudflare Cron / Workers 単体での更新ジョブ完結
 - 本番運用での監視、リトライ、通知
 - R2 を正規保存先にした更新ジョブ

@@ -30,6 +30,7 @@
     "enrich:scores-calendar": "tsx ./src/cli.ts enrich:scores-calendar",
     "lint": "eslint -c ../../eslint.config.mjs .",
     "migrate": "tsx ./src/cli.ts migrate",
+    "sync:d1": "tsx ./src/cli.ts sync:d1",
     "update:bis-current": "tsx ./src/cli.ts update:bis-current",
     "update:daily": "tsx ./src/cli.ts update:daily",
     "update:year": "tsx ./src/cli.ts update-year",

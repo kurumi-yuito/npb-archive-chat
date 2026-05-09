@@ -74,7 +74,7 @@ Done:
 - Cloudflare Workers / D1 向けの接続層と build scaffold
 - `/` から `/chat` へのリダイレクト
 - `/chat` UI
-- `update:daily` と GitHub Actions schedule
+- `update:daily` と Cloudflare Cron / GitHub Actions workflow_dispatch
 - production signed-cookie identity / dev header fallback
 - `chat_accounts` による account/profile/subscription 永続化
 

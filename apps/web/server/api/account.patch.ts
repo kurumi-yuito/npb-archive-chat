@@ -6,15 +6,15 @@ import { resolveChatRuntimeAuthConfig } from '../utils/chat-runtime-config'
 import { buildChatAccountResponse } from '../utils/chat-account-response'
 import { parseChatIdentity } from '../utils/parse-chat-identity'
 import { createPublicApiError } from '../utils/public-api-error'
-import { getServerDatabase } from '../utils/server-database'
+import { getServerMetaDatabase } from '../utils/server-database'
 
 export default defineEventHandler(async (event) => {
   const config = useRuntimeConfig(event)
 
   try {
-    const authConfig = resolveChatRuntimeAuthConfig(config)
+    const authConfig = resolveChatRuntimeAuthConfig(config, event)
     const identity = parseChatIdentity(event, authConfig)
-    const database = await getServerDatabase(event, config.npbSqlitePath)
+    const database = await getServerMetaDatabase(event, config.npbSqlitePath)
     const body = updateChatAccountRequestSchema.parse(await readBody(event))
     const account = await updateChatAccountProfile(database, identity.userId, body)
     return chatAccountSchema.parse(buildChatAccountResponse(account, authConfig.billingConfigured))

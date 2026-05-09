@@ -39,7 +39,7 @@ Nuxt の **route handler**（`server/api/**`）から **SQL を直接書かな�
 | `packages/db/src/multi-year-query-service.ts` | 年別 SQLite を横断する chat query service |
 | `apps/web/server/services/search-service.ts` | 上記 repository のファサード |
 | `apps/web/server/services/chat-service.ts` | chat 用 use case。normalization / player resolution / formatter を束ねる |
-| `apps/web/server/utils/server-database.ts` | D1（`NPB_DB`）または SQLite パスに基づく `QueryDatabase`（ローカルでは migrate） |
+| `apps/web/server/utils/server-database.ts` | 検索 D1（`NPB_DB`）/ メタ D1（`NPB_META_DB`）または SQLite パスに基づく `QueryDatabase`（ローカルでは migrate） |
 | `apps/web/server/utils/parse-search-query.ts` | GET クエリ → スキーマ準拠フィルタ |
 | `apps/web/server/api/search/*.get.ts` | 検索 API（events / games / pitching） |
 
@@ -47,7 +47,7 @@ Nuxt の **route handler**（`server/api/**`）から **SQL を直接書かな�
 
 - **ローカル / node-server**: **`NPB_SQLITE_PATH`**（`runtimeConfig.npbSqlitePath`）を設定する。未設定かつ D1 も無いときは検索 API は 503 になる。
 - **multi-year chat**: `NPB_SQLITE_DIR` を設定すると `data/npb-{year}.sqlite` 形式の年別 DB を横断する。未設定時は `NPB_SQLITE_PATH` の親ディレクトリを使う。
-- **Cloudflare Workers**: `event.context.cloudflare.env.NPB_DB`（D1）があれば **`NPB_SQLITE_PATH` は不要**。詳細は [deploy.md](./deploy.md)。
+- **Cloudflare Workers**: `event.context.cloudflare.env.NPB_DB`（検索D1）と `NPB_META_DB`（account / usage D1）があれば **`NPB_SQLITE_PATH` は不要**。詳細は [deploy.md](./deploy.md)。
 
 ## 実装状況
 

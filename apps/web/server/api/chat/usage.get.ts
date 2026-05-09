@@ -4,15 +4,15 @@ import { resolveChatRuntimeAuthConfig } from '../../utils/chat-runtime-config'
 import { getEffectiveChatAccount } from '../../utils/chat-account-response'
 import { parseChatIdentity } from '../../utils/parse-chat-identity'
 import { createPublicApiError } from '../../utils/public-api-error'
-import { getServerDatabase } from '../../utils/server-database'
+import { getServerMetaDatabase } from '../../utils/server-database'
 
 export default defineEventHandler(async (event) => {
   const config = useRuntimeConfig(event)
 
   try {
-    const authConfig = resolveChatRuntimeAuthConfig(config)
+    const authConfig = resolveChatRuntimeAuthConfig(config, event)
     const identity = parseChatIdentity(event, authConfig)
-    const database = await getServerDatabase(event, config.npbSqlitePath)
+    const database = await getServerMetaDatabase(event, config.npbSqlitePath)
     const account = await getEffectiveChatAccount(database, identity.userId, authConfig.defaultPlan ?? 'free', authConfig.billingConfigured)
     const month = currentUsageMonthKey()
 

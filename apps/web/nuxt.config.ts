@@ -38,6 +38,11 @@ export default defineNuxtConfig({
     chatAnswerLlmBaseUrl: process.env.CHAT_ANSWER_LLM_BASE_URL ?? 'https://api.openai.com/v1',
     chatAnswerLlmApiKey: process.env.CHAT_ANSWER_LLM_API_KEY ?? '',
     chatAnswerLlmModel: process.env.CHAT_ANSWER_LLM_MODEL ?? '',
+    npbDailyUpdateGithubOwner: process.env.NPB_DAILY_UPDATE_GITHUB_OWNER ?? '',
+    npbDailyUpdateGithubRepo: process.env.NPB_DAILY_UPDATE_GITHUB_REPO ?? '',
+    npbDailyUpdateGithubWorkflow: process.env.NPB_DAILY_UPDATE_GITHUB_WORKFLOW ?? 'daily-update.yml',
+    npbDailyUpdateGithubRef: process.env.NPB_DAILY_UPDATE_GITHUB_REF ?? 'main',
+    npbDailyUpdateGithubToken: process.env.NPB_DAILY_UPDATE_GITHUB_TOKEN ?? '',
     npbAuthHeaderFallback:
       process.env.NPB_AUTH_HEADER_FALLBACK ?? (isDev ? 'true' : 'false'),
     npbAuthSharedSecret: process.env.NPB_AUTH_SHARED_SECRET ?? '',

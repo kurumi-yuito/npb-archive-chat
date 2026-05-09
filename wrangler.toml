@@ -1,6 +1,4 @@
-# Cloudflare Workers configuration.
-# This file is intentionally at the repository root so Cloudflare Git integration
-# and root-level Wrangler commands can discover it without extra configuration.
+# Cloudflare Workers configuration at the repository root.
 #
 # Build from the repository root:
 #   pnpm build:cf
@@ -28,6 +26,11 @@ binding = "NPB_DB"
 database_name = "npb-archive-chat-import"
 database_id = "14c099c3-03ac-4307-9704-7a770b31d108"
 
+[[d1_databases]]
+binding = "NPB_META_DB"
+database_name = "npb-archive-chat-meta"
+database_id = "585f542f-488d-4196-8f97-373d858302df"
+
 # R2: raw HTML / structured JSON storage scaffold.
 [[r2_buckets]]
 binding = "NPB_R2_RAW"
@@ -37,3 +40,6 @@ bucket_name = "npb-archive-chat-raw"
 [assets]
 binding = "ASSETS"
 directory = "apps/web/.output/public"
+
+[triggers]
+crons = ["5 1,7,13 * * *"]

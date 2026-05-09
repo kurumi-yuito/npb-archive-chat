@@ -1,9 +1,6 @@
 name: Daily NPB Scores Update
 
 on:
-  schedule:
-    # 10:05 / 16:05 / 22:05 JST
-    - cron: '5 1,7,13 * * *'
   workflow_dispatch:
     inputs:
       date:
@@ -78,7 +75,7 @@ jobs:
           {
             echo '## Daily NPB Scores Update'
             echo
-            echo '- schedule: 10:05 / 16:05 / 22:05 JST'
+            echo '- trigger: workflow_dispatch or Cloudflare Cron dispatch'
             echo '- summary: `data/logs/update-daily-summary.json`'
             echo
             if [ -f data/logs/update-daily-summary.json ]; then
