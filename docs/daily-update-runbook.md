@@ -288,12 +288,18 @@ gh workflow run daily-update.yml -f from=2026-05-07 -f to=2026-05-09
 成功条件:
 
 - workflow が green
+- `Verify D1 sync summary` が成功する
 - artifact `daily-update-logs` が作成される
 - `data/logs/update-daily-summary.json` が artifact に含まれる
 - `data/logs/d1-sync/summary.json` が artifact に含まれる
 - `d1-sync` の verification が `mismatches: []`
 
-`data/logs/d1-sync/summary.json` は本番更新、またはローカルで `sync:d1` を実行したときだけ出る。dry run では出ない。
+`data/logs/d1-sync/summary.json` は GitHub Actions runner 上で作られる。ローカルの `data/logs/d1-sync/summary.json` に自動では戻らない。確認場所は次のどちらか。
+
+- GitHub Actions run の Step Summary にある `sync:d1`
+- artifact `daily-update-logs` をダウンロードして中の `data/logs/d1-sync/summary.json`
+
+ローカルに同じファイルが必要な場合は、ローカルで `sync:d1` を実行する。dry run では `sync:d1` を実行しないため、このファイルは出ない。
 
 本番 API 確認:
 

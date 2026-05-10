@@ -119,6 +119,13 @@ jobs:
           export CLOUDFLARE_API_TOKEN="$(printf '%s' "$CLOUDFLARE_API_TOKEN" | tr -d '\r\n ')"
           pnpm --filter @npb/db run sync:d1 -- --sqlite-dir ./data --d1-database "$NPB_D1_DATABASE" --keep-files --verify | tee data/logs/d1-sync-action.log
 
+      - name: Verify D1 sync summary
+        if: ${{ env.IS_DRY_RUN != 'true' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f data/logs/d1-sync/summary.json
+
       - name: Save SQLite backups to R2
         if: ${{ env.IS_DRY_RUN != 'true' }}
         shell: bash
@@ -154,8 +161,18 @@ jobs:
             echo '- summary: `data/logs/update-daily-summary.json`'
             echo
             if [ -f data/logs/update-daily-summary.json ]; then
+              echo '### update:daily'
+              echo
               echo '```json'
               cat data/logs/update-daily-summary.json
+              echo '```'
+            fi
+            if [ -f data/logs/d1-sync/summary.json ]; then
+              echo
+              echo '### sync:d1'
+              echo
+              echo '```json'
+              cat data/logs/d1-sync/summary.json
               echo '```'
             fi
           } >> "$GITHUB_STEP_SUMMARY"
