@@ -35,6 +35,10 @@ jobs:
   update-daily:
     runs-on: ubuntu-latest
     timeout-minutes: 60
+    env:
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      NPB_D1_DATABASE: npb-archive-chat-import
+      NPB_R2_SQLITE_BACKUP_PREFIX: npb-archive-chat-raw/backups/sqlite
     steps:
       - uses: actions/checkout@v4
 
@@ -46,6 +50,24 @@ jobs:
           cache: pnpm
 
       - run: pnpm install --frozen-lockfile
+
+      - name: Restore SQLite backups from R2
+        if: ${{ inputs.dry_run != true }}
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_R2_API_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ -z "${CLOUDFLARE_API_TOKEN:-}" ]; then
+            echo "CLOUDFLARE_R2_API_TOKEN GitHub secret is required for R2 backup restore" >&2
+            exit 1
+          fi
+          mkdir -p data
+          for year in $(seq 2016 2026); do
+            wrangler r2 object get "$NPB_R2_SQLITE_BACKUP_PREFIX/npb-${year}.sqlite" \
+              --remote \
+              --file "data/npb-${year}.sqlite"
+          done
 
       - name: Run update:daily
         shell: bash
@@ -67,6 +89,39 @@ jobs:
             args+=(--dry-run)
           fi
           pnpm --filter @npb/db run update:daily -- "${args[@]}" | tee data/logs/update-daily-action.log
+
+      - name: Sync updated SQLite data to D1
+        if: ${{ inputs.dry_run != true }}
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_D1_API_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ -z "${CLOUDFLARE_API_TOKEN:-}" ]; then
+            echo "CLOUDFLARE_D1_API_TOKEN GitHub secret is required for D1 sync" >&2
+            exit 1
+          fi
+          pnpm --filter @npb/db run sync:d1 -- --sqlite-dir ./data --d1-database "$NPB_D1_DATABASE" --keep-files --verify | tee data/logs/d1-sync-action.log
+
+      - name: Save SQLite backups to R2
+        if: ${{ inputs.dry_run != true }}
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_R2_API_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ -z "${CLOUDFLARE_API_TOKEN:-}" ]; then
+            echo "CLOUDFLARE_R2_API_TOKEN GitHub secret is required for R2 backup save" >&2
+            exit 1
+          fi
+          for sqlite_path in data/npb-*.sqlite; do
+            file_name="$(basename "$sqlite_path")"
+            wrangler r2 object put "$NPB_R2_SQLITE_BACKUP_PREFIX/$file_name" \
+              --remote \
+              --file "$sqlite_path" \
+              --content-type application/vnd.sqlite3 \
+              --force
+          done
 
       - name: Write summary
         if: always()
@@ -94,4 +149,6 @@ jobs:
             data/logs/update-daily-summary.json
             data/logs/update-job.log
             data/logs/enrich-scores-calendar.log
+            data/logs/d1-sync-action.log
+            data/logs/d1-sync/summary.json
           if-no-files-found: ignore

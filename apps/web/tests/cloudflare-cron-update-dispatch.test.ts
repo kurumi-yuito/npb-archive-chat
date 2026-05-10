@@ -33,6 +33,29 @@ describe('cloudflare cron daily update dispatch', () => {
     ).toBeNull()
   })
 
+  it('prefers Cloudflare runtime env names over build-time runtime config names', () => {
+    expect(
+      resolveCloudflareCronDailyUpdateDispatchConfig({
+        npbDailyUpdateGithubOwner: '',
+        npbDailyUpdateGithubRepo: '',
+        npbDailyUpdateGithubWorkflow: 'daily-update.yml',
+        npbDailyUpdateGithubRef: 'main',
+        npbDailyUpdateGithubToken: '',
+        NPB_DAILY_UPDATE_GITHUB_OWNER: 'kurumi-yuito',
+        NPB_DAILY_UPDATE_GITHUB_REPO: 'npb-archive-chat',
+        NPB_DAILY_UPDATE_GITHUB_WORKFLOW: 'daily-update.yml',
+        NPB_DAILY_UPDATE_GITHUB_REF: 'main',
+        NPB_DAILY_UPDATE_GITHUB_TOKEN: 'secret-token',
+      }),
+    ).toEqual({
+      githubOwner: 'kurumi-yuito',
+      githubRepo: 'npb-archive-chat',
+      githubWorkflow: 'daily-update.yml',
+      githubRef: 'main',
+      githubToken: 'secret-token',
+    })
+  })
+
   it('builds the GitHub workflow dispatch request', () => {
     const request = buildCloudflareCronDailyUpdateDispatchRequest({
       githubOwner: 'kurumi-yuito',

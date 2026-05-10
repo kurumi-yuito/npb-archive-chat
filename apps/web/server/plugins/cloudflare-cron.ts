@@ -7,7 +7,17 @@ import {
 export default defineNitroPlugin((nitroApp) => {
   nitroApp.hooks.hook('cloudflare:scheduled', async (event) => {
     const config = useRuntimeConfig() as Record<string, unknown>
-    const dispatchConfig = resolveCloudflareCronDailyUpdateDispatchConfig(config)
+    const cloudflareEnv = (event as {
+      context?: {
+        cloudflare?: {
+          env?: Record<string, unknown>
+        }
+      }
+    }).context?.cloudflare?.env ?? {}
+    const dispatchConfig = resolveCloudflareCronDailyUpdateDispatchConfig({
+      ...config,
+      ...cloudflareEnv,
+    })
 
     if (!dispatchConfig) {
       throw new Error(

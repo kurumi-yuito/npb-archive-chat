@@ -9,7 +9,8 @@
 - チャット UI の仕様: [ui-chat.md](./ui-chat.md)
 - チャット API の仕様: [chat-backend.md](./chat-backend.md)
 - usage / plan / 認証境界: [usage-limit.md](./usage-limit.md)
-- 日次更新ジョブ: [update-job.md](./update-job.md)
+- 日次更新ジョブの本番運用: [daily-update-runbook.md](./daily-update-runbook.md)
+- 日次更新ジョブの仕様: [update-job.md](./update-job.md)
 - Cloudflare / D1 / R2 / デプロイ手順: [deploy.md](./deploy.md)
 - 本番運用に残る作業: [production-todo.md](./production-todo.md)
 

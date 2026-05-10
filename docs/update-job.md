@@ -101,6 +101,8 @@ pnpm --filter @npb/db run update:daily -- --include-bis-current
 
 ## 自動実行
 
+本番での有効化・手動実行・ログ確認・復旧手順は [daily-update-runbook.md](./daily-update-runbook.md) を正とする。この章は仕様の要約である。
+
 Cloudflare Cron と GitHub Actions の manual dispatch を組み合わせる。
 
 - Cloudflare Cron: root `wrangler.toml` の `[triggers].crons = ["5 1,7,13 * * *"]`
@@ -121,6 +123,57 @@ wrangler secret put NPB_DAILY_UPDATE_GITHUB_TOKEN
 ```
 
 `NPB_DAILY_UPDATE_GITHUB_WORKFLOW` の既定値は `daily-update.yml`、`NPB_DAILY_UPDATE_GITHUB_REF` の既定値は `main` である。
+
+GitHub Actions 側の本番設定:
+
+1. GitHub personal access token を作成する。
+   - Cloudflare Cron から workflow を起動する token: 対象 repo の Actions workflow dispatch ができる権限。
+   - GitHub Actions から Cloudflare D1 を操作する token: D1 edit 権限。
+   - GitHub Actions から Cloudflare R2 を操作する token: R2 object read/write 権限。
+2. GitHub repo の `Settings → Secrets and variables → Actions → Repository secrets` に追加する。
+   - `CLOUDFLARE_D1_API_TOKEN`
+   - `CLOUDFLARE_R2_API_TOKEN`
+   - `CLOUDFLARE_ACCOUNT_ID`
+3. Cloudflare Worker の secrets に追加する。
+   - `NPB_DAILY_UPDATE_GITHUB_OWNER`: `kurumi-yuito`
+   - `NPB_DAILY_UPDATE_GITHUB_REPO`: `npb-archive-chat`
+   - `NPB_DAILY_UPDATE_GITHUB_WORKFLOW`: `daily-update.yml`
+   - `NPB_DAILY_UPDATE_GITHUB_REF`: `main`
+   - `NPB_DAILY_UPDATE_GITHUB_TOKEN`: GitHub workflow dispatch 用 token
+4. 初回だけ、現在の年別 SQLite を R2 backup としてアップロードする。
+
+```bash
+for sqlite_path in data/npb-*.sqlite; do
+  file_name="$(basename "$sqlite_path")"
+  wrangler r2 object put "npb-archive-chat-raw/backups/sqlite/$file_name" \
+    --remote \
+    --file "$sqlite_path" \
+    --content-type application/vnd.sqlite3 \
+    --force
+done
+```
+
+自動更新時の実処理:
+
+1. Cloudflare Cron が `5 1,7,13 * * *` に発火する。
+2. Worker が GitHub Actions `daily-update.yml` を `workflow_dispatch` する。
+3. GitHub Actions が R2 の `backups/sqlite/npb-YYYY.sqlite` を復元する。
+4. `pnpm --filter @npb/db run update:daily` を実行する。
+5. `pnpm --filter @npb/db run sync:d1 -- --sqlite-dir ./data --d1-database npb-archive-chat-import --keep-files --verify` を実行し、production D1 に反映する。
+6. 更新後の年別 SQLite を `backups/sqlite/npb-YYYY.sqlite` として R2 に保存する。
+7. summary と logs を GitHub Actions artifact に残す。
+
+手動確認:
+
+```bash
+# dry run: D1 / R2 を更新しない
+gh workflow run daily-update.yml -f dry_run=true -f days=3
+
+# 本番更新: R2 backup を復元し、update:daily 後に D1 同期と R2 backup 更新を行う
+gh workflow run daily-update.yml -f days=3
+```
+
+Cloudflare Cron の次回発火を待たずに Worker 側 dispatch を確認したい場合は、Cloudflare dashboard の Worker triggers から Cron を test run する。失敗した場合は Worker logs に `[cloudflare-cron]`、GitHub Actions に `Daily NPB Scores Update` の失敗が残る。
 
 ## 保存先
 

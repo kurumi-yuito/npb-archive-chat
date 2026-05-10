@@ -192,7 +192,6 @@ Not implemented:
 
 - 実アカウント上の Worker / D1 / R2 / secrets / domain 設定
 - R2 を raw / structured の正規保存先にする実装
-- Cloudflare Cron で `update:daily` を自動起動する Worker 実装
 
 ## ここまでやれば「本番 deploy 完了」
 
@@ -204,9 +203,9 @@ Not implemented:
 6. `pnpm build:cf` を通す。
 7. `wrangler deploy` を通す。
 8. `/api/account` / `/api/chat/usage` / `/api/chat` を確認する。
-9. Cloudflare Cron を有効化し、GitHub Actions は必要なら手動再実行用に使う。
+9. Cloudflare Cron を有効化する。具体手順は [daily-update-runbook.md](./daily-update-runbook.md) を読む。
 
-残作業の一覧は [production-todo.md](./production-todo.md) にある。ただし実行手順はこの `deploy.md` を読む。
+残作業の一覧は [production-todo.md](./production-todo.md) にある。デプロイ手順はこの `deploy.md`、日次更新ジョブの本番運用手順は [daily-update-runbook.md](./daily-update-runbook.md) を読む。
 
 ### DB 接続層（`QueryDatabase`）
 
@@ -427,7 +426,7 @@ curl -s https://<worker-domain>/api/chat \
 
 ## 6. 差分更新ジョブ
 
-`update:daily` は GitHub Actions から自動実行する入口を実装済みです。
+`update:daily` は GitHub Actions から自動実行する入口を実装済みです。本番での有効化・手動実行・ログ確認・復旧手順は [daily-update-runbook.md](./daily-update-runbook.md) を正とする。
 
 - workflow: `.github/workflows/daily-update.yml`
 - schedule: `5 1,7,13 * * *`（10:05 / 16:05 / 22:05 JST）
@@ -440,8 +439,11 @@ Cloudflare Cron の動作:
 
 1. `wrangler.toml` の `[triggers].crons` が発火する。
 2. Worker の `scheduled` handler が GitHub Actions の `daily-update.yml` を `workflow_dispatch` する。
-3. GitHub Actions が `pnpm --filter @npb/db run update:daily` を実行する。
-4. 失敗時は workflow が non-zero で落ち、summary / artifact に残る。
+3. GitHub Actions が R2 の年別 SQLite backup を復元する。
+4. GitHub Actions が `pnpm --filter @npb/db run update:daily` を実行する。
+5. GitHub Actions が `sync:d1` で production D1 に反映する。
+6. GitHub Actions が更新後の年別 SQLite を R2 backup に保存する。
+7. 失敗時は workflow が non-zero で落ち、summary / artifact に残る。
 
 ## 7. Rollback
 

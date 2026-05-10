@@ -22,12 +22,17 @@ export function resolveCloudflareCronDailyUpdateDispatchConfig(config: {
   npbDailyUpdateGithubWorkflow?: unknown
   npbDailyUpdateGithubRef?: unknown
   npbDailyUpdateGithubToken?: unknown
+  NPB_DAILY_UPDATE_GITHUB_OWNER?: unknown
+  NPB_DAILY_UPDATE_GITHUB_REPO?: unknown
+  NPB_DAILY_UPDATE_GITHUB_WORKFLOW?: unknown
+  NPB_DAILY_UPDATE_GITHUB_REF?: unknown
+  NPB_DAILY_UPDATE_GITHUB_TOKEN?: unknown
 }): CloudflareCronDailyUpdateDispatchConfig | null {
-  const githubOwner = typeof config.npbDailyUpdateGithubOwner === 'string' ? config.npbDailyUpdateGithubOwner.trim() : ''
-  const githubRepo = typeof config.npbDailyUpdateGithubRepo === 'string' ? config.npbDailyUpdateGithubRepo.trim() : ''
-  const githubWorkflow = typeof config.npbDailyUpdateGithubWorkflow === 'string' ? config.npbDailyUpdateGithubWorkflow.trim() : ''
-  const githubRef = typeof config.npbDailyUpdateGithubRef === 'string' ? config.npbDailyUpdateGithubRef.trim() : ''
-  const githubToken = typeof config.npbDailyUpdateGithubToken === 'string' ? config.npbDailyUpdateGithubToken.trim() : ''
+  const githubOwner = stringValue(config.NPB_DAILY_UPDATE_GITHUB_OWNER, config.npbDailyUpdateGithubOwner)
+  const githubRepo = stringValue(config.NPB_DAILY_UPDATE_GITHUB_REPO, config.npbDailyUpdateGithubRepo)
+  const githubWorkflow = stringValue(config.NPB_DAILY_UPDATE_GITHUB_WORKFLOW, config.npbDailyUpdateGithubWorkflow)
+  const githubRef = stringValue(config.NPB_DAILY_UPDATE_GITHUB_REF, config.npbDailyUpdateGithubRef)
+  const githubToken = stringValue(config.NPB_DAILY_UPDATE_GITHUB_TOKEN, config.npbDailyUpdateGithubToken)
 
   if (!githubOwner || !githubRepo || !githubWorkflow || !githubRef || !githubToken) {
     return null
@@ -40,6 +45,14 @@ export function resolveCloudflareCronDailyUpdateDispatchConfig(config: {
     githubRef,
     githubToken,
   }
+}
+
+function stringValue(primary: unknown, fallback: unknown): string {
+  const primaryValue = typeof primary === 'string' ? primary.trim() : ''
+  if (primaryValue) {
+    return primaryValue
+  }
+  return typeof fallback === 'string' ? fallback.trim() : ''
 }
 
 export function buildCloudflareCronDailyUpdateDispatchRequest(
