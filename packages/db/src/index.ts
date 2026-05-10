@@ -46,6 +46,10 @@ import {
   runDailyUpdate,
 } from './update-daily'
 import {
+  parseRebuildYearFromR2Args,
+  rebuildYearFromR2,
+} from './r2-rebuild-year'
+import {
   BIS_TEAMS,
   loadBisCurrentDataset,
   parseUpdateBisCurrentArgs,
@@ -115,6 +119,7 @@ export {
   parseUpdateDailyArgs,
   parseUpdateBisCurrentArgs,
   parseSyncD1Args,
+  parseRebuildYearFromR2Args,
   resolveDailyDateRange,
   parseBackfillScoresCanonicalArgs,
   parseEnrichScoresCalendarArgs,
@@ -123,6 +128,7 @@ export {
   runDailyUpdate,
   runBisCurrentUpdate,
   runD1Sync,
+  rebuildYearFromR2,
   runScoresCalendarEnrichment,
   searchBattingLines,
   searchEvents,

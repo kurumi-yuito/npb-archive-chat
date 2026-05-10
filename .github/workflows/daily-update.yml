@@ -86,8 +86,13 @@ jobs:
 
       - name: Run update:daily
         shell: bash
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.CLOUDFLARE_R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.CLOUDFLARE_R2_SECRET_ACCESS_KEY }}
         run: |
           set -euo pipefail
+          export AWS_ACCESS_KEY_ID="$(printf '%s' "${AWS_ACCESS_KEY_ID:-}" | tr -d '\r\n ')"
+          export AWS_SECRET_ACCESS_KEY="$(printf '%s' "${AWS_SECRET_ACCESS_KEY:-}" | tr -d '\r\n ')"
           mkdir -p data/logs
           args=()
           if [ -n "${{ inputs.date }}" ]; then
@@ -102,6 +107,8 @@ jobs:
           fi
           if [ "${IS_DRY_RUN:-false}" = "true" ]; then
             args+=(--dry-run)
+          else
+            args+=(--storage r2 --r2-bucket "$NPB_R2_BUCKET")
           fi
           pnpm --filter @npb/db run update:daily -- "${args[@]}" | tee data/logs/update-daily-action.log
 

@@ -1,4 +1,3 @@
-import { mkdir, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import {
   NoPlayByPlayAvailableError,
@@ -17,6 +16,7 @@ import {
 } from '../../crawler/src/index'
 import { loadStructuredGameDirectory } from './loader'
 import { migrateDatabase } from './migrations'
+import { createObjectStorage, defaultR2Bucket, parseStorageArg, type ObjectStorage, type StorageArgs } from './object-storage'
 import { sqliteDatabaseToQuery } from './query-driver'
 import { listGamesForScoresEnrichment, type GameYearRow } from './repository/index'
 import { buildScoresBaseUrl, buildScoresBaseUrlFromCanonicalUrl, fetchScoreFiles, writeRawScoreFiles } from './scores-fetcher'
@@ -24,7 +24,7 @@ import { openDatabase } from './sqlite'
 
 const DEFAULT_LOG_PATH = path.join('data', 'logs', 'enrich-scores-calendar.log')
 
-export type EnrichScoresCalendarArgs = {
+export type EnrichScoresCalendarArgs = StorageArgs & {
   year: number
   sqlitePath: string
   limit?: number
@@ -70,9 +70,13 @@ export function parseEnrichScoresCalendarArgs(argv: string[]): EnrichScoresCalen
   let delayMs: number | undefined
   let userAgent: string | undefined
   let progressEvery: number | undefined
+  const storageArgs: StorageArgs = {}
 
   while (args.length > 0) {
     const arg = args.shift()
+    if (parseStorageArg(arg, () => args.shift(), storageArgs)) {
+      continue
+    }
     if (arg === '--year') {
       year = parsePositiveInteger(args.shift(), 'year')
       continue
@@ -167,7 +171,7 @@ export function parseEnrichScoresCalendarArgs(argv: string[]): EnrichScoresCalen
     throw new Error('Missing required argument: --sqlite-path')
   }
 
-  return { year, sqlitePath, limit, league, dateFrom, dateTo, workspaceRoot, delayMs, userAgent, progressEvery }
+  return { year, sqlitePath, limit, league, dateFrom, dateTo, workspaceRoot, delayMs, userAgent, progressEvery, ...storageArgs }
 }
 
 export async function runScoresCalendarEnrichment(
@@ -181,6 +185,13 @@ export async function runScoresCalendarEnrichment(
     options.workspaceRoot ?? (await findWorkspaceRoot(process.cwd())),
   )
   const sqlitePath = path.resolve(workspaceRoot, options.sqlitePath)
+  const storage = createObjectStorage({
+    mode: options.storage,
+    workspaceRoot,
+    bucket: options.r2Bucket ?? defaultR2Bucket(),
+    prefix: options.r2Prefix,
+    endpoint: options.r2Endpoint,
+  })
   const fetchImpl = options.fetchImpl ?? fetch
   const sleepImpl = options.sleepImpl ?? ((ms: number) => new Promise((r) => setTimeout(r, ms)))
   const logger =
@@ -257,7 +268,7 @@ export async function runScoresCalendarEnrichment(
 
       discoveredGames += 1
       const files = await fetchScoreFiles(fetchImpl, scoresBaseUrl, headers)
-      const rawPaths = await writeRawScoreFiles(workspaceRoot, game.year, game.mmdd, game.gameId, files)
+      const rawPaths = await writeRawScoreFiles(storage, game.year, game.mmdd, game.gameId, files)
       const missingParts = (['index', 'playbyplay', 'box', 'roster'] as const).filter(
         (part) => !files[part].ok,
       )
@@ -275,7 +286,7 @@ export async function runScoresCalendarEnrichment(
             `[scores:failed] date=${game.date} game_id=${game.gameId} slug=${slug} stage=${part} reason=${files[part].status}`,
           )
         }
-        await writeUnresolved(workspaceRoot, game, {
+        await writeUnresolved(storage, game, {
           game_id: game.gameId,
           slug,
           date: game.date,
@@ -331,7 +342,7 @@ export async function runScoresCalendarEnrichment(
           const reason = error.reasonCode
           failures.push({ date: game.date, gameId: game.gameId, slug, stage: 'skip', reason })
           logger.error(`[scores:skipped] date=${game.date} game_id=${game.gameId} slug=${slug} stage=skip reason=${reason}`)
-          await writeUnresolved(workspaceRoot, game, {
+          await writeUnresolved(storage, game, {
             game_id: game.gameId,
             slug,
             date: game.date,
@@ -342,7 +353,7 @@ export async function runScoresCalendarEnrichment(
         const reason = error instanceof Error ? error.message : String(error)
         failures.push({ date: game.date, gameId: game.gameId, slug, stage: 'parse', reason })
         logger.error(`[scores:failed] date=${game.date} game_id=${game.gameId} stage=parse reason=${reason}`)
-        await writeUnresolved(workspaceRoot, game, {
+        await writeUnresolved(storage, game, {
           game_id: game.gameId,
           slug,
           date: game.date,
@@ -353,6 +364,7 @@ export async function runScoresCalendarEnrichment(
 
       const structuredDir = await writeStructuredFiles(
         workspaceRoot,
+        storage,
         game,
         parsed,
         rawPaths,
@@ -366,7 +378,7 @@ export async function runScoresCalendarEnrichment(
         const reason = error instanceof Error ? error.message : String(error)
         failures.push({ date: game.date, gameId: game.gameId, slug, stage: 'load', reason })
         logger.error(`[scores:failed] date=${game.date} game_id=${game.gameId} stage=load reason=${reason}`)
-        await writeUnresolved(workspaceRoot, game, {
+        await writeUnresolved(storage, game, {
           game_id: game.gameId,
           slug,
           date: game.date,
@@ -399,6 +411,7 @@ export async function runScoresCalendarEnrichment(
 
 async function writeStructuredFiles(
   workspaceRoot: string,
+  storage: ObjectStorage,
   game: GameYearRow,
   parsed: {
     game: StructuredGame
@@ -412,16 +425,16 @@ async function writeStructuredFiles(
   rawPaths: Record<'index' | 'playbyplay' | 'box' | 'roster', string>,
 ) {
   const directory = path.join(workspaceRoot, 'data', 'structured', String(game.year), game.mmdd, game.gameId)
-  await mkdir(directory, { recursive: true })
   const project = (filePath: string) => filePath.replace(`${workspaceRoot}${path.sep}`, '').split(path.sep).join('/')
+  const key = (fileName: string) => `structured/${game.year}/${game.mmdd}/${game.gameId}/${fileName}`
   const paths = {
-    game: path.join(directory, 'game.json'),
-    events: path.join(directory, 'events.json'),
-    batting: path.join(directory, 'batting_lines.json'),
-    pitching: path.join(directory, 'pitching_lines.json'),
-    roster: path.join(directory, 'roster.json'),
-    linescore: path.join(directory, 'linescore.json'),
-    sources: path.join(directory, 'sources.json'),
+    game: storage.localPath(key('game.json')),
+    events: storage.localPath(key('events.json')),
+    batting: storage.localPath(key('batting_lines.json')),
+    pitching: storage.localPath(key('pitching_lines.json')),
+    roster: storage.localPath(key('roster.json')),
+    linescore: storage.localPath(key('linescore.json')),
+    sources: storage.localPath(key('sources.json')),
   }
   const sources = [
     { source_key: 'index', source_url: parsed.sourceUrls.index, raw_path: project(rawPaths.index), structured_path: project(paths.game) },
@@ -430,29 +443,27 @@ async function writeStructuredFiles(
     { source_key: 'roster', source_url: parsed.sourceUrls.roster, raw_path: project(rawPaths.roster), structured_path: project(paths.roster) },
   ]
   await Promise.all([
-    writeJson(paths.game, parsed.game),
-    writeJson(paths.events, parsed.events),
-    writeJson(paths.batting, parsed.battingLines),
-    writeJson(paths.pitching, parsed.pitchingLines),
-    writeJson(paths.roster, parsed.rosterEntries),
-    writeJson(paths.linescore, parsed.linescore),
-    writeJson(paths.sources, sources),
+    writeJson(storage, key('game.json'), parsed.game),
+    writeJson(storage, key('events.json'), parsed.events),
+    writeJson(storage, key('batting_lines.json'), parsed.battingLines),
+    writeJson(storage, key('pitching_lines.json'), parsed.pitchingLines),
+    writeJson(storage, key('roster.json'), parsed.rosterEntries),
+    writeJson(storage, key('linescore.json'), parsed.linescore),
+    writeJson(storage, key('sources.json'), sources),
   ])
   return directory
 }
 
 async function writeUnresolved(
-  workspaceRoot: string,
+  storage: ObjectStorage,
   game: GameYearRow,
   payload: unknown,
 ) {
-  const directory = path.join(workspaceRoot, 'data', 'structured', String(game.year), game.mmdd, game.gameId)
-  await mkdir(directory, { recursive: true })
-  await writeJson(path.join(directory, 'unresolved.json'), payload)
+  await writeJson(storage, `structured/${game.year}/${game.mmdd}/${game.gameId}/unresolved.json`, payload)
 }
 
-async function writeJson(filePath: string, value: unknown) {
-  await writeFile(filePath, `${JSON.stringify(value, null, 2)}\n`, 'utf8')
+async function writeJson(storage: ObjectStorage, key: string, value: unknown) {
+  await storage.putText(key, `${JSON.stringify(value, null, 2)}\n`, 'application/json; charset=utf-8')
 }
 
 function parsePositiveInteger(value: string | undefined, label: string): number {

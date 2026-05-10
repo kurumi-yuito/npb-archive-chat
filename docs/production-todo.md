@@ -91,22 +91,25 @@ Implemented in repository:
 
 ### 4. R2 正規保存先化
 
-Not implemented in repository:
+運用手順は [r2-canonical-storage-runbook.md](./r2-canonical-storage-runbook.md) を正とする。
+
+Implemented in repository:
 
 - R2 を raw HTML / structured JSON の正規保存先にする storage adapter
-- `update:daily` が raw HTML / structured JSON を R2 へ直接読み書きする経路
+- `update:daily --storage r2` が raw HTML / structured JSON を R2 へ保存する経路
+- `rebuild:r2-year` が R2 上の raw / structured から年別 SQLite を再構築する経路
 
 現状:
 
-- R2 binding `NPB_R2_RAW` の deploy scaffold はある。
 - 現行の検索/チャット API は D1/SQLite の normalized DB を読む。
-- 本番日次更新では R2 を年別 SQLite backup 置き場として使う。raw / structured の正規保存先化とは別タスク。
+- 本番日次更新では R2 を年別 SQLite backup 置き場としても使う。
+- `update:daily` 本番 workflow は `--storage r2` で raw / structured を R2 に保存する。
 
 完了条件:
 
-- raw HTML を削除せず R2 に保存できる。
-- structured JSON を R2 に保存できる。
-- normalized DB は R2 上の raw / structured から再構築できる。
+- GitHub Actions `Daily NPB Scores Update` の本番更新で `update:daily --storage r2` が成功する。
+- R2 に `raw/...` と `structured/...` object が作成される。
+- `rebuild:r2-year` で R2 上の raw / structured から年別 SQLite を再構築できる。
 
 ### 5. 完了済みだが本番で確認すべき項目
 

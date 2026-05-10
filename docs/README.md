@@ -30,6 +30,7 @@
 | 正規データフロー | [current-status.md](./current-status.md) | `discover → update:year → backfill:scores-canonical → enrich:scores-calendar` |
 | 日次更新の仕様 | [update-job.md](./update-job.md) | `update:daily`、Cloudflare Cron / workflow_dispatch |
 | 日次更新の本番運用手順 | [daily-update-runbook.md](./daily-update-runbook.md) | secrets、R2 backup、手動実行、Cron確認、復旧 |
+| R2 正規保存先化 | [r2-canonical-storage-runbook.md](./r2-canonical-storage-runbook.md) | raw HTML / structured JSON を R2 正規保存先にする実装手順 |
 | DB schema / repository | [db.md](./db.md) | テーブル、検索DB、migration |
 | source構造 | [source-structure.md](./source-structure.md) | scores / BIS source の役割 |
 | parser | [parser.md](./parser.md) | raw HTML → structured JSON |

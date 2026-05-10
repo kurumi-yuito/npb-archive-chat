@@ -1,6 +1,5 @@
-import { mkdir, writeFile } from 'node:fs/promises'
-import path from 'node:path'
 import type { FetchLike } from '../../crawler/src/index'
+import type { ObjectStorage } from './object-storage'
 
 export type ScoreFetchPart = {
   ok: boolean
@@ -78,29 +77,30 @@ export async function fetchScoreFiles(
 }
 
 export async function writeRawScoreFiles(
-  workspaceRoot: string,
+  storage: ObjectStorage,
   year: number,
   mmdd: string,
   gameId: string,
   files: FetchedScoreFiles,
 ): Promise<Record<'index' | 'playbyplay' | 'box' | 'roster', string>> {
-  const rawDir = path.join(workspaceRoot, 'data', 'raw', String(year), mmdd, gameId)
-  await mkdir(rawDir, { recursive: true })
-
   const paths = {
-    index: path.join(rawDir, 'index.html'),
-    playbyplay: path.join(rawDir, 'playbyplay.html'),
-    box: path.join(rawDir, 'box.html'),
-    roster: path.join(rawDir, 'roster.html'),
+    index: storage.localPath(rawScoreKey(year, mmdd, gameId, 'index.html')),
+    playbyplay: storage.localPath(rawScoreKey(year, mmdd, gameId, 'playbyplay.html')),
+    box: storage.localPath(rawScoreKey(year, mmdd, gameId, 'box.html')),
+    roster: storage.localPath(rawScoreKey(year, mmdd, gameId, 'roster.html')),
   }
 
   await Promise.all(
     (Object.keys(paths) as Array<keyof typeof paths>)
       .filter((key) => files[key].ok)
-      .map((key) => writeFile(paths[key], files[key].text, 'utf8')),
+      .map((key) => storage.putText(rawScoreKey(year, mmdd, gameId, `${key}.html`), files[key].text, 'text/html; charset=utf-8')),
   )
 
   return paths
+}
+
+function rawScoreKey(year: number, mmdd: string, gameId: string, fileName: string): string {
+  return `raw/${year}/${mmdd}/${gameId}/${fileName}`
 }
 
 async function toFetchPart(response: Response, url: string): Promise<ScoreFetchPart> {

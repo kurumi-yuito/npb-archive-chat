@@ -1,4 +1,3 @@
-import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { findWorkspaceRoot } from '@npb/crawler'
 import {
@@ -13,6 +12,7 @@ import {
   type BisTeamInfo,
 } from '@npb/parser'
 import { migrateDatabase } from './migrations'
+import { createObjectStorage, defaultR2Bucket, parseStorageArg, type ObjectStorage, type StorageArgs } from './object-storage'
 import { openDatabase, type SqliteDatabase } from './sqlite'
 import { withTransaction } from './sqlite'
 
@@ -34,7 +34,7 @@ export const BIS_TEAMS: BisTeamInfo[] = [
   { teamId: 'h', teamName: '福岡ソフトバンクホークス' },
 ]
 
-export type UpdateBisCurrentArgs = {
+export type UpdateBisCurrentArgs = StorageArgs & {
   year?: number
   team?: string
   sqlitePath?: string
@@ -70,6 +70,9 @@ export function parseUpdateBisCurrentArgs(argv: string[]): UpdateBisCurrentArgs 
   const result: UpdateBisCurrentArgs = {}
   while (args.length > 0) {
     const arg = args.shift()
+    if (parseStorageArg(arg, () => args.shift(), result)) {
+      continue
+    }
     if (arg === '--year') {
       result.year = parsePositiveInteger(args.shift(), 'year')
       continue
@@ -139,8 +142,16 @@ export async function runBisCurrentUpdate(options: UpdateBisCurrentArgs): Promis
   const year = options.year ?? new Date().getFullYear()
   const workspaceRoot = path.resolve(options.workspaceRoot ?? (await findWorkspaceRoot(process.cwd())))
   const sqlitePath = options.sqlitePath ?? path.join(options.sqliteDir ?? DEFAULT_SQLITE_DIR, `npb-${year}.sqlite`)
+  const storage = createObjectStorage({
+    mode: options.storage,
+    workspaceRoot,
+    bucket: options.r2Bucket ?? defaultR2Bucket(),
+    prefix: options.r2Prefix,
+    endpoint: options.r2Endpoint,
+  })
   const rawDir = path.join(workspaceRoot, 'data', 'raw', 'bis', String(year))
-  const structuredPath = path.join(workspaceRoot, 'data', 'structured', 'bis', String(year), 'bis-current.json')
+  const structuredKey = `structured/bis/${year}/bis-current.json`
+  const structuredPath = storage.localPath(structuredKey)
   const teams = selectTeams(options.team)
 
   if (options.dryRun) {
@@ -149,17 +160,14 @@ export async function runBisCurrentUpdate(options: UpdateBisCurrentArgs): Promis
 
   const dataset = emptyBisCurrentDataset(year)
   dataset.teams.push(...teams)
-  await mkdir(rawDir, { recursive: true })
-
   for (const team of teams) {
-    await loadTeamBisPages(dataset, { year, team, rawDir, delayMs: options.delayMs, userAgent: options.userAgent })
+    await loadTeamBisPages(dataset, { year, team, storage, delayMs: options.delayMs, userAgent: options.userAgent })
   }
 
-  await mkdir(path.dirname(structuredPath), { recursive: true })
   for (const snapshot of dataset.sourceSnapshots) {
     snapshot.structuredPath = path.relative(workspaceRoot, structuredPath)
   }
-  await writeFile(structuredPath, `${JSON.stringify(dataset, null, 2)}\n`, 'utf8')
+  await storage.putText(structuredKey, `${JSON.stringify(dataset, null, 2)}\n`, 'application/json; charset=utf-8')
 
   const db = openDatabase(sqlitePath)
   try {
@@ -221,13 +229,13 @@ export function loadBisCurrentDataset(database: SqliteDatabase, dataset: BisCurr
 
 async function loadTeamBisPages(
   dataset: BisCurrentDataset,
-  input: { year: number; team: BisTeamInfo; rawDir: string; delayMs?: number; userAgent?: string },
+  input: { year: number; team: BisTeamInfo; storage: ObjectStorage; delayMs?: number; userAgent?: string },
 ) {
   const pages = buildTeamPages(input.year, input.team.teamId)
   for (const page of pages) {
     let html: string
     try {
-      html = await fetchOrReadRaw(page.url, path.join(input.rawDir, `${page.key}.html`), input.userAgent)
+      html = await fetchOrReadRaw(page.url, `raw/bis/${input.year}/${page.key}.html`, input.storage, input.userAgent)
     } catch (error) {
       if (page.sourceType === 'team_monthly_results' && error instanceof Error && error.message.includes(' 404 ')) {
         continue
@@ -281,22 +289,17 @@ function buildTeamPages(year: number, teamId: string): Array<{ key: string; url:
   ]
 }
 
-async function fetchOrReadRaw(url: string, filePath: string, userAgent?: string): Promise<string> {
-  try {
-    const existing = await readFile(filePath, 'utf8')
-    if (existing.trim()) {
-      return existing
-    }
-  } catch {
-    // Fetch below.
+async function fetchOrReadRaw(url: string, key: string, storage: ObjectStorage, userAgent?: string): Promise<string> {
+  const existing = await storage.getText(key)
+  if (existing?.trim()) {
+    return existing
   }
   const response = await fetch(url, { headers: { 'user-agent': userAgent ?? DEFAULT_USER_AGENT } })
   if (!response.ok) {
     throw new Error(`BIS fetch failed: ${response.status} ${url}`)
   }
   const html = await response.text()
-  await mkdir(path.dirname(filePath), { recursive: true })
-  await writeFile(filePath, html, 'utf8')
+  await storage.putText(key, html, 'text/html; charset=utf-8')
   return html
 }
 

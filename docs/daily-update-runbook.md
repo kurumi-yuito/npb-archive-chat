@@ -18,7 +18,8 @@ Cloudflare Cron
 → Worker scheduled handler
 → GitHub Actions daily-update.yml を workflow_dispatch
 → R2 から年別 SQLite backup を復元
-→ pnpm --filter @npb/db run update:daily
+→ pnpm --filter @npb/db run update:daily -- --storage r2
+→ raw / structured を R2 に保存
 → pnpm --filter @npb/db run sync:d1
 → production D1 へ反映
 → 更新後の年別 SQLite backup を R2 に保存
@@ -263,7 +264,7 @@ Actions → Daily NPB Scores Update → 実行結果
 目的:
 
 - R2 の年別 SQLite backup を復元する
-- `update:daily` を実行する
+- `update:daily --storage r2` を実行し、raw / structured を R2 に保存する
 - production D1 に反映する
 - 更新後の年別 SQLite を R2 backup として保存する
 
@@ -349,7 +350,7 @@ gh workflow run daily-update.yml --ref main -f dry_run=true -f days=3
 gh workflow run daily-update.yml --ref main -f days=3
 ```
 
-これで GitHub Actions 側の `update:daily` / R2 restore / D1 sync / R2 save は確認できる。
+これで GitHub Actions 側の `update:daily --storage r2` / raw・structured R2保存 / R2 restore / D1 sync / R2 save は確認できる。
 
 Cloudflare Cron から Worker scheduled handler が GitHub Actions を起動する経路は、次回 Cron 発火後に確認する。JST の実行時刻は `10:05 / 16:05 / 22:05`。
 

@@ -45,6 +45,9 @@ update:bis-current
 - `update:daily` CLI（JST / 直近3日既定 / 日付範囲 / strict / summary log）
 - `update:bis-current` CLI
 - `sync:d1` CLI（年別 SQLite → remote D1 同期）
+- R2 object storage adapter（local / R2）
+- `update:daily --storage r2` による raw / structured の R2 保存
+- `rebuild:r2-year` CLI（R2 raw / structured → 年別 SQLite 再構築）
 - GitHub Actions `workflow_dispatch` と Cloudflare Cron による日次自動更新入口
 - `chat_accounts` による account/profile/subscription 永続化
 - free / pro plan と monthly usage 永続化
@@ -63,5 +66,4 @@ update:bis-current
 
 - UI のアクセシビリティ監査・analytics
 - 更新ジョブの監視、リトライ、通知
-- R2 を raw / structured の正規保存先にする実装
 - Cloudflare アカウント上の本番 Worker / D1 / R2 / secrets / domain 設定

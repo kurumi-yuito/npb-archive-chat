@@ -17,12 +17,13 @@ import {
   runBisCurrentUpdate,
   type UpdateBisCurrentResult,
 } from './bis-current'
+import { parseStorageArg, type StorageArgs } from './object-storage'
 
 const DEFAULT_DAYS = 3
 const DEFAULT_SQLITE_DIR = path.join('data')
 const SUMMARY_PATH = path.join('data', 'logs', 'update-daily-summary.json')
 
-export type UpdateDailyArgs = {
+export type UpdateDailyArgs = StorageArgs & {
   date?: string
   from?: string
   to?: string
@@ -99,9 +100,13 @@ export function parseUpdateDailyArgs(argv: string[]): UpdateDailyArgs {
   let workspaceRoot: string | undefined
   let delayMs: number | undefined
   let userAgent: string | undefined
+  const storageArgs: StorageArgs = {}
 
   while (args.length > 0) {
     const arg = args.shift()
+    if (parseStorageArg(arg, () => args.shift(), storageArgs)) {
+      continue
+    }
     if (arg === '--date') {
       date = parseDateString(args.shift(), 'date')
       continue
@@ -189,7 +194,7 @@ export function parseUpdateDailyArgs(argv: string[]): UpdateDailyArgs {
     throw new Error(`Unknown argument: ${arg}`)
   }
 
-  return { date, from, to, days, strict, dryRun, includeBisCurrent, sqlitePath, sqliteDir, workspaceRoot, delayMs, userAgent }
+  return { date, from, to, days, strict, dryRun, includeBisCurrent, sqlitePath, sqliteDir, workspaceRoot, delayMs, userAgent, ...storageArgs }
 }
 
 export async function runDailyUpdate(options: UpdateDailyArgs): Promise<UpdateDailyResult> {
@@ -231,6 +236,10 @@ export async function runDailyUpdate(options: UpdateDailyArgs): Promise<UpdateDa
         workspaceRoot,
         delayMs: options.delayMs,
         userAgent: options.userAgent,
+        storage: options.storage,
+        r2Bucket: options.r2Bucket,
+        r2Prefix: options.r2Prefix,
+        r2Endpoint: options.r2Endpoint,
       })
       classifyIncrementalUpdateIssues(update, options.strict === true, warnings, errors)
     } catch (error) {
@@ -263,6 +272,10 @@ export async function runDailyUpdate(options: UpdateDailyArgs): Promise<UpdateDa
         league: 'regular',
         delayMs: options.delayMs,
         userAgent: options.userAgent,
+        storage: options.storage,
+        r2Bucket: options.r2Bucket,
+        r2Prefix: options.r2Prefix,
+        r2Endpoint: options.r2Endpoint,
       })
       classifyEnrichmentIssues(enrich, options.strict === true, warnings, errors)
     } catch (error) {
@@ -277,6 +290,10 @@ export async function runDailyUpdate(options: UpdateDailyArgs): Promise<UpdateDa
           workspaceRoot,
           delayMs: options.delayMs,
           userAgent: options.userAgent,
+          storage: options.storage,
+          r2Bucket: options.r2Bucket,
+          r2Prefix: options.r2Prefix,
+          r2Endpoint: options.r2Endpoint,
         })
       } catch (error) {
         errors.push(createIssue(yearRange.year, 'update:bis-current', error))

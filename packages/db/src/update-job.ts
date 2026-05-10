@@ -14,12 +14,13 @@ import type { DiscoveryYear } from '@npb/schemas'
 import { listLoadedGameIdsByYear } from './repository/index'
 import { loadRichGame } from './loader'
 import { migrateDatabase } from './migrations'
+import { createObjectStorage, defaultR2Bucket, parseStorageArg, type StorageArgs } from './object-storage'
 import { sqliteDatabaseToQuery } from './query-driver'
 import { openDatabase } from './sqlite'
 
 const DEFAULT_LOG_PATH = path.join('data', 'logs', 'update-job.log')
 
-export type UpdateYearArgs = {
+export type UpdateYearArgs = StorageArgs & {
   year: number
   sqlitePath: string
   dateFrom?: string
@@ -78,9 +79,13 @@ export function parseUpdateYearArgs(argv: string[]): UpdateYearArgs {
   let workspaceRoot: string | undefined
   let delayMs: number | undefined
   let userAgent: string | undefined
+  const storageArgs: StorageArgs = {}
 
   while (args.length > 0) {
     const arg = args.shift()
+    if (parseStorageArg(arg, () => args.shift(), storageArgs)) {
+      continue
+    }
 
     if (arg === '--year') {
       year = parsePositiveInteger(args.shift(), 'year')
@@ -171,6 +176,7 @@ export function parseUpdateYearArgs(argv: string[]): UpdateYearArgs {
     workspaceRoot,
     delayMs,
     userAgent,
+    ...storageArgs,
   }
 }
 
@@ -189,6 +195,13 @@ export async function runIncrementalUpdate(
   )
   const sqlitePath = path.resolve(workspaceRoot, options.sqlitePath)
   const discoveryPath = path.join(workspaceRoot, 'data', 'discovery', `${options.year}.json`)
+  const storage = createObjectStorage({
+    mode: options.storage,
+    workspaceRoot,
+    bucket: options.r2Bucket ?? defaultR2Bucket(),
+    prefix: options.r2Prefix,
+    endpoint: options.r2Endpoint,
+  })
   const logger =
     options.logger ??
     (await (dependencies.createLogger ?? createDownloadLogger)(
@@ -209,6 +222,7 @@ export async function runIncrementalUpdate(
       fetchImpl: options.fetchImpl,
     })
     await writeDiscoverySnapshot(discoveryPath, discovery)
+    await storage.putText(`discovery/${options.year}.json`, `${JSON.stringify(discovery, null, 2)}\n`, 'application/json; charset=utf-8')
 
     const existingGameIds = new Set(
       await listLoadedGameIdsByYear(sqliteDatabaseToQuery(database), options.year),
@@ -237,6 +251,13 @@ export async function runIncrementalUpdate(
           userAgent: options.userAgent,
           logger,
         })
+        for (const page of downloadResult.pages) {
+          await storage.putLocalFile(
+            `raw/${game.year}/${game.mmdd}/${game.gameId}/${path.basename(page.path)}`,
+            page.path,
+            'text/html; charset=utf-8',
+          )
+        }
 
         let richGame
         try {

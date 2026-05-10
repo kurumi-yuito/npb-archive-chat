@@ -206,6 +206,8 @@ Done:
 - `discover` / `update:year` / `backfill:scores-canonical` / `enrich:scores-calendar` のローカル CLI
 - `update:daily` のローカル CLI
 - `update:bis-current` のローカル CLI
+- `update:daily --storage r2` による raw / structured の R2 保存
+- `rebuild:r2-year` による R2 raw / structured からの年別 SQLite 再構築
 - GitHub Actions workflow_dispatch
 - Cloudflare Cron からの workflow_dispatch 発火
 - scores 4HTML の raw 保存、structured JSON 保存、DB 補完
@@ -214,4 +216,3 @@ Done:
 Not implemented:
 
 - 本番運用での監視、リトライ、通知
-- R2 を正規保存先にした更新ジョブ
