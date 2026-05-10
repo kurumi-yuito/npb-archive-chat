@@ -37,7 +37,7 @@ jobs:
     timeout-minutes: 60
     env:
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-      IS_DRY_RUN: ${{ inputs.dry_run }}
+      IS_DRY_RUN: ${{ inputs.dry_run == true || inputs.dry_run == 'true' }}
       NPB_D1_DATABASE: npb-archive-chat-import
       NPB_R2_SQLITE_BACKUP_PREFIX: npb-archive-chat-raw/backups/sqlite
     steps:
@@ -53,11 +53,11 @@ jobs:
       - run: pnpm install --frozen-lockfile
 
       - name: Install Wrangler
-        if: ${{ inputs.dry_run != 'true' }}
+        if: ${{ env.IS_DRY_RUN != 'true' }}
         run: npm install -g wrangler@4.83.0
 
       - name: Restore SQLite backups from R2
-        if: ${{ inputs.dry_run != 'true' }}
+        if: ${{ env.IS_DRY_RUN != 'true' }}
         shell: bash
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_R2_API_TOKEN }}
@@ -96,7 +96,7 @@ jobs:
           pnpm --filter @npb/db run update:daily -- "${args[@]}" | tee data/logs/update-daily-action.log
 
       - name: Sync updated SQLite data to D1
-        if: ${{ inputs.dry_run != 'true' }}
+        if: ${{ env.IS_DRY_RUN != 'true' }}
         shell: bash
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_D1_API_TOKEN }}
@@ -109,7 +109,7 @@ jobs:
           pnpm --filter @npb/db run sync:d1 -- --sqlite-dir ./data --d1-database "$NPB_D1_DATABASE" --keep-files --verify | tee data/logs/d1-sync-action.log
 
       - name: Save SQLite backups to R2
-        if: ${{ inputs.dry_run != 'true' }}
+        if: ${{ env.IS_DRY_RUN != 'true' }}
         shell: bash
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_R2_API_TOKEN }}

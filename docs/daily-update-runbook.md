@@ -199,11 +199,13 @@ Actions → Daily NPB Scores Update → 実行結果
 成功条件:
 
 - workflow が green
+- job env の `IS_DRY_RUN` が `true`
 - `Install Wrangler` / `Restore SQLite backups from R2` / `Sync updated SQLite data to D1` / `Save SQLite backups to R2` は skipped
 - Step Summary に `data/logs/update-daily-summary.json` の内容が出る
 - `Restore SQLite backups from R2` / `Sync updated SQLite data to D1` / `Save SQLite backups to R2` は dry run では実行されない
 
 `Restore SQLite backups from R2` が実行され、`IS_DRY_RUN: false` と表示されている場合は dry run ではなく本番更新として起動している。GitHub UI の `dry_run` を `true` にして再実行する。
+`IS_DRY_RUN: true` なのに `Restore SQLite backups from R2` が実行される場合は、workflow の dry run 判定が古い。最新の `.github/workflows/daily-update.yml` を `main` に push してから再実行する。
 
 ## 手動本番更新
 
@@ -325,6 +327,7 @@ wrangler tail npb-archive-chat-web
 2. `Restore SQLite backups from R2`
    - 失敗時は `npb-archive-chat-raw/backups/sqlite/npb-YYYY.sqlite` があるか確認
    - `CLOUDFLARE_R2_API_TOKEN` / `CLOUDFLARE_ACCOUNT_ID` を確認
+   - 403 の場合は Cloudflare API token に R2 object read/write 権限がない。R2 用 token を作り直し、GitHub secret `CLOUDFLARE_R2_API_TOKEN` を更新する。
 3. `Run update:daily`
    - 404 warning は通常許容
    - parse failure / DB write failure は修正が必要
