@@ -199,8 +199,11 @@ Actions → Daily NPB Scores Update → 実行結果
 成功条件:
 
 - workflow が green
+- `Install Wrangler` / `Restore SQLite backups from R2` / `Sync updated SQLite data to D1` / `Save SQLite backups to R2` は skipped
 - Step Summary に `data/logs/update-daily-summary.json` の内容が出る
 - `Restore SQLite backups from R2` / `Sync updated SQLite data to D1` / `Save SQLite backups to R2` は dry run では実行されない
+
+`Restore SQLite backups from R2` が実行され、`IS_DRY_RUN: false` と表示されている場合は dry run ではなく本番更新として起動している。GitHub UI の `dry_run` を `true` にして再実行する。
 
 ## 手動本番更新
 

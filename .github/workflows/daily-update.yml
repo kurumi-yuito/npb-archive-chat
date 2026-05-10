@@ -52,6 +52,10 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
+      - name: Install Wrangler
+        if: ${{ inputs.dry_run != 'true' }}
+        run: npm install -g wrangler@4.83.0
+
       - name: Restore SQLite backups from R2
         if: ${{ inputs.dry_run != 'true' }}
         shell: bash
@@ -65,7 +69,7 @@ jobs:
           fi
           mkdir -p data
           for year in $(seq 2016 2026); do
-            pnpm exec wrangler r2 object get "$NPB_R2_SQLITE_BACKUP_PREFIX/npb-${year}.sqlite" \
+            wrangler r2 object get "$NPB_R2_SQLITE_BACKUP_PREFIX/npb-${year}.sqlite" \
               --remote \
               --file "data/npb-${year}.sqlite"
           done
@@ -117,7 +121,7 @@ jobs:
           fi
           for sqlite_path in data/npb-*.sqlite; do
             file_name="$(basename "$sqlite_path")"
-            pnpm exec wrangler r2 object put "$NPB_R2_SQLITE_BACKUP_PREFIX/$file_name" \
+            wrangler r2 object put "$NPB_R2_SQLITE_BACKUP_PREFIX/$file_name" \
               --remote \
               --file "$sqlite_path" \
               --content-type application/vnd.sqlite3 \
