@@ -82,7 +82,7 @@ Implemented in repository:
 
 完了条件:
 
-- GitHub Actions repository secrets に `CLOUDFLARE_D1_API_TOKEN` / `CLOUDFLARE_R2_API_TOKEN` / `CLOUDFLARE_ACCOUNT_ID` が設定されている。
+- GitHub Actions repository secrets に `CLOUDFLARE_D1_API_TOKEN` / `CLOUDFLARE_R2_ACCESS_KEY_ID` / `CLOUDFLARE_R2_SECRET_ACCESS_KEY` / `CLOUDFLARE_ACCOUNT_ID` が設定されている。
 - Cloudflare Worker secrets に `NPB_DAILY_UPDATE_GITHUB_*` が設定されている。
 - R2 `npb-archive-chat-raw/backups/sqlite/npb-YYYY.sqlite` が 2016-2026 年分存在する。
 - GitHub Actions `Daily NPB Scores Update` の dry run が成功する。

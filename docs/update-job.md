@@ -129,10 +129,11 @@ GitHub Actions 側の本番設定:
 1. GitHub personal access token を作成する。
    - Cloudflare Cron から workflow を起動する token: 対象 repo の Actions workflow dispatch ができる権限。
    - GitHub Actions から Cloudflare D1 を操作する token: D1 edit 権限。
-   - GitHub Actions から Cloudflare R2 を操作する token: R2 object read/write 権限。
+   - GitHub Actions から Cloudflare R2 backup を読み書きする token: R2 S3 API token の Object Read & Write 権限。
 2. GitHub repo の `Settings → Secrets and variables → Actions → Repository secrets` に追加する。
    - `CLOUDFLARE_D1_API_TOKEN`
-   - `CLOUDFLARE_R2_API_TOKEN`
+   - `CLOUDFLARE_R2_ACCESS_KEY_ID`
+   - `CLOUDFLARE_R2_SECRET_ACCESS_KEY`
    - `CLOUDFLARE_ACCOUNT_ID`
 3. Cloudflare Worker の secrets に追加する。
    - `NPB_DAILY_UPDATE_GITHUB_OWNER`: `kurumi-yuito`

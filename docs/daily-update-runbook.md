@@ -51,32 +51,34 @@ Settings
 | Secret | 値 |
 |--------|----|
 | `CLOUDFLARE_D1_API_TOKEN` | Cloudflare API token。D1 edit 用 |
-| `CLOUDFLARE_R2_API_TOKEN` | Cloudflare API token。R2 object read/write 用 |
+| `CLOUDFLARE_R2_ACCESS_KEY_ID` | R2 S3 API token の Access Key ID |
+| `CLOUDFLARE_R2_SECRET_ACCESS_KEY` | R2 S3 API token の Secret Access Key |
 | `CLOUDFLARE_ACCOUNT_ID` | Cloudflare account ID |
 
-Cloudflare API token は2つに分けて作る。
+Cloudflare token は用途で分けて作る。
 
-R2 用 token:
+R2 用 token は Cloudflare API token ではなく、R2 の S3 API token を使う。
 
 ```text
 Cloudflare Dashboard
-→ My Profile
-→ API Tokens
-→ Create Token
-→ Custom token
+→ R2
+→ Manage R2 API Tokens
+→ Create API token
 ```
 
 Permissions:
 
 ```text
-Account / Workers R2 Storage / Edit
+Object Read & Write
 ```
 
-Account Resources:
+Buckets:
 
 ```text
-Include / <対象 Cloudflare account>
+npb-archive-chat-raw
 ```
+
+作成後に表示される `Access Key ID` を `CLOUDFLARE_R2_ACCESS_KEY_ID`、`Secret Access Key` を `CLOUDFLARE_R2_SECRET_ACCESS_KEY` として GitHub Actions repository secrets に保存する。これは一度しか表示されない。
 
 D1 用 token:
 
@@ -100,14 +102,14 @@ Account Resources:
 Include / <対象 Cloudflare account>
 ```
 
-GitHub Actions では、R2 用 token を `CLOUDFLARE_R2_API_TOKEN`、D1 用 token を `CLOUDFLARE_D1_API_TOKEN` に保存する。どちらも Zone resource ではなく Account resource の token にする。
+GitHub Actions では、D1 用 Cloudflare API token を `CLOUDFLARE_D1_API_TOKEN` に保存する。これは Zone resource ではなく Account resource の token にする。
 
-workflow 内では `wrangler` が読む環境変数名に合わせるため、各 step で以下のように差し替える。
+workflow 内では次のように使い分ける。
 
-- R2 SQLite backup 復元 / 保存 step: `CLOUDFLARE_API_TOKEN=${{ secrets.CLOUDFLARE_R2_API_TOKEN }}`
+- R2 SQLite backup 復元 / 保存 step: `aws s3 cp` に `CLOUDFLARE_R2_ACCESS_KEY_ID` / `CLOUDFLARE_R2_SECRET_ACCESS_KEY` を渡す
 - D1 sync step: `CLOUDFLARE_API_TOKEN=${{ secrets.CLOUDFLARE_D1_API_TOKEN }}`
 
-D1 と R2 の権限は分ける。1つの broad token にまとめない。
+D1 と R2 の権限は分ける。R2 object 操作に Cloudflare API token は使わない。
 
 ### 2. Cloudflare Worker secrets を設定する
 
@@ -383,9 +385,9 @@ wrangler tail npb-archive-chat-web
    - 作られている: GitHub Actions の各 step を確認
 2. `Restore SQLite backups from R2`
    - 失敗時は `npb-archive-chat-raw/backups/sqlite/npb-YYYY.sqlite` があるか確認
-   - `CLOUDFLARE_R2_API_TOKEN` / `CLOUDFLARE_ACCOUNT_ID` を確認
-   - 403 の場合は Cloudflare API token に `Account / Workers R2 Storage / Edit` 権限がない、または Account Resources が対象 account になっていない。R2 用 token を作り直し、GitHub secret `CLOUDFLARE_R2_API_TOKEN` を更新する。
-   - ローカルで同じ token が通るのに GitHub Actions だけ 403 の場合は、GitHub secret に古い値を入れているか、貼り付け時の改行/空白が混ざっている。workflow は改行/空白を除去してから `wrangler` に渡す。
+   - `CLOUDFLARE_R2_ACCESS_KEY_ID` / `CLOUDFLARE_R2_SECRET_ACCESS_KEY` / `CLOUDFLARE_ACCOUNT_ID` を確認
+   - 403 の場合は R2 S3 API token に `npb-archive-chat-raw` bucket の Object Read & Write 権限がない。Cloudflare Dashboard の R2 API token を作り直し、GitHub secrets を更新する。
+   - Cloudflare API token の `CLOUDFLARE_R2_API_TOKEN` は使わない。R2 backup 復元 / 保存は S3 互換 API で実行する。
 3. `Run update:daily`
    - 404 warning は通常許容
    - parse failure / DB write failure は修正が必要
@@ -394,7 +396,7 @@ wrangler tail npb-archive-chat-web
    - `CLOUDFLARE_D1_API_TOKEN` / `CLOUDFLARE_ACCOUNT_ID` を確認
 5. `Save SQLite backups to R2`
    - R2 write 権限を確認
-   - `CLOUDFLARE_R2_API_TOKEN` / `CLOUDFLARE_ACCOUNT_ID` を確認
+   - `CLOUDFLARE_R2_ACCESS_KEY_ID` / `CLOUDFLARE_R2_SECRET_ACCESS_KEY` / `CLOUDFLARE_ACCOUNT_ID` を確認
 
 ## 復旧
 

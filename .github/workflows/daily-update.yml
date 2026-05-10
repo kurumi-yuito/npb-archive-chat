@@ -39,7 +39,8 @@ jobs:
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       IS_DRY_RUN: ${{ inputs.dry_run == true || inputs.dry_run == 'true' }}
       NPB_D1_DATABASE: npb-archive-chat-import
-      NPB_R2_SQLITE_BACKUP_PREFIX: npb-archive-chat-raw/backups/sqlite
+      NPB_R2_BUCKET: npb-archive-chat-raw
+      NPB_R2_SQLITE_BACKUP_PREFIX: backups/sqlite
     steps:
       - uses: actions/checkout@v4
 
@@ -56,23 +57,31 @@ jobs:
         if: ${{ env.IS_DRY_RUN != 'true' }}
         run: npm install -g wrangler@4.83.0
 
+      - name: Install AWS CLI
+        if: ${{ env.IS_DRY_RUN != 'true' }}
+        run: python -m pip install --user awscli
+
       - name: Restore SQLite backups from R2
         if: ${{ env.IS_DRY_RUN != 'true' }}
         shell: bash
         env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_R2_API_TOKEN }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.CLOUDFLARE_R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.CLOUDFLARE_R2_SECRET_ACCESS_KEY }}
         run: |
           set -euo pipefail
-          if [ -z "${CLOUDFLARE_API_TOKEN:-}" ]; then
-            echo "CLOUDFLARE_R2_API_TOKEN GitHub secret is required for R2 backup restore" >&2
+          if [ -z "${AWS_ACCESS_KEY_ID:-}" ] || [ -z "${AWS_SECRET_ACCESS_KEY:-}" ]; then
+            echo "CLOUDFLARE_R2_ACCESS_KEY_ID and CLOUDFLARE_R2_SECRET_ACCESS_KEY GitHub secrets are required for R2 backup restore" >&2
             exit 1
           fi
-          export CLOUDFLARE_API_TOKEN="$(printf '%s' "$CLOUDFLARE_API_TOKEN" | tr -d '\r\n ')"
+          export AWS_ACCESS_KEY_ID="$(printf '%s' "$AWS_ACCESS_KEY_ID" | tr -d '\r\n ')"
+          export AWS_SECRET_ACCESS_KEY="$(printf '%s' "$AWS_SECRET_ACCESS_KEY" | tr -d '\r\n ')"
+          r2_endpoint="https://${CLOUDFLARE_ACCOUNT_ID}.r2.cloudflarestorage.com"
           mkdir -p data
           for year in $(seq 2016 2026); do
-            wrangler r2 object get "$NPB_R2_SQLITE_BACKUP_PREFIX/npb-${year}.sqlite" \
-              --remote \
-              --file "data/npb-${year}.sqlite"
+            aws s3 cp "s3://${NPB_R2_BUCKET}/${NPB_R2_SQLITE_BACKUP_PREFIX}/npb-${year}.sqlite" \
+              "data/npb-${year}.sqlite" \
+              --endpoint-url "$r2_endpoint" \
+              --only-show-errors
           done
 
       - name: Run update:daily
@@ -114,21 +123,24 @@ jobs:
         if: ${{ env.IS_DRY_RUN != 'true' }}
         shell: bash
         env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_R2_API_TOKEN }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.CLOUDFLARE_R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.CLOUDFLARE_R2_SECRET_ACCESS_KEY }}
         run: |
           set -euo pipefail
-          if [ -z "${CLOUDFLARE_API_TOKEN:-}" ]; then
-            echo "CLOUDFLARE_R2_API_TOKEN GitHub secret is required for R2 backup save" >&2
+          if [ -z "${AWS_ACCESS_KEY_ID:-}" ] || [ -z "${AWS_SECRET_ACCESS_KEY:-}" ]; then
+            echo "CLOUDFLARE_R2_ACCESS_KEY_ID and CLOUDFLARE_R2_SECRET_ACCESS_KEY GitHub secrets are required for R2 backup save" >&2
             exit 1
           fi
-          export CLOUDFLARE_API_TOKEN="$(printf '%s' "$CLOUDFLARE_API_TOKEN" | tr -d '\r\n ')"
+          export AWS_ACCESS_KEY_ID="$(printf '%s' "$AWS_ACCESS_KEY_ID" | tr -d '\r\n ')"
+          export AWS_SECRET_ACCESS_KEY="$(printf '%s' "$AWS_SECRET_ACCESS_KEY" | tr -d '\r\n ')"
+          r2_endpoint="https://${CLOUDFLARE_ACCOUNT_ID}.r2.cloudflarestorage.com"
           for sqlite_path in data/npb-*.sqlite; do
             file_name="$(basename "$sqlite_path")"
-            wrangler r2 object put "$NPB_R2_SQLITE_BACKUP_PREFIX/$file_name" \
-              --remote \
-              --file "$sqlite_path" \
+            aws s3 cp "$sqlite_path" \
+              "s3://${NPB_R2_BUCKET}/${NPB_R2_SQLITE_BACKUP_PREFIX}/${file_name}" \
+              --endpoint-url "$r2_endpoint" \
               --content-type application/vnd.sqlite3 \
-              --force
+              --only-show-errors
           done
 
       - name: Write summary
