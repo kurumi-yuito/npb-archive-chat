@@ -54,6 +54,54 @@ Settings
 | `CLOUDFLARE_R2_API_TOKEN` | Cloudflare API token。R2 object read/write 用 |
 | `CLOUDFLARE_ACCOUNT_ID` | Cloudflare account ID |
 
+Cloudflare API token は2つに分けて作る。
+
+R2 用 token:
+
+```text
+Cloudflare Dashboard
+→ My Profile
+→ API Tokens
+→ Create Token
+→ Custom token
+```
+
+Permissions:
+
+```text
+Account / Workers R2 Storage / Edit
+```
+
+Account Resources:
+
+```text
+Include / <対象 Cloudflare account>
+```
+
+D1 用 token:
+
+```text
+Cloudflare Dashboard
+→ My Profile
+→ API Tokens
+→ Create Token
+→ Custom token
+```
+
+Permissions:
+
+```text
+Account / D1 / Edit
+```
+
+Account Resources:
+
+```text
+Include / <対象 Cloudflare account>
+```
+
+GitHub Actions では、R2 用 token を `CLOUDFLARE_R2_API_TOKEN`、D1 用 token を `CLOUDFLARE_D1_API_TOKEN` に保存する。どちらも Zone resource ではなく Account resource の token にする。
+
 workflow 内では `wrangler` が読む環境変数名に合わせるため、各 step で以下のように差し替える。
 
 - R2 SQLite backup 復元 / 保存 step: `CLOUDFLARE_API_TOKEN=${{ secrets.CLOUDFLARE_R2_API_TOKEN }}`
@@ -203,6 +251,7 @@ Actions → Daily NPB Scores Update → 実行結果
 - `Install Wrangler` / `Restore SQLite backups from R2` / `Sync updated SQLite data to D1` / `Save SQLite backups to R2` は skipped
 - Step Summary に `data/logs/update-daily-summary.json` の内容が出る
 - `Restore SQLite backups from R2` / `Sync updated SQLite data to D1` / `Save SQLite backups to R2` は dry run では実行されない
+- dry run では `sync:d1` を実行しないため、`data/logs/d1-sync/summary.json` は作られない。確認するのは `data/logs/update-daily-summary.json` だけ。
 
 `Restore SQLite backups from R2` が実行され、`IS_DRY_RUN: false` と表示されている場合は dry run ではなく本番更新として起動している。GitHub UI の `dry_run` を `true` にして再実行する。
 `IS_DRY_RUN: true` なのに `Restore SQLite backups from R2` が実行される場合は、workflow の dry run 判定が古い。最新の `.github/workflows/daily-update.yml` を `main` に push してから再実行する。
@@ -242,6 +291,8 @@ gh workflow run daily-update.yml -f from=2026-05-07 -f to=2026-05-09
 - `data/logs/d1-sync/summary.json` が artifact に含まれる
 - `d1-sync` の verification が `mismatches: []`
 
+`data/logs/d1-sync/summary.json` は本番更新、またはローカルで `sync:d1` を実行したときだけ出る。dry run では出ない。
+
 本番 API 確認:
 
 ```bash
@@ -274,19 +325,25 @@ wrangler deployments list
 
 直近 deploy が現在の Worker であることを確認する。
 
-## Cron を待たずに dispatch を確認する
+## Cron を待たずに更新処理を確認する
 
-Cloudflare dashboard で Cron test run を実行する。
+Cloudflare dashboard の Cron Triggers には、環境や UI によって手動 `Test` が表示されない。そのため、Cron を待たずに確認したい場合は GitHub Actions を直接 `workflow_dispatch` する。
 
-```text
-Workers & Pages
-→ npb-archive-chat-web
-→ Triggers
-→ Cron Triggers
-→ Test
+dry run:
+
+```bash
+gh workflow run daily-update.yml --ref main -f dry_run=true -f days=3
 ```
 
-成功すると GitHub Actions に `Daily NPB Scores Update` の実行が作成される。
+本番更新:
+
+```bash
+gh workflow run daily-update.yml --ref main -f days=3
+```
+
+これで GitHub Actions 側の `update:daily` / R2 restore / D1 sync / R2 save は確認できる。
+
+Cloudflare Cron から Worker scheduled handler が GitHub Actions を起動する経路は、次回 Cron 発火後に確認する。JST の実行時刻は `10:05 / 16:05 / 22:05`。
 
 ## ログ確認
 
@@ -327,7 +384,8 @@ wrangler tail npb-archive-chat-web
 2. `Restore SQLite backups from R2`
    - 失敗時は `npb-archive-chat-raw/backups/sqlite/npb-YYYY.sqlite` があるか確認
    - `CLOUDFLARE_R2_API_TOKEN` / `CLOUDFLARE_ACCOUNT_ID` を確認
-   - 403 の場合は Cloudflare API token に R2 object read/write 権限がない。R2 用 token を作り直し、GitHub secret `CLOUDFLARE_R2_API_TOKEN` を更新する。
+   - 403 の場合は Cloudflare API token に `Account / Workers R2 Storage / Edit` 権限がない、または Account Resources が対象 account になっていない。R2 用 token を作り直し、GitHub secret `CLOUDFLARE_R2_API_TOKEN` を更新する。
+   - ローカルで同じ token が通るのに GitHub Actions だけ 403 の場合は、GitHub secret に古い値を入れているか、貼り付け時の改行/空白が混ざっている。workflow は改行/空白を除去してから `wrangler` に渡す。
 3. `Run update:daily`
    - 404 warning は通常許容
    - parse failure / DB write failure は修正が必要

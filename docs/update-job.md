@@ -173,7 +173,7 @@ gh workflow run daily-update.yml -f dry_run=true -f days=3
 gh workflow run daily-update.yml -f days=3
 ```
 
-Cloudflare Cron の次回発火を待たずに Worker 側 dispatch を確認したい場合は、Cloudflare dashboard の Worker triggers から Cron を test run する。失敗した場合は Worker logs に `[cloudflare-cron]`、GitHub Actions に `Daily NPB Scores Update` の失敗が残る。
+Cloudflare dashboard の Cron Triggers には、環境や UI によって手動 `Test` が表示されない。その場合、次回 Cron 発火を待たずに更新処理を確認するには GitHub Actions を直接 `workflow_dispatch` する。Cloudflare Cron から Worker scheduled handler が GitHub Actions を起動する経路は、次回 Cron 発火後に Worker logs と GitHub Actions run で確認する。失敗した場合は Worker logs に `[cloudflare-cron]`、GitHub Actions に `Daily NPB Scores Update` の失敗が残る。
 
 ## 保存先
 

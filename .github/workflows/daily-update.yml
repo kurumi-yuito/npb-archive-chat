@@ -67,6 +67,7 @@ jobs:
             echo "CLOUDFLARE_R2_API_TOKEN GitHub secret is required for R2 backup restore" >&2
             exit 1
           fi
+          export CLOUDFLARE_API_TOKEN="$(printf '%s' "$CLOUDFLARE_API_TOKEN" | tr -d '\r\n ')"
           mkdir -p data
           for year in $(seq 2016 2026); do
             wrangler r2 object get "$NPB_R2_SQLITE_BACKUP_PREFIX/npb-${year}.sqlite" \
@@ -106,6 +107,7 @@ jobs:
             echo "CLOUDFLARE_D1_API_TOKEN GitHub secret is required for D1 sync" >&2
             exit 1
           fi
+          export CLOUDFLARE_API_TOKEN="$(printf '%s' "$CLOUDFLARE_API_TOKEN" | tr -d '\r\n ')"
           pnpm --filter @npb/db run sync:d1 -- --sqlite-dir ./data --d1-database "$NPB_D1_DATABASE" --keep-files --verify | tee data/logs/d1-sync-action.log
 
       - name: Save SQLite backups to R2
@@ -119,6 +121,7 @@ jobs:
             echo "CLOUDFLARE_R2_API_TOKEN GitHub secret is required for R2 backup save" >&2
             exit 1
           fi
+          export CLOUDFLARE_API_TOKEN="$(printf '%s' "$CLOUDFLARE_API_TOKEN" | tr -d '\r\n ')"
           for sqlite_path in data/npb-*.sqlite; do
             file_name="$(basename "$sqlite_path")"
             wrangler r2 object put "$NPB_R2_SQLITE_BACKUP_PREFIX/$file_name" \
