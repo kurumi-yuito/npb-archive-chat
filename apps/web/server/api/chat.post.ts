@@ -27,6 +27,18 @@ import { getServerChatQueryService, getServerMetaDatabase } from '../utils/serve
 
 export default defineEventHandler(async (event) => {
   const config = useRuntimeConfig(event)
+  let body: ReturnType<typeof parseChatRequestBody>
+
+  try {
+    body = parseChatRequestBody(await readBody(event))
+  } catch (error) {
+    if (error instanceof ZodError) {
+      throw createPublicApiError(400, 'invalid_request', 'Invalid chat request', {
+        validation: error.flatten(),
+      })
+    }
+    throw error
+  }
 
   try {
     const authConfig = resolveChatRuntimeAuthConfig(config, event)
@@ -51,7 +63,6 @@ export default defineEventHandler(async (event) => {
       }
     }
 
-    const body = parseChatRequestBody(await readBody(event))
     const cloudflareEnv = event.context.cloudflare?.env
     const chatQueryLlmConfig = {
       baseUrl:
@@ -114,7 +125,7 @@ export default defineEventHandler(async (event) => {
     return chatResponseSchema.parse({ ...core, usage })
   } catch (error) {
     if (error instanceof ZodError) {
-      throw createPublicApiError(400, 'invalid_request', 'Invalid chat request', {
+      throw createPublicApiError(500, 'internal_validation_failed', 'Internal response validation failed', {
         validation: error.flatten(),
       })
     }

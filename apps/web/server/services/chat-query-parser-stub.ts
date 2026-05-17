@@ -154,6 +154,9 @@ function inferIntent(
   if (/試合詳細|スコア/u.test(message) && /game[_ ]?id|対|vs|VS|\d{4}[-/年]/u.test(message)) {
     return 'game_detail'
   }
+  if (/試合/u.test(message) && /について|教えて|詳細|結果|スコア/u.test(message) && (matchDate(message) || matchVenue(message))) {
+    return 'game_detail'
+  }
   if (/成績/u.test(message) && /投手|登板|奪三振|投球回|防御率|セーブ/u.test(message)) {
     return 'search_pitching'
   }
@@ -180,6 +183,7 @@ function buildGamesFilters(
     ...matchYearRange(message, explicit),
     game_date: explicit.game_date ?? matchDate(message),
     game_id: explicit.game_id ?? matchGameId(message),
+    venue: explicit.venue ?? matchVenue(message),
     team:
       explicit.team ??
       matchValue(message, /(?:team|チーム)(?:は|=|:)\s*([^\s、。]+)/u),
@@ -360,6 +364,7 @@ function buildGameDetailFilters(
     ...matchYearRange(message, explicit),
     game_id: explicit.game_id ?? matchGameId(message),
     game_date: explicit.game_date ?? matchDate(message),
+    venue: explicit.venue ?? matchVenue(message),
     team:
       explicit.team ??
       matchValue(message, /(?:team|チーム)(?:は|=|:)\s*([^\s、。]+)/u) ??
@@ -394,6 +399,19 @@ function extractExplicitAssignments(message: string): Record<string, string> {
 }
 
 function matchDate(message: string): string | undefined {
+  if (/一昨日/u.test(message)) {
+    return currentJstDateOffset(-2)
+  }
+  if (/昨日/u.test(message)) {
+    return currentJstDateOffset(-1)
+  }
+  if (/今日|本日/u.test(message)) {
+    return currentJstDateOffset(0)
+  }
+  if (/明日/u.test(message)) {
+    return currentJstDateOffset(1)
+  }
+
   const match =
     message.match(/(\d{4})[-/](\d{1,2})[-/](\d{1,2})/u) ??
     message.match(/(\d{4})年(\d{1,2})月(\d{1,2})日/u)
@@ -439,6 +457,24 @@ function currentJstYear(): number {
   return Number(year)
 }
 
+function currentJstDateOffset(offsetDays: number): string {
+  const parts = new Intl.DateTimeFormat('ja-JP', {
+    timeZone: 'Asia/Tokyo',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(new Date())
+  const year = Number(parts.find((part) => part.type === 'year')?.value)
+  const month = Number(parts.find((part) => part.type === 'month')?.value)
+  const day = Number(parts.find((part) => part.type === 'day')?.value)
+  const shifted = new Date(Date.UTC(year, month - 1, day + offsetDays))
+  return [
+    shifted.getUTCFullYear(),
+    String(shifted.getUTCMonth() + 1).padStart(2, '0'),
+    String(shifted.getUTCDate()).padStart(2, '0'),
+  ].join('-')
+}
+
 function matchInningHalf(
   message: string,
 ): { inning: number | undefined; half: SearchEventsFilters['half'] | undefined } {
@@ -461,6 +497,23 @@ function matchValue(message: string, pattern: RegExp): string | undefined {
 
 function matchGameId(message: string): string | undefined {
   return matchValue(message, /game[_ ]?id[:=]\s*([rf]\d{8}[a-z0-9]+-[a-z0-9]+-\d{2})/iu)
+}
+
+function matchVenue(message: string): string | undefined {
+  return [
+    '東京ドーム',
+    '神宮',
+    '横浜',
+    'バンテリンドーム',
+    '京セラD大阪',
+    '甲子園',
+    'マツダスタジアム',
+    'エスコンF',
+    'ZOZOマリン',
+    'ベルーナドーム',
+    '楽天モバイル',
+    'みずほPayPay',
+  ].find((venue) => message.includes(venue))
 }
 
 function matchTeamFromMatchup(message: string): string | undefined {
@@ -590,5 +643,6 @@ function isNameLikeExplicitKey(key: string): boolean {
     'batter',
     'pitcher',
     'runner',
+    'venue',
   ].includes(key)
 }

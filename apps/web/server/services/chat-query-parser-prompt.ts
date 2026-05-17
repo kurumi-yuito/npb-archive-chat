@@ -10,6 +10,7 @@ export const chatQueryParserSystemPrompt = [
   'Keep the existing schema shape: {"intent": "...", "filters": {...}}.',
   'Only include filters supported by the schema. Omit unknown or uncertain fields.',
   'Normalize dates to YYYY-MM-DD when the message contains an explicit date.',
+  'For relative Japanese dates such as 今日, 昨日, 一昨日, 明日, normalize them to YYYY-MM-DD using the current Japan date.',
   'Map innings like "8回裏" to {"inning": 8, "half": "bottom"} and "8回表" to {"inning": 8, "half": "top"}.',
   'For event queries, valid event_type values are: ' + eventTypes + '.',
   'For event queries, valid event_subtype values are: ' + eventSubtypes + '.',
@@ -22,6 +23,7 @@ export const chatQueryParserSystemPrompt = [
 export function buildChatQueryParserUserPrompt(message: string): string {
   return [
     'Convert the following user message into structured query JSON.',
+    `Current date in Japan: ${currentJstDate()}`,
     'User message:',
     message,
     '',
@@ -31,12 +33,12 @@ export function buildChatQueryParserUserPrompt(message: string): string {
     'Filter rules:',
     '- All intents may use year, year_from, year_to when the user gives a year or year range.',
     '- search_events filters: year, year_from, year_to, game_date, inning, half, team, batter_name, pitcher_name, runner_name, event_type, event_subtype, player_name, result_text_contains, limit',
-    '- search_games filters: year, year_from, year_to, game_date, game_id, team, limit',
+    '- search_games filters: year, year_from, year_to, game_date, game_id, team, venue, limit',
     '- search_batting filters: year, year_from, year_to, game_date, player_name, player_id, team, result_text_contains, limit',
     '- search_pitching filters: year, year_from, year_to, game_date, pitcher_name, team, limit',
     '- search_roster filters: year, year_from, year_to, game_id, game_date, team, player_name, starter, limit',
     '- player_affiliation filters: year, year_from, year_to, team, player_name, player_id, limit',
-    '- game_detail filters: year, year_from, year_to, game_id, game_date, team, player_name, limit',
+    '- game_detail filters: year, year_from, year_to, game_id, game_date, team, venue, player_name, limit',
     '- aggregate_batting filters: year, year_from, year_to, game_date, player_name, team, result_text_contains, limit',
     '- aggregate_pitching filters: year, year_from, year_to, game_date, pitcher_name, team, limit',
     '- aggregate_events filters: year, year_from, year_to, game_date, inning, half, team, batter_name, pitcher_name, runner_name, event_type, event_subtype, player_name, result_text_contains, limit',
@@ -51,6 +53,20 @@ export function buildChatQueryParserUserPrompt(message: string): string {
     '- If the query asks for totals or aggregation, use aggregate_* for the relevant table.',
     '- For home run event lists (本塁打, ホームラン, HR), use search_events with event_type: "plate_appearance" and result_text_contains: "ホームラン"; do not use result_text_contains: "本".',
     '- If the query is about game lists or game ids, use search_games.',
+    '- If the query asks about a specific game or games at a venue on a date, use game_detail when the user says 試合について, 試合詳細, 結果, or スコア.',
     '- Otherwise prefer search_events.',
   ].join('\n')
+}
+
+function currentJstDate(): string {
+  const parts = new Intl.DateTimeFormat('ja-JP', {
+    timeZone: 'Asia/Tokyo',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(new Date())
+  const year = parts.find((part) => part.type === 'year')?.value
+  const month = parts.find((part) => part.type === 'month')?.value
+  const day = parts.find((part) => part.type === 'day')?.value
+  return `${year}-${month}-${day}`
 }

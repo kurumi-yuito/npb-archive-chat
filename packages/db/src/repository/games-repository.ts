@@ -1,5 +1,6 @@
 import { searchGamesFiltersSchema, type SearchGamesFilters } from '@npb/schemas'
 import type { QueryDatabase } from '../query-driver'
+import { venueSearchValues } from './venue-aliases'
 
 /** 一覧・検索向けの最小列（詳細 JSON は含めない） */
 export type GameSummaryRow = {
@@ -8,6 +9,7 @@ export type GameSummaryRow = {
   awayTeamName: string
   homeTeamName: string
   matchupText: string
+  venue: string
 }
 
 export type GameMatchingRow = {
@@ -64,6 +66,12 @@ export async function searchGames(
     values.push(normalized.team, normalized.team, normalized.team, normalized.team)
   }
 
+  if (normalized.venue) {
+    const venues = venueSearchValues(normalized.venue)
+    clauses.push(`games.venue IN (${venues.map(() => '?').join(', ')})`)
+    values.push(...venues)
+  }
+
   const whereClause = clauses.length > 0 ? `WHERE ${clauses.join(' AND ')}` : ''
   const limit = normalized.limit ?? 50
 
@@ -74,7 +82,8 @@ export async function searchGames(
         games.date AS date,
         games.away_team_name AS awayTeamName,
         games.home_team_name AS homeTeamName,
-        games.matchup_text AS matchupText
+        games.matchup_text AS matchupText,
+        games.venue AS venue
       FROM games
       ${whereClause}
       ORDER BY games.date ASC, games.game_id ASC

@@ -135,7 +135,7 @@ export const playerCandidateSchema = z.object({
 
 export type PlayerCandidate = z.infer<typeof playerCandidateSchema>
 
-/** games テーブル向けの一覧検索（venue / competition 条件は未対応） */
+/** games テーブル向けの一覧検索 */
 export const searchGamesFiltersSchema = z.object({
   year: z.number().int().min(1936).optional(),
   year_from: z.number().int().min(1936).optional(),
@@ -143,6 +143,7 @@ export const searchGamesFiltersSchema = z.object({
   game_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   game_id: z.string().min(1).optional(),
   team: z.string().min(1).optional(),
+  venue: z.string().min(1).optional(),
   limit: z.number().int().positive().max(500).optional(),
 })
 
@@ -198,6 +199,7 @@ export const gameDetailFiltersSchema = z.object({
   game_id: z.string().min(1).optional(),
   game_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   team: z.string().min(1).optional(),
+  venue: z.string().min(1).optional(),
   player_name: z.string().min(1).optional(),
   limit: z.number().int().positive().max(100).optional(),
 })
@@ -398,6 +400,7 @@ export const chatResponseSchema = z.object({
         awayTeamName: z.string().min(1),
         homeTeamName: z.string().min(1),
         matchupText: z.string().min(1),
+        venue: z.string(),
       }),
     ),
     pitching: z.array(

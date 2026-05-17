@@ -50,6 +50,7 @@ export function parseSearchGamesQuery(query: Record<string, unknown>): SearchGam
   return searchGamesFiltersSchema.parse({
     game_date: emptyToUndef(first(query.game_date)),
     game_id: emptyToUndef(first(query.game_id)),
+    venue: emptyToUndef(first(query.venue)),
     limit: optionalInt(query.limit),
   })
 }

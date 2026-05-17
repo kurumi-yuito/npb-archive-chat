@@ -211,11 +211,13 @@ describe('@npb/schemas', () => {
       searchGamesFiltersSchema.parse({
         game_date: '2025-08-15',
         game_id: 'b-l-17',
+        venue: '東京ドーム',
         limit: 50,
       }),
     ).toEqual({
       game_date: '2025-08-15',
       game_id: 'b-l-17',
+      venue: '東京ドーム',
       limit: 50,
     })
   })

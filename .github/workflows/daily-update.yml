@@ -1,6 +1,10 @@
 name: Daily NPB Scores Update
 
 on:
+  schedule:
+    # 10:05 / 16:05 / 22:05 JST. Cloudflare Cron also dispatches this workflow,
+    # but GitHub schedule keeps the update running if Worker dispatch stops.
+    - cron: '5 1,7,13 * * *'
   workflow_dispatch:
     inputs:
       date:

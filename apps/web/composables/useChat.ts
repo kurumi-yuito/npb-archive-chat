@@ -17,29 +17,83 @@ function chatRequestHeaders(): Record<string, string> {
 async function parseErrorJson(res: Response): Promise<{
   statusMessage?: string
   message?: string
-  data?: { usage?: ChatUsageInfo }
+  data?: { code?: string; usage?: ChatUsageInfo }
 } | null> {
   return (await res.json().catch(() => null)) as {
     statusMessage?: string
     message?: string
-    data?: { usage?: ChatUsageInfo }
+    data?: { code?: string; usage?: ChatUsageInfo }
   } | null
 }
 
-function extractFetchErrorMessage(error: unknown): string {
-  if (error && typeof error === 'object') {
-    const o = error as {
-      statusMessage?: string
-      message?: string
-      data?: { statusMessage?: string; message?: string }
-    }
-    if (o.data?.statusMessage) return String(o.data.statusMessage)
-    if (o.data?.message) return String(o.data.message)
-    if (o.statusMessage) return String(o.statusMessage)
-    if (o.message) return String(o.message)
+export function userFacingChatError(status: number, usage?: ChatUsageInfo): string {
+  if (status === 429 && usage) {
+    return usage.plan === 'free' && usage.limit !== null
+      ? `今月のチャットは上限（${usage.limit}回）に達しました（${usage.month}）。`
+      : '利用上限に達しました。'
   }
-  if (error instanceof Error) return error.message
-  return 'リクエストに失敗しました'
+  if (status === 401 || status === 403) {
+    return 'ログイン状態を確認してください。'
+  }
+  if (status === 503) {
+    return '現在チャットを利用できません。時間をおいて再度お試しください。'
+  }
+  if (status >= 500) {
+    return '回答の生成中に問題が発生しました。時間をおいて再度お試しください。'
+  }
+  return '質問を処理できませんでした。入力を変えて再度お試しください。'
+}
+
+export function userFacingAccountError(status?: number): string {
+  if (status === 401 || status === 403) {
+    return 'ログイン状態を確認してください。'
+  }
+  if (status === 503) {
+    return '現在アカウント機能を利用できません。時間をおいて再度お試しください。'
+  }
+  return 'アカウント情報を更新できませんでした。'
+}
+
+export function userFacingBillingError(status?: number): string {
+  if (status === 401 || status === 403) {
+    return 'Pro を開始するには Google ログインが必要です。'
+  }
+  if (status === 503) {
+    return '現在課金機能を利用できません。時間をおいて再度お試しください。'
+  }
+  return 'プランを変更できませんでした。時間をおいて再度お試しください。'
+}
+
+function errorStatus(error: unknown): number | undefined {
+  if (error && typeof error === 'object' && 'status' in error) {
+    const status = Number((error as { status?: unknown }).status)
+    return Number.isFinite(status) ? status : undefined
+  }
+  return undefined
+}
+
+function withStatus(message: string, status: number): Error & { status: number } {
+  return Object.assign(new Error(message), { status })
+}
+
+async function readUsageFromError(res: Response): Promise<ChatUsageInfo | undefined> {
+  const errBody = await parseErrorJson(res)
+  const usageFromError =
+    errBody?.data && typeof errBody.data === 'object' && 'usage' in errBody.data
+      ? (errBody.data as { usage: ChatUsageInfo }).usage
+      : undefined
+  return usageFromError
+}
+
+export function extractSafeFallbackErrorMessage(error: unknown): string {
+  const status = errorStatus(error)
+  if (status) {
+    return error instanceof Error ? error.message : userFacingChatError(status)
+  }
+  if (error instanceof TypeError) {
+    return '通信に失敗しました。接続状態を確認してください。'
+  }
+  return '処理中に問題が発生しました。時間をおいて再度お試しください。'
 }
 
 export function useChat() {
@@ -99,8 +153,7 @@ export function useChat() {
         body: JSON.stringify({ plan: nextPlan }),
       })
       if (!res.ok) {
-        const errBody = await parseErrorJson(res)
-        throw new Error(errBody?.statusMessage ?? errBody?.message ?? `HTTP ${res.status}`)
+        throw withStatus(userFacingBillingError(res.status), res.status)
       }
       const payload = (await res.json()) as ChatAccount | { redirectUrl?: string; provider?: string }
       if (payload && typeof payload === 'object' && 'redirectUrl' in payload && payload.redirectUrl) {
@@ -112,7 +165,7 @@ export function useChat() {
       plan.value = account.plan
       await refreshUsage()
     } catch (error) {
-      lastError.value = extractFetchErrorMessage(error)
+      lastError.value = userFacingBillingError(errorStatus(error))
     } finally {
       accountSaving.value = false
     }
@@ -128,14 +181,13 @@ export function useChat() {
         body: JSON.stringify(input),
       })
       if (!res.ok) {
-        const errBody = await parseErrorJson(res)
-        throw new Error(errBody?.statusMessage ?? errBody?.message ?? `HTTP ${res.status}`)
+        throw withStatus(userFacingAccountError(res.status), res.status)
       }
       const account = (await res.json()) as ChatAccount
       accountInfo.value = account
       plan.value = account.plan
     } catch (error) {
-      lastError.value = extractFetchErrorMessage(error)
+      lastError.value = userFacingAccountError(errorStatus(error))
     } finally {
       accountSaving.value = false
     }
@@ -174,25 +226,12 @@ export function useChat() {
       })
 
       if (!res.ok) {
-        const errBody = await parseErrorJson(res)
-        const usageFromError =
-          errBody?.data && typeof errBody.data === 'object' && 'usage' in errBody.data
-            ? (errBody.data as { usage: ChatUsageInfo }).usage
-            : undefined
+        const usageFromError = await readUsageFromError(res)
         if (res.status === 429 && usageFromError) {
           usageInfo.value = usageFromError
-          const u = usageFromError
-          const msg =
-            u.plan === 'free' && u.limit !== null
-              ? `今月のチャットは上限（${u.limit}回）に達しました（${u.month}）。`
-              : (errBody?.statusMessage ?? '利用上限に達しました')
-          throw Object.assign(new Error(msg), { status: res.status })
+          throw withStatus(userFacingChatError(res.status, usageFromError), res.status)
         }
-        const msg =
-          errBody?.statusMessage ??
-          errBody?.message ??
-          `HTTP ${res.status}`
-        throw Object.assign(new Error(msg), { status: res.status })
+        throw withStatus(userFacingChatError(res.status), res.status)
       }
 
       const response = (await res.json()) as ChatResponse
@@ -201,7 +240,7 @@ export function useChat() {
       const turn = turns.value.find((t) => t.id === id)
       if (turn) turn.assistant = response
     } catch (error: unknown) {
-      const msg = extractFetchErrorMessage(error)
+      const msg = extractSafeFallbackErrorMessage(error)
       lastError.value = msg
       const turn = turns.value.find((t) => t.id === id)
       if (turn) turn.errorMessage = msg

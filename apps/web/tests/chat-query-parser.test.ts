@@ -10,6 +10,24 @@ function currentJstYear(): number {
   return Number(year)
 }
 
+function currentJstDateOffset(offsetDays: number): string {
+  const parts = new Intl.DateTimeFormat('ja-JP', {
+    timeZone: 'Asia/Tokyo',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(new Date())
+  const year = Number(parts.find((part) => part.type === 'year')?.value)
+  const month = Number(parts.find((part) => part.type === 'month')?.value)
+  const day = Number(parts.find((part) => part.type === 'day')?.value)
+  const shifted = new Date(Date.UTC(year, month - 1, day + offsetDays))
+  return [
+    shifted.getUTCFullYear(),
+    String(shifted.getUTCMonth() + 1).padStart(2, '0'),
+    String(shifted.getUTCDate()).padStart(2, '0'),
+  ].join('-')
+}
+
 describe('chat-query-parser', () => {
   it('builds an events structured query from a valid LLM result', async () => {
     const parser = createChatQueryParser(
@@ -289,6 +307,16 @@ describe('chat-query-parser', () => {
       filters: {
         team: 'ヤクルト',
         player_name: '山田',
+      },
+    })
+  })
+
+  it('routes relative-date venue game questions to game detail search', () => {
+    expect(parseStructuredQueryFromMessageStub('昨日の東京ドームの試合について教えて')).toEqual({
+      intent: 'game_detail',
+      filters: {
+        game_date: currentJstDateOffset(-1),
+        venue: '東京ドーム',
       },
     })
   })

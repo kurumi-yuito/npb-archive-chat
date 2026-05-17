@@ -98,7 +98,7 @@ export function createObjectStorage(options: ObjectStorageOptions): ObjectStorag
       if (mode !== 'r2') {
         return null
       }
-      const text = r2ReadText(requireBucket(options.bucket), objectKey(prefix, normalized))
+      const text = r2ReadText(requireBucket(options.bucket), objectKey(prefix, normalized), options.endpoint)
       if (text === null || !text.trim()) {
         return null
       }
@@ -110,14 +110,14 @@ export function createObjectStorage(options: ObjectStorageOptions): ObjectStorag
       const localPath = path.join(options.workspaceRoot, 'data', normalized)
       await writeLocal(localPath, value)
       if (mode === 'r2') {
-        r2WriteText(requireBucket(options.bucket), objectKey(prefix, normalized), value, contentType)
+        r2WriteText(requireBucket(options.bucket), objectKey(prefix, normalized), value, contentType, options.endpoint)
       }
       return localPath
     },
     async putLocalFile(key: string, filePath: string, contentType = 'application/octet-stream') {
       const normalized = normalizeKey(key)
       if (mode === 'r2') {
-        r2WriteFile(requireBucket(options.bucket), objectKey(prefix, normalized), filePath, contentType)
+        r2WriteFile(requireBucket(options.bucket), objectKey(prefix, normalized), filePath, contentType, options.endpoint)
       }
       return filePath
     },
@@ -169,7 +169,13 @@ async function writeLocal(filePath: string, value: string): Promise<void> {
   await writeFile(filePath, value, 'utf8')
 }
 
-function r2ReadText(bucket: string, key: string): string | null {
+function r2ReadText(bucket: string, key: string, endpoint?: string): string | null {
+  if (canUseAwsR2(endpoint)) {
+    const result = runAwsR2(['s3', 'cp', `s3://${bucket}/${key}`, '-', '--only-show-errors'], endpoint)
+    if (result.status === 0) {
+      return result.stdout
+    }
+  }
   const result = runWrangler(['r2', 'object', 'get', `${bucket}/${key}`, '--remote', '--pipe'])
   if (result.status !== 0) {
     return null
@@ -182,7 +188,20 @@ function r2WriteText(
   key: string,
   value: string,
   contentType: string,
+  endpoint?: string,
 ): void {
+  if (canUseAwsR2(endpoint)) {
+    const result = runAwsR2(
+      ['s3', 'cp', '-', `s3://${bucket}/${key}`, '--content-type', contentType, '--only-show-errors'],
+      endpoint,
+      value,
+    )
+    if (result.status === 0) {
+      return
+    }
+    throw new Error(`R2 write failed: s3://${bucket}/${key}\n${result.stderr}`)
+  }
+
   const result = runWrangler(
     ['r2', 'object', 'put', `${bucket}/${key}`, '--remote', '--pipe', '--content-type', contentType, '--force'],
     value,
@@ -197,7 +216,19 @@ function r2WriteFile(
   key: string,
   filePath: string,
   contentType: string,
+  endpoint?: string,
 ): void {
+  if (canUseAwsR2(endpoint)) {
+    const result = runAwsR2(
+      ['s3', 'cp', filePath, `s3://${bucket}/${key}`, '--content-type', contentType, '--only-show-errors'],
+      endpoint,
+    )
+    if (result.status === 0) {
+      return
+    }
+    throw new Error(`R2 write failed: s3://${bucket}/${key}\n${result.stderr}`)
+  }
+
   const result = runWrangler(
     ['r2', 'object', 'put', `${bucket}/${key}`, '--remote', '--file', filePath, '--content-type', contentType, '--force'],
   )
@@ -211,6 +242,39 @@ function localDirectoryExists(directory: string): boolean {
     return readdirSync(directory).length > 0
   } catch {
     return false
+  }
+}
+
+function canUseAwsR2(endpoint?: string): boolean {
+  return Boolean(resolveR2Endpoint(endpoint) && process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY)
+}
+
+function resolveR2Endpoint(endpoint?: string): string | undefined {
+  if (endpoint) {
+    return endpoint
+  }
+  const accountId = process.env.CLOUDFLARE_ACCOUNT_ID
+  return accountId ? `https://${accountId}.r2.cloudflarestorage.com` : undefined
+}
+
+function runAwsR2(args: string[], endpoint?: string, input?: string): { status: number; stdout: string; stderr: string } {
+  const resolvedEndpoint = resolveR2Endpoint(endpoint)
+  if (!resolvedEndpoint) {
+    return { status: 1, stdout: '', stderr: 'R2 endpoint is not configured' }
+  }
+  const command = ['aws', ...args, '--endpoint-url', resolvedEndpoint].map(shellEscape).join(' ')
+  const result = spawnSync('bash', ['-lc', command], {
+    input,
+    encoding: 'utf8',
+    maxBuffer: 1024 * 1024 * 128,
+  })
+  if (result.error) {
+    return { status: 1, stdout: '', stderr: result.error.message }
+  }
+  return {
+    status: result.status ?? 1,
+    stdout: result.stdout ?? '',
+    stderr: result.stderr ?? '',
   }
 }
 
