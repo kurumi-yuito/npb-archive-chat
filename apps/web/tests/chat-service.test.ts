@@ -692,6 +692,51 @@ describe('chat-service', () => {
     expect(response.answer.summary).toBe('条件に一致する打撃成績は見つかりませんでした。DB結果にないため、推測では回答しません。')
     expect(response.answer.summary).not.toContain('選手を特定できない')
   })
+
+  it('routes generic player stats questions to pitching when the resolved player is a pitcher', async () => {
+    const service = createChatService(createFakeQueryService({
+      empty: true,
+      playerCandidates: [{
+        player_id: '41045137',
+        name: '藤浪 晋太郎',
+        primary_team: '横浜DeNAベイスターズ',
+        roles: ['bis_roster', 'bis_pitching'],
+        teams: ['横浜DeNAベイスターズ'],
+        years: [2026],
+      }],
+      searchPitchingLines: async () => [{
+        gameId: 'bis:2026:db:idp1',
+        gameDate: '2026-01-01',
+        team: '横浜DeNAベイスターズ',
+        pitcherName: '藤浪 晋太郎',
+        inningsPitched: '12',
+        pitchCount: 0,
+        strikeouts: 15,
+        runs: 4,
+        earnedRuns: 4,
+        sourceKind: 'bis_pitching',
+        sourceUrl: 'https://npb.jp/bis/2026/stats/idp1_db.html',
+        statsJson: JSON.stringify({ 登板: '10', 投球回: '12', 奪三振: '15', 防御率: '3.00' }),
+      }],
+    }), {
+      parseStructuredQueryFromMessage: async () => ({
+        intent: 'search_batting',
+        filters: {
+          player_name: '藤浪晋太郎',
+        },
+      }),
+    })
+
+    const response = await service.answerQuestion('藤浪晋太郎の成績について教えて')
+
+    expect(response.structured_query.intent).toBe('search_pitching')
+    expect(response.structured_query.filters).toMatchObject({
+      pitcher_name: '藤浪 晋太郎',
+    })
+    expect(response.answer.result_count).toBe(1)
+    expect(response.answer.summary).toContain('投手成績')
+    expect(response.answer.summary).toContain('奪三振15')
+  })
 })
 
 function createFakeQueryService(options: {
@@ -712,6 +757,7 @@ function createFakeQueryService(options: {
     teams: string[]
     years: number[]
   }>
+  searchPitchingLines?: ChatQueryService['searchPitchingLines']
 } = {}): ChatQueryService {
   const emptyResults = options.empty === true
   return {
@@ -752,7 +798,7 @@ function createFakeQueryService(options: {
           walks: 0,
           rawText: '山田 左越本 中前安',
         }],
-    searchPitchingLines: async () => [],
+    searchPitchingLines: options.searchPitchingLines ?? (async () => []),
     searchRosterEntries: async () => [],
     searchPlayerAffiliations: async () => emptyResults
       ? []

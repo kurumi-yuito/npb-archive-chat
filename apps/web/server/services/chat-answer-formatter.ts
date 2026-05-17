@@ -36,6 +36,7 @@ export function formatChatAnswer({
     ...sources.map((source) => source.source_url),
     ...results.affiliations.flatMap((row) => row.sourceUrl ? [row.sourceUrl] : []),
     ...results.batting.flatMap((row) => row.sourceUrl ? [row.sourceUrl] : []),
+    ...results.pitching.flatMap((row) => row.sourceUrl ? [row.sourceUrl] : []),
   ]))
   const resultCount =
     structuredQuery.intent === 'search_events'
@@ -121,6 +122,9 @@ function buildSummary(
     if (isEvaluationQuestion(question, structuredQuery.filters)) {
       return formatPitchingEvaluationSummary(results.pitching as PitchingLineRow[])
     }
+    if (first.sourceKind === 'bis_pitching') {
+      return formatBisPitchingSummary(first, resultCount)
+    }
     return `条件に一致する投手成績が${resultCount}件あります。先頭は${first.gameDate}の${first.pitcherName}で、${first.inningsPitched}回 ${first.strikeouts}奪三振です。`
   }
 
@@ -178,6 +182,29 @@ function formatBisBattingSummary(row: BattingLineRow, resultCount: number): stri
   ].filter(Boolean)
   return [
     `${year}年の${row.team} ${row.playerName}の打撃成績です。`,
+    ...(statLine.length > 0 ? [statLine.join('、')] : []),
+    ...(resultCount > 1 ? [`同条件の成績行が${resultCount}件あります。`] : []),
+    ...(row.sourceUrl ? [`source: ${row.sourceUrl}`] : []),
+  ].join('\n')
+}
+
+function formatBisPitchingSummary(row: PitchingLineRow, resultCount: number): string {
+  const year = row.gameDate.slice(0, 4)
+  const stats = parseStatsJson(row.statsJson)
+  const statLine = [
+    statPart(stats, '登板', '登板'),
+    statPart(stats, '勝利', '勝利'),
+    statPart(stats, '敗北', '敗北'),
+    statPart(stats, 'セーブ', 'セーブ'),
+    statPart(stats, 'ホールド', 'ホールド'),
+    statPart(stats, '投球回', '投球回'),
+    statPart(stats, '奪三振', '奪三振'),
+    statPart(stats, '失点', '失点'),
+    statPart(stats, '自責点', '自責点'),
+    statPart(stats, '防御率', '防御率'),
+  ].filter(Boolean)
+  return [
+    `${year}年の${row.team} ${row.pitcherName}の投手成績です。`,
     ...(statLine.length > 0 ? [statLine.join('、')] : []),
     ...(resultCount > 1 ? [`同条件の成績行が${resultCount}件あります。`] : []),
     ...(row.sourceUrl ? [`source: ${row.sourceUrl}`] : []),
@@ -424,6 +451,10 @@ function positiveCountStatPart(stats: Record<string, unknown>, key: string, labe
 
 function formatPitchingEvaluationSummary(rows: PitchingLineRow[]): string {
   const pitcherName = rows[0]?.pitcherName ?? '対象投手'
+  const seasonRow = rows.find((row) => row.sourceKind === 'bis_pitching')
+  if (seasonRow) {
+    return formatBisPitchingEvaluationSummary(seasonRow, rows.length)
+  }
   const gameRows = rows.slice(0, 5)
   const totals = gameRows.reduce(
     (acc, row) => ({
@@ -443,6 +474,28 @@ function formatPitchingEvaluationSummary(rows: PitchingLineRow[]): string {
     `${pitcherName}は、DBで確認できる直近${gameRows.length}登板の投球内容からポジティブに評価できます。`,
     `根拠は${positives.join('、')}です。`,
     `対象試合: ${gameRows.map((row) => formatDateJa(row.gameDate)).join('、')}`,
+  ].join('\n')
+}
+
+function formatBisPitchingEvaluationSummary(row: PitchingLineRow, resultCount: number): string {
+  const stats = parseStatsJson(row.statsJson)
+  const year = row.gameDate.slice(0, 4)
+  const positives = [
+    positiveCountStatPart(stats, '登板', '登板'),
+    positiveCountStatPart(stats, '勝利', '勝利'),
+    positiveCountStatPart(stats, 'セーブ', 'セーブ'),
+    positiveCountStatPart(stats, 'ホールド', 'ホールド'),
+    positiveCountStatPart(stats, '奪三振', '奪三振'),
+    statPart(stats, '投球回', '投球回'),
+    statPart(stats, '防御率', '防御率'),
+  ].filter(Boolean)
+  return [
+    `${row.team} ${row.pitcherName}は、DBで確認できる${year}年シーズン投手成績からポジティブに評価できます。`,
+    positives.length > 0
+      ? `根拠は${positives.join('、')}です。`
+      : '根拠となる成績行は確認できていますが、主要指標の値はDB行から取り出せませんでした。',
+    ...(resultCount > 1 ? [`同条件の成績行が${resultCount}件あります。`] : []),
+    ...(row.sourceUrl ? [`source: ${row.sourceUrl}`] : []),
   ].join('\n')
 }
 

@@ -1,5 +1,6 @@
 import {
   chatResponseCoreSchema,
+  type ChatStructuredQuery,
   type ChatResponseCore,
   type PlayerAffiliationFilters,
 } from '@npb/schemas'
@@ -48,8 +49,14 @@ export function createChatService(
     async answerQuestion(message: string): Promise<ChatResponseCore> {
       const parsedQuery = normalizeStructuredQuery(await queryParser(message))
       const resolved = await resolvePlayer(queryService, parsedQuery)
-      const structuredQuery = resolved.structuredQuery
+      let structuredQuery = resolved.structuredQuery
       const playerResolution = resolved.resolution
+      if (
+        structuredQuery.intent === 'search_batting' &&
+        shouldPreferPitchingForGenericPlayerStats(message, structuredQuery, playerResolution)
+      ) {
+        structuredQuery = toPitchingStatsQuery(structuredQuery)
+      }
 
       const emptyResults = {
         events: [],
@@ -89,6 +96,19 @@ export function createChatService(
                         : structuredQuery.intent === 'aggregate_pitching'
                           ? { ...emptyResults, aggregates: await queryService.aggregatePitchingLines(structuredQuery.filters) }
                           : { ...emptyResults, aggregates: await queryService.aggregateEvents(structuredQuery.filters) }
+
+      if (
+        structuredQuery.intent === 'search_batting' &&
+        shouldFallbackToPitchingForGenericPlayerStats(message, structuredQuery, playerResolution) &&
+        results.batting.length === 0
+      ) {
+        const pitchingQuery = toPitchingStatsQuery(structuredQuery)
+        const pitching = await queryService.searchPitchingLines(pitchingQuery.filters)
+        if (pitching.length > 0) {
+          structuredQuery = pitchingQuery
+          results = { ...emptyResults, pitching }
+        }
+      }
 
       if (
         structuredQuery.intent === 'search_batting' &&
@@ -178,6 +198,66 @@ function shouldUseFinalAnswerLlm(
     return false
   }
   return true
+}
+
+function shouldPreferPitchingForGenericPlayerStats(
+  message: string,
+  structuredQuery: ChatStructuredQuery,
+  resolution: PlayerResolution | null,
+): boolean {
+  if (
+    structuredQuery.intent !== 'search_batting' ||
+    !isGenericPlayerStatsQuestion(message) ||
+    resolution?.status !== 'resolved'
+  ) {
+    return false
+  }
+  const roles = new Set(resolution.candidates.flatMap((candidate) => candidate.roles))
+  const hasPitchingRole = roles.has('pitcher') || roles.has('bis_pitching')
+  const hasBattingRole = roles.has('batter') || roles.has('bis_batting')
+  return hasPitchingRole && !hasBattingRole
+}
+
+function shouldFallbackToPitchingForGenericPlayerStats(
+  message: string,
+  structuredQuery: ChatStructuredQuery,
+  resolution: PlayerResolution | null,
+): boolean {
+  return structuredQuery.intent === 'search_batting' &&
+    isGenericPlayerStatsQuestion(message) &&
+    resolution?.status === 'resolved'
+}
+
+function isGenericPlayerStatsQuestion(message: string): boolean {
+  if (!/成績|評価|調子|状態|どう思う/u.test(message)) {
+    return false
+  }
+  if (/打撃|打席|打数|安打|打点|打率|出塁率|長打率|本塁打|ホームラン|\bHR\b|ＨＲ/u.test(message)) {
+    return false
+  }
+  if (/投手|投球|登板|奪三振|投球回|防御率|セーブ|ホールド/u.test(message)) {
+    return false
+  }
+  return true
+}
+
+function toPitchingStatsQuery(
+  structuredQuery: Extract<ChatStructuredQuery, { intent: 'search_batting' }>,
+): Extract<ChatStructuredQuery, { intent: 'search_pitching' }> {
+  const filters = structuredQuery.filters
+  return {
+    intent: 'search_pitching',
+    filters: {
+      year: filters.year,
+      year_from: filters.year_from,
+      year_to: filters.year_to,
+      game_date: filters.game_date,
+      pitcher_name: filters.player_name,
+      team: filters.team,
+      recent: filters.recent,
+      limit: filters.limit,
+    },
+  }
 }
 
 function getPlayerAffiliationSearchFilters(

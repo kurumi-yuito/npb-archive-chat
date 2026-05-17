@@ -416,6 +416,9 @@ export const chatResponseSchema = z.object({
         strikeouts: z.number().int().nonnegative(),
         runs: z.number().int().nonnegative(),
         earnedRuns: z.number().int().nonnegative(),
+        sourceKind: z.enum(['box', 'bis_pitching']).optional(),
+        sourceUrl: z.string().nullable().optional(),
+        statsJson: z.string().nullable().optional(),
       }),
     ),
     batting: z.array(
