@@ -26,6 +26,7 @@ type FormatChatAnswerInput = {
 type EventSummaryRow = ChatResponse['results']['events'][number]
 
 export function formatChatAnswer({
+  question,
   structuredQuery,
   results,
   sources,
@@ -57,7 +58,7 @@ export function formatChatAnswer({
     : 0
 
   return {
-    summary: buildSummary(structuredQuery, results, resultCount, playerResolution),
+    summary: buildSummary(question, structuredQuery, results, resultCount, playerResolution),
     result_count: resultCount,
     ...(remainingCount > 0 ? { remaining_count: remainingCount } : {}),
     source_urls: sourceUrls,
@@ -69,6 +70,7 @@ export function formatChatAnswer({
 const SEARCH_EVENTS_SUMMARY_LIMIT = 20
 
 function buildSummary(
+  question: string,
   structuredQuery: ChatStructuredQuery,
   results: ChatResponse['results'],
   resultCount: number,
@@ -116,15 +118,21 @@ function buildSummary(
 
   if (structuredQuery.intent === 'search_pitching') {
     const first = results.pitching[0] as PitchingLineRow
+    if (isEvaluationQuestion(question, structuredQuery.filters)) {
+      return formatPitchingEvaluationSummary(results.pitching as PitchingLineRow[])
+    }
     return `条件に一致する投手成績が${resultCount}件あります。先頭は${first.gameDate}の${first.pitcherName}で、${first.inningsPitched}回 ${first.strikeouts}奪三振です。`
   }
 
   if (structuredQuery.intent === 'search_batting') {
     const first = results.batting[0] as BattingLineRow
+    if (isEvaluationQuestion(question, structuredQuery.filters)) {
+      return formatBattingEvaluationSummary(results.batting as BattingLineRow[], resultCount)
+    }
     if (first.sourceKind === 'bis_batting') {
       return formatBisBattingSummary(first, resultCount)
     }
-    return `条件に一致する打撃成績が${resultCount}件あります。先頭は${first.gameDate} ${first.gameId} の${first.playerName}で、${first.atBats}打数${first.hits}安打${first.runsBattedIn}打点です。`
+    return `条件に一致する打撃成績が${resultCount}件あります。先頭は${formatDateJa(first.gameDate)}の${first.playerName}で、${first.atBats}打数${first.hits}安打${first.runsBattedIn}打点です。`
   }
 
   if (structuredQuery.intent === 'search_roster') {
@@ -138,8 +146,7 @@ function buildSummary(
   }
 
   if (structuredQuery.intent === 'game_detail') {
-    const first = results.gameDetails[0] as GameDetailRow
-    return `条件に一致する試合詳細が${resultCount}件あります。先頭は${first.date} ${first.gameId}、${first.matchupText}（${first.venue}）です。`
+    return formatGameDetailSummary(results.gameDetails as GameDetailRow[], resultCount)
   }
 
   if (
@@ -177,7 +184,243 @@ function formatBisBattingSummary(row: BattingLineRow, resultCount: number): stri
   ].join('\n')
 }
 
+function formatGameDetailSummary(rows: GameDetailRow[], resultCount: number): string {
+  const lines = rows.slice(0, 5).flatMap((row, index) => {
+    const linescore = parseLinescore(row.linescoreJson)
+    const result = linescore ? describeGameResult(row, linescore) : `${row.awayTeamName} vs ${row.homeTeamName}`
+    const highlights = linescore ? describeGameHighlights(linescore) : []
+    return [
+      `${index + 1}. ${formatDateJa(row.date)} ${row.venue}、${result}`,
+      ...highlights.map((highlight) => `   ${highlight}`),
+    ]
+  })
+  return [
+    resultCount === 1
+      ? '該当する試合は1件です。'
+      : `該当する試合は${resultCount}件です。`,
+    '',
+    ...lines,
+    ...(resultCount > 5 ? ['', `ほか${resultCount - 5}件は省略しています。`] : []),
+  ].join('\n')
+}
+
+type ParsedLinescore = {
+  away: LinescoreSide
+  home: LinescoreSide
+}
+
+type LinescoreSide = {
+  team: string
+  innings: string[]
+  totals: {
+    runs: number
+    hits: number
+    errors: number
+  }
+}
+
+function parseLinescore(value: string | null | undefined): ParsedLinescore | null {
+  const parsed = parseJsonObject(value)
+  const away = parseLinescoreSide(parsed.away)
+  const home = parseLinescoreSide(parsed.home)
+  return away && home ? { away, home } : null
+}
+
+function parseLinescoreSide(value: unknown): LinescoreSide | null {
+  if (!value || typeof value !== 'object') {
+    return null
+  }
+  const record = value as Record<string, unknown>
+  const totals = record.totals
+  if (!totals || typeof totals !== 'object') {
+    return null
+  }
+  const totalsRecord = totals as Record<string, unknown>
+  const runs = toNumber(totalsRecord.runs)
+  const hits = toNumber(totalsRecord.hits)
+  const errors = toNumber(totalsRecord.errors)
+  if (runs === null || hits === null || errors === null) {
+    return null
+  }
+  return {
+    team: typeof record.team === 'string' && record.team ? record.team : '',
+    innings: Array.isArray(record.innings) ? record.innings.map((inning) => String(inning)) : [],
+    totals: { runs, hits, errors },
+  }
+}
+
+function describeGameResult(row: GameDetailRow, linescore: ParsedLinescore): string {
+  const away = linescore.away
+  const home = linescore.home
+  const awayTeam = displayTeamName(away.team || row.awayTeamName)
+  const homeTeam = displayTeamName(home.team || row.homeTeamName)
+  const score = `${away.totals.runs}-${home.totals.runs}`
+  if (away.totals.runs > home.totals.runs) {
+    return `${awayTeam}が${homeTeam}に${score}で勝利しました。`
+  }
+  if (home.totals.runs > away.totals.runs) {
+    return `${homeTeam}が${awayTeam}に${home.totals.runs}-${away.totals.runs}で勝利しました。`
+  }
+  return `${awayTeam}と${homeTeam}は${score}で引き分けました。`
+}
+
+function describeGameHighlights(linescore: ParsedLinescore): string[] {
+  const highlights: string[] = []
+  const scoring = scoringInnings(linescore)
+  const decisive = decisiveScoring(linescore, scoring)
+  if (decisive) {
+    highlights.push(decisive)
+  }
+  highlights.push(
+    `安打数は${displayTeamName(linescore.away.team)}が${linescore.away.totals.hits}本、${displayTeamName(linescore.home.team)}が${linescore.home.totals.hits}本でした。`,
+  )
+  if (linescore.away.totals.errors > 0 || linescore.home.totals.errors > 0) {
+    highlights.push(
+      `失策は${displayTeamName(linescore.away.team)}が${linescore.away.totals.errors}、${displayTeamName(linescore.home.team)}が${linescore.home.totals.errors}です。`,
+    )
+  }
+  return highlights
+}
+
+type ScoringHalfInning = {
+  inning: number
+  half: '表' | '裏'
+  team: string
+  runs: number
+  awayScoreAfter: number
+  homeScoreAfter: number
+}
+
+function scoringInnings(linescore: ParsedLinescore): ScoringHalfInning[] {
+  const max = Math.max(linescore.away.innings.length, linescore.home.innings.length)
+  const scoring: ScoringHalfInning[] = []
+  let awayScore = 0
+  let homeScore = 0
+  for (let index = 0; index < max; index += 1) {
+    const awayRuns = inningRuns(linescore.away.innings[index])
+    if (awayRuns > 0) {
+      awayScore += awayRuns
+      scoring.push({
+        inning: index + 1,
+        half: '表',
+        team: displayTeamName(linescore.away.team),
+        runs: awayRuns,
+        awayScoreAfter: awayScore,
+        homeScoreAfter: homeScore,
+      })
+    }
+    const homeRuns = inningRuns(linescore.home.innings[index])
+    if (homeRuns > 0) {
+      homeScore += homeRuns
+      scoring.push({
+        inning: index + 1,
+        half: '裏',
+        team: displayTeamName(linescore.home.team),
+        runs: homeRuns,
+        awayScoreAfter: awayScore,
+        homeScoreAfter: homeScore,
+      })
+    }
+  }
+  return scoring
+}
+
+function decisiveScoring(linescore: ParsedLinescore, scoring: ScoringHalfInning[]): string | undefined {
+  const awayWon = linescore.away.totals.runs > linescore.home.totals.runs
+  const homeWon = linescore.home.totals.runs > linescore.away.totals.runs
+  if (!awayWon && !homeWon) {
+    const last = scoring.at(-1)
+    return last ? `${last.inning}回${last.half}に${last.team}が${last.runs}点を取り、終盤まで競った展開でした。` : undefined
+  }
+  const winner = awayWon ? displayTeamName(linescore.away.team) : displayTeamName(linescore.home.team)
+  const decisive = scoring.find((score) => {
+    if (awayWon && score.team === winner) {
+      return score.awayScoreAfter > score.homeScoreAfter
+    }
+    if (homeWon && score.team === winner) {
+      return score.homeScoreAfter > score.awayScoreAfter
+    }
+    return false
+  })
+  if (!decisive) {
+    return undefined
+  }
+  return `${decisive.inning}回${decisive.half}に${winner}が${decisive.runs}点を取り、ここでリードを奪いました。`
+}
+
+function inningRuns(value: string | undefined): number {
+  if (!value || /x|X|－|-/.test(value)) {
+    return 0
+  }
+  const parsed = Number.parseInt(value, 10)
+  return Number.isFinite(parsed) ? parsed : 0
+}
+
+function formatBattingEvaluationSummary(rows: BattingLineRow[], resultCount: number): string {
+  const playerName = rows[0]?.playerName ?? '対象選手'
+  const gameRows = rows.filter((row) => row.sourceKind !== 'bis_batting').slice(0, 5)
+  if (gameRows.length === 0) {
+    return formatBisBattingSummary(rows[0]!, resultCount)
+  }
+  const totals = gameRows.reduce(
+    (acc, row) => ({
+      atBats: acc.atBats + row.atBats,
+      hits: acc.hits + row.hits,
+      runsBattedIn: acc.runsBattedIn + row.runsBattedIn,
+      runs: acc.runs + row.runs,
+      walks: acc.walks + (row.walks ?? 0),
+    }),
+    { atBats: 0, hits: 0, runsBattedIn: 0, runs: 0, walks: 0 },
+  )
+  const average = totals.atBats > 0 ? totals.hits / totals.atBats : null
+  const positives = [
+    totals.hits > 0 ? `${gameRows.length}試合で${totals.hits}安打` : undefined,
+    totals.runsBattedIn > 0 ? `${totals.runsBattedIn}打点` : undefined,
+    totals.walks > 0 ? `${totals.walks}四球` : undefined,
+    average !== null ? `打率${average.toFixed(3).replace(/^0/u, '')}` : undefined,
+  ].filter(Boolean)
+  return [
+    `${playerName}は、DBで確認できる直近${gameRows.length}試合の打撃内容を見る限り、ポジティブに評価できます。`,
+    positives.length > 0
+      ? `根拠は${positives.join('、')}です。`
+      : '安打や打点は確認できませんが、直近試合の出場実績は確認できます。',
+    `対象試合: ${gameRows.map((row) => formatDateJa(row.gameDate)).join('、')}`,
+  ].join('\n')
+}
+
+function formatPitchingEvaluationSummary(rows: PitchingLineRow[]): string {
+  const pitcherName = rows[0]?.pitcherName ?? '対象投手'
+  const gameRows = rows.slice(0, 5)
+  const totals = gameRows.reduce(
+    (acc, row) => ({
+      strikeouts: acc.strikeouts + row.strikeouts,
+      runs: acc.runs + row.runs,
+      earnedRuns: acc.earnedRuns + row.earnedRuns,
+      pitchCount: acc.pitchCount + row.pitchCount,
+    }),
+    { strikeouts: 0, runs: 0, earnedRuns: 0, pitchCount: 0 },
+  )
+  const positives = [
+    totals.strikeouts > 0 ? `${gameRows.length}試合で${totals.strikeouts}奪三振` : undefined,
+    totals.earnedRuns === 0 ? '自責点0' : `${totals.earnedRuns}自責点`,
+    totals.pitchCount > 0 ? `${totals.pitchCount}球` : undefined,
+  ].filter(Boolean)
+  return [
+    `${pitcherName}は、DBで確認できる直近${gameRows.length}登板の投球内容からポジティブに評価できます。`,
+    `根拠は${positives.join('、')}です。`,
+    `対象試合: ${gameRows.map((row) => formatDateJa(row.gameDate)).join('、')}`,
+  ].join('\n')
+}
+
+function isEvaluationQuestion(question: string, filters: Record<string, unknown>): boolean {
+  return Boolean(filters.recent) || /評価|調子|状態|最近どう|どう思/u.test(question)
+}
+
 function parseStatsJson(value: string | null | undefined): Record<string, unknown> {
+  return parseJsonObject(value)
+}
+
+function parseJsonObject(value: string | null | undefined): Record<string, unknown> {
   if (!value) {
     return {}
   }
@@ -189,6 +432,43 @@ function parseStatsJson(value: string | null | undefined): Record<string, unknow
   } catch {
     return {}
   }
+}
+
+function toNumber(value: unknown): number | null {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return value
+  }
+  if (typeof value === 'string' && value.trim()) {
+    const parsed = Number(value)
+    return Number.isFinite(parsed) ? parsed : null
+  }
+  return null
+}
+
+function formatDateJa(date: string): string {
+  const match = date.match(/^(\d{4})-(\d{2})-(\d{2})$/u)
+  if (!match) {
+    return date
+  }
+  return `${Number(match[1])}年${Number(match[2])}月${Number(match[3])}日`
+}
+
+function displayTeamName(team: string): string {
+  const aliases: Record<string, string> = {
+    Yomiuri: '巨人',
+    DeNA: 'DeNA',
+    Hanshin: '阪神',
+    Hiroshima: '広島',
+    Chunichi: '中日',
+    Yakult: 'ヤクルト',
+    'Nippon-Ham': '日本ハム',
+    Rakuten: '楽天',
+    Seibu: '西武',
+    Lotte: 'ロッテ',
+    ORIX: 'オリックス',
+    SoftBank: 'ソフトバンク',
+  }
+  return aliases[team] ?? team
 }
 
 function statPart(stats: Record<string, unknown>, key: string, label: string): string | undefined {

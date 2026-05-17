@@ -44,6 +44,55 @@ describe('chat-answer-formatter', () => {
     expect(answer.summary).not.toContain('21. 2025-05-21')
     expect(answer.summary).toContain('ほか1件は省略しています。')
   })
+
+  it('formats game details with winner, score, and highlights without exposing game ids', () => {
+    const results = emptyResults()
+    results.gameDetails = [{
+      gameId: 'r20260516g-db-08',
+      date: '2026-05-16',
+      venue: 'Tokyo Dome',
+      competition: null,
+      awayTeamName: 'DeNA',
+      homeTeamName: 'Yomiuri',
+      matchupText: 'DeNA vs Yomiuri',
+      linescoreJson: JSON.stringify({
+        away: { team: 'DeNA', innings: ['1', '0', '2', '0', '0', '0', '0', '0', '0'], totals: { runs: 3, hits: 10, errors: 1 } },
+        home: { team: 'Yomiuri', innings: ['0', '1', '2', '0', '0', '0', '1', '0', 'X'], totals: { runs: 4, hits: 11, errors: 1 } },
+      }),
+    }]
+
+    const answer = formatChatAnswer({
+      question: '昨日の東京ドームでの試合について教えて',
+      structuredQuery: { intent: 'game_detail', filters: { game_date: '2026-05-16', venue: '東京ドーム' } },
+      results,
+      sources: [],
+    })
+
+    expect(answer.summary).toContain('巨人がDeNAに4-3で勝利しました。')
+    expect(answer.summary).toContain('7回裏に巨人が1点を取り、ここでリードを奪いました。')
+    expect(answer.summary).toContain('安打数はDeNAが10本、巨人が11本でした。')
+    expect(answer.summary).not.toContain('r20260516g-db-08')
+  })
+
+  it('formats recent batting lines as a positive player evaluation', () => {
+    const results = emptyResults()
+    results.batting = [
+      battingRow('2026-05-16', 4, 2, 1, 0),
+      battingRow('2026-05-15', 3, 1, 0, 1),
+    ]
+
+    const answer = formatChatAnswer({
+      question: '村上の最近の評価は',
+      structuredQuery: { intent: 'search_batting', filters: { player_name: '村上', recent: true } },
+      results,
+      sources: [],
+    })
+
+    expect(answer.summary).toContain('村上は、DBで確認できる直近2試合の打撃内容を見る限り、ポジティブに評価できます。')
+    expect(answer.summary).toContain('2試合で3安打')
+    expect(answer.summary).toContain('打点')
+    expect(answer.summary).toContain('打率.429')
+  })
 })
 
 function emptyResults(): ChatResponse['results'] {
@@ -76,5 +125,33 @@ function eventRow(index: number): EventRow {
     resultText: 'レフト2ランホームラン（打点2）',
     eventAttributesJson: null,
     sourceUrl: `https://npb.jp/scores/2025/05${day}/s-d-${day}/playbyplay.html`,
+  }
+}
+
+function battingRow(
+  gameDate: string,
+  atBats: number,
+  hits: number,
+  runsBattedIn: number,
+  walks: number,
+) {
+  return {
+    gameId: `r${gameDate.replaceAll('-', '')}s-d-01`,
+    gameDate,
+    team: 'ヤクルト',
+    playerName: '村上',
+    battingOrder: 4,
+    position: '三',
+    atBats,
+    runs: 0,
+    hits,
+    runsBattedIn,
+    stolenBases: 0,
+    strikeouts: 1,
+    walks,
+    rawText: null,
+    sourceKind: 'box' as const,
+    sourceUrl: null,
+    statsJson: null,
   }
 }

@@ -267,6 +267,22 @@ describe('chat-query-parser', () => {
       },
     })
 
+    expect(parseStructuredQueryFromMessageStub('村上の最近の評価は')).toEqual({
+      intent: 'search_batting',
+      filters: {
+        player_name: '村上',
+        recent: true,
+      },
+    })
+
+    expect(parseStructuredQueryFromMessageStub('益田投手の最近の調子はどう')).toEqual({
+      intent: 'search_pitching',
+      filters: {
+        pitcher_name: '益田',
+        recent: true,
+      },
+    })
+
     expect(parseStructuredQueryFromMessageStub('2018年のgame_id=r20180524e-b-12のスタメン')).toEqual({
       intent: 'search_roster',
       filters: {

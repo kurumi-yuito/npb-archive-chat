@@ -71,7 +71,7 @@ export async function searchPitchingLines(
       FROM pitching_lines
       INNER JOIN games ON games.game_id = pitching_lines.game_id
       ${whereClause}
-      ORDER BY games.date ASC, pitching_lines.game_id ASC, pitching_lines.row_index ASC
+      ORDER BY games.date ${normalized.recent ? 'DESC' : 'ASC'}, pitching_lines.game_id ASC, pitching_lines.row_index ASC
       LIMIT ?`,
     )
     .all(...values, limit)

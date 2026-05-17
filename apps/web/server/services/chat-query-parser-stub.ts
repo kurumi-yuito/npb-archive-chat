@@ -160,6 +160,12 @@ function inferIntent(
   if (/成績/u.test(message) && /投手|登板|奪三振|投球回|防御率|セーブ/u.test(message)) {
     return 'search_pitching'
   }
+  if (/評価|調子|状態|最近どう|どう思/u.test(message) && /投手|登板|奪三振|投球回|防御率|セーブ/u.test(message)) {
+    return 'search_pitching'
+  }
+  if (/評価|調子|状態|最近どう|どう思/u.test(message) && !/イベント/u.test(message)) {
+    return 'search_batting'
+  }
   if (/成績|打席結果|打撃成績|打数|安打|打点|打率|出塁率|長打率|本塁打一覧|ホームラン一覧|\bHR\b|ＨＲ/u.test(message) && !/イベント/u.test(message)) {
     if (homeRunPattern.test(message)) {
       return 'search_events'
@@ -195,9 +201,13 @@ function buildBattingFilters(
   message: string,
   explicit: Record<string, string>,
 ): SearchBattingLinesFilters {
+  const evaluationPhrase =
+    matchValue(message, /(.+?)の最近(?:の)?(?:評価|調子|状態)/u) ??
+    matchValue(message, /(.+?)(?:の評価|の調子|の状態|はどう|をどう思)/u)
   const battingPhrase =
     matchValue(message, /(?:\d{4}年(?:に|の)?|今年(?:の)?|今季(?:の)?|横断で)?(.+?)(?:の今年の成績|の今季の成績|の成績|の打席結果|の打撃成績|の安打|の打点)/u) ??
     matchValue(message, /(?:\d{4}年(?:に|の)?|今年(?:の)?|今季(?:の)?|横断で)?(.+?)(?:が打った本塁打一覧)/u)
+  const isEvaluation = /評価|調子|状態|最近どう|どう思/u.test(message)
   return {
     ...matchYearRange(message, explicit),
     game_date: explicit.game_date ?? matchDate(message),
@@ -205,12 +215,14 @@ function buildBattingFilters(
       explicit.player_name ??
       explicit.batter_name ??
       explicit.batter ??
+      extractPlayerNameFromPhrase(evaluationPhrase) ??
       extractPlayerNameFromPhrase(battingPhrase),
     team:
       explicit.team ??
       matchValue(message, /(?:team|チーム)(?:は|=|:)\s*([^\s、。]+)/u) ??
-      extractTeamQualifierFromPhrase(battingPhrase),
+      (isEvaluation ? undefined : extractTeamQualifierFromPhrase(battingPhrase)),
     result_text_contains: explicit.result_text_contains,
+    recent: isEvaluation ? true : undefined,
     limit: toInt(explicit.limit),
   }
 }
@@ -220,8 +232,10 @@ function buildPitchingFilters(
   explicit: Record<string, string>,
 ): SearchPitchingLinesFilters {
   const pitcherFromPhrase = extractPlayerNameFromPhrase(
-    matchValue(message, /(.+?)の投手成績/u),
-  )
+    matchValue(message, /(.+?)の投手成績/u) ??
+    matchValue(message, /(.+?)の最近(?:の)?(?:評価|調子|状態)/u) ??
+    matchValue(message, /(.+?)(?:投手)?(?:の評価|の調子|の状態|はどう|をどう思)/u),
+  )?.replace(/投手$/u, '')
 
   return {
     ...matchYearRange(message, explicit),
@@ -235,6 +249,7 @@ function buildPitchingFilters(
     team:
       explicit.team ??
       matchValue(message, /(?:team|チーム)(?:は|=|:)\s*([^\s、。]+)/u),
+    recent: /評価|調子|状態|最近どう|どう思/u.test(message) ? true : undefined,
     limit: toInt(explicit.limit),
   }
 }

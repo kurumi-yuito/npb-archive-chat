@@ -30,7 +30,7 @@ export async function searchBattingLines(
 ): Promise<BattingLineRow[]> {
   const normalized = searchBattingLinesFiltersSchema.parse(filters)
   const limit = normalized.limit ?? 50
-  const currentRows = normalized.game_date
+  const currentRows = normalized.game_date || normalized.recent
     ? []
     : await searchCurrentBattingStats(database, normalized, limit)
   if (currentRows.length > 0) {
@@ -101,7 +101,7 @@ export async function searchBattingLines(
         ON box_source.game_id = batting_lines.game_id
        AND box_source.source_key = 'box'
       ${whereClause}
-      ORDER BY games.date ASC, batting_lines.game_id ASC, batting_lines.row_index ASC
+      ORDER BY games.date ${normalized.recent ? 'DESC' : 'ASC'}, batting_lines.game_id ASC, batting_lines.row_index ASC
       LIMIT ?`,
     )
     .all(...values, limit)

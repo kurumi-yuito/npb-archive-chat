@@ -155,6 +155,7 @@ export const searchPitchingLinesFiltersSchema = z.object({
   game_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   pitcher_name: z.string().min(1).optional(),
   team: z.string().min(1).optional(),
+  recent: z.boolean().optional(),
   limit: z.number().int().positive().max(500).optional(),
 })
 
@@ -167,6 +168,7 @@ export const searchBattingLinesFiltersSchema = z.object({
   player_id: z.string().min(1).optional(),
   team: z.string().min(1).optional(),
   result_text_contains: z.string().min(1).optional(),
+  recent: z.boolean().optional(),
   limit: z.number().int().positive().max(500).optional(),
 })
 
