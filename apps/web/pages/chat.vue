@@ -1,13 +1,11 @@
 <script setup lang="ts">
 import type { ChatPlan, ChatResponse, ChatStructuredQuery } from '@npb/schemas'
-import { computed, nextTick, ref, watch } from 'vue'
+import { computed, nextTick, ref } from 'vue'
 import { useChat } from '~/composables/useChat'
 
 defineOptions({ name: 'ChatPage' })
 
 const input = ref('')
-const profileEmail = ref('')
-const profileDisplayName = ref('')
 const conversationRef = ref<HTMLElement | null>(null)
 const {
   turns,
@@ -21,7 +19,6 @@ const {
   accountSaving,
   isGoogleAuthenticated,
   updatePlan,
-  updateAccountProfile,
   logout,
 } = useChat()
 
@@ -52,11 +49,6 @@ const usageMeterStyle = computed(() => {
   if (!usage || usage.limit === null) return { width: '100%' }
   const ratio = usage.limit === 0 ? 0 : Math.max(0, Math.min(1, (usage.remaining ?? 0) / usage.limit))
   return { width: `${ratio * 100}%` }
-})
-
-watch(accountInfo, (account) => {
-  profileEmail.value = account?.email ?? ''
-  profileDisplayName.value = account?.displayName ?? ''
 })
 
 function structuredQueryLabel(q: ChatStructuredQuery): string {
@@ -123,13 +115,6 @@ function onPlanChange(event: Event) {
   void updatePlan(nextPlan)
 }
 
-function saveProfile() {
-  void updateAccountProfile({
-    email: profileEmail.value || null,
-    displayName: profileDisplayName.value || null,
-  })
-}
-
 function loginWithGoogle() {
   window.location.href = '/api/auth/google/start'
 }
@@ -176,30 +161,19 @@ function loginWithGoogle() {
         >
           {{ userId }}
         </div>
-        <label class="select-field">
-          <span>表示名</span>
-          <input
-            v-model="profileDisplayName"
-            type="text"
-            placeholder="未設定"
-          >
-        </label>
-        <label class="select-field">
-          <span>メール</span>
-          <input
-            v-model="profileEmail"
-            type="email"
-            placeholder="name@example.com"
-          >
-        </label>
-        <button
-          class="text-button"
-          type="button"
-          :disabled="accountSaving"
-          @click="saveProfile"
+        <dl
+          v-if="isGoogleAuthenticated"
+          class="account-details"
         >
-          {{ accountSaving ? '保存中' : 'アカウントを保存' }}
-        </button>
+          <div>
+            <dt>表示名</dt>
+            <dd>{{ accountInfo?.displayName || '未設定' }}</dd>
+          </div>
+          <div>
+            <dt>メール</dt>
+            <dd>{{ accountInfo?.email || '未設定' }}</dd>
+          </div>
+        </dl>
         <button
           v-if="!isGoogleAuthenticated"
           class="text-button"
@@ -684,6 +658,31 @@ function loginWithGoogle() {
   color: #f8fafc;
   background: #1f2937;
   box-sizing: border-box;
+}
+
+.account-details {
+  display: grid;
+  gap: 0.45rem;
+  margin: 0.65rem 0 0;
+}
+
+.account-details div {
+  display: grid;
+  gap: 0.18rem;
+}
+
+.account-details dt {
+  color: #94a3b8;
+  font-size: 0.72rem;
+}
+
+.account-details dd {
+  margin: 0;
+  color: #e5e7eb;
+  font-size: 0.78rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .billing-note {
