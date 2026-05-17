@@ -7,7 +7,6 @@ import {
   parseBisTeamMonthlyResultsHtml,
   parseBisTeamRosterHtml,
   type BisCurrentDataset,
-  type BisSourceSnapshot,
   type BisSourceType,
   type BisTeamInfo,
 } from '@npb/parser'

@@ -1,8 +1,10 @@
 # デプロイ手順（Cloudflare Workers + D1 + R2）
 
-このドキュメントを、Cloudflare へデプロイするための正の手順書とする。`production-todo.md` は残作業の確認用であり、デプロイ手順はここに集約する。
+このドキュメントを、Cloudflare へデプロイするための正の手順書とする。`production-readiness.md` は本番投入時の確認用であり、デプロイ手順はここに集約する。
 
 本番用の secret はリポジトリに含めない。`wrangler.toml` の D1 / R2 設定は、Cloudflare で作成した実リソースに合わせる。
+
+環境変数 / secret の設定先は [env-reference.md](./env-reference.md) に集約している。ここでは Cloudflare デプロイの流れだけを追う。
 
 ## 先に結論
 
@@ -174,24 +176,26 @@ apps/web/.output/public
 | DB（検索） | `NPB_SQLITE_PATH` → `openDatabase` → **`sqliteDatabaseToQuery`**（`QueryDatabase`） | **`event.context.cloudflare.env.NPB_DB`**（D1）→ **`createQueryDatabaseFromD1`**（同じ `QueryDatabase`） |
 | DB（account / usage） | `NPB_SQLITE_PATH` → `openDatabase` → **`sqliteDatabaseToQuery`** | **`event.context.cloudflare.env.NPB_META_DB`**（D1）→ **`createQueryDatabaseFromD1`**。未設定時だけ `NPB_DB` に fallback。 |
 | マイグレーション（スキーマ） | 起動時に `migrateDatabase`（同期・SQLite ファイル） | **デプロイ前に** `wrangler d1 execute ...` で適用（ランタイムでは D1 に migrate しない） |
-| オブジェクトストレージ | 未使用（データはワークスペースの `data/`） | **R2**（`NPB_R2_RAW` binding は雛形のみ。raw / structured 配置の本番運用は未実装） |
+| オブジェクトストレージ | `local` storage（ワークスペースの `data/`） | **R2**（raw / structured 正規保存先、年別 SQLite backup 保存先） |
 | ランタイム設定 | `runtimeConfig.npbSqlitePath` が必須（SQLite パス） | D1 利用時は **`NPB_DB` と `NPB_META_DB` があれば `npbSqlitePath` は未設定でも可** |
 
 ## 実装状況
 
 Done:
 
-- Cloudflare Workers 向け build scaffold（`pnpm build:cf`）
+- Cloudflare Workers 向け build 設定（`pnpm build:cf`）
 - D1 adapter（`createQueryDatabaseFromD1`）
 - root `wrangler.toml`
 - SQLite / D1 の query boundary
 - Cloudflare Cron / GitHub Actions workflow_dispatch による `update:daily`
 - production signed-cookie identity のコード
+- R2 raw / structured storage adapter
+- `update:daily --storage r2`
+- `rebuild:r2-year`
 
-Not implemented:
+本番環境で確認する項目:
 
 - 実アカウント上の Worker / D1 / R2 / secrets / domain 設定
-- R2 を raw / structured の正規保存先にする実装
 
 ## ここまでやれば「本番 deploy 完了」
 
@@ -205,7 +209,7 @@ Not implemented:
 8. `/api/account` / `/api/chat/usage` / `/api/chat` を確認する。
 9. Cloudflare Cron を有効化する。具体手順は [daily-update-runbook.md](./daily-update-runbook.md) を読む。
 
-残作業の一覧は [production-todo.md](./production-todo.md) にある。デプロイ手順はこの `deploy.md`、日次更新ジョブの本番運用手順は [daily-update-runbook.md](./daily-update-runbook.md) を読む。
+本番確認項目は [production-readiness.md](./production-readiness.md) にある。デプロイ手順はこの `deploy.md`、日次更新ジョブの本番運用手順は [daily-update-runbook.md](./daily-update-runbook.md) を読む。
 
 ### DB 接続層（`QueryDatabase`）
 
@@ -273,6 +277,8 @@ bucket_name = "npb-archive-chat-raw"
 
 ## 2. 環境変数 / secrets
 
+設定先の一覧は [env-reference.md](./env-reference.md) を見る。
+
 必須:
 
 | 名前 | 用途 |
@@ -286,8 +292,13 @@ bucket_name = "npb-archive-chat-raw"
 | 名前 | 既定 | 用途 |
 |------|------|------|
 | `NPB_AUTH_HEADER_FALLBACK` | dev: `true`, production: `false` | dev header fallback を許可するか。production では `false`。 |
-| `NPB_BILLING_CONFIGURED` | `false` | `/api/account` の `billingConfigured` 表示用。現行課金は `billing_provider=internal`。 |
 | `NPB_DEFAULT_PLAN` | `free` | 初回 account 作成時の既定 plan。 |
+| `NPB_STRIPE_SECRET_KEY` | 空 | Stripe Dashboard の `開発者` → `API キー` にある live mode の `sk_live_...`。`/api/billing/subscription` と webhook 同期で使う。 |
+| `NPB_STRIPE_WEBHOOK_SECRET` | 空 | live mode の Stripe webhook signing secret。 |
+| `NPB_STRIPE_PRO_PRICE_ID` | 空 | live mode の Stripe pro 月額 Price ID。 |
+| `NPB_STRIPE_CHECKOUT_SUCCESS_URL` | 空 | Checkout 成功後の戻り URL。 |
+| `NPB_STRIPE_CHECKOUT_CANCEL_URL` | 空 | Checkout キャンセル後の戻り URL。 |
+| `NPB_STRIPE_PORTAL_RETURN_URL` | 空 | Billing Portal から戻る URL。 |
 | `CHAT_QUERY_LLM_BASE_URL` | `https://api.openai.com/v1` | structured query LLM の base URL。 |
 | `CHAT_QUERY_LLM_API_KEY` | 空 | 未設定時は heuristic parser fallback。 |
 | `CHAT_QUERY_LLM_MODEL` | 空 | structured query LLM model。 |
@@ -369,6 +380,7 @@ wrangler d1 execute npb-archive-chat-import --remote --file=packages/db/migratio
 ```bash
 wrangler d1 execute npb-archive-chat-meta --remote --file=packages/db/migrations/0002_chat_usage.sql
 wrangler d1 execute npb-archive-chat-meta --remote --file=packages/db/migrations/0005_chat_accounts.sql
+wrangler d1 execute npb-archive-chat-meta --remote --file=packages/db/migrations/0006_stripe_billing.sql
 ```
 
 - `npb-archive-chat-import` / `npb-archive-chat-meta` は `wrangler.toml` の `database_name` と一致させる。

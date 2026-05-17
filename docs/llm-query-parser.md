@@ -177,7 +177,7 @@ Done:
 - deterministic formatter fallback
 - ambiguous / not_found / 0件 / limit で final answer LLM を呼ばない制御
 
-Not implemented:
+運用で確認する項目:
 
 - 外部 LLM eval の CI 固定化
 - provider ごとの本番運用設定

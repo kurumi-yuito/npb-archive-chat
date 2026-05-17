@@ -6,8 +6,12 @@ export type ChatAccountRow = {
   email: string | null
   displayName: string | null
   plan: ChatPlan
-  billingStatus: 'active' | 'canceled'
-  billingProvider: 'internal'
+  billingStatus: 'active' | 'trialing' | 'past_due' | 'canceled' | 'incomplete' | 'incomplete_expired' | 'unpaid' | 'paused'
+  billingProvider: 'stripe'
+  stripeCustomerId: string | null
+  stripeSubscriptionId: string | null
+  stripePriceId: string | null
+  stripeCheckoutSessionId: string | null
   createdAt: string
   updatedAt: string
 }
@@ -17,6 +21,16 @@ export type UpdateChatAccountInput = {
   displayName?: string | null
 }
 
+export type UpdateChatAccountBillingInput = {
+  plan?: ChatPlan
+  billingStatus?: ChatAccountRow['billingStatus']
+  billingProvider?: ChatAccountRow['billingProvider']
+  stripeCustomerId?: string | null
+  stripeSubscriptionId?: string | null
+  stripePriceId?: string | null
+  stripeCheckoutSessionId?: string | null
+}
+
 export async function getOrCreateChatAccount(
   database: QueryDatabase,
   userId: string,
@@ -24,11 +38,20 @@ export async function getOrCreateChatAccount(
 ): Promise<ChatAccountRow> {
   await database
     .prepare(
-      `INSERT INTO chat_accounts (user_id, plan, billing_status, billing_provider)
-       VALUES (?, ?, 'active', 'internal')
+      `INSERT INTO chat_accounts (
+        user_id,
+        plan,
+        billing_status,
+        billing_provider,
+        stripe_customer_id,
+        stripe_subscription_id,
+        stripe_price_id,
+        stripe_checkout_session_id
+      )
+       VALUES (?, ?, 'active', 'stripe', NULL, NULL, NULL, NULL)
        ON CONFLICT(user_id) DO NOTHING`,
     )
-    .run(userId, seedPlan)
+  .run(userId, seedPlan)
   return (await getChatAccount(database, userId))!
 }
 
@@ -45,6 +68,10 @@ export async function getChatAccount(
         plan,
         billing_status AS billingStatus,
         billing_provider AS billingProvider,
+        stripe_customer_id AS stripeCustomerId,
+        stripe_subscription_id AS stripeSubscriptionId,
+        stripe_price_id AS stripePriceId,
+        stripe_checkout_session_id AS stripeCheckoutSessionId,
         created_at AS createdAt,
         updated_at AS updatedAt
        FROM chat_accounts
@@ -75,14 +102,59 @@ export async function updateChatAccountPlan(
   userId: string,
   plan: ChatPlan,
 ): Promise<ChatAccountRow> {
-  await getOrCreateChatAccount(database, userId)
+  return updateChatAccountBillingState(database, userId, {
+    plan: chatPlanSchema.parse(plan),
+    billingStatus: 'active',
+    billingProvider: 'stripe',
+  })
+}
+
+export async function updateChatAccountBillingState(
+  database: QueryDatabase,
+  userId: string,
+  input: UpdateChatAccountBillingInput,
+): Promise<ChatAccountRow> {
+  const existing = await getOrCreateChatAccount(database, userId)
+  const nextPlan = input.plan ?? existing.plan
+  const nextBillingStatus = input.billingStatus ?? existing.billingStatus
+  const nextBillingProvider = input.billingProvider ?? existing.billingProvider
+  const nextStripeCustomerId = Object.prototype.hasOwnProperty.call(input, 'stripeCustomerId')
+    ? input.stripeCustomerId ?? null
+    : existing.stripeCustomerId
+  const nextStripeSubscriptionId = Object.prototype.hasOwnProperty.call(input, 'stripeSubscriptionId')
+    ? input.stripeSubscriptionId ?? null
+    : existing.stripeSubscriptionId
+  const nextStripePriceId = Object.prototype.hasOwnProperty.call(input, 'stripePriceId')
+    ? input.stripePriceId ?? null
+    : existing.stripePriceId
+  const nextStripeCheckoutSessionId = Object.prototype.hasOwnProperty.call(input, 'stripeCheckoutSessionId')
+    ? input.stripeCheckoutSessionId ?? null
+    : existing.stripeCheckoutSessionId
+
   await database
     .prepare(
       `UPDATE chat_accounts
-       SET plan = ?, billing_status = 'active', billing_provider = 'internal', updated_at = CURRENT_TIMESTAMP
+       SET
+         plan = ?,
+         billing_status = ?,
+         billing_provider = ?,
+         stripe_customer_id = ?,
+         stripe_subscription_id = ?,
+         stripe_price_id = ?,
+         stripe_checkout_session_id = ?,
+         updated_at = CURRENT_TIMESTAMP
        WHERE user_id = ?`,
     )
-    .run(chatPlanSchema.parse(plan), userId)
+    .run(
+      nextPlan,
+      nextBillingStatus,
+      nextBillingProvider,
+      nextStripeCustomerId,
+      nextStripeSubscriptionId,
+      nextStripePriceId,
+      nextStripeCheckoutSessionId,
+      userId,
+    )
   return (await getChatAccount(database, userId))!
 }
 

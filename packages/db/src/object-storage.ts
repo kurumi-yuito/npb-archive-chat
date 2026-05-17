@@ -1,4 +1,5 @@
 import { spawnSync } from 'node:child_process'
+import { readdirSync } from 'node:fs'
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 
@@ -77,7 +78,6 @@ export function parseStorageArg(
 export function createObjectStorage(options: ObjectStorageOptions): ObjectStorage {
   const mode = options.mode ?? 'local'
   const prefix = normalizePrefix(options.prefix ?? '')
-  const endpoint = options.endpoint ?? defaultR2Endpoint()
 
   return {
     mode,
@@ -98,7 +98,7 @@ export function createObjectStorage(options: ObjectStorageOptions): ObjectStorag
       if (mode !== 'r2') {
         return null
       }
-      const text = r2ReadText(requireBucket(options.bucket), objectKey(prefix, normalized), endpoint)
+      const text = r2ReadText(requireBucket(options.bucket), objectKey(prefix, normalized))
       if (text === null || !text.trim()) {
         return null
       }
@@ -110,14 +110,14 @@ export function createObjectStorage(options: ObjectStorageOptions): ObjectStorag
       const localPath = path.join(options.workspaceRoot, 'data', normalized)
       await writeLocal(localPath, value)
       if (mode === 'r2') {
-        r2WriteText(requireBucket(options.bucket), objectKey(prefix, normalized), value, endpoint, contentType)
+        r2WriteText(requireBucket(options.bucket), objectKey(prefix, normalized), value, contentType)
       }
       return localPath
     },
     async putLocalFile(key: string, filePath: string, contentType = 'application/octet-stream') {
       const normalized = normalizeKey(key)
       if (mode === 'r2') {
-        r2WriteFile(requireBucket(options.bucket), objectKey(prefix, normalized), filePath, endpoint, contentType)
+        r2WriteFile(requireBucket(options.bucket), objectKey(prefix, normalized), filePath, contentType)
       }
       return filePath
     },
@@ -129,20 +129,13 @@ export function defaultR2Bucket(): string | undefined {
 }
 
 export function syncR2PrefixToLocal(options: R2SyncOptions, prefix: string): void {
-  const bucket = requireBucket(options.bucket ?? defaultR2Bucket())
-  const normalizedPrefix = objectKey(normalizePrefix(options.prefix ?? ''), normalizeKey(prefix))
   const localDirectory = path.join(options.workspaceRoot, 'data', normalizeKey(prefix))
-  const result = runAws([
-    's3',
-    'sync',
-    `s3://${bucket}/${normalizedPrefix}`,
-    localDirectory,
-    ...endpointArgs(options.endpoint ?? defaultR2Endpoint()),
-    '--only-show-errors',
-  ])
-  if (result.status !== 0) {
-    throw new Error(`R2 sync failed: s3://${bucket}/${normalizedPrefix}\n${result.stderr}`)
+  if (localDirectoryExists(localDirectory)) {
+    return
   }
+  throw new Error(
+    `Local mirror not found for ${prefix}. Populate data/${normalizeKey(prefix)} before running rebuild:r2-year.`,
+  )
 }
 
 function parseStorageMode(value: string | undefined): StorageMode {
@@ -150,16 +143,6 @@ function parseStorageMode(value: string | undefined): StorageMode {
     return value
   }
   throw new Error(`Invalid storage mode: ${value ?? '(missing)'}`)
-}
-
-function defaultR2Endpoint(): string | undefined {
-  if (process.env.NPB_R2_ENDPOINT) {
-    return process.env.NPB_R2_ENDPOINT
-  }
-  if (process.env.CLOUDFLARE_ACCOUNT_ID) {
-    return `https://${process.env.CLOUDFLARE_ACCOUNT_ID}.r2.cloudflarestorage.com`
-  }
-  return undefined
 }
 
 function requireBucket(bucket: string | undefined): string {
@@ -186,8 +169,8 @@ async function writeLocal(filePath: string, value: string): Promise<void> {
   await writeFile(filePath, value, 'utf8')
 }
 
-function r2ReadText(bucket: string, key: string, endpoint: string | undefined): string | null {
-  const result = runAws(['s3', 'cp', `s3://${bucket}/${key}`, '-', ...endpointArgs(endpoint)])
+function r2ReadText(bucket: string, key: string): string | null {
+  const result = runWrangler(['r2', 'object', 'get', `${bucket}/${key}`, '--remote', '--pipe'])
   if (result.status !== 0) {
     return null
   }
@@ -198,11 +181,10 @@ function r2WriteText(
   bucket: string,
   key: string,
   value: string,
-  endpoint: string | undefined,
   contentType: string,
 ): void {
-  const result = runAws(
-    ['s3', 'cp', '-', `s3://${bucket}/${key}`, '--content-type', contentType, ...endpointArgs(endpoint), '--only-show-errors'],
+  const result = runWrangler(
+    ['r2', 'object', 'put', `${bucket}/${key}`, '--remote', '--pipe', '--content-type', contentType, '--force'],
     value,
   )
   if (result.status !== 0) {
@@ -214,33 +196,44 @@ function r2WriteFile(
   bucket: string,
   key: string,
   filePath: string,
-  endpoint: string | undefined,
   contentType: string,
 ): void {
-  const result = runAws(
-    ['s3', 'cp', filePath, `s3://${bucket}/${key}`, '--content-type', contentType, ...endpointArgs(endpoint), '--only-show-errors'],
+  const result = runWrangler(
+    ['r2', 'object', 'put', `${bucket}/${key}`, '--remote', '--file', filePath, '--content-type', contentType, '--force'],
   )
   if (result.status !== 0) {
     throw new Error(`R2 write failed: s3://${bucket}/${key}\n${result.stderr}`)
   }
 }
 
-function endpointArgs(endpoint: string | undefined): string[] {
-  return endpoint ? ['--endpoint-url', endpoint] : []
+function localDirectoryExists(directory: string): boolean {
+  try {
+    return readdirSync(directory).length > 0
+  } catch {
+    return false
+  }
 }
 
-function runAws(args: string[], input?: string): { status: number; stdout: string; stderr: string } {
-  const result = spawnSync('aws', args, {
+function runWrangler(args: string[], input?: string): { status: number; stdout: string; stderr: string } {
+  const command = ['wrangler', ...args].map(shellEscape).join(' ')
+  const result = spawnSync('bash', ['-lc', command], {
     input,
     encoding: 'utf8',
     maxBuffer: 1024 * 1024 * 128,
   })
   if (result.error) {
-    throw new Error(`aws command failed: ${result.error.message}`)
+    throw new Error(`wrangler command failed: ${result.error.message}`)
   }
   return {
     status: result.status ?? 1,
     stdout: result.stdout ?? '',
     stderr: result.stderr ?? '',
   }
+}
+
+function shellEscape(value: string): string {
+  if (/^[A-Za-z0-9_/=.:,@+-]+$/.test(value)) {
+    return value
+  }
+  return `'${value.replaceAll("'", `'\\''`)}'`
 }

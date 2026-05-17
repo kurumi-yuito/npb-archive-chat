@@ -57,10 +57,11 @@ Done:
 - D1 / SQLite 共通の `QueryDatabase`
 - multi-year chat query service
 
-Not implemented:
+Phase 1 の公開範囲:
 
-- public API と internal service の本格的な境界整理
-- 外部公開 API の認証・レート制限・契約化
+- public endpoint は `/api/chat` と account / usage / billing endpoints。
+- 外部有償 API は Phase 1 では公開しない。
+- route / service / repository の境界は実装済み。外部 API を追加する場合はこの境界に沿って追加する。
 
 ## 関連ドキュメント
 

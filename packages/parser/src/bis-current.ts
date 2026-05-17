@@ -101,7 +101,7 @@ export function parseBisTeamRosterHtml(
   input: { year: number; teamId: string; teamName: string; sourceUrl: string },
 ): BisCurrentRosterEntry[] {
   return parseDataTables(html).flatMap((table) =>
-    table.rows.map((row, index) => {
+    table.rows.map((row) => {
       const player = findPlayerCell(row)
       return {
         year: input.year,

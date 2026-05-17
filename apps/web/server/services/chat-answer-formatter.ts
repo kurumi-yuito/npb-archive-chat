@@ -251,7 +251,7 @@ function affiliationTeams(rows: PlayerAffiliationRow[]): string[] {
 }
 
 function teamAliasKey(team: string): string {
-  const normalized = team.replace(/[・･.\-_\s　]/gu, '')
+  const normalized = team.replace(/[・･.\-_\s\u3000]/gu, '')
   const aliases: Record<string, string> = {
     横浜DeNAベイスターズ: 'DeNA',
     DeNA: 'DeNA',

@@ -35,7 +35,7 @@ Done:
 - usage check at API boundary
 - final answer LLM fallback（ambiguous / not_found / limit / 0件では呼ばない）
 
-Not implemented:
+運用で確認する項目:
 
 - production deployment / monitoring / operations
 

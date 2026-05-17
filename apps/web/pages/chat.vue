@@ -3,6 +3,8 @@ import type { ChatPlan, ChatResponse, ChatStructuredQuery } from '@npb/schemas'
 import { computed, nextTick, ref, watch } from 'vue'
 import { useChat } from '~/composables/useChat'
 
+defineOptions({ name: 'ChatPage' })
+
 const input = ref('')
 const profileEmail = ref('')
 const profileDisplayName = ref('')
@@ -130,44 +132,88 @@ function saveProfile() {
 
 <template>
   <main class="chat-shell">
-    <aside class="sidebar" aria-label="ユーザー設定">
+    <aside
+      class="sidebar"
+      aria-label="ユーザー設定"
+    >
       <div class="brand">
-        <NuxtLink class="brand__home" to="/">NPB Archive</NuxtLink>
-        <p class="brand__title">検索チャット</p>
+        <NuxtLink
+          class="brand__home"
+          to="/"
+        >
+          NPB Archive
+        </NuxtLink>
+        <p class="brand__title">
+          検索チャット
+        </p>
       </div>
 
       <section class="panel">
         <div class="panel__head">
-          <h2 class="panel__title">アカウント</h2>
-          <span class="status-dot" aria-hidden="true" />
+          <h2 class="panel__title">
+            アカウント
+          </h2>
+          <span
+            class="status-dot"
+            aria-hidden="true"
+          />
         </div>
-        <div class="account-id" :title="userId || 'local'">
+        <div
+          class="account-id"
+          :title="userId || 'local'"
+        >
           {{ userId || 'local' }}
         </div>
         <label class="select-field">
           <span>表示名</span>
-          <input v-model="profileDisplayName" type="text" placeholder="未設定" />
+          <input
+            v-model="profileDisplayName"
+            type="text"
+            placeholder="未設定"
+          >
         </label>
         <label class="select-field">
           <span>メール</span>
-          <input v-model="profileEmail" type="email" placeholder="name@example.com" />
+          <input
+            v-model="profileEmail"
+            type="email"
+            placeholder="name@example.com"
+          >
         </label>
-        <button class="text-button" type="button" :disabled="accountSaving" @click="saveProfile">
+        <button
+          class="text-button"
+          type="button"
+          :disabled="accountSaving"
+          @click="saveProfile"
+        >
           {{ accountSaving ? '保存中' : 'アカウントを保存' }}
         </button>
-        <button class="text-button" type="button" @click="regenerateUserId">
+        <button
+          class="text-button"
+          type="button"
+          @click="regenerateUserId"
+        >
           新しいローカルユーザー
         </button>
       </section>
 
       <section class="panel">
         <div class="panel__head">
-          <h2 class="panel__title">プラン</h2>
-          <span class="plan-pill" :class="`plan-pill--${plan}`">{{ plan }}</span>
+          <h2 class="panel__title">
+            プラン
+          </h2>
+          <span
+            class="plan-pill"
+            :class="`plan-pill--${plan}`"
+          >{{ plan }}</span>
         </div>
         <label class="select-field">
           <span>現在のプラン</span>
-          <select :value="plan" :disabled="accountSaving" @change="onPlanChange">
+          <select
+            :value="plan"
+            :disabled="accountSaving"
+            @change="onPlanChange"
+          >
             <option value="free">Free</option>
             <option value="pro">Pro</option>
           </select>
@@ -176,20 +222,49 @@ function saveProfile() {
           課金状態: {{ accountInfo?.billingProvider ?? 'internal' }} /
           {{ accountInfo?.billingStatus ?? 'active' }}
         </p>
+        <div
+          v-if="accountInfo?.billingPlan"
+          class="billing-meta"
+        >
+          <div class="billing-meta__row">
+            <span>料金</span>
+            <strong>{{ accountInfo.billingPlan.monthlyPriceYen.toLocaleString('ja-JP') }}円 / 月</strong>
+          </div>
+          <div class="billing-meta__row">
+            <span>支払い方法</span>
+            <strong>{{ accountInfo.billingPlan.billingMethod }}</strong>
+          </div>
+          <div class="billing-meta__row">
+            <span>上限</span>
+            <strong>
+              {{ accountInfo.billingPlan.monthlyUsageLimit === null ? '無制限' : `${accountInfo.billingPlan.monthlyUsageLimit}回 / 月` }}
+            </strong>
+          </div>
+        </div>
         <div class="usage-card">
           <div class="usage-card__top">
             <span>{{ usageInfo?.month ?? '---- --' }}</span>
             <strong>{{ usageLabel }}</strong>
           </div>
-          <div class="usage-meter" aria-hidden="true">
+          <div
+            class="usage-meter"
+            aria-hidden="true"
+          >
             <span :style="usageMeterStyle" />
           </div>
         </div>
       </section>
 
       <section class="panel panel--quiet">
-        <h2 class="panel__title">直近の検索</h2>
-        <p v-if="!lastAssistant" class="muted">まだありません</p>
+        <h2 class="panel__title">
+          直近の検索
+        </h2>
+        <p
+          v-if="!lastAssistant"
+          class="muted"
+        >
+          まだありません
+        </p>
         <template v-else>
           <div class="last-query">
             <span>{{ structuredQueryLabel(lastAssistant.structured_query) }}</span>
@@ -203,7 +278,10 @@ function saveProfile() {
       </section>
     </aside>
 
-    <section class="workspace" aria-label="チャット">
+    <section
+      class="workspace"
+      aria-label="チャット"
+    >
       <header class="topbar">
         <div>
           <h1>NPBアーカイブ検索</h1>
@@ -215,12 +293,22 @@ function saveProfile() {
         </div>
       </header>
 
-      <section v-if="lastError" class="error-banner" role="alert">
+      <section
+        v-if="lastError"
+        class="error-banner"
+        role="alert"
+      >
         {{ lastError }}
       </section>
 
-      <div ref="conversationRef" class="conversation">
-        <section v-if="turns.length === 0" class="empty-state">
+      <div
+        ref="conversationRef"
+        class="conversation"
+      >
+        <section
+          v-if="turns.length === 0"
+          class="empty-state"
+        >
           <h2>何を調べますか？</h2>
           <div class="prompt-grid">
             <button
@@ -236,19 +324,39 @@ function saveProfile() {
           </div>
         </section>
 
-        <article v-for="turn in turns" :key="turn.id" class="turn">
+        <article
+          v-for="turn in turns"
+          :key="turn.id"
+          class="turn"
+        >
           <div class="message message--user">
-            <div class="avatar avatar--user">U</div>
-            <div class="bubble bubble--user">{{ turn.userMessage }}</div>
+            <div class="avatar avatar--user">
+              U
+            </div>
+            <div class="bubble bubble--user">
+              {{ turn.userMessage }}
+            </div>
           </div>
 
-          <div v-if="turn.errorMessage" class="message message--assistant">
-            <div class="avatar avatar--assistant">AI</div>
-            <div class="bubble bubble--error">{{ turn.errorMessage }}</div>
+          <div
+            v-if="turn.errorMessage"
+            class="message message--assistant"
+          >
+            <div class="avatar avatar--assistant">
+              AI
+            </div>
+            <div class="bubble bubble--error">
+              {{ turn.errorMessage }}
+            </div>
           </div>
 
-          <div v-else-if="turn.assistant" class="message message--assistant">
-            <div class="avatar avatar--assistant">AI</div>
+          <div
+            v-else-if="turn.assistant"
+            class="message message--assistant"
+          >
+            <div class="avatar avatar--assistant">
+              AI
+            </div>
             <div class="answer">
               <div class="answer__head">
                 <span class="intent-chip">
@@ -259,7 +367,9 @@ function saveProfile() {
                   省略 {{ turn.assistant.answer.remaining_count }}件
                 </span>
               </div>
-              <p class="answer__summary">{{ turn.assistant.answer.summary }}</p>
+              <p class="answer__summary">
+                {{ turn.assistant.answer.summary }}
+              </p>
 
               <div
                 v-if="turn.assistant.answer.resolved_player?.status === 'ambiguous'"
@@ -280,7 +390,10 @@ function saveProfile() {
                 </ul>
               </div>
 
-              <div v-if="turn.assistant.results.events.length" class="result-section">
+              <div
+                v-if="turn.assistant.results.events.length"
+                class="result-section"
+              >
                 <h3>イベント</h3>
                 <ol class="event-list">
                   <li
@@ -293,16 +406,26 @@ function saveProfile() {
                       <span>{{ event.inning }}回{{ inningHalfLabel(event.half) }}</span>
                     </div>
                     <p>
-                      <template v-if="event.pitcherName">{{ event.pitcherName }}から</template>{{ event.resultText }}
+                      <template v-if="event.pitcherName">
+                        {{ event.pitcherName }}から
+                      </template>{{ event.resultText }}
                     </p>
-                    <a v-if="event.sourceUrl" :href="event.sourceUrl" target="_blank" rel="noopener noreferrer">
+                    <a
+                      v-if="event.sourceUrl"
+                      :href="event.sourceUrl"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
                       {{ sourceLabel(event.sourceUrl) }}
                     </a>
                   </li>
                 </ol>
               </div>
 
-              <div v-if="turn.assistant.results.batting.length" class="result-section">
+              <div
+                v-if="turn.assistant.results.batting.length"
+                class="result-section"
+              >
                 <h3>打撃成績</h3>
                 <div class="data-table-wrap">
                   <table class="data-table">
@@ -317,7 +440,10 @@ function saveProfile() {
                       </tr>
                     </thead>
                     <tbody>
-                      <tr v-for="row in turn.assistant.results.batting" :key="`${row.gameId}-${row.playerName}`">
+                      <tr
+                        v-for="row in turn.assistant.results.batting"
+                        :key="`${row.gameId}-${row.playerName}`"
+                      >
                         <td>{{ row.gameDate.slice(0, 4) }}</td>
                         <td>{{ row.team }}</td>
                         <td>{{ row.playerName }}</td>
@@ -330,20 +456,36 @@ function saveProfile() {
                 </div>
               </div>
 
-              <div v-if="turn.assistant.results.affiliations.length" class="result-section">
+              <div
+                v-if="turn.assistant.results.affiliations.length"
+                class="result-section"
+              >
                 <h3>所属</h3>
                 <ul class="simple-list">
-                  <li v-for="row in turn.assistant.results.affiliations" :key="`${row.year}-${row.team}-${row.playerId}`">
+                  <li
+                    v-for="row in turn.assistant.results.affiliations"
+                    :key="`${row.year}-${row.team}-${row.playerId}`"
+                  >
                     {{ row.year }}年 {{ row.playerName }} / {{ row.team }}
                   </li>
                 </ul>
               </div>
 
-              <div v-if="visibleSources(turn.assistant).length" class="result-section">
+              <div
+                v-if="visibleSources(turn.assistant).length"
+                class="result-section"
+              >
                 <h3>ソース</h3>
                 <ul class="source-list">
-                  <li v-for="url in visibleSources(turn.assistant)" :key="url">
-                    <a :href="url" target="_blank" rel="noopener noreferrer">
+                  <li
+                    v-for="url in visibleSources(turn.assistant)"
+                    :key="url"
+                  >
+                    <a
+                      :href="url"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
                       <span>{{ sourceHost(url) }}</span>
                       {{ sourceLabel(url) }}
                     </a>
@@ -356,13 +498,15 @@ function saveProfile() {
           <div
             v-else-if="
               loading &&
-              !turn.assistant &&
-              !turn.errorMessage &&
-              turn.id === turns[turns.length - 1]?.id
+                !turn.assistant &&
+                !turn.errorMessage &&
+                turn.id === turns[turns.length - 1]?.id
             "
             class="message message--assistant"
           >
-            <div class="avatar avatar--assistant">AI</div>
+            <div class="avatar avatar--assistant">
+              AI
+            </div>
             <div class="typing">
               <span />
               <span />
@@ -372,7 +516,10 @@ function saveProfile() {
         </article>
       </div>
 
-      <form class="composer" @submit.prevent="submitText()">
+      <form
+        class="composer"
+        @submit.prevent="submitText()"
+      >
         <textarea
           v-model="input"
           class="composer__input"
@@ -383,7 +530,11 @@ function saveProfile() {
           :disabled="loading"
           @keydown="onKeydown"
         />
-        <button class="composer__send" type="submit" :disabled="loading || !input.trim()">
+        <button
+          class="composer__send"
+          type="submit"
+          :disabled="loading || !input.trim()"
+        >
           {{ loading ? '...' : '送信' }}
         </button>
       </form>
@@ -511,6 +662,20 @@ function saveProfile() {
   margin: 0.6rem 0 0;
   color: #cbd5e1;
   font-size: 0.76rem;
+}
+
+.billing-meta {
+  display: grid;
+  gap: 0.35rem;
+  margin-top: 0.65rem;
+}
+
+.billing-meta__row {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  font-size: 0.76rem;
+  color: #e5e7eb;
 }
 
 .plan-pill,

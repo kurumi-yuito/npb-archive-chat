@@ -239,6 +239,33 @@ export const chatRequestSchema = z.object({
 
 export const chatPlanSchema = z.enum(['free', 'pro'])
 
+export const billingMethodSchema = z.enum(['stripe_subscription'])
+
+export const billingPlanSchema = z.object({
+  key: chatPlanSchema,
+  label: z.string().min(1),
+  monthlyPriceYen: z.number().int().nonnegative(),
+  currency: z.literal('JPY'),
+  billingMethod: billingMethodSchema,
+  monthlyUsageLimit: z.number().int().positive().nullable(),
+})
+
+export const billingStatusSchema = z.enum([
+  'active',
+  'trialing',
+  'past_due',
+  'canceled',
+  'incomplete',
+  'incomplete_expired',
+  'unpaid',
+  'paused',
+])
+
+export const billingActionResponseSchema = z.object({
+  redirectUrl: z.string().url(),
+  provider: z.literal('stripe'),
+})
+
 /** /api/chat のレスポンスおよび GET /api/chat/usage の利用状況 */
 export const chatUsageInfoSchema = z.object({
   plan: chatPlanSchema,
@@ -253,9 +280,12 @@ export const chatAccountSchema = z.object({
   email: z.string().email().nullable(),
   displayName: z.string().min(1).nullable(),
   plan: chatPlanSchema,
-  billingStatus: z.enum(['active', 'canceled']),
-  billingProvider: z.literal('internal'),
+  billingStatus: billingStatusSchema,
+  billingProvider: z.literal('stripe'),
   billingConfigured: z.boolean(),
+  billingPlan: billingPlanSchema,
+  stripeCustomerId: z.string().min(1).nullable(),
+  stripeSubscriptionId: z.string().min(1).nullable(),
   createdAt: z.string().min(1),
   updatedAt: z.string().min(1),
 })

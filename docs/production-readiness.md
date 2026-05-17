@@ -1,14 +1,23 @@
-# Production TODO
+# Production Readiness Checklist
 
-このファイルは、本番運用に残っている作業と完了条件を確認するための一覧である。
+このファイルは、本番リリース前後の確認項目と完了条件を確認するための一覧である。
 Cloudflare への具体的な deploy 手順は [deploy.md](./deploy.md) を正とする。
 日次更新ジョブの有効化・手動実行・確認・復旧手順は [daily-update-runbook.md](./daily-update-runbook.md) を正とする。
 
 重要:
 
 - チャット、account/profile、subscription、usage はアプリ実装として完了している。
-- したがって、account / billing についての残作業は「本番 secret と本番環境の確認」に限る。
-- ここに書く残作業は、主に本番データ投入と運用基盤である。
+- billing は Stripe subscription 管理で、free / pro の価格と上限は `usage-limit.md` に記載済みである。
+- account / billing についてここで確認するのは、本番 secret と本番環境の疎通である。
+- ここに書く項目は、実装漏れではなく本番投入時の確認項目である。
+- 環境変数 / secret の設定先は [env-reference.md](./env-reference.md) にまとめてある。
+
+## 2026-05-10 時点の確認済み
+
+- `curl` による live smoke で `/api/account` / `/api/chat/usage` / `/api/chat` が workers.dev 上で応答することを確認済み。
+- `player_affiliation` で `藤浪晋太郎` が `横浜DeNAベイスターズ` を返すことを確認済み。
+- `billingConfigured` は Stripe billing の設定可否フラグとして返っている。
+- `R2 Canonical Storage Runbook` の `wrangler r2 object put/get` と `rebuild:r2-year` を実行確認済み。
 
 ## 読み分け
 
@@ -18,25 +27,26 @@ Cloudflare への具体的な deploy 手順は [deploy.md](./deploy.md) を正�
 | 日次更新ジョブを本番で有効化・確認する | [daily-update-runbook.md](./daily-update-runbook.md) |
 | 日次更新ジョブの仕様を確認する | [update-job.md](./update-job.md) |
 | usage / plan / account の仕様 | [usage-limit.md](./usage-limit.md) |
+| Stripe の設定手順 | [stripe-billing-runbook.md](./stripe-billing-runbook.md) |
 | UI の構成と変更箇所 | [ui-chat.md](./ui-chat.md) |
 | 現在の実装状態 | [current-status.md](./current-status.md) |
 
-## 残作業
+## 確認項目
 
 ### 0. 本番に入れる前の最終確認
 
-まず、アプリ側に未完了の account / billing 実装がないことを確認する。
+まず、account / billing の本番疎通を確認する。
 
 - `GET /api/account`
 - `PATCH /api/account`
 - `PUT /api/billing/subscription`
 - `GET /api/chat/usage`
 
-これらは実装済みである。残っているのは本番環境に値を入れて確認することだけである。
+これらは実装済みである。本番環境では secret / D1 binding / cookie identity / Stripe secret / webhook secret / Price ID / URL の設定値を確認する。
 
 ### 1. Cloudflare 実リソース設定
 
-Not implemented in repository:
+Repository で提供済みの設定対象:
 
 - 本番 Cloudflare account 上の Worker 作成/確認
 - D1 database 作成
@@ -44,6 +54,7 @@ Not implemented in repository:
 - root `wrangler.toml` の D1 `database_id` / R2 `bucket_name` の実値確認
 - production secrets 設定
 - 必要なら custom domain / route 設定
+- Stripe 側の Price / webhook / Billing Portal 設定は [stripe-billing-runbook.md](./stripe-billing-runbook.md) を見る
 
 完了条件:
 
@@ -104,6 +115,7 @@ Implemented in repository:
 - 現行の検索/チャット API は D1/SQLite の normalized DB を読む。
 - 本番日次更新では R2 を年別 SQLite backup 置き場としても使う。
 - `update:daily` 本番 workflow は `--storage r2` で raw / structured を R2 に保存する。
+- 2026-05-10 の live smoke で `wrangler r2 object put/get` と `rebuild:r2-year` を実行確認済み。
 
 完了条件:
 
@@ -113,7 +125,7 @@ Implemented in repository:
 
 ### 5. 完了済みだが本番で確認すべき項目
 
-以下は実装済みなので、やることは本番 smoke test だけである。
+以下は実装済みなので、必要なのは本番 smoke test の維持だけである。
 
 - account / profile 保存
 - subscription plan 切り替え
@@ -138,7 +150,7 @@ deploy 後に確認する。
 
 - `/` が `/chat` に遷移する。
 - `/api/account` が account を作成/取得する。
-- `/api/billing/subscription` で `free` / `pro` が切り替わる。
+- `/api/billing/subscription` は Stripe Checkout / Billing Portal の redirect URL を返す。
 - `/api/chat/usage` が DB の account plan を読む。
 - free で月間上限到達時に 429 になる。
 - pro で `limit: null` / `remaining: null` になる。

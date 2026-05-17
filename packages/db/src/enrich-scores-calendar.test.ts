@@ -1,6 +1,7 @@
 import { mkdir, mkdtemp, readFile, stat, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 import { parseRawGameFromDir } from '../../parser/src/index'
 import { loadRichGame } from './loader'
@@ -10,9 +11,11 @@ import { runBackfillScoresCanonical } from './backfill-scores-canonical'
 import { parseEnrichScoresCalendarArgs, runScoresCalendarEnrichment } from './enrich-scores-calendar'
 import { buildScoresBaseUrl, buildScoresBaseUrlFromCanonicalUrl, buildScoresSlug } from './scores-fetcher'
 
+const packageRoot = path.resolve(fileURLToPath(new URL('..', import.meta.url)))
+const workspaceRoot = path.resolve(packageRoot, '..', '..')
 const parserFixtureRoot = path.resolve(
-  process.cwd(),
-  '..',
+  workspaceRoot,
+  'packages',
   'parser',
   'src',
   '__fixtures__',
@@ -22,8 +25,8 @@ const parserFixtureRoot = path.resolve(
   'r20250815b-l-17',
 )
 const rainCancelledPlayByPlayFixture = path.resolve(
-  process.cwd(),
-  '..',
+  workspaceRoot,
+  'packages',
   'parser',
   'src',
   '__fixtures__',

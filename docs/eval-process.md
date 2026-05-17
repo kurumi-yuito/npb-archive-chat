@@ -70,7 +70,7 @@ Done:
 - `result_count=12`
 - 20 件超過 formatter の単体テスト
 
-Not implemented:
+運用で確認する項目:
 
 - 本番ログからの eval 自動生成
 - LLM answer drafting の品質評価

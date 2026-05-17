@@ -187,11 +187,11 @@ async function searchCurrentBattingStats(
 }
 
 function compactNameSql(column: string): string {
-  return `REPLACE(REPLACE(REPLACE(REPLACE(${column}, ' ', ''), '　', ''), '*', ''), '＊', '')`
+  return `REPLACE(REPLACE(REPLACE(REPLACE(${column}, ' ', ''), char(12288), ''), '*', ''), '＊', '')`
 }
 
 function compactName(value: string): string {
-  return value.replace(/[ 　*＊]/gu, '')
+  return value.replace(/[ \u3000*＊]/gu, '')
 }
 
 function playerIdPattern(playerId: string): string {
@@ -199,7 +199,7 @@ function playerIdPattern(playerId: string): string {
 }
 
 function teamAliases(team: string): string[] {
-  const normalized = team.replace(/[・･.\-_\s　]/gu, '').toLowerCase()
+  const normalized = team.replace(/[・･.\-_\s\u3000]/gu, '').toLowerCase()
   const aliases: Record<string, string[]> = {
     ヤクルト: ['ヤクルト', '東京ヤクルトスワローズ'],
     東京ヤクルトスワローズ: ['ヤクルト', '東京ヤクルトスワローズ'],

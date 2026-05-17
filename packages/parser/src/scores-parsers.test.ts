@@ -1,5 +1,6 @@
 import { readFile } from 'node:fs/promises'
 import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 import { parseScoresBoxHtml } from './scores-box'
 import { parseScoresCalendarHtml } from './scores-calendar'
@@ -7,7 +8,8 @@ import { parseScoresIndexHtml } from './scores-index'
 import { NoPlayByPlayAvailableError, parseScoresPlayByPlayHtml } from './scores-playbyplay'
 import { parseScoresRosterHtml } from './scores-roster'
 
-const fixtureRoot = path.resolve(process.cwd(), 'src', '__fixtures__')
+const packageRoot = path.resolve(fileURLToPath(new URL('..', import.meta.url)))
+const fixtureRoot = path.resolve(packageRoot, 'src', '__fixtures__')
 const rawGameRoot = path.join(fixtureRoot, 'raw', '2025', '0815', 'r20250815b-l-17')
 const raw2017GameRoot = path.join(fixtureRoot, 'raw', '2017', '0722', 'r20170722h-m-14')
 const richPlayByPlayRoot = path.join(fixtureRoot, 'raw', '2025', '0507', 'b-f-09')

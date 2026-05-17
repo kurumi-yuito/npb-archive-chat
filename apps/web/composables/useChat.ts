@@ -119,7 +119,12 @@ export function useChat() {
         const errBody = await parseErrorJson(res)
         throw new Error(errBody?.statusMessage ?? errBody?.message ?? `HTTP ${res.status}`)
       }
-      const account = (await res.json()) as ChatAccount
+      const payload = (await res.json()) as ChatAccount | { redirectUrl?: string; provider?: string }
+      if (payload && typeof payload === 'object' && 'redirectUrl' in payload && payload.redirectUrl) {
+        window.location.href = payload.redirectUrl
+        return
+      }
+      const account = payload as ChatAccount
       accountInfo.value = account
       plan.value = account.plan
       await refreshUsage()

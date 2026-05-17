@@ -2,6 +2,8 @@
 
 このドキュメントは、本番の日次更新ジョブを有効化・手動実行・確認・復旧するときに読む。
 
+環境変数 / secret の設定先は [env-reference.md](./env-reference.md) に集約している。ここでは daily update 固有の設定だけを追う。
+
 ## いつ読むか
 
 | タイミング | やること |
@@ -37,6 +39,8 @@ crons = ["5 1,7,13 * * *"]
 ## 初回セットアップ
 
 ### 1. GitHub Actions secrets を設定する
+
+GitHub repo の Settings 画面で入れる値は [env-reference.md](./env-reference.md) の **GitHub Actions repository secrets** を見る。
 
 GitHub repo で次を開く。
 
@@ -113,6 +117,8 @@ workflow 内では次のように使い分ける。
 D1 と R2 の権限は分ける。R2 object 操作に Cloudflare API token は使わない。
 
 ### 2. Cloudflare Worker secrets を設定する
+
+`wrangler secret put` で入れる値は [env-reference.md](./env-reference.md) の **Cloudflare Workers secrets** を見る。
 
 repo root で実行する。
 
@@ -441,4 +447,4 @@ pnpm --filter @npb/db run sync:d1 -- \
 | `packages/db/src/d1-sync.ts` | 年別 SQLite → D1 同期 |
 | `docs/update-job.md` | 更新ジョブの仕様 |
 | `docs/deploy.md` | Cloudflare deploy 手順 |
-| `docs/production-todo.md` | 本番運用の完了条件 |
+| `docs/production-readiness.md` | 本番運用の確認条件 |

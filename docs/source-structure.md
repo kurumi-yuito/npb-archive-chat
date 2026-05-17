@@ -196,7 +196,7 @@ events テーブル
 
 ## 差分更新
 
-Not implemented:
+Done:
 
 - R2 を正規保存先にした raw / structured 管理
 - 本番更新ジョブの運用

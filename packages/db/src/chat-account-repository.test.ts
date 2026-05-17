@@ -6,6 +6,7 @@ import {
   sqliteDatabaseToQuery,
   updateChatAccountPlan,
   updateChatAccountProfile,
+  updateChatAccountBillingState,
 } from './index'
 
 describe('chat_accounts', () => {
@@ -20,7 +21,7 @@ describe('chat_accounts', () => {
         userId: 'user-1',
         plan: 'free',
         billingStatus: 'active',
-        billingProvider: 'internal',
+        billingProvider: 'stripe',
       })
 
       const profile = await updateChatAccountProfile(query, 'user-1', {
@@ -39,6 +40,20 @@ describe('chat_accounts', () => {
         email: 'user@example.com',
         displayName: 'NPB User',
         plan: 'pro',
+      })
+
+      const billing = await updateChatAccountBillingState(query, 'user-1', {
+        billingStatus: 'trialing',
+        stripeCustomerId: 'cus_123',
+        stripeSubscriptionId: 'sub_123',
+        stripePriceId: 'price_123',
+      })
+      expect(billing).toMatchObject({
+        billingStatus: 'trialing',
+        billingProvider: 'stripe',
+        stripeCustomerId: 'cus_123',
+        stripeSubscriptionId: 'sub_123',
+        stripePriceId: 'price_123',
       })
     } finally {
       database.close()

@@ -210,7 +210,7 @@ export async function runScoresCalendarEnrichment(
   let existingDays = 0
   let discoveredGames = 0
   let loadedGames = 0
-  let unresolvedGames = 0
+  const unresolvedGames = 0
 
   const database = openDatabase(sqlitePath)
   try {

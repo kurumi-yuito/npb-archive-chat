@@ -108,7 +108,7 @@ data/structured/{year}/{mmdd}/{game_id}/
 対応不能:
 
 ```text
-TODO: unresolved log format is not documented yet.
+[scores:skipped] date=2024-05-28 game_id=r20240528c-b-02 slug=t-f-01 stage=skip reason=no_pbp_available:rain_cancelled
 ```
 
 完了:
@@ -132,10 +132,10 @@ Done:
 - canonical scores URL から 4HTML を取得
 - raw HTML を `data/raw/{year}/{mmdd}/{game_id}/` に保存
 - structured JSON を `data/structured/{year}/{mmdd}/{game_id}/` に保存
+- `--storage r2` で raw / structured を R2 に保存
 - `events` / `batting_lines` / `pitching_lines` / `roster_entries` / `source_snapshots` を差し替え
 - 日付範囲指定
 
-Not implemented:
+運用で確認する項目:
 
-- R2 を正規保存先にした enrichment
 - 本番ジョブとしての監視、リトライ、アラート

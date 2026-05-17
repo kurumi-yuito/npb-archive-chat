@@ -71,25 +71,25 @@ Done:
 - Nuxt 3 アプリとサーバールート
 - 2016-2026 のローカル SQLite データ基盤
 - `/api/search/*` と `/api/chat` の最小実装
-- Cloudflare Workers / D1 向けの接続層と build scaffold
+- Cloudflare Workers / D1 向けの接続層と build 設定
 - `/` から `/chat` へのリダイレクト
 - `/chat` UI
 - `update:daily` と Cloudflare Cron / GitHub Actions workflow_dispatch
 - production signed-cookie identity / dev header fallback
 - `chat_accounts` による account/profile/subscription 永続化
 
-Not implemented:
+運用で確認する項目:
 
 - UI のアクセシビリティ監査
 - 更新ジョブの監視、リトライ、通知
-- D1 / R2 への本番データ運用
+- D1 / R2 への本番データ運用は `deploy.md` / `daily-update-runbook.md` に従って確認する。
 
 ## この初期化でやっていなかったこと（履歴）
 
 - 外部サイト API やスクレイパー実装の追加（`packages/crawler` 等は別途）
 - Cloudflare Workers 上での本番運用（root `wrangler.toml` と [`deploy.md`](deploy.md) の手順のみ。ローカル SQLite は従来どおり）
 
-**Cloudflare 向けの雛形**（root `wrangler.toml`、`pnpm build:cf`）とデプロイ・migration 手順は [`deploy.md`](deploy.md) を参照。
+**Cloudflare 向け設定**（root `wrangler.toml`、`pnpm build:cf`）とデプロイ・migration 手順は [`deploy.md`](deploy.md) を参照。
 
 ## 次にやるとよいこと（提案）
 

@@ -6,13 +6,19 @@ import { createQueryDatabaseFromD1 } from '../server/utils/d1-query-database'
 function createMockD1(rows: Record<string, unknown>[]): D1Database {
   return {
     exec: async () => {},
-    prepare: (_sql: string) => ({
-      bind: (..._params: unknown[]) => ({
+    prepare: (sql: string) => {
+      void sql
+      return {
+        bind: (...params: unknown[]) => {
+          void params
+          return {
         first: async () => rows[0] ?? null,
         all: async () => ({ results: rows }),
         run: async () => ({ success: true }),
-      }),
-    }),
+          }
+        },
+      }
+    },
   } as unknown as D1Database
 }
 

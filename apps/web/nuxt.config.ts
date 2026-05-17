@@ -1,7 +1,8 @@
 import { defineNuxtConfig } from 'nuxt/config'
 
 const nitroPreset = process.env.NITRO_PRESET
-const isDev = process.env.NODE_ENV !== 'production'
+const isCloudflareBuild = nitroPreset === 'cloudflare_module'
+const isDev = process.env.NODE_ENV !== 'production' && !isCloudflareBuild
 const devAppManifestPath = new URL('./.nuxt/manifest/meta/dev.json', import.meta.url)
 
 export default defineNuxtConfig({
@@ -46,7 +47,12 @@ export default defineNuxtConfig({
     npbAuthHeaderFallback:
       process.env.NPB_AUTH_HEADER_FALLBACK ?? (isDev ? 'true' : 'false'),
     npbAuthSharedSecret: process.env.NPB_AUTH_SHARED_SECRET ?? '',
-    npbBillingConfigured: process.env.NPB_BILLING_CONFIGURED ?? 'false',
     npbDefaultPlan: process.env.NPB_DEFAULT_PLAN ?? 'free',
+    npbStripeSecretKey: process.env.NPB_STRIPE_SECRET_KEY ?? '',
+    npbStripeWebhookSecret: process.env.NPB_STRIPE_WEBHOOK_SECRET ?? '',
+    npbStripeProPriceId: process.env.NPB_STRIPE_PRO_PRICE_ID ?? '',
+    npbStripeCheckoutSuccessUrl: process.env.NPB_STRIPE_CHECKOUT_SUCCESS_URL ?? '',
+    npbStripeCheckoutCancelUrl: process.env.NPB_STRIPE_CHECKOUT_CANCEL_URL ?? '',
+    npbStripePortalReturnUrl: process.env.NPB_STRIPE_PORTAL_RETURN_URL ?? '',
   },
 })

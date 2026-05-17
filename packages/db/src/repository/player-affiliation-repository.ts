@@ -88,7 +88,11 @@ export async function searchPlayerAffiliations(
       right.gameId.localeCompare(left.gameId),
     )
     .slice(0, normalized.limit ?? 200)
-    .map(({ sourceRank: _sourceRank, ...row }) => row)
+    .map((row) => {
+      const { sourceRank, ...affiliation } = row
+      void sourceRank
+      return affiliation
+    })
 }
 
 type RankedPlayerAffiliationRow = PlayerAffiliationRow & {

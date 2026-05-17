@@ -367,11 +367,11 @@ Done:
 - player candidate search と player_id filter
 - chat 用の aggregate / roster / game detail query
 
-Not implemented:
+設計上の追加検討:
 
 - `players` 専用マスタテーブル
 - venue / competition などの高度な検索条件
-- D1 本番接続時の adapter 分離
+- D1 本番接続時の adapter 分離は `QueryDatabase` boundary で実装済み。今後の拡張は repository 単位で行う。
 
 
 ## 次に人間が確認すべき点

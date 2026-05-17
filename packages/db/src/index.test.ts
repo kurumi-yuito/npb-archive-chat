@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import path from 'node:path'
+import { mkdirSync } from 'node:fs'
+import { fileURLToPath } from 'node:url'
 import { parseRawGameFromDir } from '@npb/parser'
 import {
   dbPackage,
@@ -15,9 +17,11 @@ import {
 } from './index.js'
 import { loadRichGame } from './loader'
 
+const packageRoot = path.resolve(fileURLToPath(new URL('..', import.meta.url)))
+const workspaceRoot = path.resolve(packageRoot, '..', '..')
 const fixtureGameDir = path.resolve(
-  process.cwd(),
-  '..',
+  workspaceRoot,
+  'packages',
   'parser',
   'src',
   '__fixtures__',
@@ -28,8 +32,8 @@ const fixtureGameDir = path.resolve(
 )
 
 const secondFixtureGameDir = path.resolve(
-  process.cwd(),
-  '..',
+  workspaceRoot,
+  'packages',
   'parser',
   'src',
   '__fixtures__',
@@ -57,13 +61,14 @@ describe('@npb/db', () => {
         .prepare('SELECT version FROM schema_migrations ORDER BY version ASC')
         .all() as Array<{ version: string }>
 
-      expect(applied).toHaveLength(5)
+      expect(applied).toHaveLength(6)
       expect(migrations).toEqual([
         { version: '0001_initial.sql' },
         { version: '0002_chat_usage.sql' },
         { version: '0003_scores_calendar_rebuild.sql' },
         { version: '0004_bis_current.sql' },
         { version: '0005_chat_accounts.sql' },
+        { version: '0006_stripe_billing.sql' },
       ])
     } finally {
       database.close()
@@ -72,11 +77,12 @@ describe('@npb/db', () => {
 
   it('resolves migrations from a nested Nuxt-like working directory', () => {
     const originalCwd = process.cwd()
-    const nestedCwd = path.resolve(originalCwd, '..', '..', 'apps', 'web', '.nuxt')
+    const nestedCwd = path.resolve(workspaceRoot, 'apps', 'web', '.nuxt')
+    mkdirSync(nestedCwd, { recursive: true })
 
     try {
       process.chdir(nestedCwd)
-      expect(resolveMigrationsDir()).toBe(path.resolve(originalCwd, 'migrations'))
+      expect(resolveMigrationsDir()).toBe(path.resolve(packageRoot, 'migrations'))
     } finally {
       process.chdir(originalCwd)
     }

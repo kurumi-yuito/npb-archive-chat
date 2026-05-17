@@ -134,9 +134,9 @@ pnpm --filter @npb/parser parse:game data/raw/2026/0327/r20260327g-t-01
 pnpm --filter @npb/parser parse:game data/raw/2026/0327/r20260327g-t-01 /tmp/r20260327g-t-01.json
 ```
 
-Not implemented:
+運用方針:
 
-- parser CLI を正規の年次更新導線として使う運用
+- parser CLI は調査・個別確認用に使う。正規の年次更新導線は `update:daily` / `enrich:scores-calendar`。
 
 ## テスト
 

@@ -573,7 +573,7 @@ function normalizeExplicitAssignmentValue(key: string, value: string): string | 
   }
 
   if (isNameLikeExplicitKey(key)) {
-    const compact = trimmed.replace(/[ 　\t\r\n]+/gu, '')
+    const compact = trimmed.replace(/[ \u3000\t\r\n]+/gu, '')
     return compact || undefined
   }
 

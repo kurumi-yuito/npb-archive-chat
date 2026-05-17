@@ -1366,10 +1366,6 @@ async function fetchText(
   return response.text()
 }
 
-function extractUniqueUrls(html: string, pattern: RegExp): string[] {
-  return [...new Set(extractMatches(html, pattern).map((match) => match[0]))]
-}
-
 function extractResolvedUrls(html: string, baseUrl: string): string[] {
   const seen = new Set<string>()
   const urls: string[] = []

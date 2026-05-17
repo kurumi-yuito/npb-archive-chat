@@ -301,6 +301,11 @@ describe('@npb/schemas', () => {
           ],
           games: [],
           pitching: [],
+          batting: [],
+          roster: [],
+          affiliations: [],
+          gameDetails: [],
+          aggregates: [],
         },
         sources: [
           {

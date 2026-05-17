@@ -58,13 +58,6 @@ type ParseContext = {
   gameId: string
 }
 
-type TopLevelTable = {
-  team: string
-  headers: string[]
-  rows: string[]
-  footerRow: string | null
-}
-
 const moduleDir = path.dirname(fileURLToPath(import.meta.url))
 const workspaceRoot = process.env.INIT_CWD ?? path.resolve(moduleDir, '../../..')
 

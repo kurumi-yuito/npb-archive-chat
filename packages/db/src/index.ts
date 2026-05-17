@@ -21,6 +21,7 @@ import {
   listSourceSnapshotsByGameIds,
   getChatUsageCount,
   incrementChatUsageForFreeUser,
+  updateChatAccountBillingState,
   updateChatAccountPlan,
   updateChatAccountProfile,
   searchPlayerCandidates,
@@ -84,6 +85,7 @@ export type {
   RosterEntryRow,
   SourceSnapshotRow,
   ChatAccountRow,
+  UpdateChatAccountBillingInput,
   UpdateChatAccountInput,
   SearchPlayerCandidatesFilters,
 } from './repository/index'
@@ -104,6 +106,7 @@ export {
   getOrCreateChatAccount,
   getChatAccount,
   incrementChatUsageForFreeUser,
+  updateChatAccountBillingState,
   updateChatAccountPlan,
   updateChatAccountProfile,
   listEventsByGameId,

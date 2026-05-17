@@ -9,6 +9,12 @@ name = "npb-archive-chat-web"
 main = "apps/web/.output/server/index.mjs"
 compatibility_date = "2025-01-15"
 compatibility_flags = ["nodejs_compat"]
+workers_dev = true
+preview_urls = true
+
+[vars]
+NPB_AUTH_HEADER_FALLBACK = "false"
+NPB_DEFAULT_PLAN = "free"
 
 [build]
 command = "pnpm build:cf"
@@ -40,6 +46,11 @@ bucket_name = "npb-archive-chat-raw"
 [assets]
 binding = "ASSETS"
 directory = "apps/web/.output/public"
+
+[[routes]]
+pattern = "npb-chat.dom9th-works.com"
+zone_name = "dom9th-works.com"
+custom_domain = true
 
 [triggers]
 crons = ["5 1,7,13 * * *"]

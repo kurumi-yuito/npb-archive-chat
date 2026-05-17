@@ -343,6 +343,6 @@ function teamAliasKey(team: string): string {
 function normalizeLookupKey(value: string): string {
   return value
     .normalize('NFKC')
-    .replace(/[・･.\-_\s　]/gu, '')
+    .replace(/[・･.\-_\s\u3000]/gu, '')
     .toLowerCase()
 }

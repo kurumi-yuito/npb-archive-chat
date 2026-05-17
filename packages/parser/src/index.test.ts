@@ -1,6 +1,7 @@
 import { mkdir, mkdtemp, readFile, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 import { richGameSchema } from '@npb/schemas'
 import {
@@ -11,10 +12,10 @@ import {
 } from './index.js'
 import { parseScoresPlayByPlayHtml } from './scores-playbyplay.js'
 
+const packageRoot = path.resolve(fileURLToPath(new URL('..', import.meta.url)))
+const workspaceRoot = path.resolve(packageRoot, '..', '..')
 const fixtureDir = path.resolve(
-  process.cwd(),
-  '..',
-  '..',
+  workspaceRoot,
   'data',
   'raw',
   '2026',
@@ -22,16 +23,16 @@ const fixtureDir = path.resolve(
   'g-t-01',
 )
 
-const actualFixtureRoot = path.resolve(process.cwd(), 'src', '__fixtures__', 'raw', '2025')
+const actualFixtureRoot = path.resolve(packageRoot, 'src', '__fixtures__', 'raw', '2025')
 
 const bisEngMinimalFixture = path.resolve(
-  process.cwd(),
+  packageRoot,
   'src',
   '__fixtures__',
   'bis-eng-minimal-game.html',
 )
 const scoresPlayByPlayFixture = path.resolve(
-  process.cwd(),
+  packageRoot,
   'src',
   '__fixtures__',
   'raw',

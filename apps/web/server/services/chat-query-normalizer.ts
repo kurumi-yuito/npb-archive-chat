@@ -236,7 +236,7 @@ export function normalizeFreeText(value: string | undefined): string | undefined
   const normalized = value
     .normalize('NFKC')
     .replace(/[‐‑‒–—―ーｰ−]/gu, 'ー')
-    .replace(/[ 　\t\r\n]+/gu, '')
+    .replace(/[ \u3000\t\r\n]+/gu, '')
     .trim()
 
   return normalized.length > 0 ? normalized : undefined
@@ -247,6 +247,6 @@ function normalizeLookupKey(value: string): string {
     .normalize('NFKC')
     .replace(/[・･]/gu, '')
     .replace(/[‐‑‒–—―ーｰ−]/gu, 'ー')
-    .replace(/[ 　\t\r\n]+/gu, '')
+    .replace(/[ \u3000\t\r\n]+/gu, '')
     .toLowerCase()
 }

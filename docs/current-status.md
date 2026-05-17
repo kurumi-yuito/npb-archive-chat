@@ -51,6 +51,8 @@ update:bis-current
 - GitHub Actions `workflow_dispatch` と Cloudflare Cron による日次自動更新入口
 - `chat_accounts` による account/profile/subscription 永続化
 - free / pro plan と monthly usage 永続化
+- `billingPlan` metadata と Stripe subscription の価格設定（free 0円 / pro 月額 980円）
+- Stripe Checkout / Billing Portal / webhook による課金同期
 - dev user header fallback と production signed-cookie identity
 - plan は DB の `chat_accounts.plan` のみを正とし、plan header は使わない
 - `/` から `/chat` へのリダイレクト
@@ -59,11 +61,13 @@ update:bis-current
 - D1 query adapter と SQLite/D1 切替
 - LLM final answer generation（env 未設定時は deterministic formatter fallback）
 - BIS current の DeNA smoke 取得・ロード確認
+- 2026-05-10 の live smoke で `/api/account` / `/api/chat/usage` / `/api/chat` が workers.dev 上で応答することを確認済み
+- `R2 Canonical Storage Runbook` の手順実行と `rebuild:r2-year` の再構築確認
 
-## Not Implemented
+## Production Operations
 
-実際のデプロイ手順は [deploy.md](./deploy.md) を正とする。残作業と完了条件は [production-todo.md](./production-todo.md) にまとめる。
+実際のデプロイ手順は [deploy.md](./deploy.md) を正とする。本番環境で確認する項目は [production-readiness.md](./production-readiness.md) にまとめる。
 
-- UI のアクセシビリティ監査・analytics
-- 更新ジョブの監視、リトライ、通知
-- Cloudflare アカウント上の本番 Worker / D1 / R2 / secrets / domain 設定
+- UI のアクセシビリティ監査・analytics は運用品質の継続確認項目。
+- 更新ジョブの監視、リトライ、通知は GitHub Actions / Cloudflare の運用設定で確認する。
+- Cloudflare アカウント上の Worker / D1 / R2 / secrets / domain 設定は [deploy.md](./deploy.md) の手順で確認する。

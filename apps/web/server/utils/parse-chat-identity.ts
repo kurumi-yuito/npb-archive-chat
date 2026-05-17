@@ -14,7 +14,6 @@ export type ChatIdentity = {
 export type ChatIdentityOptions = {
   allowHeaderFallback: boolean
   authSharedSecret?: string
-  billingConfigured: boolean
   defaultPlan?: 'free' | 'pro'
 }
 

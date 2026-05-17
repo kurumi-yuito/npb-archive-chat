@@ -1,3 +1,4 @@
+import { existsSync } from 'node:fs'
 import { readdir, readFile, rm } from 'node:fs/promises'
 import path from 'node:path'
 import { findWorkspaceRoot } from '@npb/crawler'
@@ -122,9 +123,20 @@ export async function rebuildYearFromR2(options: RebuildYearFromR2Args): Promise
   try {
     migrateDatabase(database)
 
-    for (const structuredDir of await listStructuredGameDirs(workspaceRoot, options.year)) {
-      await loadStructuredGameDirectory(database, structuredDir)
-      loadedStructuredGames += 1
+    const structuredGameDirs = await listStructuredGameDirs(workspaceRoot, options.year)
+    const completeStructuredGameIds = new Set<string>()
+    const unresolvedStructuredGameIds = new Set<string>()
+    for (const structuredDir of structuredGameDirs) {
+      const state = structuredDirectoryState(structuredDir)
+      if (state === 'complete') {
+        await loadStructuredGameDirectory(database, structuredDir)
+        loadedStructuredGames += 1
+        completeStructuredGameIds.add(path.basename(structuredDir))
+        continue
+      }
+      if (state === 'unresolved') {
+        unresolvedStructuredGameIds.add(path.basename(structuredDir))
+      }
     }
 
     const bisPath = path.join(workspaceRoot, 'data', 'structured', 'bis', String(options.year), 'bis-current.json')
@@ -136,11 +148,12 @@ export async function rebuildYearFromR2(options: RebuildYearFromR2Args): Promise
       loadedBisCurrent = false
     }
 
-    const structuredGameIds = new Set(
-      (await listStructuredGameDirs(workspaceRoot, options.year)).map((dir) => path.basename(dir)),
-    )
     for (const rawDir of await listRawGameDirs(workspaceRoot, options.year)) {
-      if (structuredGameIds.has(path.basename(rawDir))) {
+      const rawGameId = path.basename(rawDir)
+      if (completeStructuredGameIds.has(rawGameId) || unresolvedStructuredGameIds.has(rawGameId)) {
+        continue
+      }
+      if (!isCompleteRawGameDirectory(rawDir)) {
         continue
       }
       const richGame = await parseRawGameFromDir(rawDir)
@@ -198,4 +211,28 @@ function parsePositiveInteger(value: string | undefined, label: string): number 
     throw new Error(`Invalid ${label}: ${value ?? '(missing)'}`)
   }
   return Number.parseInt(value, 10)
+}
+
+function structuredDirectoryState(structuredDir: string): 'complete' | 'partial' | 'unresolved' {
+  const coreFiles = [
+    'game.json',
+    'events.json',
+    'batting_lines.json',
+    'pitching_lines.json',
+    'roster.json',
+    'linescore.json',
+    'sources.json',
+  ]
+  if (coreFiles.every((file) => existsSync(path.join(structuredDir, file)))) {
+    return 'complete'
+  }
+  if (existsSync(path.join(structuredDir, 'unresolved.json'))) {
+    return 'unresolved'
+  }
+  return 'partial'
+}
+
+function isCompleteRawGameDirectory(rawDir: string): boolean {
+  const expectedFiles = ['index.html', 'playbyplay.html', 'box.html', 'roster.html']
+  return expectedFiles.every((file) => existsSync(path.join(rawDir, file)))
 }

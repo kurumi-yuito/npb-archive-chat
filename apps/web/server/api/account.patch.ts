@@ -2,7 +2,7 @@ import { readBody } from 'h3'
 import { ZodError } from 'zod'
 import { updateChatAccountProfile } from '@npb/db'
 import { chatAccountSchema, updateChatAccountRequestSchema } from '@npb/schemas'
-import { resolveChatRuntimeAuthConfig } from '../utils/chat-runtime-config'
+import { resolveChatRuntimeAuthConfig, resolveChatRuntimeStripeBillingConfig } from '../utils/chat-runtime-config'
 import { buildChatAccountResponse } from '../utils/chat-account-response'
 import { parseChatIdentity } from '../utils/parse-chat-identity'
 import { createPublicApiError } from '../utils/public-api-error'
@@ -13,11 +13,12 @@ export default defineEventHandler(async (event) => {
 
   try {
     const authConfig = resolveChatRuntimeAuthConfig(config, event)
+    const billingConfig = resolveChatRuntimeStripeBillingConfig(config, event)
     const identity = parseChatIdentity(event, authConfig)
     const database = await getServerMetaDatabase(event, config.npbSqlitePath)
     const body = updateChatAccountRequestSchema.parse(await readBody(event))
     const account = await updateChatAccountProfile(database, identity.userId, body)
-    return chatAccountSchema.parse(buildChatAccountResponse(account, authConfig.billingConfigured))
+    return chatAccountSchema.parse(buildChatAccountResponse(account, billingConfig.billingConfigured))
   } catch (error) {
     if (error instanceof ZodError) {
       throw createPublicApiError(400, 'invalid_request', 'Invalid account request', {

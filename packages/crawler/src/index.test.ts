@@ -1,6 +1,7 @@
 import { mkdir, mkdtemp, readFile, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 import {
   createDownloadLogger,
@@ -14,8 +15,9 @@ import {
   parseDownloadArgs,
 } from './index.js'
 
+const packageRoot = resolve(fileURLToPath(new URL('..', import.meta.url)))
 const fixturePath = (name: string) =>
-  resolve(process.cwd(), 'src', '__fixtures__', name)
+  resolve(packageRoot, 'src', '__fixtures__', name)
 
 async function loadFixture(name: string): Promise<string> {
   return readFile(fixturePath(name), 'utf8')

@@ -9,10 +9,11 @@
 - チャット UI の仕様: [ui-chat.md](./ui-chat.md)
 - チャット API の仕様: [chat-backend.md](./chat-backend.md)
 - usage / plan / 認証境界: [usage-limit.md](./usage-limit.md)
+- 環境変数 / secret の設定先: [env-reference.md](./env-reference.md)
 - 日次更新ジョブの本番運用: [daily-update-runbook.md](./daily-update-runbook.md)
 - 日次更新ジョブの仕様: [update-job.md](./update-job.md)
 - Cloudflare / D1 / R2 / デプロイ手順: [deploy.md](./deploy.md)
-- 本番運用に残る作業: [production-todo.md](./production-todo.md)
+- 本番投入時の確認項目: [production-readiness.md](./production-readiness.md)
 
 ## 前提
 
@@ -37,6 +38,8 @@ pnpm install
 ## ローカル起動
 
 repo root で、SQLite の絶対パスを指定して起動します。
+
+`NPB_SQLITE_PATH` / `NPB_SQLITE_DIR` は [env-reference.md](./env-reference.md) の **Local shell / `.env`** に入れる。
 
 ```bash
 export NPB_SQLITE_PATH="$PWD/data/npb-2025.sqlite"

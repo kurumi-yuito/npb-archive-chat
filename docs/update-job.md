@@ -213,6 +213,6 @@ Done:
 - scores 4HTML の raw 保存、structured JSON 保存、DB 補完
 - BIS current の raw 保存、structured JSON 保存、DB 補完
 
-Not implemented:
+運用で確認する項目:
 
 - 本番運用での監視、リトライ、通知

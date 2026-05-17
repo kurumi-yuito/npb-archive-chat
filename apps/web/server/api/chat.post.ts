@@ -18,7 +18,7 @@ import {
   buildFreeUsageSnapshot,
   buildProUsageInfo,
 } from '../utils/build-chat-usage'
-import { resolveChatRuntimeAuthConfig } from '../utils/chat-runtime-config'
+import { resolveChatRuntimeAuthConfig, resolveChatRuntimeStripeBillingConfig } from '../utils/chat-runtime-config'
 import { getEffectiveChatAccount } from '../utils/chat-account-response'
 import { parseChatIdentity } from '../utils/parse-chat-identity'
 import { parseChatRequestBody } from '../utils/parse-chat-request'
@@ -30,9 +30,10 @@ export default defineEventHandler(async (event) => {
 
   try {
     const authConfig = resolveChatRuntimeAuthConfig(config, event)
+    const billingConfig = resolveChatRuntimeStripeBillingConfig(config, event)
     const identity = parseChatIdentity(event, authConfig)
     const metaDatabase = await getServerMetaDatabase(event, config.npbSqlitePath)
-    const account = await getEffectiveChatAccount(metaDatabase, identity.userId, authConfig.defaultPlan ?? 'free', authConfig.billingConfigured)
+    const account = await getEffectiveChatAccount(metaDatabase, identity.userId, authConfig.defaultPlan ?? 'free', billingConfig.billingConfigured)
     const month = currentUsageMonthKey()
 
     if (account.plan === 'free') {

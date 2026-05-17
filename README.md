@@ -29,7 +29,7 @@ pnpm dev
 |--------------|------|
 | [`docs/getting-started.md`](docs/getting-started.md) | ローカル起動、画面操作、API確認、日次更新の基本操作 |
 | [`docs/current-status.md`](docs/current-status.md) | 現在の実装状態 |
-| [`docs/production-todo.md`](docs/production-todo.md) | 本番運用に残っている作業と手順 |
+| [`docs/production-readiness.md`](docs/production-readiness.md) | 本番投入時の確認項目と手順 |
 | [`docs/bootstrap.md`](docs/bootstrap.md) | 初回セットアップ・よく使うコマンド |
 | [`docs/deploy.md`](docs/deploy.md) | Cloudflare 向けビルド、D1 migration、デプロイ手順 |
 | [`docs/ui-chat.md`](docs/ui-chat.md) | `/chat` 画面の表示項目と操作 |

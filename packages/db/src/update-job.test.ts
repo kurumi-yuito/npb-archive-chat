@@ -1,6 +1,7 @@
 import { mkdir, mkdtemp, readFile, stat, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 import type { DiscoveryYear } from '@npb/schemas'
 import { sqliteDatabaseToQuery } from './query-driver'
@@ -8,9 +9,11 @@ import { openDatabase } from './sqlite'
 import { listLoadedGameIdsByYear } from './repository/index'
 import { parseUpdateYearArgs, runIncrementalUpdate } from './update-job'
 
+const packageRoot = path.resolve(fileURLToPath(new URL('..', import.meta.url)))
+const workspaceRoot = path.resolve(packageRoot, '..', '..')
 const bisIndexFixturePath = path.resolve(
-  process.cwd(),
-  '..',
+  workspaceRoot,
+  'packages',
   'parser',
   'src',
   '__fixtures__',

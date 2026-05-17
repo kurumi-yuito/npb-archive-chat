@@ -206,10 +206,6 @@ function uniqueStrings(values: Array<string | undefined>): string[] {
   return [...new Set(values.map((value) => value?.trim()).filter(Boolean) as string[])]
 }
 
-function splitCsv(value: string | null): string[] {
-  return value?.split(',').filter(Boolean) ?? []
-}
-
 function mode(values: string[]): string | null {
   let best: string | null = null
   let bestCount = 0
@@ -259,7 +255,7 @@ function sameTeamAlias(left: string, right: string): boolean {
 }
 
 function teamAliasKey(team: string): string {
-  const normalized = team.replace(/[・･.\-_\s　]/gu, '')
+  const normalized = team.replace(/[・･.\-_\s\u3000]/gu, '')
   const aliases: Record<string, string> = {
     東京ヤクルトスワローズ: 'ヤクルト',
     ヤクルト: 'ヤクルト',

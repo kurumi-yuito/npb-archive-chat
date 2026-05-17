@@ -51,9 +51,11 @@ export {
 export {
   getChatAccount,
   getOrCreateChatAccount,
+  updateChatAccountBillingState,
   updateChatAccountPlan,
   updateChatAccountProfile,
   type ChatAccountRow,
+  type UpdateChatAccountBillingInput,
   type UpdateChatAccountInput,
 } from './chat-account-repository'
 export {
