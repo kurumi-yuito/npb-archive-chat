@@ -392,11 +392,11 @@ function formatBisBattingEvaluationSummary(row: BattingLineRow, resultCount: num
   const stats = parseStatsJson(row.statsJson ?? row.rawText)
   const year = row.gameDate.slice(0, 4)
   const positives = [
-    statPart(stats, '試合', '試合出場'),
-    statPart(stats, '安打', '安打'),
-    statPart(stats, '本塁打', '本塁打'),
-    statPart(stats, '打点', '打点'),
-    statPart(stats, '四球', '四球'),
+    positiveCountStatPart(stats, '試合', '試合出場'),
+    positiveCountStatPart(stats, '安打', '安打'),
+    positiveCountStatPart(stats, '本塁打', '本塁打'),
+    positiveCountStatPart(stats, '打点', '打点'),
+    positiveCountStatPart(stats, '四球', '四球'),
     statPart(stats, '打率', '打率'),
     statPart(stats, '出塁率', '出塁率'),
   ].filter(Boolean)
@@ -408,6 +408,18 @@ function formatBisBattingEvaluationSummary(row: BattingLineRow, resultCount: num
     ...(resultCount > 1 ? [`同条件の成績行が${resultCount}件あります。`] : []),
     ...(row.sourceUrl ? [`source: ${row.sourceUrl}`] : []),
   ].join('\n')
+}
+
+function positiveCountStatPart(stats: Record<string, unknown>, key: string, label: string): string | undefined {
+  const value = stats[key]
+  if (value === null || value === undefined || value === '') {
+    return undefined
+  }
+  const numeric = typeof value === 'number' ? value : Number(String(value))
+  if (Number.isFinite(numeric) && numeric <= 0) {
+    return undefined
+  }
+  return `${label}${String(value)}`
 }
 
 function formatPitchingEvaluationSummary(rows: PitchingLineRow[]): string {
