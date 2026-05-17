@@ -1,8 +1,12 @@
+import { randomUUID } from 'node:crypto'
 import { chatPlanSchema, type ChatPlan } from '@npb/schemas'
 import type { QueryDatabase } from '../query-driver'
 
 export type ChatAccountRow = {
   userId: string
+  authProvider: 'guest' | 'google'
+  authSubject: string | null
+  authEmailVerified: boolean
   email: string | null
   displayName: string | null
   plan: ChatPlan
@@ -19,6 +23,14 @@ export type ChatAccountRow = {
 export type UpdateChatAccountInput = {
   email?: string | null
   displayName?: string | null
+}
+
+export type GoogleAccountInput = {
+  guestUserId?: string | null
+  googleSubject: string
+  email: string | null
+  emailVerified: boolean
+  displayName: string | null
 }
 
 export type UpdateChatAccountBillingInput = {
@@ -40,6 +52,9 @@ export async function getOrCreateChatAccount(
     .prepare(
       `INSERT INTO chat_accounts (
         user_id,
+        auth_provider,
+        auth_subject,
+        auth_email_verified,
         plan,
         billing_status,
         billing_provider,
@@ -48,7 +63,7 @@ export async function getOrCreateChatAccount(
         stripe_price_id,
         stripe_checkout_session_id
       )
-       VALUES (?, ?, 'active', 'stripe', NULL, NULL, NULL, NULL)
+       VALUES (?, 'guest', NULL, 0, ?, 'active', 'stripe', NULL, NULL, NULL, NULL)
        ON CONFLICT(user_id) DO NOTHING`,
     )
   .run(userId, seedPlan)
@@ -63,6 +78,9 @@ export async function getChatAccount(
     .prepare(
       `SELECT
         user_id AS userId,
+        auth_provider AS authProvider,
+        auth_subject AS authSubject,
+        auth_email_verified AS authEmailVerified,
         email,
         display_name AS displayName,
         plan,
@@ -79,6 +97,118 @@ export async function getChatAccount(
     )
     .get(userId) as ChatAccountRow | undefined
   return row ?? null
+}
+
+export async function getChatAccountByAuthIdentity(
+  database: QueryDatabase,
+  authProvider: ChatAccountRow['authProvider'],
+  authSubject: string,
+): Promise<ChatAccountRow | null> {
+  const row = await database
+    .prepare(
+      `SELECT
+        user_id AS userId,
+        auth_provider AS authProvider,
+        auth_subject AS authSubject,
+        auth_email_verified AS authEmailVerified,
+        email,
+        display_name AS displayName,
+        plan,
+        billing_status AS billingStatus,
+        billing_provider AS billingProvider,
+        stripe_customer_id AS stripeCustomerId,
+        stripe_subscription_id AS stripeSubscriptionId,
+        stripe_price_id AS stripePriceId,
+        stripe_checkout_session_id AS stripeCheckoutSessionId,
+        created_at AS createdAt,
+        updated_at AS updatedAt
+       FROM chat_accounts
+       WHERE auth_provider = ? AND auth_subject = ?`,
+    )
+    .get(authProvider, authSubject) as ChatAccountRow | undefined
+  return row ?? null
+}
+
+export async function linkOrCreateGoogleChatAccount(
+  database: QueryDatabase,
+  input: GoogleAccountInput,
+  seedPlan: ChatPlan = 'free',
+): Promise<ChatAccountRow> {
+  const existingGoogle = await getChatAccountByAuthIdentity(database, 'google', input.googleSubject)
+  if (existingGoogle) {
+    await database
+      .prepare(
+        `UPDATE chat_accounts
+         SET
+           email = COALESCE(?, email),
+           display_name = COALESCE(?, display_name),
+           auth_email_verified = ?,
+           updated_at = CURRENT_TIMESTAMP
+         WHERE user_id = ?`,
+      )
+      .run(
+        normalizeNullable(input.email),
+        normalizeNullable(input.displayName),
+        input.emailVerified ? 1 : 0,
+        existingGoogle.userId,
+      )
+    return (await getChatAccount(database, existingGoogle.userId))!
+  }
+
+  const guestUserId = input.guestUserId?.trim()
+  const guestAccount = guestUserId ? await getChatAccount(database, guestUserId) : null
+  if (guestAccount && guestAccount.authProvider === 'guest') {
+    await database
+      .prepare(
+        `UPDATE chat_accounts
+         SET
+           auth_provider = 'google',
+           auth_subject = ?,
+           auth_email_verified = ?,
+           email = COALESCE(?, email),
+           display_name = COALESCE(?, display_name),
+           updated_at = CURRENT_TIMESTAMP
+         WHERE user_id = ?`,
+      )
+      .run(
+        input.googleSubject,
+        input.emailVerified ? 1 : 0,
+        normalizeNullable(input.email),
+        normalizeNullable(input.displayName),
+        guestAccount.userId,
+      )
+    return (await getChatAccount(database, guestAccount.userId))!
+  }
+
+  const userId = randomUUID()
+  await database
+    .prepare(
+      `INSERT INTO chat_accounts (
+        user_id,
+        auth_provider,
+        auth_subject,
+        auth_email_verified,
+        email,
+        display_name,
+        plan,
+        billing_status,
+        billing_provider,
+        stripe_customer_id,
+        stripe_subscription_id,
+        stripe_price_id,
+        stripe_checkout_session_id
+      )
+       VALUES (?, 'google', ?, ?, ?, ?, ?, 'active', 'stripe', NULL, NULL, NULL, NULL)`,
+    )
+    .run(
+      userId,
+      input.googleSubject,
+      input.emailVerified ? 1 : 0,
+      normalizeNullable(input.email),
+      normalizeNullable(input.displayName),
+      seedPlan,
+    )
+  return (await getChatAccount(database, userId))!
 }
 
 export async function updateChatAccountProfile(

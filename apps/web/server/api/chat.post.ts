@@ -33,7 +33,13 @@ export default defineEventHandler(async (event) => {
     const billingConfig = resolveChatRuntimeStripeBillingConfig(config, event)
     const identity = parseChatIdentity(event, authConfig)
     const metaDatabase = await getServerMetaDatabase(event, config.npbSqlitePath)
-    const account = await getEffectiveChatAccount(metaDatabase, identity.userId, authConfig.defaultPlan ?? 'free', billingConfig.billingConfigured)
+    const account = await getEffectiveChatAccount(
+      metaDatabase,
+      identity.userId,
+      authConfig.defaultPlan ?? 'free',
+      billingConfig.billingConfigured,
+      authConfig.googleAuthConfigured,
+    )
     const month = currentUsageMonthKey()
 
     if (account.plan === 'free') {

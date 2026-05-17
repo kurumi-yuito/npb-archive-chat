@@ -71,6 +71,9 @@ repo root の [wrangler.toml](../wrangler.toml) を編集する。
 
 ```bash
 wrangler secret put NPB_AUTH_SHARED_SECRET
+wrangler secret put NPB_GOOGLE_CLIENT_ID
+wrangler secret put NPB_GOOGLE_CLIENT_SECRET
+wrangler secret put NPB_GOOGLE_REDIRECT_URL
 ```
 
 LLM を使うなら追加で:
@@ -381,6 +384,7 @@ wrangler d1 execute npb-archive-chat-import --remote --file=packages/db/migratio
 wrangler d1 execute npb-archive-chat-meta --remote --file=packages/db/migrations/0002_chat_usage.sql
 wrangler d1 execute npb-archive-chat-meta --remote --file=packages/db/migrations/0005_chat_accounts.sql
 wrangler d1 execute npb-archive-chat-meta --remote --file=packages/db/migrations/0006_stripe_billing.sql
+wrangler d1 execute npb-archive-chat-meta --remote --file=packages/db/migrations/0007_google_auth_accounts.sql
 ```
 
 - `npb-archive-chat-import` / `npb-archive-chat-meta` は `wrangler.toml` の `database_name` と一致させる。

@@ -1,4 +1,4 @@
-# Documentation Guide
+# Documentation Index
 
 このディレクトリの入口です。目的別に読むドキュメントを固定し、重複した情報を探し回らなくてよいようにする。
 
@@ -20,7 +20,9 @@
 | チャット画面 | [ui-chat.md](./ui-chat.md) | 画面表示項目、どのソースを編集するか |
 | チャットAPI | [chat-backend.md](./chat-backend.md) | `/api/chat` の処理順、formatter、LLM fallback |
 | アカウント・課金・usage | [usage-limit.md](./usage-limit.md) | account table、subscription、usage制限、API |
+| Google 認証設定 | [google-auth-runbook.md](./google-auth-runbook.md) | OAuth client、Workers secrets、migration、動作確認 |
 | Stripe 課金設定 | [stripe-billing-runbook.md](./stripe-billing-runbook.md) | Stripe の Price / webhook / secret 設定手順 |
+| 法務文書 | [legal/privacy-policy.md](./legal/privacy-policy.md), [legal/terms-of-service.md](./legal/terms-of-service.md) | プライバシーポリシー、利用規約 |
 | LLM | [llm-query-parser.md](./llm-query-parser.md) | structured query生成、final answer drafting |
 | query正規化 | [query-normalization.md](./query-normalization.md) | team/player正規化、player resolution |
 | eval | [eval-process.md](./eval-process.md) | query eval と DB-backed chat eval |

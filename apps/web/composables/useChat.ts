@@ -1,7 +1,5 @@
 import type { ChatAccount, ChatPlan, ChatResponse, ChatUsageInfo } from '@npb/schemas'
-import { onMounted, ref } from 'vue'
-
-const USER_STORAGE_KEY = 'npb-archive-chat-user-id'
+import { computed, onMounted, ref } from 'vue'
 
 export type ChatTurn = {
   id: string
@@ -10,21 +8,9 @@ export type ChatTurn = {
   errorMessage: string | null
 }
 
-function getOrCreateUserId(): string {
-  if (!import.meta.client) return ''
-  let id = localStorage.getItem(USER_STORAGE_KEY)
-  if (!id) {
-    id = crypto.randomUUID()
-    localStorage.setItem(USER_STORAGE_KEY, id)
-  }
-  return id
-}
-
 function chatRequestHeaders(): Record<string, string> {
-  const userId = getOrCreateUserId()
   return {
     'Content-Type': 'application/json',
-    'X-NPB-User-Id': userId,
   }
 }
 
@@ -65,19 +51,17 @@ export function useChat() {
   const userId = ref('')
   const plan = ref<ChatPlan>('free')
   const accountSaving = ref(false)
+  const isGoogleAuthenticated = computed(() => accountInfo.value?.authProvider === 'google')
 
   async function refreshAccount() {
     if (!import.meta.client) return
     try {
-      const res = await fetch('/api/account', {
-        headers: {
-          'X-NPB-User-Id': getOrCreateUserId(),
-        },
-      })
+      const res = await fetch('/api/account')
       if (!res.ok) return
       const account = (await res.json()) as ChatAccount
       accountInfo.value = account
       plan.value = account.plan
+      userId.value = account.userId
     } catch {
       accountInfo.value = null
     }
@@ -86,11 +70,7 @@ export function useChat() {
   async function refreshUsage() {
     if (!import.meta.client) return
     try {
-      const res = await fetch('/api/chat/usage', {
-        headers: {
-          'X-NPB-User-Id': getOrCreateUserId(),
-        },
-      })
+      const res = await fetch('/api/chat/usage')
       if (!res.ok) return
       usageInfo.value = (await res.json()) as ChatUsageInfo
     } catch {
@@ -99,7 +79,6 @@ export function useChat() {
   }
 
   onMounted(() => {
-    userId.value = getOrCreateUserId()
     void (async () => {
       await refreshAccount()
       await refreshUsage()
@@ -108,6 +87,10 @@ export function useChat() {
 
   async function updatePlan(nextPlan: ChatPlan) {
     if (!import.meta.client) return
+    if (nextPlan === 'pro' && !isGoogleAuthenticated.value) {
+      window.location.href = '/api/auth/google/start'
+      return
+    }
     accountSaving.value = true
     try {
       const res = await fetch('/api/billing/subscription', {
@@ -158,11 +141,9 @@ export function useChat() {
     }
   }
 
-  function regenerateUserId() {
+  async function logout() {
     if (!import.meta.client) return
-    const id = crypto.randomUUID()
-    localStorage.setItem(USER_STORAGE_KEY, id)
-    userId.value = id
+    await fetch('/api/auth/logout', { method: 'POST' }).catch(() => null)
     accountInfo.value = null
     usageInfo.value = null
     void (async () => {
@@ -238,11 +219,12 @@ export function useChat() {
     userId,
     plan,
     accountSaving,
+    isGoogleAuthenticated,
     refreshAccount,
     refreshUsage,
     updatePlan,
     updateAccountProfile,
-    regenerateUserId,
+    logout,
     sendMessage,
   }
 }

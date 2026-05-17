@@ -234,7 +234,7 @@ Cloudflare Worker で使う live mode の設定を作るので、`テスト環�
 
 Dashboard の `設定` → `Billing` → `カスタマーポータル` で次を設定する。
 
-- ビジネス情報: 表示名、サポート連絡先、必要ならプライバシーポリシー URL / 利用規約 URL を入れる
+- ビジネス情報: 表示名、サポート連絡先、必要ならプライバシーポリシー URL / 利用規約 URL を入れる。原稿は [legal/privacy-policy.md](./legal/privacy-policy.md) と [legal/terms-of-service.md](./legal/terms-of-service.md)
 - 請求書履歴: 有効
 - 支払い方法を更新: 有効
 - サブスクリプションをキャンセル: 有効

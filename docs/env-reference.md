@@ -25,8 +25,13 @@ NPB_SQLITE_DIR=data
 
 # Local auth. In dev, header fallback defaults to true, so these can usually stay empty/omitted.
 NPB_AUTH_HEADER_FALLBACK=true
-NPB_AUTH_SHARED_SECRET=
+NPB_AUTH_SHARED_SECRET=local-dev-secret
 NPB_DEFAULT_PLAN=free
+
+# Google OAuth for local login testing.
+NPB_GOOGLE_CLIENT_ID=...
+NPB_GOOGLE_CLIENT_SECRET=...
+NPB_GOOGLE_REDIRECT_URL=http://localhost:3000/api/auth/google/callback
 
 # Stripe test mode values for local billing.
 NPB_STRIPE_SECRET_KEY=sk_test_...
@@ -52,7 +57,9 @@ NPB_DAILY_UPDATE_GITHUB_REF=main
 NPB_DAILY_UPDATE_GITHUB_TOKEN=
 ```
 
-通常のローカル確認で値を入れる必要があるのは `NPB_SQLITE_PATH` / `NPB_SQLITE_DIR` と、Stripe を使うなら `NPB_STRIPE_*` の6項目である。
+通常のローカル確認で値を入れる必要があるのは `NPB_SQLITE_PATH` / `NPB_SQLITE_DIR` である。
+Google ログインを試すなら `NPB_AUTH_SHARED_SECRET` と `NPB_GOOGLE_*` の3項目を入れる。
+Stripe を使うなら `NPB_STRIPE_*` の6項目も入れる。
 LLM と GitHub workflow dispatch は機能を試すときだけ値を入れる。
 
 | 変数 | 設定先 | 設定方法 |
@@ -66,6 +73,10 @@ LLM と GitHub workflow dispatch は機能を試すときだけ値を入れる�
 | `CHAT_ANSWER_LLM_API_KEY` | Local shell / `.env` | `export` か `.env` に記載。未設定なら formatter fallback |
 | `CHAT_ANSWER_LLM_MODEL` | Local shell / `.env` | `export` か `.env` に記載 |
 | `NPB_AUTH_HEADER_FALLBACK` | Local shell / `.env` | dev で header fallback を切り替えるときだけ使う |
+| `NPB_AUTH_SHARED_SECRET` | Local shell / `.env` | signed cookie 用。Google ログインをローカルで試すなら必須 |
+| `NPB_GOOGLE_CLIENT_ID` | Local shell / `.env` | Google Cloud Console の OAuth 2.0 Client ID |
+| `NPB_GOOGLE_CLIENT_SECRET` | Local shell / `.env` | Google Cloud Console の OAuth 2.0 Client Secret |
+| `NPB_GOOGLE_REDIRECT_URL` | Local shell / `.env` | `http://localhost:3000/api/auth/google/callback` |
 | `NPB_STRIPE_SECRET_KEY` | Local shell / `.env` | Stripe test mode の `sk_test_...`。ローカルで課金動作を確認するときだけ使う |
 | `NPB_STRIPE_WEBHOOK_SECRET` | Local shell / `.env` | Stripe test mode の webhook endpoint / Stripe CLI forwarding の `whsec_...` |
 | `NPB_STRIPE_PRO_PRICE_ID` | Local shell / `.env` | Stripe test mode で作った `price_...` |
@@ -81,6 +92,9 @@ Stripe は live mode の値だけを入れる。test mode の値は Cloudflare W
 | 変数 | 設定先 | 設定方法 |
 |------|--------|----------|
 | `NPB_AUTH_SHARED_SECRET` | Cloudflare Workers secrets | `wrangler secret put NPB_AUTH_SHARED_SECRET` |
+| `NPB_GOOGLE_CLIENT_ID` | Cloudflare Workers secrets | Google Cloud Console の OAuth 2.0 Client ID を `wrangler secret put NPB_GOOGLE_CLIENT_ID` |
+| `NPB_GOOGLE_CLIENT_SECRET` | Cloudflare Workers secrets | Google Cloud Console の OAuth 2.0 Client Secret を `wrangler secret put NPB_GOOGLE_CLIENT_SECRET` |
+| `NPB_GOOGLE_REDIRECT_URL` | Cloudflare Workers secrets | `https://npb-chat.dom9th-works.com/api/auth/google/callback` を `wrangler secret put NPB_GOOGLE_REDIRECT_URL` |
 | `CHAT_QUERY_LLM_API_KEY` | Cloudflare Workers secrets | `wrangler secret put CHAT_QUERY_LLM_API_KEY` |
 | `CHAT_ANSWER_LLM_API_KEY` | Cloudflare Workers secrets | `wrangler secret put CHAT_ANSWER_LLM_API_KEY` |
 | `NPB_STRIPE_SECRET_KEY` | Cloudflare Workers secrets | Stripe Dashboard の `開発者` → `API キー` にある live mode の `sk_live_...` を `wrangler secret put NPB_STRIPE_SECRET_KEY` |
@@ -117,6 +131,8 @@ GitHub の daily update workflow が読む。GitHub repo の Settings 画面で�
 | Stripe API secret key `sk_live_...` | Stripe Dashboard の `開発者` → `API キー` | Cloudflare Workers secret `NPB_STRIPE_SECRET_KEY` |
 | Stripe `price_...` | Stripe Dashboard | Cloudflare Workers secret `NPB_STRIPE_PRO_PRICE_ID` |
 | Stripe webhook signing secret `whsec_...` | Stripe Dashboard | Cloudflare Workers secret `NPB_STRIPE_WEBHOOK_SECRET` |
+| Google OAuth Client ID / Secret | Google Cloud Console → APIs & Services → Credentials | Cloudflare Workers secrets `NPB_GOOGLE_CLIENT_ID` / `NPB_GOOGLE_CLIENT_SECRET` |
+| Google OAuth authorized redirect URI | Google Cloud Console の OAuth Client 設定 | `https://npb-chat.dom9th-works.com/api/auth/google/callback` と local 用 `http://localhost:3000/api/auth/google/callback` |
 
 ## 迷ったらここだけ見る
 

@@ -23,7 +23,7 @@ pnpm dev
 
 ## ドキュメント
 
-全体の入口: [`docs/README.md`](docs/README.md)
+ドキュメント一覧: [`docs/index.md`](docs/index.md)
 
 | ドキュメント | 内容 |
 |--------------|------|
@@ -32,6 +32,7 @@ pnpm dev
 | [`docs/production-readiness.md`](docs/production-readiness.md) | 本番投入時の確認項目と手順 |
 | [`docs/bootstrap.md`](docs/bootstrap.md) | 初回セットアップ・よく使うコマンド |
 | [`docs/deploy.md`](docs/deploy.md) | Cloudflare 向けビルド、D1 migration、デプロイ手順 |
+| [`docs/google-auth-runbook.md`](docs/google-auth-runbook.md) | Google ログイン設定、OAuth redirect URI、動作確認 |
 | [`docs/ui-chat.md`](docs/ui-chat.md) | `/chat` 画面の表示項目と操作 |
 | [`docs/chat-backend.md`](docs/chat-backend.md) | `/api/chat` の処理フロー |
 | [`docs/update-job.md`](docs/update-job.md) | `update:daily` とデータ更新 |

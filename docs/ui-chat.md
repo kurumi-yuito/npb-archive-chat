@@ -18,7 +18,7 @@ NPB公式 scores / BIS 由来のDBを根拠に、ブラウザから自然文で�
 | 領域 | 表示内容 | 主な編集箇所 |
 |------|----------|--------------|
 | 左サイドバー | ブランド、アカウント、プラン、usage、直近 query plan | `apps/web/pages/chat.vue` |
-| アカウント | localStorage の `X-NPB-User-Id` 相当、ローカルユーザー再発行ボタン | `apps/web/composables/useChat.ts`, `apps/web/pages/chat.vue` |
+| アカウント | ゲスト / Google ログイン済み account、Google ログイン / ログアウト | `apps/web/composables/useChat.ts`, `apps/web/pages/chat.vue` |
 | プラン | Free / Pro 選択、DBの `chat_accounts.plan` を更新 | `apps/web/composables/useChat.ts`, `apps/web/pages/chat.vue`, `apps/web/server/api/billing/subscription.put.ts` |
 | usage | `GET /api/chat/usage` の結果、月・残回数・無制限表示 | `apps/web/composables/useChat.ts`, `apps/web/pages/chat.vue` |
 | 上部バー | サービス名、根拠DBの説明、プラン/残数 | `apps/web/pages/chat.vue` |

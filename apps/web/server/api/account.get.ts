@@ -14,7 +14,13 @@ export default defineEventHandler(async (event) => {
     const identity = parseChatIdentity(event, authConfig)
     const database = await getServerMetaDatabase(event, config.npbSqlitePath)
     return chatAccountSchema.parse(
-      await getEffectiveChatAccount(database, identity.userId, authConfig.defaultPlan ?? 'free', billingConfig.billingConfigured),
+      await getEffectiveChatAccount(
+        database,
+        identity.userId,
+        authConfig.defaultPlan ?? 'free',
+        billingConfig.billingConfigured,
+        authConfig.googleAuthConfigured,
+      ),
     )
   } catch (error) {
     if (error instanceof Error && error.message.includes('not set')) {

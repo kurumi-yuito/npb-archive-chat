@@ -1,9 +1,10 @@
 import { defineNuxtConfig } from 'nuxt/config'
+import { fileURLToPath } from 'node:url'
 
 const nitroPreset = process.env.NITRO_PRESET
 const isCloudflareBuild = nitroPreset === 'cloudflare_module'
 const isDev = process.env.NODE_ENV !== 'production' && !isCloudflareBuild
-const devAppManifestPath = new URL('./.nuxt/manifest/meta/dev.json', import.meta.url)
+const devAppManifestPath = fileURLToPath(new URL('./.nuxt/manifest/meta/dev.json', import.meta.url))
 
 export default defineNuxtConfig({
   compatibilityDate: '2025-01-15',
@@ -18,15 +19,18 @@ export default defineNuxtConfig({
   },
   alias: isDev
     ? {
-        '#app-manifest': devAppManifestPath.pathname,
+        '#app-manifest': devAppManifestPath,
       }
     : {},
   vite: isDev
     ? {
         resolve: {
-          alias: {
-            '#app-manifest': devAppManifestPath.pathname,
-          },
+          alias: [
+            {
+              find: /^#app-manifest$/,
+              replacement: devAppManifestPath,
+            },
+          ],
         },
       }
     : {},
@@ -48,6 +52,9 @@ export default defineNuxtConfig({
       process.env.NPB_AUTH_HEADER_FALLBACK ?? (isDev ? 'true' : 'false'),
     npbAuthSharedSecret: process.env.NPB_AUTH_SHARED_SECRET ?? '',
     npbDefaultPlan: process.env.NPB_DEFAULT_PLAN ?? 'free',
+    npbGoogleClientId: process.env.NPB_GOOGLE_CLIENT_ID ?? '',
+    npbGoogleClientSecret: process.env.NPB_GOOGLE_CLIENT_SECRET ?? '',
+    npbGoogleRedirectUrl: process.env.NPB_GOOGLE_REDIRECT_URL ?? '',
     npbStripeSecretKey: process.env.NPB_STRIPE_SECRET_KEY ?? '',
     npbStripeWebhookSecret: process.env.NPB_STRIPE_WEBHOOK_SECRET ?? '',
     npbStripeProPriceId: process.env.NPB_STRIPE_PRO_PRICE_ID ?? '',

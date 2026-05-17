@@ -4,7 +4,7 @@
 
 詳細な背景は次を参照してください。
 
-- ドキュメント全体の入口: [README.md](./README.md)
+- ドキュメント全体の入口: [index.md](./index.md)
 - 初回セットアップと開発コマンド: [bootstrap.md](./bootstrap.md)
 - チャット UI の仕様: [ui-chat.md](./ui-chat.md)
 - チャット API の仕様: [chat-backend.md](./chat-backend.md)

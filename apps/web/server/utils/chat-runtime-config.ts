@@ -5,6 +5,10 @@ export type ChatRuntimeAuthConfig = {
   allowHeaderFallback: boolean
   authSharedSecret: string
   defaultPlan: ChatPlan
+  googleClientId: string
+  googleClientSecret: string
+  googleRedirectUrl: string
+  googleAuthConfigured: boolean
 }
 
 export type ChatRuntimeStripeBillingConfig = {
@@ -21,6 +25,9 @@ type ChatRuntimeConfigSource = {
   npbAuthHeaderFallback?: unknown
   npbAuthSharedSecret?: unknown
   npbDefaultPlan?: unknown
+  npbGoogleClientId?: unknown
+  npbGoogleClientSecret?: unknown
+  npbGoogleRedirectUrl?: unknown
   npbStripeSecretKey?: unknown
   npbStripeWebhookSecret?: unknown
   npbStripeProPriceId?: unknown
@@ -33,6 +40,9 @@ type CloudflareRuntimeEnv = {
   NPB_AUTH_HEADER_FALLBACK?: unknown
   NPB_AUTH_SHARED_SECRET?: unknown
   NPB_DEFAULT_PLAN?: unknown
+  NPB_GOOGLE_CLIENT_ID?: unknown
+  NPB_GOOGLE_CLIENT_SECRET?: unknown
+  NPB_GOOGLE_REDIRECT_URL?: unknown
   NPB_STRIPE_SECRET_KEY?: unknown
   NPB_STRIPE_WEBHOOK_SECRET?: unknown
   NPB_STRIPE_PRO_PRICE_ID?: unknown
@@ -60,6 +70,9 @@ export function resolveChatRuntimeAuthConfig(
   event?: ChatRuntimeConfigEvent,
 ): ChatRuntimeAuthConfig {
   const env = event?.context.cloudflare?.env
+  const googleClientId = stringValue(env?.NPB_GOOGLE_CLIENT_ID ?? config.npbGoogleClientId)
+  const googleClientSecret = stringValue(env?.NPB_GOOGLE_CLIENT_SECRET ?? config.npbGoogleClientSecret)
+  const googleRedirectUrl = stringValue(env?.NPB_GOOGLE_REDIRECT_URL ?? config.npbGoogleRedirectUrl)
   return {
     allowHeaderFallback: parseBoolean(env?.NPB_AUTH_HEADER_FALLBACK ?? config.npbAuthHeaderFallback),
     authSharedSecret:
@@ -69,6 +82,10 @@ export function resolveChatRuntimeAuthConfig(
           ? config.npbAuthSharedSecret
           : '',
     defaultPlan: chatPlanSchema.catch('free').parse(env?.NPB_DEFAULT_PLAN ?? config.npbDefaultPlan),
+    googleClientId,
+    googleClientSecret,
+    googleRedirectUrl,
+    googleAuthConfigured: Boolean(googleClientId && googleClientSecret),
   }
 }
 
@@ -129,4 +146,8 @@ export function parseBoolean(value: unknown): boolean {
   if (typeof value === 'boolean') return value
   if (typeof value !== 'string') return false
   return ['1', 'true', 'yes', 'on'].includes(value.trim().toLowerCase())
+}
+
+function stringValue(value: unknown): string {
+  return typeof value === 'string' ? value.trim() : ''
 }

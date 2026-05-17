@@ -23,6 +23,9 @@ export default defineEventHandler(async (event) => {
       (await getOrCreateChatAccount(database, identity.userId, authConfig.defaultPlan ?? 'free'))
 
     if (body.plan === 'pro' && currentAccount.plan !== 'pro') {
+      if (identity.authProvider !== 'google') {
+        throw createPublicApiError(401, 'login_required', 'Google login is required before starting a paid subscription')
+      }
       const session = await createStripeCheckoutSession(billingConfig, {
         userId: identity.userId,
         email: currentAccount.email,
@@ -54,7 +57,9 @@ export default defineEventHandler(async (event) => {
     }
 
     if (currentAccount.plan !== 'pro') {
-      return chatAccountSchema.parse(buildChatAccountResponse(currentAccount, billingConfig.billingConfigured))
+      return chatAccountSchema.parse(
+        buildChatAccountResponse(currentAccount, billingConfig.billingConfigured, authConfig.googleAuthConfigured),
+      )
     }
 
     if (!currentAccount.stripeCustomerId) {

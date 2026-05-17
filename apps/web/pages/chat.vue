@@ -19,9 +19,10 @@ const {
   userId,
   plan,
   accountSaving,
+  isGoogleAuthenticated,
   updatePlan,
   updateAccountProfile,
-  regenerateUserId,
+  logout,
 } = useChat()
 
 const examplePrompts = [
@@ -128,6 +129,10 @@ function saveProfile() {
     displayName: profileDisplayName.value || null,
   })
 }
+
+function loginWithGoogle() {
+  window.location.href = '/api/auth/google/start'
+}
 </script>
 
 <template>
@@ -162,7 +167,14 @@ function saveProfile() {
           class="account-id"
           :title="userId || 'local'"
         >
-          {{ userId || 'local' }}
+          {{ accountInfo?.authProvider === 'google' ? 'Google アカウント' : 'ゲスト' }}
+        </div>
+        <div
+          v-if="userId"
+          class="account-id account-id--sub"
+          :title="userId"
+        >
+          {{ userId }}
         </div>
         <label class="select-field">
           <span>表示名</span>
@@ -189,11 +201,21 @@ function saveProfile() {
           {{ accountSaving ? '保存中' : 'アカウントを保存' }}
         </button>
         <button
+          v-if="!isGoogleAuthenticated"
           class="text-button"
           type="button"
-          @click="regenerateUserId"
+          :disabled="accountInfo?.googleAuthConfigured === false"
+          @click="loginWithGoogle"
         >
-          新しいローカルユーザー
+          Google でログイン
+        </button>
+        <button
+          v-else
+          class="text-button"
+          type="button"
+          @click="logout"
+        >
+          ログアウト
         </button>
       </section>
 
@@ -221,6 +243,12 @@ function saveProfile() {
         <p class="billing-note">
           課金状態: {{ accountInfo?.billingProvider ?? 'internal' }} /
           {{ accountInfo?.billingStatus ?? 'active' }}
+        </p>
+        <p
+          v-if="!isGoogleAuthenticated"
+          class="billing-note"
+        >
+          Pro は Google ログイン後に開始できます。
         </p>
         <div
           v-if="accountInfo?.billingPlan"

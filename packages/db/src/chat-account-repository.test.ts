@@ -7,6 +7,7 @@ import {
   updateChatAccountPlan,
   updateChatAccountProfile,
   updateChatAccountBillingState,
+  linkOrCreateGoogleChatAccount,
 } from './index'
 
 describe('chat_accounts', () => {
@@ -19,6 +20,7 @@ describe('chat_accounts', () => {
       const created = await getOrCreateChatAccount(query, 'user-1')
       expect(created).toMatchObject({
         userId: 'user-1',
+        authProvider: 'guest',
         plan: 'free',
         billingStatus: 'active',
         billingProvider: 'stripe',
@@ -54,6 +56,43 @@ describe('chat_accounts', () => {
         stripeCustomerId: 'cus_123',
         stripeSubscriptionId: 'sub_123',
         stripePriceId: 'price_123',
+      })
+    } finally {
+      database.close()
+    }
+  })
+
+  it('links a guest account to Google without losing billing state', async () => {
+    const database = openDatabase()
+    try {
+      migrateDatabase(database)
+      const query = sqliteDatabaseToQuery(database)
+
+      await updateChatAccountBillingState(query, 'guest-1', {
+        plan: 'pro',
+        billingStatus: 'active',
+        stripeCustomerId: 'cus_123',
+        stripeSubscriptionId: 'sub_123',
+      })
+
+      const linked = await linkOrCreateGoogleChatAccount(query, {
+        guestUserId: 'guest-1',
+        googleSubject: 'google-sub-1',
+        email: 'google@example.com',
+        emailVerified: true,
+        displayName: 'Google User',
+      })
+
+      expect(linked).toMatchObject({
+        userId: 'guest-1',
+        authProvider: 'google',
+        authSubject: 'google-sub-1',
+        authEmailVerified: 1,
+        email: 'google@example.com',
+        displayName: 'Google User',
+        plan: 'pro',
+        stripeCustomerId: 'cus_123',
+        stripeSubscriptionId: 'sub_123',
       })
     } finally {
       database.close()

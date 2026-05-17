@@ -238,6 +238,7 @@ export const chatRequestSchema = z.object({
 })
 
 export const chatPlanSchema = z.enum(['free', 'pro'])
+export const chatAuthProviderSchema = z.enum(['guest', 'google'])
 
 export const billingMethodSchema = z.enum(['stripe_subscription'])
 
@@ -277,12 +278,15 @@ export const chatUsageInfoSchema = z.object({
 
 export const chatAccountSchema = z.object({
   userId: z.string().min(1),
+  authProvider: chatAuthProviderSchema,
+  authEmailVerified: z.boolean(),
   email: z.string().email().nullable(),
   displayName: z.string().min(1).nullable(),
   plan: chatPlanSchema,
   billingStatus: billingStatusSchema,
   billingProvider: z.literal('stripe'),
   billingConfigured: z.boolean(),
+  googleAuthConfigured: z.boolean(),
   billingPlan: billingPlanSchema,
   stripeCustomerId: z.string().min(1).nullable(),
   stripeSubscriptionId: z.string().min(1).nullable(),

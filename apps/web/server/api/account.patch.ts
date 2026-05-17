@@ -18,7 +18,9 @@ export default defineEventHandler(async (event) => {
     const database = await getServerMetaDatabase(event, config.npbSqlitePath)
     const body = updateChatAccountRequestSchema.parse(await readBody(event))
     const account = await updateChatAccountProfile(database, identity.userId, body)
-    return chatAccountSchema.parse(buildChatAccountResponse(account, billingConfig.billingConfigured))
+    return chatAccountSchema.parse(
+      buildChatAccountResponse(account, billingConfig.billingConfigured, authConfig.googleAuthConfigured),
+    )
   } catch (error) {
     if (error instanceof ZodError) {
       throw createPublicApiError(400, 'invalid_request', 'Invalid account request', {

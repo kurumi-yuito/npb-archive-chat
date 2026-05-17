@@ -16,6 +16,9 @@ describe('chat-runtime-config', () => {
               NPB_AUTH_HEADER_FALLBACK: 'true',
               NPB_AUTH_SHARED_SECRET: 'secret-from-env',
               NPB_DEFAULT_PLAN: 'pro',
+              NPB_GOOGLE_CLIENT_ID: 'google-client',
+              NPB_GOOGLE_CLIENT_SECRET: 'google-secret',
+              NPB_GOOGLE_REDIRECT_URL: 'https://example.com/api/auth/google/callback',
             },
           },
         },
@@ -26,6 +29,10 @@ describe('chat-runtime-config', () => {
       allowHeaderFallback: true,
       authSharedSecret: 'secret-from-env',
       defaultPlan: 'pro',
+      googleClientId: 'google-client',
+      googleClientSecret: 'google-secret',
+      googleRedirectUrl: 'https://example.com/api/auth/google/callback',
+      googleAuthConfigured: true,
     })
   })
 

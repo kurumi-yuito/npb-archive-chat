@@ -50,11 +50,14 @@ export {
 } from './source-snapshots-repository'
 export {
   getChatAccount,
+  getChatAccountByAuthIdentity,
   getOrCreateChatAccount,
+  linkOrCreateGoogleChatAccount,
   updateChatAccountBillingState,
   updateChatAccountPlan,
   updateChatAccountProfile,
   type ChatAccountRow,
+  type GoogleAccountInput,
   type UpdateChatAccountBillingInput,
   type UpdateChatAccountInput,
 } from './chat-account-repository'
