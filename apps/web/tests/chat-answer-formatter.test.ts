@@ -68,7 +68,7 @@ describe('chat-answer-formatter', () => {
       sources: [],
     })
 
-    expect(answer.summary).toContain('巨人がDeNAに4-3で勝利しました。')
+    expect(answer.summary).toContain('2026年5月16日 東京ドーム、巨人がDeNAに4-3で勝利しました。')
     expect(answer.summary).toContain('7回裏に巨人が1点を取り、ここでリードを奪いました。')
     expect(answer.summary).toContain('安打数はDeNAが10本、巨人が11本でした。')
     expect(answer.summary).not.toContain('r20260516g-db-08')

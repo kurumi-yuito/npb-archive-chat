@@ -275,6 +275,15 @@ describe('chat-query-parser', () => {
       },
     })
 
+    expect(parseStructuredQueryFromMessageStub('ヤクルト村上の最近の評価は')).toEqual({
+      intent: 'search_batting',
+      filters: {
+        team: 'ヤクルト',
+        player_name: '村上',
+        recent: true,
+      },
+    })
+
     expect(parseStructuredQueryFromMessageStub('益田投手の最近の調子はどう')).toEqual({
       intent: 'search_pitching',
       filters: {

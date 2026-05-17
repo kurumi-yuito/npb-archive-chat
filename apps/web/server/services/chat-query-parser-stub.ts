@@ -220,7 +220,7 @@ function buildBattingFilters(
     team:
       explicit.team ??
       matchValue(message, /(?:team|チーム)(?:は|=|:)\s*([^\s、。]+)/u) ??
-      (isEvaluation ? undefined : extractTeamQualifierFromPhrase(battingPhrase)),
+      (isEvaluation ? extractTeamQualifierFromPhrase(evaluationPhrase) : extractTeamQualifierFromPhrase(battingPhrase)),
     result_text_contains: explicit.result_text_contains,
     recent: isEvaluation ? true : undefined,
     limit: toInt(explicit.limit),

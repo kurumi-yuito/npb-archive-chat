@@ -190,7 +190,7 @@ function formatGameDetailSummary(rows: GameDetailRow[], resultCount: number): st
     const result = linescore ? describeGameResult(row, linescore) : `${row.awayTeamName} vs ${row.homeTeamName}`
     const highlights = linescore ? describeGameHighlights(linescore) : []
     return [
-      `${index + 1}. ${formatDateJa(row.date)} ${row.venue}、${result}`,
+      `${index + 1}. ${formatDateJa(row.date)} ${displayVenueName(row.venue)}、${result}`,
       ...highlights.map((highlight) => `   ${highlight}`),
     ]
   })
@@ -469,6 +469,13 @@ function displayTeamName(team: string): string {
     SoftBank: 'ソフトバンク',
   }
   return aliases[team] ?? team
+}
+
+function displayVenueName(venue: string): string {
+  const aliases: Record<string, string> = {
+    'Tokyo Dome': '東京ドーム',
+  }
+  return aliases[venue] ?? venue
 }
 
 function statPart(stats: Record<string, unknown>, key: string, label: string): string | undefined {
