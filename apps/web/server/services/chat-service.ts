@@ -61,7 +61,7 @@ export function createChatService(
         gameDetails: [],
         aggregates: [],
       }
-      const results = shouldSkipForPlayerResolution(playerResolution)
+      let results = shouldSkipForPlayerResolution(playerResolution)
         ? emptyResults
         : structuredQuery.intent === 'search_events'
           ? { ...emptyResults, events: await queryService.searchEvents(structuredQuery.filters) }
@@ -89,6 +89,20 @@ export function createChatService(
                         : structuredQuery.intent === 'aggregate_pitching'
                           ? { ...emptyResults, aggregates: await queryService.aggregatePitchingLines(structuredQuery.filters) }
                           : { ...emptyResults, aggregates: await queryService.aggregateEvents(structuredQuery.filters) }
+
+      if (
+        structuredQuery.intent === 'search_batting' &&
+        structuredQuery.filters.recent === true &&
+        results.batting.length === 0
+      ) {
+        results = {
+          ...emptyResults,
+          batting: await queryService.searchBattingLines({
+            ...structuredQuery.filters,
+            recent: undefined,
+          }),
+        }
+      }
 
       const gameIds = Array.from(
         new Set(

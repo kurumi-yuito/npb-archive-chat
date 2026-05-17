@@ -360,7 +360,7 @@ function formatBattingEvaluationSummary(rows: BattingLineRow[], resultCount: num
   const playerName = rows[0]?.playerName ?? '対象選手'
   const gameRows = rows.filter((row) => row.sourceKind !== 'bis_batting').slice(0, 5)
   if (gameRows.length === 0) {
-    return formatBisBattingSummary(rows[0]!, resultCount)
+    return formatBisBattingEvaluationSummary(rows[0]!, resultCount)
   }
   const totals = gameRows.reduce(
     (acc, row) => ({
@@ -385,6 +385,28 @@ function formatBattingEvaluationSummary(rows: BattingLineRow[], resultCount: num
       ? `根拠は${positives.join('、')}です。`
       : '安打や打点は確認できませんが、直近試合の出場実績は確認できます。',
     `対象試合: ${gameRows.map((row) => formatDateJa(row.gameDate)).join('、')}`,
+  ].join('\n')
+}
+
+function formatBisBattingEvaluationSummary(row: BattingLineRow, resultCount: number): string {
+  const stats = parseStatsJson(row.statsJson ?? row.rawText)
+  const year = row.gameDate.slice(0, 4)
+  const positives = [
+    statPart(stats, '試合', '試合出場'),
+    statPart(stats, '安打', '安打'),
+    statPart(stats, '本塁打', '本塁打'),
+    statPart(stats, '打点', '打点'),
+    statPart(stats, '四球', '四球'),
+    statPart(stats, '打率', '打率'),
+    statPart(stats, '出塁率', '出塁率'),
+  ].filter(Boolean)
+  return [
+    `${row.team} ${row.playerName}は、DBで確認できる${year}年シーズン成績からポジティブに評価できます。`,
+    positives.length > 0
+      ? `根拠は${positives.join('、')}です。`
+      : '根拠となる成績行は確認できていますが、主要指標の値はDB行から取り出せませんでした。',
+    ...(resultCount > 1 ? [`同条件の成績行が${resultCount}件あります。`] : []),
+    ...(row.sourceUrl ? [`source: ${row.sourceUrl}`] : []),
   ].join('\n')
 }
 
