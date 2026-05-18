@@ -1,6 +1,7 @@
 import { chatStructuredQuerySchema, type ChatStructuredQuery } from '@npb/schemas'
 import { z } from 'zod'
 import {
+  type ChatQueryParserContext,
   buildChatQueryParserUserPrompt,
   chatQueryParserSystemPrompt,
 } from './chat-query-parser-prompt'
@@ -43,7 +44,10 @@ export function createChatQueryLlm(
   const fetchFn = dependencies.fetch ?? globalThis.fetch
 
   return {
-    async generateStructuredQuery(message: string): Promise<ChatStructuredQuery> {
+    async generateStructuredQuery(
+      message: string,
+      context: ChatQueryParserContext = {},
+    ): Promise<ChatStructuredQuery> {
       const response = await fetchFn(buildChatCompletionsUrl(config.baseUrl), {
         method: 'POST',
         headers: {
@@ -56,7 +60,7 @@ export function createChatQueryLlm(
           response_format: { type: 'json_object' },
           messages: [
             { role: 'system', content: chatQueryParserSystemPrompt },
-            { role: 'user', content: buildChatQueryParserUserPrompt(message) },
+            { role: 'user', content: buildChatQueryParserUserPrompt(message, context) },
           ],
         }),
       })

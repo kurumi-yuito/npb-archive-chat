@@ -111,7 +111,9 @@ export default defineEventHandler(async (event) => {
           })
         : undefined,
     })
-    const core = await service.answerQuestion(body.message)
+    const core = await service.answerQuestion(body.message, {
+      history: body.history,
+    })
 
     const usage =
       account.plan === 'free'

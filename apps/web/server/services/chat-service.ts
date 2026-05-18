@@ -1,6 +1,6 @@
 import {
   chatResponseCoreSchema,
-  type ChatStructuredQuery,
+  type ChatRequest,
   type ChatResponseCore,
   type PlayerAffiliationFilters,
 } from '@npb/schemas'
@@ -46,19 +46,18 @@ export function createChatService(
   const generateFinalAnswer = dependencies.generateFinalAnswer
 
   return {
-    async answerQuestion(message: string): Promise<ChatResponseCore> {
-      const parsedQuery = normalizeStructuredQuery(await queryParser(message))
+    async answerQuestion(
+      message: string,
+      options: { history?: ChatRequest['history'] } = {},
+    ): Promise<ChatResponseCore> {
+      const parsedQuery = normalizeStructuredQuery(await queryParser(message, {
+        history: options.history,
+      }))
       const resolved = await resolvePlayer(queryService, parsedQuery)
-      let structuredQuery = resolved.structuredQuery
+      const structuredQuery = resolved.structuredQuery
       const playerResolution = resolved.resolution
-      if (
-        structuredQuery.intent === 'search_batting' &&
-        shouldPreferPitchingForGenericPlayerStats(message, structuredQuery, playerResolution)
-      ) {
-        structuredQuery = toPitchingStatsQuery(structuredQuery)
-      }
 
-      const emptyResults = {
+      const emptyResults: ChatResponseCore['results'] = {
         events: [],
         games: [],
         pitching: [],
@@ -97,16 +96,10 @@ export function createChatService(
                           ? { ...emptyResults, aggregates: await queryService.aggregatePitchingLines(structuredQuery.filters) }
                           : { ...emptyResults, aggregates: await queryService.aggregateEvents(structuredQuery.filters) }
 
-      if (
-        structuredQuery.intent === 'search_batting' &&
-        shouldFallbackToPitchingForGenericPlayerStats(message, structuredQuery, playerResolution) &&
-        results.batting.length === 0
-      ) {
-        const pitchingQuery = toPitchingStatsQuery(structuredQuery)
-        const pitching = await queryService.searchPitchingLines(pitchingQuery.filters)
-        if (pitching.length > 0) {
-          structuredQuery = pitchingQuery
-          results = { ...emptyResults, pitching }
+      if (!shouldSkipForPlayerResolution(playerResolution) && structuredQuery.intent === 'game_detail') {
+        results = {
+          ...results,
+          events: await searchGameDetailEventsForChat(queryService, results.gameDetails),
         }
       }
 
@@ -156,7 +149,10 @@ export function createChatService(
 
       if (generateFinalAnswer && shouldUseFinalAnswerLlm(core, playerResolution)) {
         try {
-          const summary = await generateFinalAnswer(core)
+          const summary = await generateFinalAnswer({
+            ...core,
+            history: options.history,
+          })
           return chatResponseCoreSchema.parse({
             ...core,
             answer: {
@@ -200,66 +196,6 @@ function shouldUseFinalAnswerLlm(
   return true
 }
 
-function shouldPreferPitchingForGenericPlayerStats(
-  message: string,
-  structuredQuery: ChatStructuredQuery,
-  resolution: PlayerResolution | null,
-): boolean {
-  if (
-    structuredQuery.intent !== 'search_batting' ||
-    !isGenericPlayerStatsQuestion(message) ||
-    resolution?.status !== 'resolved'
-  ) {
-    return false
-  }
-  const roles = new Set(resolution.candidates.flatMap((candidate) => candidate.roles))
-  const hasPitchingRole = roles.has('pitcher') || roles.has('bis_pitching')
-  const hasBattingRole = roles.has('batter') || roles.has('bis_batting')
-  return hasPitchingRole && !hasBattingRole
-}
-
-function shouldFallbackToPitchingForGenericPlayerStats(
-  message: string,
-  structuredQuery: ChatStructuredQuery,
-  resolution: PlayerResolution | null,
-): boolean {
-  return structuredQuery.intent === 'search_batting' &&
-    isGenericPlayerStatsQuestion(message) &&
-    resolution?.status === 'resolved'
-}
-
-function isGenericPlayerStatsQuestion(message: string): boolean {
-  if (!/成績|評価|調子|状態|どう思う/u.test(message)) {
-    return false
-  }
-  if (/打撃|打席|打数|安打|打点|打率|出塁率|長打率|本塁打|ホームラン|\bHR\b|ＨＲ/u.test(message)) {
-    return false
-  }
-  if (/投手|投球|登板|奪三振|投球回|防御率|セーブ|ホールド/u.test(message)) {
-    return false
-  }
-  return true
-}
-
-function toPitchingStatsQuery(
-  structuredQuery: Extract<ChatStructuredQuery, { intent: 'search_batting' }>,
-): Extract<ChatStructuredQuery, { intent: 'search_pitching' }> {
-  const filters = structuredQuery.filters
-  return {
-    intent: 'search_pitching',
-    filters: {
-      year: filters.year,
-      year_from: filters.year_from,
-      year_to: filters.year_to,
-      game_date: filters.game_date,
-      pitcher_name: filters.player_name,
-      team: filters.team,
-      recent: filters.recent,
-      limit: filters.limit,
-    },
-  }
-}
-
 function getPlayerAffiliationSearchFilters(
   filters: PlayerAffiliationFilters,
   resolution: PlayerResolution | null,
@@ -295,4 +231,18 @@ async function searchPlayerAffiliationsForChat(
   const fallbackFilters = { ...searchFilters }
   delete fallbackFilters.player_id
   return queryService.searchPlayerAffiliations(fallbackFilters)
+}
+
+async function searchGameDetailEventsForChat(
+  queryService: ChatQueryService,
+  gameDetails: Array<{ gameId: string }>,
+) {
+  const rows = await Promise.all(
+    gameDetails.slice(0, 5).map((game) =>
+      queryService.searchEvents({
+        game_id: game.gameId,
+        limit: 120,
+      })),
+  )
+  return rows.flat()
 }

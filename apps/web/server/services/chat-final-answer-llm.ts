@@ -1,4 +1,4 @@
-import type { ChatResponseCore } from '@npb/schemas'
+import type { ChatRequest, ChatResponseCore } from '@npb/schemas'
 
 export type ChatFinalAnswerLlmConfig = {
   baseUrl?: string
@@ -6,7 +6,9 @@ export type ChatFinalAnswerLlmConfig = {
   model?: string
 }
 
-export type ChatFinalAnswerInput = ChatResponseCore
+export type ChatFinalAnswerInput = ChatResponseCore & {
+  history?: ChatRequest['history']
+}
 
 export type ChatFinalAnswerGenerator = (input: ChatFinalAnswerInput) => Promise<string>
 
@@ -36,16 +38,21 @@ export function createChatFinalAnswerLlm(config: ChatFinalAnswerLlmConfig): Chat
           {
             role: 'system',
             content: [
-              'You draft the final Japanese answer for an NPB archive search service.',
-              'Use only the supplied DB answer, DB results, and sourceUrl values.',
+              'You draft the final Japanese answer for an NPB specialist chat service.',
+              'The product goal is expert-level conversational NPB answers grounded only in official NPB-derived evidence supplied in the payload.',
+              'Use only the supplied DB answer, DB results, resolved player data, conversation history, and sourceUrl values.',
               'Do not add facts, teams, players, scores, counts, or dates that are not present in the payload.',
-              'Keep sourceUrl references when the deterministic answer includes them.',
+              'You may compute simple derived metrics from supplied values, such as OPS = OBP + SLG, but show the source values used.',
+              'Write naturally in Japanese and preserve the user’s conversational context.',
+              'If evidence is insufficient, say exactly what is missing instead of guessing.',
+              'Keep sourceUrl references when relevant.',
             ].join('\n'),
           },
           {
             role: 'user',
             content: JSON.stringify({
               question: input.message,
+              history: input.history ?? [],
               structured_query: input.structured_query,
               deterministic_answer: input.answer,
               results: input.results,

@@ -74,6 +74,11 @@ export async function searchEvents(
     values.push(normalizedFilters.game_date)
   }
 
+  if (normalizedFilters.game_id) {
+    clauses.push('events.game_id = ?')
+    values.push(normalizedFilters.game_id)
+  }
+
   if (normalizedFilters.year) {
     clauses.push('games.year = ?')
     values.push(normalizedFilters.year)

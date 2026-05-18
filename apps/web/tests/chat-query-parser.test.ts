@@ -30,22 +30,23 @@ function currentJstDateOffset(offsetDays: number): string {
 
 describe('chat-query-parser', () => {
   it('builds an events structured query from a valid LLM result', async () => {
+    const generateStructuredQuery = vi.fn().mockResolvedValue({
+      intent: 'search_events',
+      filters: {
+        game_date: '2025-08-15',
+        inning: 8,
+        half: 'bottom',
+        team: 'ロッテ',
+        batter_name: '山村',
+        event_type: 'plate_appearance',
+        event_subtype: 'pinch_hitter',
+      },
+    })
     const parser = createChatQueryParser(
       { baseUrl: 'https://example.test/v1', apiKey: 'secret', model: 'test-model' },
       {
         llmGenerator: {
-          generateStructuredQuery: vi.fn().mockResolvedValue({
-            intent: 'search_events',
-            filters: {
-              game_date: '2025-08-15',
-              inning: 8,
-              half: 'bottom',
-              team: 'ロッテ',
-              batter_name: '山村',
-              event_type: 'plate_appearance',
-              event_subtype: 'pinch_hitter',
-            },
-          }),
+          generateStructuredQuery,
         },
       },
     )
@@ -66,6 +67,43 @@ describe('chat-query-parser', () => {
         event_subtype: 'pinch_hitter',
       },
     })
+    expect(generateStructuredQuery).toHaveBeenCalledWith(
+      '2025-08-15の8回裏、team=ロッテ batter_name=山村 の代打イベントを教えて',
+      undefined,
+    )
+  })
+
+  it('passes recent conversation history to the LLM parser', async () => {
+    const generateStructuredQuery = vi.fn().mockResolvedValue({
+      intent: 'search_roster',
+      filters: {
+        team: '巨人',
+        player_name: '捕手',
+      },
+    })
+    const parser = createChatQueryParser(
+      { baseUrl: 'https://example.test/v1', apiKey: 'secret', model: 'test-model' },
+      {
+        llmGenerator: { generateStructuredQuery },
+      },
+    )
+
+    await parser('てことは捕手層も厚いの？', {
+      history: [
+        { role: 'user', content: '巨人の大城って今どんな感じ' },
+        { role: 'assistant', content: '大城は打者として怖い状態です。' },
+      ],
+    })
+
+    expect(generateStructuredQuery).toHaveBeenCalledWith(
+      'てことは捕手層も厚いの？',
+      {
+        history: [
+          { role: 'user', content: '巨人の大城って今どんな感じ' },
+          { role: 'assistant', content: '大城は打者として怖い状態です。' },
+        ],
+      },
+    )
   })
 
   it('falls back to the stub parser when LLM generation fails', async () => {

@@ -106,6 +106,7 @@ export const searchEventsFiltersSchema = z.object({
   year: z.number().int().min(1936).optional(),
   year_from: z.number().int().min(1936).optional(),
   year_to: z.number().int().min(1936).optional(),
+  game_id: z.string().min(1).optional(),
   game_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   inning: z.number().int().positive().optional(),
   half: inningHalfSchema.optional(),
@@ -237,8 +238,14 @@ export const chatIntentSchema = z.enum([
   'aggregate_events',
 ])
 
+export const chatHistoryMessageSchema = z.object({
+  role: z.enum(['user', 'assistant']),
+  content: z.string().min(1).max(4000),
+})
+
 export const chatRequestSchema = z.object({
   message: z.string().min(1),
+  history: z.array(chatHistoryMessageSchema).max(12).optional(),
 })
 
 export const chatPlanSchema = z.enum(['free', 'pro'])

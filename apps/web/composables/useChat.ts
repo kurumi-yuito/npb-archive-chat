@@ -1,4 +1,4 @@
-import type { ChatAccount, ChatPlan, ChatResponse, ChatUsageInfo } from '@npb/schemas'
+import type { ChatAccount, ChatPlan, ChatRequest, ChatResponse, ChatUsageInfo } from '@npb/schemas'
 import { computed, onMounted, ref } from 'vue'
 
 export type ChatTurn = {
@@ -83,6 +83,17 @@ async function readUsageFromError(res: Response): Promise<ChatUsageInfo | undefi
       ? (errBody.data as { usage: ChatUsageInfo }).usage
       : undefined
   return usageFromError
+}
+
+function buildChatRequestHistory(turns: ChatTurn[]): ChatRequest['history'] {
+  return turns
+    .flatMap((turn) => [
+      { role: 'user' as const, content: turn.userMessage },
+      ...(turn.assistant
+        ? [{ role: 'assistant' as const, content: turn.assistant.answer.summary }]
+        : []),
+    ])
+    .slice(-12)
 }
 
 export function extractSafeFallbackErrorMessage(error: unknown): string {
@@ -210,6 +221,7 @@ export function useChat() {
 
     lastError.value = null
     const id = crypto.randomUUID()
+    const history = buildChatRequestHistory(turns.value)
     turns.value.push({
       id,
       userMessage: trimmed,
@@ -222,7 +234,7 @@ export function useChat() {
       const res = await fetch('/api/chat', {
         method: 'POST',
         headers: chatRequestHeaders(),
-        body: JSON.stringify({ message: trimmed }),
+        body: JSON.stringify({ message: trimmed, history }),
       })
 
       if (!res.ok) {

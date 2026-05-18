@@ -5,13 +5,20 @@ import {
   type ChatQueryLlmConfig,
 } from './chat-query-llm'
 import { parseStructuredQueryFromMessageStub } from './chat-query-parser-stub'
+import type { ChatQueryParserContext } from './chat-query-parser-prompt'
 
-export type ChatQueryParser = (message: string) => Promise<ChatStructuredQuery>
+export type ChatQueryParser = (
+  message: string,
+  context?: ChatQueryParserContext,
+) => Promise<ChatStructuredQuery>
 
 type ChatQueryParserDependencies = {
   fallbackParser?: (message: string) => ChatStructuredQuery
   llmGenerator?: {
-    generateStructuredQuery: (message: string) => Promise<ChatStructuredQuery>
+    generateStructuredQuery: (
+      message: string,
+      context?: ChatQueryParserContext,
+    ) => Promise<ChatStructuredQuery>
   }
   logger?: Pick<Console, 'warn'>
 }
@@ -28,13 +35,13 @@ export function createChatQueryParser(
       : undefined)
   const logger = dependencies.logger ?? console
 
-  return async (message: string) => {
+  return async (message: string, context?: ChatQueryParserContext) => {
     if (!llmGenerator) {
       return fallbackParser(message)
     }
 
     try {
-      return await llmGenerator.generateStructuredQuery(message)
+      return await llmGenerator.generateStructuredQuery(message, context)
     } catch (error) {
       logger.warn('chat-query-parser: falling back to stub parser', error)
       return fallbackParser(message)

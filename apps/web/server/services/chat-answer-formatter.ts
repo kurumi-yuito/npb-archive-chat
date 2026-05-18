@@ -34,6 +34,7 @@ export function formatChatAnswer({
 }: FormatChatAnswerInput): ChatResponse['answer'] {
   const sourceUrls = Array.from(new Set([
     ...sources.map((source) => source.source_url),
+    ...results.events.flatMap((row) => row.sourceUrl ? [row.sourceUrl] : []),
     ...results.affiliations.flatMap((row) => row.sourceUrl ? [row.sourceUrl] : []),
     ...results.batting.flatMap((row) => row.sourceUrl ? [row.sourceUrl] : []),
     ...results.pitching.flatMap((row) => row.sourceUrl ? [row.sourceUrl] : []),
@@ -150,7 +151,11 @@ function buildSummary(
   }
 
   if (structuredQuery.intent === 'game_detail') {
-    return formatGameDetailSummary(results.gameDetails as GameDetailRow[], resultCount)
+    return formatGameDetailSummary(
+      results.gameDetails as GameDetailRow[],
+      results.events as EventSummaryRow[],
+      resultCount,
+    )
   }
 
   if (
@@ -168,6 +173,7 @@ function buildSummary(
 function formatBisBattingSummary(row: BattingLineRow, resultCount: number): string {
   const year = row.gameDate.slice(0, 4)
   const stats = parseStatsJson(row.statsJson ?? row.rawText)
+  const sabermetrics = calculateBattingSabermetrics(stats)
   const statLine = [
     statPart(stats, '試合', '試合'),
     statPart(stats, '打席', '打席'),
@@ -180,9 +186,11 @@ function formatBisBattingSummary(row: BattingLineRow, resultCount: number): stri
     statPart(stats, '出塁率', '出塁率'),
     statPart(stats, '長打率', '長打率'),
   ].filter(Boolean)
+  const saberLine = formatBattingSabermetrics(sabermetrics)
   return [
     `${year}年の${row.team} ${row.playerName}の打撃成績です。`,
     ...(statLine.length > 0 ? [statLine.join('、')] : []),
+    ...(saberLine.length > 0 ? [`派生指標: ${saberLine.join('、')}`] : []),
     ...(resultCount > 1 ? [`同条件の成績行が${resultCount}件あります。`] : []),
     ...(row.sourceUrl ? [`source: ${row.sourceUrl}`] : []),
   ].join('\n')
@@ -211,14 +219,22 @@ function formatBisPitchingSummary(row: PitchingLineRow, resultCount: number): st
   ].join('\n')
 }
 
-function formatGameDetailSummary(rows: GameDetailRow[], resultCount: number): string {
+function formatGameDetailSummary(
+  rows: GameDetailRow[],
+  events: EventSummaryRow[],
+  resultCount: number,
+): string {
   const lines = rows.slice(0, 5).flatMap((row, index) => {
     const linescore = parseLinescore(row.linescoreJson)
     const result = linescore ? describeGameResult(row, linescore) : `${row.awayTeamName} vs ${row.homeTeamName}`
     const highlights = linescore ? describeGameHighlights(linescore) : []
+    const gameEvents = events.filter((event) => event.gameId === row.gameId)
+    const eventHighlights = describeEventHighlights(gameEvents)
     return [
       `${index + 1}. ${formatDateJa(row.date)} ${displayVenueName(row.venue)}、${result}`,
       ...highlights.map((highlight) => `   ${highlight}`),
+      ...eventHighlights.map((highlight) => `   ${highlight}`),
+      ...(gameEvents.length === 0 ? ['   play-by-play はDBで確認できないため、戦評はラインスコア中心です。'] : []),
     ]
   })
   return [
@@ -229,6 +245,27 @@ function formatGameDetailSummary(rows: GameDetailRow[], resultCount: number): st
     ...lines,
     ...(resultCount > 5 ? ['', `ほか${resultCount - 5}件は省略しています。`] : []),
   ].join('\n')
+}
+
+function describeEventHighlights(events: EventSummaryRow[]): string[] {
+  const scoringEvents = events
+    .filter((event) => isLikelyRunEvent(event.resultText))
+    .slice(0, 6)
+    .map((event) => {
+      const batter = event.batterName ? `${event.batterName}: ` : ''
+      return `${event.inning}回${event.half === 'top' ? '表' : '裏'} ${displayTeamName(event.offenseTeam)} ${batter}${event.resultText}`
+    })
+  if (scoringEvents.length === 0) {
+    return []
+  }
+  return [
+    '主な得点・長打イベント:',
+    ...scoringEvents.map((event) => `- ${event}`),
+  ]
+}
+
+function isLikelyRunEvent(resultText: string): boolean {
+  return /ホームラン|本塁打|適時打|タイムリー|二塁打|三塁打|犠飛|打点|勝ち越し|逆転|先制/u.test(resultText)
 }
 
 type ParsedLinescore = {
@@ -418,6 +455,7 @@ function formatBattingEvaluationSummary(rows: BattingLineRow[], resultCount: num
 function formatBisBattingEvaluationSummary(row: BattingLineRow, resultCount: number): string {
   const stats = parseStatsJson(row.statsJson ?? row.rawText)
   const year = row.gameDate.slice(0, 4)
+  const sabermetrics = calculateBattingSabermetrics(stats)
   const positives = [
     positiveCountStatPart(stats, '試合', '試合出場'),
     positiveCountStatPart(stats, '安打', '安打'),
@@ -426,6 +464,9 @@ function formatBisBattingEvaluationSummary(row: BattingLineRow, resultCount: num
     positiveCountStatPart(stats, '四球', '四球'),
     statPart(stats, '打率', '打率'),
     statPart(stats, '出塁率', '出塁率'),
+    sabermetrics.ops !== null ? `OPS${formatRate(sabermetrics.ops)}` : undefined,
+    sabermetrics.isoP !== null ? `IsoP${formatRate(sabermetrics.isoP)}` : undefined,
+    sabermetrics.bbK !== null ? `BB/K${formatDecimal(sabermetrics.bbK)}` : undefined,
   ].filter(Boolean)
   return [
     `${row.team} ${row.playerName}は、DBで確認できる${year}年シーズン成績からポジティブに評価できます。`,
@@ -435,6 +476,65 @@ function formatBisBattingEvaluationSummary(row: BattingLineRow, resultCount: num
     ...(resultCount > 1 ? [`同条件の成績行が${resultCount}件あります。`] : []),
     ...(row.sourceUrl ? [`source: ${row.sourceUrl}`] : []),
   ].join('\n')
+}
+
+type BattingSabermetrics = {
+  ops: number | null
+  isoP: number | null
+  bbK: number | null
+  bbRate: number | null
+  kRate: number | null
+  estimatedWoba: number | null
+}
+
+function calculateBattingSabermetrics(stats: Record<string, unknown>): BattingSabermetrics {
+  const plateAppearances = statNumber(stats, '打席')
+  const atBats = statNumber(stats, '打数')
+  const hits = statNumber(stats, '安打')
+  const doubles = statNumber(stats, '二塁打')
+  const triples = statNumber(stats, '三塁打')
+  const homeRuns = statNumber(stats, '本塁打')
+  const walks = statNumber(stats, '四球')
+  const strikeouts = statNumber(stats, '三振')
+  const hitByPitch = statNumber(stats, '死球')
+  const sacrificeFlies = statNumber(stats, '犠飛')
+  const obp = statRate(stats, '出塁率')
+  const slg = statRate(stats, '長打率')
+  const singles = hits !== null
+    ? Math.max(0, hits - (doubles ?? 0) - (triples ?? 0) - (homeRuns ?? 0))
+    : null
+  const wobaDenominator = atBats !== null
+    ? atBats + (walks ?? 0) + (hitByPitch ?? 0) + (sacrificeFlies ?? 0)
+    : null
+
+  return {
+    ops: obp !== null && slg !== null ? obp + slg : null,
+    isoP: slg !== null && hits !== null && atBats && atBats > 0 ? slg - hits / atBats : null,
+    bbK: walks !== null && strikeouts !== null && strikeouts > 0 ? walks / strikeouts : null,
+    bbRate: walks !== null && plateAppearances && plateAppearances > 0 ? walks / plateAppearances : null,
+    kRate: strikeouts !== null && plateAppearances && plateAppearances > 0 ? strikeouts / plateAppearances : null,
+    estimatedWoba: singles !== null && wobaDenominator && wobaDenominator > 0
+      ? (
+          0.69 * (walks ?? 0) +
+          0.72 * (hitByPitch ?? 0) +
+          0.88 * singles +
+          1.247 * (doubles ?? 0) +
+          1.578 * (triples ?? 0) +
+          2.031 * (homeRuns ?? 0)
+        ) / wobaDenominator
+      : null,
+  }
+}
+
+function formatBattingSabermetrics(metrics: BattingSabermetrics): string[] {
+  return [
+    metrics.ops !== null ? `OPS${formatRate(metrics.ops)}` : undefined,
+    metrics.isoP !== null ? `IsoP${formatRate(metrics.isoP)}` : undefined,
+    metrics.bbK !== null ? `BB/K${formatDecimal(metrics.bbK)}` : undefined,
+    metrics.bbRate !== null ? `BB%${formatPercent(metrics.bbRate)}` : undefined,
+    metrics.kRate !== null ? `K%${formatPercent(metrics.kRate)}` : undefined,
+    metrics.estimatedWoba !== null ? `簡易wOBA${formatRate(metrics.estimatedWoba)}` : undefined,
+  ].filter(Boolean) as string[]
 }
 
 function positiveCountStatPart(stats: Record<string, unknown>, key: string, label: string): string | undefined {
@@ -571,6 +671,36 @@ function statPart(stats: Record<string, unknown>, key: string, label: string): s
     return undefined
   }
   return `${label}${String(value)}`
+}
+
+function statNumber(stats: Record<string, unknown>, key: string): number | null {
+  const value = stats[key]
+  if (value === null || value === undefined || value === '') {
+    return null
+  }
+  const normalized = String(value).replace(/,/gu, '')
+  const parsed = Number(normalized)
+  return Number.isFinite(parsed) ? parsed : null
+}
+
+function statRate(stats: Record<string, unknown>, key: string): number | null {
+  const value = statNumber(stats, key)
+  if (value === null) {
+    return null
+  }
+  return value > 1 ? value / 1000 : value
+}
+
+function formatRate(value: number): string {
+  return value.toFixed(3).replace(/^0/u, '')
+}
+
+function formatDecimal(value: number): string {
+  return value.toFixed(2)
+}
+
+function formatPercent(value: number): string {
+  return `${(value * 100).toFixed(1)}%`
 }
 
 function formatPlayerAffiliationSummary(

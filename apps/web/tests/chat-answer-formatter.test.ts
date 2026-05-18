@@ -74,6 +74,43 @@ describe('chat-answer-formatter', () => {
     expect(answer.summary).not.toContain('r20260516g-db-08')
   })
 
+  it('adds play-by-play evidence to game detail summaries for game reviews', () => {
+    const results = emptyResults()
+    results.gameDetails = [{
+      gameId: 'r20260516g-db-08',
+      date: '2026-05-16',
+      venue: 'Tokyo Dome',
+      competition: null,
+      awayTeamName: 'DeNA',
+      homeTeamName: 'Yomiuri',
+      matchupText: 'DeNA vs Yomiuri',
+      linescoreJson: JSON.stringify({
+        away: { team: 'DeNA', innings: ['0'], totals: { runs: 0, hits: 4, errors: 0 } },
+        home: { team: 'Yomiuri', innings: ['2'], totals: { runs: 2, hits: 6, errors: 0 } },
+      }),
+    }]
+    results.events = [{
+      ...eventRow(1),
+      gameId: 'r20260516g-db-08',
+      gameDate: '2026-05-16',
+      inning: 1,
+      half: 'bottom',
+      offenseTeam: '巨人',
+      batterName: '大城',
+      resultText: 'ライト2ランホームラン（打点2）',
+    }]
+
+    const answer = formatChatAnswer({
+      question: '2026年5月16日の東京ドームの試合を戦評して',
+      structuredQuery: { intent: 'game_detail', filters: { game_date: '2026-05-16', venue: '東京ドーム' } },
+      results,
+      sources: [],
+    })
+
+    expect(answer.summary).toContain('主な得点・長打イベント')
+    expect(answer.summary).toContain('1回裏 巨人 大城: ライト2ランホームラン')
+  })
+
   it('formats recent batting lines as a positive player evaluation', () => {
     const results = emptyResults()
     results.batting = [
@@ -92,6 +129,69 @@ describe('chat-answer-formatter', () => {
     expect(answer.summary).toContain('2試合で3安打')
     expect(answer.summary).toContain('打点')
     expect(answer.summary).toContain('打率.429')
+  })
+
+  it('calculates batting sabermetrics from official season stats', () => {
+    const results = emptyResults()
+    results.batting = [{
+      gameId: 'bis:2026:g:idb1',
+      gameDate: '2026-01-01',
+      team: '巨人',
+      playerName: '大城 卓三',
+      battingOrder: null,
+      position: null,
+      atBats: 61,
+      runs: 0,
+      hits: 19,
+      runsBattedIn: 11,
+      stolenBases: 0,
+      strikeouts: 14,
+      walks: 11,
+      rawText: JSON.stringify({
+        試合: '24',
+        打席: '72',
+        打数: '61',
+        安打: '19',
+        二塁打: '3',
+        三塁打: '0',
+        本塁打: '4',
+        四球: '11',
+        三振: '14',
+        打率: '.311',
+        出塁率: '.417',
+        長打率: '.557',
+      }),
+      sourceKind: 'bis_batting',
+      sourceUrl: 'https://npb.jp/bis/2026/stats/idb1_g.html',
+      statsJson: JSON.stringify({
+        試合: '24',
+        打席: '72',
+        打数: '61',
+        安打: '19',
+        二塁打: '3',
+        三塁打: '0',
+        本塁打: '4',
+        四球: '11',
+        三振: '14',
+        打率: '.311',
+        出塁率: '.417',
+        長打率: '.557',
+      }),
+    }]
+
+    const answer = formatChatAnswer({
+      question: '大城ってセイバー的に今どんな感じ',
+      structuredQuery: { intent: 'search_batting', filters: { team: '巨人', player_name: '大城' } },
+      results,
+      sources: [],
+    })
+
+    expect(answer.summary).toContain('派生指標')
+    expect(answer.summary).toContain('OPS.974')
+    expect(answer.summary).toContain('IsoP.246')
+    expect(answer.summary).toContain('BB/K0.79')
+    expect(answer.summary).toContain('BB%15.3%')
+    expect(answer.summary).toContain('K%19.4%')
   })
 })
 
