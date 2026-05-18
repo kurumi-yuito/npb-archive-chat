@@ -151,10 +151,10 @@ function inferIntent(
   if (/所属チーム|どこのチーム|所属|在籍|チームは/u.test(message)) {
     return 'player_affiliation'
   }
-  if (/試合詳細|スコア/u.test(message) && /game[_ ]?id|対|vs|VS|\d{4}[-/年]/u.test(message)) {
+  if (/試合詳細|スコア|戦評|振り返り|ハイライト/u.test(message) && /game[_ ]?id|対|vs|VS|\d{4}[-/年]|昨日|今日|本日|一昨日/u.test(message)) {
     return 'game_detail'
   }
-  if (/試合/u.test(message) && /について|教えて|詳細|結果|スコア/u.test(message) && (matchDate(message) || matchVenue(message))) {
+  if (/(?:試合|戦)/u.test(message) && /について|教えて|詳細|結果|スコア|戦評|振り返り|ハイライト/u.test(message) && (matchDate(message) || matchVenue(message) || matchKnownTeamPrefix(message))) {
     return 'game_detail'
   }
   if (/成績/u.test(message) && /投手|登板|奪三振|投球回|防御率|セーブ/u.test(message)) {
@@ -337,7 +337,8 @@ function buildRosterFilters(
     team:
       explicit.team ??
       matchValue(message, /(?:team|チーム)(?:は|=|:)\s*([^\s、。]+)/u) ??
-      matchTeamFromMatchup(message),
+      matchTeamFromMatchup(message) ??
+      matchKnownTeamForGameQuestion(message),
     player_name:
       explicit.player_name ??
       (matchGameId(message) || matchTeamFromMatchup(message)
@@ -383,7 +384,8 @@ function buildGameDetailFilters(
     team:
       explicit.team ??
       matchValue(message, /(?:team|チーム)(?:は|=|:)\s*([^\s、。]+)/u) ??
-      matchTeamFromMatchup(message),
+      matchTeamFromMatchup(message) ??
+      matchKnownTeamForGameQuestion(message),
     player_name: explicit.player_name,
     limit: toInt(explicit.limit),
   }
@@ -533,6 +535,26 @@ function matchVenue(message: string): string | undefined {
 
 function matchTeamFromMatchup(message: string): string | undefined {
   return matchValue(message, /(?:\d{4}年\d{1,2}月\d{1,2}日の?)?(.+?)(?:対|vs|VS).+?(?:の試合詳細|のスタメン|のロスター|$)/u)
+}
+
+function matchKnownTeamForGameQuestion(message: string): string | undefined {
+  return [
+    'ヤクルト',
+    '東京ヤクルト',
+    '中日',
+    '巨人',
+    '読売',
+    '阪神',
+    '広島',
+    'DeNA',
+    '横浜',
+    'オリックス',
+    'ロッテ',
+    '西武',
+    'ソフトバンク',
+    '日本ハム',
+    '楽天',
+  ].find((team) => new RegExp(`${team}(?:戦|の試合|戦の|のハイライト|の戦評)`, 'u').test(message))
 }
 
 function toInt(value: string | undefined): number | undefined {

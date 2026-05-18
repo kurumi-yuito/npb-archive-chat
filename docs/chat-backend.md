@@ -4,7 +4,7 @@
 
 `/api/chat` は自然文の質問を受け取り、DB検索を主役として回答候補を返す。
 
-LLM は `structured query` 生成と、DB 結果に基づく最終回答文の drafting に使える。どちらも env 未設定時は fallback し、DB 検索の直前に正規化レイヤーと player resolution を通す。
+LLM は `structured query` 生成と、DB 結果に基づく最終回答文の drafting に使う。production ではどちらも必須で、env 未設定時は 503 にする。DB 検索の直前に正規化レイヤーと player resolution を通す。
 
 
 ## 基本方針
@@ -33,7 +33,7 @@ Done:
 - production signed-cookie identity / dev header fallback
 - `chat_accounts` による account/profile/subscription 永続化
 - usage check at API boundary
-- final answer LLM fallback（ambiguous / not_found / limit / 0件では呼ばない）
+- final answer LLM（ambiguous / not_found / limit / 0件では呼ばない）
 
 運用で確認する項目:
 
@@ -116,11 +116,12 @@ intent は次の種類。
 - まず LLM に自然文から `structured query` を生成させる
 - LLM には intent / filter 仕様と正規化ルールだけを渡す
 - 返ってきた JSON を `chatStructuredQuerySchema` で validate する
-- 失敗時は stub parser に fallback する
+- production では LLM 未設定/失敗/validate 失敗時に 503 を返す
+- dev/test だけ `CHAT_ALLOW_HEURISTIC_FALLBACK=true` で stub parser に fallback する
 
 注意:
 
-- fallback parser は既存 heuristic を維持する
+- fallback parser は dev/test の構成確認用で、production の自然文理解として使わない
 - LLM を使っても DB 検索以降の構造は変えない
 - 詳細は `docs/llm-query-parser.md` を参照
 
@@ -219,7 +220,7 @@ LLM が失敗した場合は deterministic formatter の summary を返す。DB�
 - ambiguous / not_found では検索しない
 - `search_events` の複数結果を一覧表示する
 - LLM 成功時に structured query が生成される
-- validate 失敗時に fallback parser が動く
+- production で LLM validate 失敗時に 503 へ倒す
 - team / player 名の表記ゆれが DB 検索前に正規化される
 
 
@@ -229,5 +230,5 @@ LLM が失敗した場合は deterministic formatter の summary を返す。DB�
 - `search_games` にカード名や球場条件を追加するか
 - chat response の result payload をどこまでそのまま返すか
 - source URL を全件返すか、`playbyplay` など優先順位を付けるか
-- fallback ログをどう監視するか
+- dev/test fallback の利用をどう監視するか
 - query normalization 辞書をどの粒度で増やすか

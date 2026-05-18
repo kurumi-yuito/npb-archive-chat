@@ -15,6 +15,12 @@ preview_urls = true
 [vars]
 NPB_AUTH_HEADER_FALLBACK = "false"
 NPB_DEFAULT_PLAN = "free"
+CHAT_QUERY_LLM_BASE_URL = "https://api.openai.com/v1"
+CHAT_QUERY_LLM_MODEL = "gpt-4.1-mini"
+CHAT_ALLOW_HEURISTIC_FALLBACK = "false"
+CHAT_ANSWER_LLM_BASE_URL = "https://api.openai.com/v1"
+CHAT_ANSWER_LLM_MODEL = "gpt-4.1-mini"
+CHAT_ALLOW_DETERMINISTIC_ANSWER_FALLBACK = "false"
 
 [build]
 command = "pnpm build:cf"

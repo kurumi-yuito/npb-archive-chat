@@ -693,6 +693,59 @@ describe('chat-service', () => {
     expect(response.answer.summary).not.toContain('選手を特定できない')
   })
 
+  it('falls back from empty event highlight search to game detail evidence', async () => {
+    const service = createChatService(createFakeQueryService({
+      searchEvents: async (filters) => filters.game_id
+        ? [{
+            gameId: 'r20260517g-t-01',
+            gameDate: '2026-05-17',
+            sequence: 10,
+            inning: 7,
+            half: 'bottom',
+            offenseTeam: '巨人',
+            eventType: 'plate_appearance',
+            eventSubtype: 'standard',
+            batterName: '大城',
+            pitcherName: '田中',
+            runnerName: null,
+            resultText: 'ライト2ランホームラン（打点2）',
+            eventAttributesJson: null,
+            sourceUrl: 'https://npb.jp/scores/2026/0517/g-t-01/playbyplay.html',
+          }]
+        : [],
+      searchGameDetails: async () => [{
+        gameId: 'r20260517g-t-01',
+        date: '2026-05-17',
+        venue: '東京ドーム',
+        competition: null,
+        awayTeamName: '阪神',
+        homeTeamName: '巨人',
+        matchupText: '阪神 vs 巨人',
+        linescoreJson: JSON.stringify({
+          away: { team: '阪神', innings: ['0', '0', '0'], totals: { runs: 0, hits: 5, errors: 0 } },
+          home: { team: '巨人', innings: ['0', '0', '2'], totals: { runs: 2, hits: 6, errors: 0 } },
+        }),
+      }],
+    }), {
+      parseStructuredQueryFromMessage: async () => ({
+        intent: 'search_events',
+        filters: {
+          game_date: '2026-05-17',
+          team: '巨人',
+        },
+      }),
+    })
+
+    const response = await service.answerQuestion('昨日の巨人戦のハイライトは')
+
+    expect(response.structured_query.intent).toBe('game_detail')
+    expect(response.answer.result_count).toBe(1)
+    expect(response.results.gameDetails).toHaveLength(1)
+    expect(response.results.events).toHaveLength(1)
+    expect(response.answer.summary).toContain('主な得点・長打イベント')
+    expect(response.answer.summary).not.toContain('条件に一致するイベントは見つかりません')
+  })
+
 })
 
 function createFakeQueryService(options: {
@@ -713,10 +766,12 @@ function createFakeQueryService(options: {
     teams: string[]
     years: number[]
   }>
+  searchEvents?: ChatQueryService['searchEvents']
+  searchGameDetails?: ChatQueryService['searchGameDetails']
 } = {}): ChatQueryService {
   const emptyResults = options.empty === true
   return {
-    searchEvents: async () => emptyResults
+    searchEvents: options.searchEvents ?? (async () => emptyResults
       ? []
       : [{
           gameId: 'r20240401g-t-01',
@@ -733,7 +788,7 @@ function createFakeQueryService(options: {
           resultText: 'レフトソロホームラン（打点1）',
           eventAttributesJson: null,
           sourceUrl: 'https://npb.jp/scores/2024/0401/g-t-01/playbyplay.html',
-        }],
+        }]),
     searchGames: async () => [],
     searchBattingLines: async () => emptyResults
       ? []
@@ -767,7 +822,7 @@ function createFakeQueryService(options: {
           sourceKind: 'roster',
           sourceUrl: 'https://npb.jp/scores/2024/0401/g-t-01/roster.html',
         }],
-    searchGameDetails: async () => [],
+    searchGameDetails: options.searchGameDetails ?? (async () => []),
     aggregateBattingLines: async () => [],
     aggregatePitchingLines: async () => [],
     aggregateEvents: async () => [],

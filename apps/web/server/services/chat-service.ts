@@ -2,6 +2,7 @@ import {
   chatResponseCoreSchema,
   type ChatRequest,
   type ChatResponseCore,
+  type ChatStructuredQuery,
   type PlayerAffiliationFilters,
 } from '@npb/schemas'
 import {
@@ -22,6 +23,7 @@ import {
 import type { ChatFinalAnswerGenerator } from './chat-final-answer-llm'
 
 type ChatServiceDependencies = {
+  allowFinalAnswerFallback?: boolean
   parseStructuredQueryFromMessage?: ChatQueryParser
   formatChatAnswer?: typeof formatChatAnswer
   normalizeStructuredQuery?: typeof normalizeChatStructuredQuery
@@ -44,6 +46,7 @@ export function createChatService(
   const resolvePlayer =
     dependencies.resolveStructuredQueryPlayer ?? resolveStructuredQueryPlayer
   const generateFinalAnswer = dependencies.generateFinalAnswer
+  const allowFinalAnswerFallback = dependencies.allowFinalAnswerFallback ?? true
 
   return {
     async answerQuestion(
@@ -54,7 +57,7 @@ export function createChatService(
         history: options.history,
       }))
       const resolved = await resolvePlayer(queryService, parsedQuery)
-      const structuredQuery = resolved.structuredQuery
+      let structuredQuery = resolved.structuredQuery
       const playerResolution = resolved.resolution
 
       const emptyResults: ChatResponseCore['results'] = {
@@ -100,6 +103,18 @@ export function createChatService(
         results = {
           ...results,
           events: await searchGameDetailEventsForChat(queryService, results.gameDetails),
+        }
+      }
+
+      if (
+        !shouldSkipForPlayerResolution(playerResolution) &&
+        structuredQuery.intent === 'search_events' &&
+        results.events.length === 0
+      ) {
+        const fallback = await searchGameDetailsFromEventQuery(queryService, structuredQuery)
+        if (fallback) {
+          structuredQuery = fallback.structuredQuery
+          results = fallback.results
         }
       }
 
@@ -161,6 +176,9 @@ export function createChatService(
             },
           })
         } catch {
+          if (!allowFinalAnswerFallback) {
+            throw new Error('CHAT_ANSWER_LLM generation failed')
+          }
           return core
         }
       }
@@ -245,4 +263,45 @@ async function searchGameDetailEventsForChat(
       })),
   )
   return rows.flat()
+}
+
+async function searchGameDetailsFromEventQuery(
+  queryService: ChatQueryService,
+  structuredQuery: Extract<ChatStructuredQuery, { intent: 'search_events' }>,
+): Promise<{ structuredQuery: Extract<ChatStructuredQuery, { intent: 'game_detail' }>; results: ChatResponseCore['results'] } | null> {
+  const filters = structuredQuery.filters
+  if (!filters.game_id && !filters.game_date) {
+    return null
+  }
+  const detailQuery: Extract<ChatStructuredQuery, { intent: 'game_detail' }> = {
+    intent: 'game_detail',
+    filters: {
+      game_id: filters.game_id,
+      game_date: filters.game_date,
+      team: filters.team,
+      limit: 10,
+    },
+  }
+  const gameDetails = await queryService.searchGameDetails(detailQuery.filters)
+  if (gameDetails.length === 0) {
+    return null
+  }
+  const emptyResults: ChatResponseCore['results'] = {
+    events: [],
+    games: [],
+    pitching: [],
+    batting: [],
+    roster: [],
+    affiliations: [],
+    gameDetails: [],
+    aggregates: [],
+  }
+  return {
+    structuredQuery: detailQuery,
+    results: {
+      ...emptyResults,
+      gameDetails,
+      events: await searchGameDetailEventsForChat(queryService, gameDetails),
+    },
+  }
 }

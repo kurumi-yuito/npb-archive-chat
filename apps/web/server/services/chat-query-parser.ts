@@ -13,6 +13,7 @@ export type ChatQueryParser = (
 ) => Promise<ChatStructuredQuery>
 
 type ChatQueryParserDependencies = {
+  allowFallback?: boolean
   fallbackParser?: (message: string) => ChatStructuredQuery
   llmGenerator?: {
     generateStructuredQuery: (
@@ -23,10 +24,18 @@ type ChatQueryParserDependencies = {
   logger?: Pick<Console, 'warn'>
 }
 
+export class ChatQueryParserUnavailableError extends Error {
+  constructor(message = 'Chat query LLM is not configured or unavailable') {
+    super(message)
+    this.name = 'ChatQueryParserUnavailableError'
+  }
+}
+
 export function createChatQueryParser(
   llmConfig?: Partial<ChatQueryLlmConfig>,
   dependencies: ChatQueryParserDependencies = {},
 ): ChatQueryParser {
+  const allowFallback = dependencies.allowFallback ?? true
   const fallbackParser = dependencies.fallbackParser ?? parseStructuredQueryFromMessageStub
   const llmGenerator =
     dependencies.llmGenerator ??
@@ -37,18 +46,38 @@ export function createChatQueryParser(
 
   return async (message: string, context?: ChatQueryParserContext) => {
     if (!llmGenerator) {
+      if (!allowFallback) {
+        throw new ChatQueryParserUnavailableError('CHAT_QUERY_LLM_API_KEY and CHAT_QUERY_LLM_MODEL must be set')
+      }
       return fallbackParser(message)
     }
 
     try {
       return await llmGenerator.generateStructuredQuery(message, context)
     } catch (error) {
+      if (!allowFallback) {
+        throw new ChatQueryParserUnavailableError()
+      }
       logger.warn('chat-query-parser: falling back to stub parser', error)
-      return fallbackParser(message)
+      return fallbackParser(fallbackMessageForParser(message, context))
     }
   }
 }
 
 export async function parseStructuredQueryFromMessage(message: string): Promise<ChatStructuredQuery> {
   return parseStructuredQueryFromMessageStub(message)
+}
+
+function fallbackMessageForParser(message: string, context?: ChatQueryParserContext): string {
+  const hasSearchableContext =
+    /(?:\d{4}|昨日|今日|本日|一昨日|試合|戦|成績|所属|スタメン|ロスター|イベント|本塁打|ホームラン|ハイライト|戦評|スコア|巨人|読売|阪神|広島|中日|ヤクルト|DeNA|横浜|オリックス|ロッテ|西武|ソフトバンク|日本ハム|楽天)/u
+      .test(message)
+  if (hasSearchableContext) {
+    return message
+  }
+
+  const previousUserMessage = [...(context?.history ?? [])]
+    .reverse()
+    .find((item) => item.role === 'user')?.content
+  return previousUserMessage ? `${previousUserMessage}\n${message}` : message
 }

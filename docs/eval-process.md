@@ -43,8 +43,8 @@ pnpm eval:chat-queries
 
 内部では `tests/eval-chat-queries.eval.ts` が JSON を読み込み、現在の parser と正規化レイヤーで全件評価する。
 
-LLM 設定が無い場合は fallback parser が使われる。
-`CHAT_QUERY_LLM_*` を設定して実行すると、同じ評価セットを LLM parser に対しても回せる。
+dev/test では LLM 設定が無い場合に fallback parser を使える。
+production と同じ条件で評価する場合は `CHAT_ALLOW_HEURISTIC_FALLBACK=false` と `CHAT_QUERY_LLM_*` を設定して実行する。
 
 ## DB-backed chat eval
 

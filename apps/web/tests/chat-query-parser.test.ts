@@ -1,5 +1,8 @@
 import { describe, expect, it, vi } from 'vitest'
-import { createChatQueryParser } from '../server/services/chat-query-parser'
+import {
+  ChatQueryParserUnavailableError,
+  createChatQueryParser,
+} from '../server/services/chat-query-parser'
 import { parseStructuredQueryFromMessageStub } from '../server/services/chat-query-parser-stub'
 
 function currentJstYear(): number {
@@ -129,6 +132,31 @@ describe('chat-query-parser', () => {
         pitcher_name: '益田',
       },
     })
+  })
+
+  it('does not use the stub parser when fallback is disabled and LLM config is missing', async () => {
+    const parser = createChatQueryParser(undefined, { allowFallback: false })
+
+    await expect(parser('きのうのきょじんせんのはいらいとは')).rejects.toBeInstanceOf(
+      ChatQueryParserUnavailableError,
+    )
+  })
+
+  it('does not use the stub parser when fallback is disabled and LLM generation fails', async () => {
+    const parser = createChatQueryParser(
+      { baseUrl: 'https://example.test/v1', apiKey: 'secret', model: 'test-model' },
+      {
+        allowFallback: false,
+        llmGenerator: {
+          generateStructuredQuery: vi.fn().mockRejectedValue(new Error('network')),
+        },
+        logger: { warn: vi.fn() },
+      },
+    )
+
+    await expect(parser('昨日の巨人戦のハイライトは')).rejects.toBeInstanceOf(
+      ChatQueryParserUnavailableError,
+    )
   })
 
   it('keeps the stub parser behavior available as fallback logic', () => {
@@ -380,6 +408,16 @@ describe('chat-query-parser', () => {
       filters: {
         game_date: currentJstDateOffset(-1),
         venue: '東京ドーム',
+      },
+    })
+  })
+
+  it('routes relative-date team highlight questions to game detail search', () => {
+    expect(parseStructuredQueryFromMessageStub('昨日の巨人戦のハイライトは')).toEqual({
+      intent: 'game_detail',
+      filters: {
+        game_date: currentJstDateOffset(-1),
+        team: '巨人',
       },
     })
   })

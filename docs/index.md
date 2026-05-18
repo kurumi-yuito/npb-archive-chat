@@ -18,7 +18,7 @@
 | 領域 | ドキュメント | 主な内容 |
 |------|--------------|----------|
 | チャット画面 | [ui-chat.md](./ui-chat.md) | 画面表示項目、どのソースを編集するか |
-| チャットAPI | [chat-backend.md](./chat-backend.md) | `/api/chat` の処理順、formatter、LLM fallback |
+| チャットAPI | [chat-backend.md](./chat-backend.md) | `/api/chat` の処理順、formatter、LLM 利用 |
 | アカウント・課金・usage | [usage-limit.md](./usage-limit.md) | account table、subscription、usage制限、API |
 | Google 認証設定 | [google-auth-runbook.md](./google-auth-runbook.md) | OAuth client、Workers secrets、migration、動作確認 |
 | Stripe 課金設定 | [stripe-billing-runbook.md](./stripe-billing-runbook.md) | Stripe の Price / webhook / secret 設定手順 |

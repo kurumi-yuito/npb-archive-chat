@@ -59,7 +59,7 @@ update:bis-current
 - `/chat` UI（サイドバー、入力、履歴、summary、件数、events、batting、affiliations、sourceUrl、ambiguous候補、usage、loading/error、account/profile/subscription 設定）
 - public `/api/chat` route と service layer 分離
 - D1 query adapter と SQLite/D1 切替
-- LLM final answer generation（env 未設定時は deterministic formatter fallback）
+- LLM final answer generation（production では env 必須、dev/test のみ deterministic formatter fallback 可）
 - BIS current の DeNA smoke 取得・ロード確認
 - 2026-05-10 の live smoke で `/api/account` / `/api/chat/usage` / `/api/chat` が workers.dev 上で応答することを確認済み
 - `R2 Canonical Storage Runbook` の手順実行と `rebuild:r2-year` の再構築確認

@@ -132,7 +132,7 @@ Implemented in repository:
 - usage 上限 429
 - dev header fallback
 - production signed-cookie identity
-- `/api/chat` の deterministic formatter / LLM fallback
+- `/api/chat` の production LLM 必須化と dev/test fallback
 
 確認コマンド:
 

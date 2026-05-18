@@ -65,8 +65,8 @@ Stripe の test mode 値は、Stripe Dashboard の `テスト環境` または S
 
 dev では `NPB_AUTH_HEADER_FALLBACK` は既定で `true` なので、この `.env` には書かなくてよい。
 LLM API key は任意である。
-未設定時は query parser / answer formatter の fallback 実装が使われる。
-ローカルで外部 LLM まで使って確認する場合だけ、`CHAT_QUERY_LLM_API_KEY` / `CHAT_ANSWER_LLM_API_KEY` / model 名を追加する。
+未設定時は dev/test 用の query parser / answer formatter fallback 実装が使われる。
+ローカルでも実際のチャット品質まで確認する場合は、`CHAT_QUERY_LLM_API_KEY` / `CHAT_QUERY_LLM_MODEL` / `CHAT_ANSWER_LLM_API_KEY` / `CHAT_ANSWER_LLM_MODEL` を追加する。
 
 `NPB_STRIPE_WEBHOOK_SECRET` は、ローカルへ webhook を送る方法によって値が変わる。
 Stripe CLI forwarding を使う場合は Stripe CLI が表示する `whsec_...` を入れる。

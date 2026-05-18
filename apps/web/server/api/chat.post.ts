@@ -12,13 +12,20 @@ import {
   createChatFinalAnswerLlm,
   hasChatFinalAnswerLlmConfig,
 } from '../services/chat-final-answer-llm'
-import { createChatQueryParser } from '../services/chat-query-parser'
+import {
+  ChatQueryParserUnavailableError,
+  createChatQueryParser,
+} from '../services/chat-query-parser'
 import {
   buildFreeUsageInfo,
   buildFreeUsageSnapshot,
   buildProUsageInfo,
 } from '../utils/build-chat-usage'
-import { resolveChatRuntimeAuthConfig, resolveChatRuntimeStripeBillingConfig } from '../utils/chat-runtime-config'
+import {
+  parseBoolean,
+  resolveChatRuntimeAuthConfig,
+  resolveChatRuntimeStripeBillingConfig,
+} from '../utils/chat-runtime-config'
 import { getEffectiveChatAccount } from '../utils/chat-account-response'
 import { parseChatIdentity } from '../utils/parse-chat-identity'
 import { parseChatRequestBody } from '../utils/parse-chat-request'
@@ -92,6 +99,30 @@ export default defineEventHandler(async (event) => {
           ? cloudflareEnv.CHAT_ANSWER_LLM_MODEL
           : config.chatAnswerLlmModel,
     }
+    const allowHeuristicFallback = parseBoolean(
+      typeof cloudflareEnv?.CHAT_ALLOW_HEURISTIC_FALLBACK === 'string'
+        ? cloudflareEnv.CHAT_ALLOW_HEURISTIC_FALLBACK
+        : config.chatAllowHeuristicFallback,
+    )
+    const allowDeterministicAnswerFallback = parseBoolean(
+      typeof cloudflareEnv?.CHAT_ALLOW_DETERMINISTIC_ANSWER_FALLBACK === 'string'
+        ? cloudflareEnv.CHAT_ALLOW_DETERMINISTIC_ANSWER_FALLBACK
+        : config.chatAllowDeterministicAnswerFallback,
+    )
+    const finalAnswerGenerator = hasChatFinalAnswerLlmConfig(chatAnswerLlmConfig)
+      ? createChatFinalAnswerLlm({
+          baseUrl: chatAnswerLlmConfig.baseUrl,
+          apiKey: chatAnswerLlmConfig.apiKey,
+          model: chatAnswerLlmConfig.model,
+        })
+      : undefined
+    if (!finalAnswerGenerator && !allowDeterministicAnswerFallback) {
+      throw createPublicApiError(
+        503,
+        'chat_llm_unavailable',
+        'CHAT_ANSWER_LLM_API_KEY and CHAT_ANSWER_LLM_MODEL must be set',
+      )
+    }
     const queryService = await getServerChatQueryService(
       event,
       String(config.npbSqlitePath ?? ''),
@@ -102,14 +133,11 @@ export default defineEventHandler(async (event) => {
         baseUrl: chatQueryLlmConfig.baseUrl,
         apiKey: chatQueryLlmConfig.apiKey,
         model: chatQueryLlmConfig.model,
+      }, {
+        allowFallback: allowHeuristicFallback,
       }),
-      generateFinalAnswer: hasChatFinalAnswerLlmConfig(chatAnswerLlmConfig)
-        ? createChatFinalAnswerLlm({
-            baseUrl: chatAnswerLlmConfig.baseUrl,
-            apiKey: chatAnswerLlmConfig.apiKey,
-            model: chatAnswerLlmConfig.model,
-          })
-        : undefined,
+      generateFinalAnswer: finalAnswerGenerator,
+      allowFinalAnswerFallback: allowDeterministicAnswerFallback,
     })
     const core = await service.answerQuestion(body.message, {
       history: body.history,
@@ -130,6 +158,9 @@ export default defineEventHandler(async (event) => {
       throw createPublicApiError(500, 'internal_validation_failed', 'Internal response validation failed', {
         validation: error.flatten(),
       })
+    }
+    if (error instanceof ChatQueryParserUnavailableError) {
+      throw createPublicApiError(503, 'chat_llm_unavailable', error.message)
     }
     if (error instanceof Error && error.message.includes('not set')) {
       throw createPublicApiError(503, 'missing_env', error.message)

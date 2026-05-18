@@ -40,9 +40,13 @@ export default defineNuxtConfig({
     chatQueryLlmBaseUrl: process.env.CHAT_QUERY_LLM_BASE_URL ?? 'https://api.openai.com/v1',
     chatQueryLlmApiKey: process.env.CHAT_QUERY_LLM_API_KEY ?? '',
     chatQueryLlmModel: process.env.CHAT_QUERY_LLM_MODEL ?? '',
+    chatAllowHeuristicFallback:
+      process.env.CHAT_ALLOW_HEURISTIC_FALLBACK ?? (isDev ? 'true' : 'false'),
     chatAnswerLlmBaseUrl: process.env.CHAT_ANSWER_LLM_BASE_URL ?? 'https://api.openai.com/v1',
     chatAnswerLlmApiKey: process.env.CHAT_ANSWER_LLM_API_KEY ?? '',
     chatAnswerLlmModel: process.env.CHAT_ANSWER_LLM_MODEL ?? '',
+    chatAllowDeterministicAnswerFallback:
+      process.env.CHAT_ALLOW_DETERMINISTIC_ANSWER_FALLBACK ?? (isDev ? 'true' : 'false'),
     npbDailyUpdateGithubOwner: process.env.NPB_DAILY_UPDATE_GITHUB_OWNER ?? '',
     npbDailyUpdateGithubRepo: process.env.NPB_DAILY_UPDATE_GITHUB_REPO ?? '',
     npbDailyUpdateGithubWorkflow: process.env.NPB_DAILY_UPDATE_GITHUB_WORKFLOW ?? 'daily-update.yml',

@@ -83,6 +83,10 @@ wrangler secret put CHAT_QUERY_LLM_API_KEY
 wrangler secret put CHAT_ANSWER_LLM_API_KEY
 ```
 
+ここに入れる値は OpenAI Platform の API keys 画面（`https://platform.openai.com/api-keys`）で作る Project API key（通常は `sk-proj-...`）である。
+同じ API key を `CHAT_QUERY_LLM_API_KEY` と `CHAT_ANSWER_LLM_API_KEY` の両方に設定してよい。
+1つの変数に2つの key を入れるのではなく、2つの変数へ同じ `sk-proj-...` をそれぞれ設定する。
+
 ### 5. D1 migration を適用する
 
 これは **schema の適用** だけである。**本番データの投入ではない**。
@@ -303,11 +307,13 @@ bucket_name = "npb-archive-chat-raw"
 | `NPB_STRIPE_CHECKOUT_CANCEL_URL` | 空 | Checkout キャンセル後の戻り URL。 |
 | `NPB_STRIPE_PORTAL_RETURN_URL` | 空 | Billing Portal から戻る URL。 |
 | `CHAT_QUERY_LLM_BASE_URL` | `https://api.openai.com/v1` | structured query LLM の base URL。 |
-| `CHAT_QUERY_LLM_API_KEY` | 空 | 未設定時は heuristic parser fallback。 |
-| `CHAT_QUERY_LLM_MODEL` | 空 | structured query LLM model。 |
+| `CHAT_QUERY_LLM_API_KEY` | 空 | production chat では必須。OpenAI Platform の Project API key、通常は `sk-proj-...`。 |
+| `CHAT_QUERY_LLM_MODEL` | `gpt-4.1-mini` | production chat では必須。structured query LLM model。 |
+| `CHAT_ALLOW_HEURISTIC_FALLBACK` | `false` | dev/test 用。production では `false` のままにする。 |
 | `CHAT_ANSWER_LLM_BASE_URL` | `https://api.openai.com/v1` | final answer LLM の base URL。 |
-| `CHAT_ANSWER_LLM_API_KEY` | 空 | 未設定時は deterministic formatter fallback。 |
-| `CHAT_ANSWER_LLM_MODEL` | 空 | final answer LLM model。 |
+| `CHAT_ANSWER_LLM_API_KEY` | 空 | production chat では必須。`CHAT_QUERY_LLM_API_KEY` と同じ OpenAI Project API key でよい。 |
+| `CHAT_ANSWER_LLM_MODEL` | `gpt-4.1-mini` | production chat では必須。final answer LLM model。 |
+| `CHAT_ALLOW_DETERMINISTIC_ANSWER_FALLBACK` | `false` | dev/test 用。production では `false` のままにする。 |
 | `NPB_DAILY_UPDATE_GITHUB_OWNER` | 空 | Cloudflare Cron が `workflow_dispatch` する GitHub owner。 |
 | `NPB_DAILY_UPDATE_GITHUB_REPO` | 空 | Cloudflare Cron が `workflow_dispatch` する GitHub repo。 |
 | `NPB_DAILY_UPDATE_GITHUB_WORKFLOW` | `daily-update.yml` | 叩く workflow file 名。 |
@@ -325,11 +331,27 @@ Workers production では secret を Wrangler で設定する。
 wrangler secret put NPB_AUTH_SHARED_SECRET
 ```
 
-LLM を使う場合のみ API key を設定する。未設定時は deterministic formatter fallback で動く。
+Workers production のチャットは LLM 必須。
+`CHAT_QUERY_LLM_API_KEY` / `CHAT_QUERY_LLM_MODEL` が無い場合、自然文理解を heuristic parser に落とさず 503 にする。
+`CHAT_ANSWER_LLM_API_KEY` / `CHAT_ANSWER_LLM_MODEL` が無い場合も deterministic formatter に落とさず 503 にする。
 
 ```bash
 wrangler secret put CHAT_QUERY_LLM_API_KEY
 wrangler secret put CHAT_ANSWER_LLM_API_KEY
+```
+
+API key は OpenAI Platform の API keys 画面（`https://platform.openai.com/api-keys`）で作る Project API key を使う。
+model / base URL / fallback flags は secret ではないので root の `wrangler.toml` の `[vars]` に置く。
+このリポジトリでは次を既定値として入れている。
+
+```toml
+[vars]
+CHAT_QUERY_LLM_BASE_URL = "https://api.openai.com/v1"
+CHAT_QUERY_LLM_MODEL = "gpt-4.1-mini"
+CHAT_ALLOW_HEURISTIC_FALLBACK = "false"
+CHAT_ANSWER_LLM_BASE_URL = "https://api.openai.com/v1"
+CHAT_ANSWER_LLM_MODEL = "gpt-4.1-mini"
+CHAT_ALLOW_DETERMINISTIC_ANSWER_FALLBACK = "false"
 ```
 
 Cloudflare Cron を使う場合は GitHub workflow dispatch 用の secret も設定する。
@@ -340,14 +362,6 @@ wrangler secret put NPB_DAILY_UPDATE_GITHUB_REPO
 wrangler secret put NPB_DAILY_UPDATE_GITHUB_WORKFLOW
 wrangler secret put NPB_DAILY_UPDATE_GITHUB_REF
 wrangler secret put NPB_DAILY_UPDATE_GITHUB_TOKEN
-```
-
-model / base URL は secret ではなく `[vars]` で管理してよい。必要なら root の `wrangler.toml` に追加する。
-
-```toml
-[vars]
-CHAT_QUERY_LLM_MODEL = "gpt-4.1-mini"
-CHAT_ANSWER_LLM_MODEL = "gpt-4.1-mini"
 ```
 
 ## 3. D1 migration（スキーマ適用）

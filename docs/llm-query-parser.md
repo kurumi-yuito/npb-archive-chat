@@ -7,17 +7,19 @@
 - structured query 生成
 - DB 結果に基づく final answer drafting
 
-どちらも未設定時や失敗時は fallback する。DB 検索は既存 repository と multi-year query layer を使い、LLM は DB 結果外の情報源として扱わない。
+production ではどちらも必須。DB 検索は既存 repository と multi-year query layer を使い、LLM は DB 結果外の情報源として扱わない。
 
 structured query 生成:
 
 - LLM 出力は必ず `@npb/schemas` の `chatStructuredQuerySchema` で validate する。
-- validate 失敗時や LLM 呼び出し失敗時は stub parser に fallback する。
+- validate 失敗時や LLM 呼び出し失敗時は production では 503 にする。
+- dev/test だけ `CHAT_ALLOW_HEURISTIC_FALLBACK=true` で stub parser に fallback できる。
 
 final answer drafting:
 
 - deterministic formatter の answer、DB results、source URLs だけを LLM に渡す。
-- env 未設定時や LLM 呼び出し失敗時は deterministic formatter の summary を返す。
+- production では env 未設定時や LLM 呼び出し失敗時は 503 にする。
+- dev/test だけ `CHAT_ALLOW_DETERMINISTIC_ANSWER_FALLBACK=true` で deterministic formatter の summary を返せる。
 - ambiguous / not_found / 0件 / limit 表示では LLM を呼ばない。
 
 
@@ -119,7 +121,7 @@ explicit assignment 改善方針:
 
 ## Fallback 条件
 
-次の場合はすべて stub parser を使う。
+`CHAT_ALLOW_HEURISTIC_FALLBACK=true` の dev/test では、次の場合に stub parser を使う。
 
 - `CHAT_QUERY_LLM_API_KEY` または `CHAT_QUERY_LLM_MODEL` が未設定
 - LLM HTTP 呼び出しが失敗
@@ -127,7 +129,8 @@ explicit assignment 改善方針:
 - JSON parse に失敗
 - `chatStructuredQuerySchema` validate に失敗
 
-fallback の責務は「完全停止を避け、最低限の heuristic で既存検索を継続する」こと。
+production では上記の状態を自然文理解の代替実装として扱わない。
+fallback の責務は「ローカルの構成確認やユニットテストで完全停止を避ける」ことに限定する。
 
 
 ## Runtime Config
@@ -139,7 +142,8 @@ fallback の責務は「完全停止を避け、最低限の heuristic で既存
 - `CHAT_QUERY_LLM_API_KEY`
 - `CHAT_QUERY_LLM_MODEL`
 
-未設定時は structured query LLM を使わず fallback parser のみで動く。
+production では未設定時に 503 を返す。
+dev/test では `CHAT_ALLOW_HEURISTIC_FALLBACK=true` のときだけ fallback parser で動く。
 
 final answer LLM:
 
@@ -147,8 +151,10 @@ final answer LLM:
   既定値は `https://api.openai.com/v1`
 - `CHAT_ANSWER_LLM_API_KEY`
 - `CHAT_ANSWER_LLM_MODEL`
+- `CHAT_ALLOW_DETERMINISTIC_ANSWER_FALLBACK`
 
-未設定時は deterministic formatter の summary をそのまま返す。
+production では final answer LLM 未設定時に 503 を返す。
+dev/test では `CHAT_ALLOW_DETERMINISTIC_ANSWER_FALLBACK=true` のときだけ deterministic formatter に fallback する。
 
 
 ## 次に人間が確認すべき点
