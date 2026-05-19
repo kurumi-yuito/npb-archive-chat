@@ -234,7 +234,7 @@ function formatGameDetailSummary(
       `${index + 1}. ${formatDateJa(row.date)} ${displayVenueName(row.venue)}、${result}`,
       ...highlights.map((highlight) => `   ${highlight}`),
       ...eventHighlights.map((highlight) => `   ${highlight}`),
-      ...(gameEvents.length === 0 ? ['   play-by-play はDBで確認できないため、戦評はラインスコア中心です。'] : []),
+      ...(gameEvents.length === 0 && !linescore ? ['   詳細な打席情報は確認できませんでした。'] : []),
     ]
   })
   return [

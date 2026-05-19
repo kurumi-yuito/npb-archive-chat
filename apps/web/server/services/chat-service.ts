@@ -232,6 +232,10 @@ function shouldUseFinalAnswerLlm(
   if ((core.answer.remaining_count ?? 0) > 0) {
     return false
   }
+  // game_detail formatter already produces accurate linescore text; skip LLM to prevent editorializing
+  if (core.structured_query.intent === 'game_detail') {
+    return false
+  }
   return true
 }
 

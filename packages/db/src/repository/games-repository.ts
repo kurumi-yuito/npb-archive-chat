@@ -34,7 +34,7 @@ export async function searchGames(
   filters: SearchGamesFilters = {},
 ): Promise<GameSummaryRow[]> {
   const normalized = searchGamesFiltersSchema.parse(filters)
-  const clauses: string[] = []
+  const clauses: string[] = ["games.game_id NOT LIKE 'f%'"]
   const values: Array<string | number> = []
 
   if (normalized.game_date) {

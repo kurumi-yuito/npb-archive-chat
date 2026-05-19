@@ -19,7 +19,7 @@ export async function searchGameDetails(
   filters: GameDetailFilters = {},
 ): Promise<GameDetailRow[]> {
   const normalized = gameDetailFiltersSchema.parse(filters)
-  const clauses: string[] = []
+  const clauses: string[] = ["games.game_id NOT LIKE 'f%'"]
   const values: Array<string | number> = []
 
   if (normalized.game_id) {
