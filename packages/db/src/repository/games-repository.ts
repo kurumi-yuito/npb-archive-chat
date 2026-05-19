@@ -1,6 +1,7 @@
 import { searchGamesFiltersSchema, type SearchGamesFilters } from '@npb/schemas'
 import type { QueryDatabase } from '../query-driver'
 import { venueSearchValues } from './venue-aliases'
+import { toEnglishTeamName } from './team-name-utils'
 
 /** 一覧・検索向けの最小列（詳細 JSON は含めない） */
 export type GameSummaryRow = {
@@ -62,8 +63,9 @@ export async function searchGames(
   }
 
   if (normalized.team) {
-    clauses.push('(games.home_team_short_name = ? OR games.away_team_short_name = ? OR games.home_team_name = ? OR games.away_team_name = ?)')
-    values.push(normalized.team, normalized.team, normalized.team, normalized.team)
+    const english = toEnglishTeamName(normalized.team) ?? normalized.team
+    clauses.push('(games.home_team_name LIKE ? OR games.away_team_name LIKE ?)')
+    values.push(`%${english}%`, `%${english}%`)
   }
 
   if (normalized.venue) {

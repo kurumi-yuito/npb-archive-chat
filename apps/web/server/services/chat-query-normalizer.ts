@@ -57,6 +57,46 @@ const teamAliasEntries = [
   ['ソフトバンクホークス', 'ソフトバンク'],
   ['ソフトバンク', 'ソフトバンク'],
   ['ホークス', 'ソフトバンク'],
+  // hiragana readings
+  ['きょじん', '巨人'],
+  ['やくると', 'ヤクルト'],
+  ['でな', 'DeNA'],
+  ['でーな', 'DeNA'],
+  ['ちゅうにち', '中日'],
+  ['はんしん', '阪神'],
+  ['ひろしま', '広島'],
+  ['にほんはむ', '日本ハム'],
+  ['にっぽんはむ', '日本ハム'],
+  ['らくてん', '楽天'],
+  ['せいぶ', '西武'],
+  ['ろって', 'ロッテ'],
+  ['おりっくす', 'オリックス'],
+  ['そふとばんく', 'ソフトバンク'],
+  // English team names
+  ['yomiuri', '巨人'],
+  ['giants', '巨人'],
+  ['yakult', 'ヤクルト'],
+  ['swallows', 'ヤクルト'],
+  ['baystars', 'DeNA'],
+  ['baystar', 'DeNA'],
+  ['chunichi', '中日'],
+  ['dragons', '中日'],
+  ['hanshin', '阪神'],
+  ['tigers', '阪神'],
+  ['hiroshima', '広島'],
+  ['carp', '広島'],
+  ['nipponham', '日本ハム'],
+  ['fighters', '日本ハム'],
+  ['rakuten', '楽天'],
+  ['eagles', '楽天'],
+  ['seibu', '西武'],
+  ['lions', '西武'],
+  ['lotte', 'ロッテ'],
+  ['marines', 'ロッテ'],
+  ['orix', 'オリックス'],
+  ['buffaloes', 'オリックス'],
+  ['softbank', 'ソフトバンク'],
+  ['hawks', 'ソフトバンク'],
 ] as const
 
 const playerAliasEntries = [
@@ -160,6 +200,10 @@ export function normalizeChatStructuredQuery(
         pitcher_name: normalizePlayerName(structuredQuery.filters.pitcher_name),
       },
     })
+  }
+
+  if (structuredQuery.intent === 'off_topic') {
+    return structuredQuery
   }
 
   if (structuredQuery.intent === 'aggregate_events') {

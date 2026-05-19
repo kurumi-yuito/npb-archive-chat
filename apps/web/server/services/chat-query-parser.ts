@@ -56,7 +56,8 @@ export function createChatQueryParser(
       return await llmGenerator.generateStructuredQuery(message, context)
     } catch (error) {
       if (!allowFallback) {
-        throw new ChatQueryParserUnavailableError()
+        const detail = error instanceof Error ? error.message : String(error)
+        throw new ChatQueryParserUnavailableError(`Chat query LLM call failed: ${detail}`)
       }
       logger.warn('chat-query-parser: falling back to stub parser', error)
       return fallbackParser(fallbackMessageForParser(message, context))

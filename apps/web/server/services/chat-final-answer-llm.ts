@@ -25,52 +25,74 @@ export function createChatFinalAnswerLlm(config: ChatFinalAnswerLlmConfig): Chat
   }
 
   return async (input) => {
-    const response = await fetch(`${baseUrl}/chat/completions`, {
-      method: 'POST',
-      headers: {
-        authorization: `Bearer ${apiKey}`,
-        'content-type': 'application/json',
-      },
-      body: JSON.stringify({
-        model,
-        temperature: 0,
-        messages: [
-          {
-            role: 'system',
-            content: [
-              'You draft the final Japanese answer for an NPB specialist chat service.',
-              'The product goal is expert-level conversational NPB answers grounded only in official NPB-derived evidence supplied in the payload.',
-              'Use only the supplied DB answer, DB results, resolved player data, conversation history, and sourceUrl values.',
-              'Do not add facts, teams, players, scores, counts, or dates that are not present in the payload.',
-              'You may compute simple derived metrics from supplied values, such as OPS = OBP + SLG, but show the source values used.',
-              'Write naturally in Japanese and preserve the user’s conversational context.',
-              'If evidence is insufficient, say exactly what is missing instead of guessing.',
-              'Keep sourceUrl references when relevant.',
-            ].join('\n'),
-          },
-          {
-            role: 'user',
-            content: JSON.stringify({
-              question: input.message,
-              history: input.history ?? [],
-              structured_query: input.structured_query,
-              deterministic_answer: input.answer,
-              results: input.results,
-              sources: input.sources,
-            }),
-          },
-        ],
-      }),
+    const url = `${baseUrl}/chat/completions`
+    const headers = {
+      authorization: `Bearer ${apiKey}`,
+      'content-type': 'application/json',
+    }
+    const reqBody = JSON.stringify({
+      model,
+      temperature: 0,
+      messages: [
+        {
+          role: 'system',
+          content: [
+            'あなたはNPB（日本プロ野球）専門のチャットアシスタントです。',
+            'ユーザーは全国のプロ野球ファンで、AIやシステムに詳しくない一般の方が多いです。',
+            '詳しい野球好きの友人として、自然な日本語で親しみやすく答えてください。',
+            '',
+            '## 情報ソースの制約',
+            'ペイロードに含まれるDB結果・選手情報・会話履歴・情報源URLのみを根拠にしてください。',
+            'ペイロードにない選手名・チーム名・スコア・安打数・本塁打数・日時・数値などの具体的な事実は絶対に作りません。',
+            '集計値から単純な指標（OPS = 出塁率 + 長打率など）を計算することは可能です。その際は元の数値を示してください。',
+            '',
+            '## データが見つからない・0件のとき',
+            '「DB結果にないため」「データベース」「クエリ」「推測では回答しません」などのシステム用語は絶対に使わないでください。',
+            '「調べましたが、手元のデータには該当する情報が見つかりませんでした」のように自然に伝えてください。',
+            '条件を変えることで見つかる可能性（別の年度・チーム名・選手名での検索など）を具体的に提案してください。',
+            '得点・安打数など具体的な数字は絶対に推測・捏造しないでください。',
+            'ただし一般的なNPBの知識（選手のポジション・チームの歴史など推測と明記できる範囲）は補足として加えても構いません。',
+            '',
+            '## データがあるとき',
+            '野球ファンとして面白い視点でコメントを加え、印象的な場面や数字を強調してください。',
+            '情報源URLがあれば参照として示してください。',
+            'deterministic_answerは下書きとして参考にしてよいですが、必ず自然な会話文に書き直してください。',
+            '',
+            '## 文体',
+            '簡潔かつ会話的に書いてください。長い一覧以外はMarkdownの見出しを使わないでください。',
+            '会話履歴（history）を踏まえ、文脈を繋げて自然に話してください。',
+          ].join('\n'),
+        },
+        {
+          role: 'user',
+          content: JSON.stringify({
+            question: input.message,
+            history: input.history ?? [],
+            structured_query: input.structured_query,
+            deterministic_answer: input.answer,
+            results: input.results,
+            sources: input.sources,
+          }),
+        },
+      ],
     })
 
-    if (!response.ok) {
-      throw new Error(`Final answer LLM failed with HTTP ${response.status}`)
+    const delays = [1000, 2000]
+    let response: Response | undefined
+    for (let attempt = 0; attempt <= delays.length; attempt++) {
+      response = await fetch(url, { method: 'POST', headers, body: reqBody })
+      if (response.status !== 429 || attempt === delays.length) break
+      await new Promise((resolve) => setTimeout(resolve, delays[attempt]))
     }
 
-    const body = (await response.json()) as {
+    if (!response!.ok) {
+      throw new Error(`Final answer LLM failed with HTTP ${response!.status}`)
+    }
+
+    const resBody = (await response!.json()) as {
       choices?: Array<{ message?: { content?: string } }>
     }
-    const content = body.choices?.[0]?.message?.content?.trim()
+    const content = resBody.choices?.[0]?.message?.content?.trim()
     if (!content) {
       throw new Error('Final answer LLM returned empty content')
     }

@@ -10,7 +10,8 @@ const eventSubtypes = playByPlayEventSubtypeSchema.options.join(', ')
 export const chatQueryParserSystemPrompt = [
   'You convert NPB specialist chat questions into structured query JSON for deterministic DB search.',
   'Return exactly one JSON object and no surrounding prose.',
-  'Use only these intents: search_events, search_games, search_batting, search_pitching, search_roster, player_affiliation, game_detail, aggregate_batting, aggregate_pitching, aggregate_events.',
+  'Use only these intents: search_events, search_games, search_batting, search_pitching, search_roster, player_affiliation, game_detail, aggregate_batting, aggregate_pitching, aggregate_events, off_topic.',
+  'If the user message has no relation to NPB (Nippon Professional Baseball) — e.g. cooking, weather, politics, general knowledge questions, or any non-baseball topic — return {"intent":"off_topic","filters":{}} immediately and nothing else.',
   'Keep the existing schema shape: {"intent": "...", "filters": {...}}.',
   'Only include filters supported by the schema. Omit unknown or uncertain fields.',
   'Normalize dates to YYYY-MM-DD when the message contains an explicit date.',
@@ -19,6 +20,7 @@ export const chatQueryParserSystemPrompt = [
   'For event queries, valid event_type values are: ' + eventTypes + '.',
   'For event queries, valid event_subtype values are: ' + eventSubtypes + '.',
   'Typical mappings: 代打 -> plate_appearance + pinch_hitter, 盗塁 -> runner_event + stolen_base, 先発投手 -> game_note + starting_pitcher, 投手交代 -> substitution + pitching_change.',
+  'When the user mentions an NPB team, output it using one of these canonical short names in the team filter: 巨人, ヤクルト, DeNA, 中日, 阪神, 広島, 日本ハム, 楽天, 西武, ロッテ, オリックス, ソフトバンク. Never output full team names (e.g. 読売ジャイアンツ) or English team names in filters.',
   'When extracting person names, return only the bare player name.',
   'Do not include leading date text, inning text, team names, or particles such as の, に, で, が, を in batter_name, pitcher_name, runner_name, or player_name.',
   'Use conversation history to resolve follow-up references such as それ, その選手, 捕手層, 厚い, 怖い, 今どんな感じ.',

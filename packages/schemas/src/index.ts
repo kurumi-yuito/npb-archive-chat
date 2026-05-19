@@ -356,6 +356,10 @@ export const chatStructuredQuerySchema = z.discriminatedUnion('intent', [
     intent: z.literal('aggregate_events'),
     filters: aggregateEventsFiltersSchema,
   }),
+  z.object({
+    intent: z.literal('off_topic'),
+    filters: z.object({}),
+  }),
 ])
 
 export const chatSourceSchema = z.object({

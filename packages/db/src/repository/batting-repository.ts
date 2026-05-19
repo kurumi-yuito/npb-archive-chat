@@ -3,6 +3,7 @@ import {
   type SearchBattingLinesFilters,
 } from '@npb/schemas'
 import type { QueryDatabase } from '../query-driver'
+import { toJapaneseTeamAliases } from './team-name-utils'
 
 export type BattingLineRow = {
   gameId: string
@@ -65,8 +66,9 @@ export async function searchBattingLines(
     values.push(playerIdPattern(normalized.player_id))
   }
   if (normalized.team) {
-    clauses.push('batting_lines.team = ?')
-    values.push(normalized.team)
+    const teams = toJapaneseTeamAliases(normalized.team)
+    clauses.push(`batting_lines.team IN (${teams.map(() => '?').join(', ')})`)
+    values.push(...teams)
   }
   if (normalized.result_text_contains) {
     clauses.push('batting_lines.raw_text LIKE ?')

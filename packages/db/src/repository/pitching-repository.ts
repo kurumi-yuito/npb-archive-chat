@@ -1,6 +1,7 @@
 import { searchPitchingLinesFiltersSchema } from '@npb/schemas'
 import type { QueryDatabase } from '../query-driver'
 import type { SearchPitchingLinesFilters } from '@npb/schemas'
+import { toJapaneseTeamAliases } from './team-name-utils'
 
 /** 投手成績の検索向け最小列 */
 export type PitchingLineRow = {
@@ -60,8 +61,9 @@ export async function searchPitchingLines(
   }
 
   if (normalized.team) {
-    clauses.push('pitching_lines.team = ?')
-    values.push(normalized.team)
+    const teams = toJapaneseTeamAliases(normalized.team)
+    clauses.push(`pitching_lines.team IN (${teams.map(() => '?').join(', ')})`)
+    values.push(...teams)
   }
 
   const whereClause = clauses.length > 0 ? `WHERE ${clauses.join(' AND ')}` : ''

@@ -7,6 +7,7 @@ import {
   type AggregatePitchingFilters,
 } from '@npb/schemas'
 import type { QueryDatabase } from '../query-driver'
+import { toEnglishTeamName, toJapaneseTeamAliases } from './team-name-utils'
 
 export type AggregateRow = {
   kind: 'batting' | 'pitching' | 'events'
@@ -28,8 +29,9 @@ export async function aggregateBattingLines(
     values.push(normalized.player_name)
   }
   if (normalized.team) {
-    clauses.push('batting_lines.team = ?')
-    values.push(normalized.team)
+    const teams = toJapaneseTeamAliases(normalized.team)
+    clauses.push(`batting_lines.team IN (${teams.map(() => '?').join(', ')})`)
+    values.push(...teams)
   }
   if (normalized.result_text_contains) {
     clauses.push('batting_lines.raw_text LIKE ?')
@@ -88,8 +90,9 @@ export async function aggregatePitchingLines(
     values.push(normalized.pitcher_name)
   }
   if (normalized.team) {
-    clauses.push('pitching_lines.team = ?')
-    values.push(normalized.team)
+    const teams = toJapaneseTeamAliases(normalized.team)
+    clauses.push(`pitching_lines.team IN (${teams.map(() => '?').join(', ')})`)
+    values.push(...teams)
   }
 
   const whereClause = clauses.length > 0 ? `WHERE ${clauses.join(' AND ')}` : ''
@@ -144,8 +147,9 @@ export async function aggregateEvents(
   const values: Array<string | number> = []
   appendGameClauses(clauses, values, normalized)
   if (normalized.team) {
+    const english = toEnglishTeamName(normalized.team) ?? normalized.team
     clauses.push('events.offense_team = ?')
-    values.push(normalized.team)
+    values.push(english)
   }
   if (normalized.batter_name) {
     clauses.push('events.batter_name = ?')

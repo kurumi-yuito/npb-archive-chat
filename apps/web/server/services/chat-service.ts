@@ -56,6 +56,30 @@ export function createChatService(
       const parsedQuery = normalizeStructuredQuery(await queryParser(message, {
         history: options.history,
       }))
+
+      if (parsedQuery.intent === 'off_topic') {
+        return chatResponseCoreSchema.parse({
+          message,
+          structured_query: parsedQuery,
+          answer: {
+            summary: 'このサービスはNPB（日本プロ野球）に関するご質問にお答えするサービスです。試合結果・選手成績・特定の打席など、プロ野球のことなら何でもお気軽にどうぞ！',
+            result_count: 0,
+            source_urls: [],
+          },
+          results: {
+            events: [],
+            games: [],
+            pitching: [],
+            batting: [],
+            roster: [],
+            affiliations: [],
+            gameDetails: [],
+            aggregates: [],
+          },
+          sources: [],
+        })
+      }
+
       const resolved = await resolvePlayer(queryService, parsedQuery)
       let structuredQuery = resolved.structuredQuery
       const playerResolution = resolved.resolution
@@ -203,9 +227,6 @@ function shouldUseFinalAnswerLlm(
   resolution: PlayerResolution | null,
 ): boolean {
   if (shouldSkipForPlayerResolution(resolution)) {
-    return false
-  }
-  if (core.answer.result_count === 0) {
     return false
   }
   if ((core.answer.remaining_count ?? 0) > 0) {

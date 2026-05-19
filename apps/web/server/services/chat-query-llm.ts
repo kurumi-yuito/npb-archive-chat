@@ -48,28 +48,34 @@ export function createChatQueryLlm(
       message: string,
       context: ChatQueryParserContext = {},
     ): Promise<ChatStructuredQuery> {
-      const response = await fetchFn(buildChatCompletionsUrl(config.baseUrl), {
-        method: 'POST',
-        headers: {
-          'content-type': 'application/json',
-          authorization: `Bearer ${config.apiKey}`,
-        },
-        body: JSON.stringify({
-          model: config.model,
-          temperature: 0,
-          response_format: { type: 'json_object' },
-          messages: [
-            { role: 'system', content: chatQueryParserSystemPrompt },
-            { role: 'user', content: buildChatQueryParserUserPrompt(message, context) },
-          ],
-        }),
+      const body = JSON.stringify({
+        model: config.model,
+        temperature: 0,
+        response_format: { type: 'json_object' },
+        messages: [
+          { role: 'system', content: chatQueryParserSystemPrompt },
+          { role: 'user', content: buildChatQueryParserUserPrompt(message, context) },
+        ],
       })
+      const headers = {
+        'content-type': 'application/json',
+        authorization: `Bearer ${config.apiKey}`,
+      }
+      const url = buildChatCompletionsUrl(config.baseUrl)
 
-      if (!response.ok) {
-        throw new Error(`LLM query generation failed with status ${response.status}`)
+      const delays = [1000, 2000]
+      let response: Response | undefined
+      for (let attempt = 0; attempt <= delays.length; attempt++) {
+        response = await fetchFn(url, { method: 'POST', headers, body })
+        if (response.status !== 429 || attempt === delays.length) break
+        await sleep(delays[attempt])
       }
 
-      const payload = openAiCompatibleChatCompletionSchema.parse(await response.json())
+      if (!response!.ok) {
+        throw new Error(`LLM query generation failed with status ${response!.status}`)
+      }
+
+      const payload = openAiCompatibleChatCompletionSchema.parse(await response!.json())
       const rawContent = payload.choices[0]?.message.content
       const text = Array.isArray(rawContent)
         ? rawContent.map((part) => part.text ?? '').join('\n').trim()
@@ -82,6 +88,10 @@ export function createChatQueryLlm(
 
 function buildChatCompletionsUrl(baseUrl: string): string {
   return `${baseUrl.replace(/\/$/, '')}/chat/completions`
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
 function extractJsonObject(content: string): string {
