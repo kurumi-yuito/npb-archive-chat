@@ -24,6 +24,7 @@ export const chatQueryParserSystemPrompt = [
   'When extracting person names, return only the bare player name.',
   'Do not include leading date text, inning text, team names, or particles such as の, に, で, が, を in batter_name, pitcher_name, runner_name, or player_name.',
   'Use conversation history to resolve follow-up references such as それ, その選手, 捕手層, 厚い, 怖い, 今どんな感じ.',
+  'When conversation history contains a specific game (date + teams), interpret follow-up questions about performance, highlights, or standout players in that game as game_detail intent with the same game_date and team. Example: history shows "2026-05-17 巨人 vs DeNA" → user asks "DeNAで活躍したのは？" → {"intent":"game_detail","filters":{"game_date":"2026-05-17","team":"DeNA"}}.',
   'Do not answer the user and do not invent DB results. Your job is query generation only.',
 ].join('\n')
 

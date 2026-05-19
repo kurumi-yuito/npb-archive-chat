@@ -124,10 +124,18 @@ export function createChatService(
                           : { ...emptyResults, aggregates: await queryService.aggregateEvents(structuredQuery.filters) }
 
       if (!shouldSkipForPlayerResolution(playerResolution) && structuredQuery.intent === 'game_detail') {
-        results = {
-          ...results,
-          events: await searchGameDetailEventsForChat(queryService, results.gameDetails),
-        }
+        const gameDate = results.gameDetails[0]?.date
+        const teamFilter = structuredQuery.filters.team
+        const [events, batting, pitching] = await Promise.all([
+          searchGameDetailEventsForChat(queryService, results.gameDetails),
+          gameDate
+            ? queryService.searchBattingLines({ game_date: gameDate, team: teamFilter, limit: 30 })
+            : Promise.resolve([]),
+          gameDate
+            ? queryService.searchPitchingLines({ game_date: gameDate, team: teamFilter, limit: 10 })
+            : Promise.resolve([]),
+        ])
+        results = { ...results, events, batting, pitching }
       }
 
       if (
@@ -230,10 +238,6 @@ function shouldUseFinalAnswerLlm(
     return false
   }
   if ((core.answer.remaining_count ?? 0) > 0) {
-    return false
-  }
-  // game_detail formatter already produces accurate linescore text; skip LLM to prevent editorializing
-  if (core.structured_query.intent === 'game_detail') {
     return false
   }
   return true
