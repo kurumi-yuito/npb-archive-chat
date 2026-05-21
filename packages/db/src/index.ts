@@ -4,6 +4,11 @@ import {
   runScoresCalendarEnrichment,
 } from './enrich-scores-calendar'
 import {
+  parseEnrichBisFarmBoxesArgs,
+  runBisFarmBoxEnrichment,
+  parseBisFarmBoxHtml,
+} from './enrich-bis-farm-boxes'
+import {
   parseBackfillScoresCanonicalArgs,
   runBackfillScoresCanonical,
 } from './backfill-scores-canonical'
@@ -138,6 +143,9 @@ export {
   runD1Sync,
   rebuildYearFromR2,
   runScoresCalendarEnrichment,
+  parseEnrichBisFarmBoxesArgs,
+  runBisFarmBoxEnrichment,
+  parseBisFarmBoxHtml,
   searchBattingLines,
   searchEvents,
   searchGameDetails,

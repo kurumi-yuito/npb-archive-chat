@@ -15,6 +15,8 @@ import {
   runBisCurrentUpdate,
   rebuildYearFromR2,
   runIncrementalUpdate,
+  parseEnrichBisFarmBoxesArgs,
+  runBisFarmBoxEnrichment,
 } from './index'
 
 const KNOWN_COMMANDS = new Set([
@@ -32,6 +34,8 @@ const KNOWN_COMMANDS = new Set([
   'enrich-scores-calendar',
   'backfill:scores-canonical',
   'backfill-scores-canonical',
+  'enrich:bis-farm-boxes',
+  'enrich-bis-farm-boxes',
 ])
 
 function resolveCliCommand(): { command: string; tail: string[] } {
@@ -99,6 +103,13 @@ async function main() {
   if (command === 'backfill:scores-canonical' || command === 'backfill-scores-canonical') {
     const args = parseBackfillScoresCanonicalArgs(tail)
     const result = await runBackfillScoresCanonical(args)
+    process.stdout.write(`${JSON.stringify(result, null, 2)}\n`)
+    return
+  }
+
+  if (command === 'enrich:bis-farm-boxes' || command === 'enrich-bis-farm-boxes') {
+    const args = parseEnrichBisFarmBoxesArgs(tail)
+    const result = await runBisFarmBoxEnrichment(args)
     process.stdout.write(`${JSON.stringify(result, null, 2)}\n`)
     return
   }
