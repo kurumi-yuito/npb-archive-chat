@@ -237,18 +237,15 @@ export async function runScoresCalendarEnrichment(
         )
       }
 
-      const canonicalScoresBaseUrl = buildScoresBaseUrlFromCanonicalUrl(game.canonicalUrl)
-      if (game.canonicalUrl && !canonicalScoresBaseUrl) {
+      // Farm games have their canonicalUrl set to a BIS English fs*.html page, not a scores page.
+      // Ignore the non-scores canonical URL for farm games and derive scores URL from game ID instead.
+      const canonicalScoresBaseUrl = isFarmGameId(game.gameId)
+        ? null
+        : buildScoresBaseUrlFromCanonicalUrl(game.canonicalUrl)
+      if (game.canonicalUrl && !canonicalScoresBaseUrl && !isFarmGameId(game.gameId)) {
         const reason = duplicateGroupsWithScores.has(duplicateGroupKey(game) ?? '')
           ? 'duplicate_or_reversed_game'
           : 'scores_canonical_not_available'
-        failures.push({ date: game.date, gameId: game.gameId, stage: 'skip', reason })
-        logger.error(`[scores:skipped] date=${game.date} game_id=${game.gameId} stage=skip reason=${reason}`)
-        continue
-      }
-
-      if (!canonicalScoresBaseUrl && isFarmGameId(game.gameId)) {
-        const reason = 'farm_scores_not_available'
         failures.push({ date: game.date, gameId: game.gameId, stage: 'skip', reason })
         logger.error(`[scores:skipped] date=${game.date} game_id=${game.gameId} stage=skip reason=${reason}`)
         continue
@@ -267,30 +264,37 @@ export async function runScoresCalendarEnrichment(
       }
 
       discoveredGames += 1
+      const isFarm = isFarmGameId(game.gameId)
       const files = await fetchScoreFiles(fetchImpl, scoresBaseUrl, headers)
       const rawPaths = await writeRawScoreFiles(storage, game.year, game.mmdd, game.gameId, files)
+      // Farm games only require box.html (batting/pitching lines); playbyplay and roster may be absent.
+      const requiredParts = isFarm
+        ? (['index', 'box'] as const)
+        : (['index', 'playbyplay', 'box', 'roster'] as const)
       const missingParts = (['index', 'playbyplay', 'box', 'roster'] as const).filter(
         (part) => !files[part].ok,
       )
+      const missingRequired = missingParts.filter((part) => (requiredParts as readonly string[]).includes(part))
 
-      if (missingParts.length > 0) {
-        for (const part of missingParts) {
-          failures.push({
-            date: game.date,
-            gameId: game.gameId,
-            slug,
-            stage: part,
-            reason: `status_${files[part].status}`,
-          })
-          logger.error(
-            `[scores:failed] date=${game.date} game_id=${game.gameId} slug=${slug} stage=${part} reason=${files[part].status}`,
-          )
-        }
+      for (const part of missingParts) {
+        failures.push({
+          date: game.date,
+          gameId: game.gameId,
+          slug,
+          stage: part,
+          reason: `status_${files[part].status}`,
+        })
+        logger.error(
+          `[scores:failed] date=${game.date} game_id=${game.gameId} slug=${slug} stage=${part} reason=${files[part].status}`,
+        )
+      }
+
+      if (missingRequired.length > 0) {
         await writeUnresolved(storage, game, {
           game_id: game.gameId,
           slug,
           date: game.date,
-          reason: missingParts.map((part) => `${part}:${files[part].status}`).join(','),
+          reason: missingRequired.map((part) => `${part}:${files[part].status}`).join(','),
         })
         continue
       }
@@ -307,6 +311,21 @@ export async function runScoresCalendarEnrichment(
       try {
         const indexData = parseScoresIndexHtml(files.index.text)
         const boxData = parseScoresBoxHtml(files.box.text)
+        let events: ReturnType<typeof parseScoresPlayByPlayHtml> = []
+        if (files.playbyplay.ok) {
+          try {
+            events = parseScoresPlayByPlayHtml(files.playbyplay.text)
+          } catch (pbpError) {
+            if (pbpError instanceof NoPlayByPlayAvailableError && isFarm) {
+              // Farm games: treat missing/unavailable play-by-play as non-fatal
+            } else {
+              throw pbpError
+            }
+          }
+        }
+        const rosterEntries = files.roster.ok
+          ? parseScoresRosterHtml(files.roster.text)
+          : []
         parsed = {
           game: {
             ...indexData.game,
@@ -319,14 +338,11 @@ export async function runScoresCalendarEnrichment(
             start_time: game.startTime ?? indexData.game.start_time,
             source_urls: [files.index.url, files.playbyplay.url, files.box.url, files.roster.url],
           },
-          events: parseScoresPlayByPlayHtml(files.playbyplay.text).map((event) => ({
-            ...event,
-            game_id: game.gameId,
-          })),
+          events: events.map((event) => ({ ...event, game_id: game.gameId })),
           battingLines: boxData.battingLines.map((line) => ({ ...line, game_id: game.gameId })),
           pitchingLines: boxData.pitchingLines.map((line) => ({ ...line, game_id: game.gameId })),
           linescore: { ...boxData.linescore, game_id: game.gameId },
-          rosterEntries: parseScoresRosterHtml(files.roster.text).map((entry) => ({
+          rosterEntries: rosterEntries.map((entry) => ({
             ...entry,
             game_id: game.gameId,
           })),

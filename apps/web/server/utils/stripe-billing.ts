@@ -134,6 +134,11 @@ export function verifyStripeWebhookSignature(
   })
 }
 
+export function resolveSubscriptionPlan(isDeleted: boolean, billingStatus: string): 'free' | 'pro' {
+  if (isDeleted || billingStatus === 'canceled') return 'free'
+  return 'pro'
+}
+
 export function mapStripeSubscriptionStatusToBillingStatus(status: string): 'active' | 'trialing' | 'past_due' | 'canceled' | 'incomplete' | 'incomplete_expired' | 'unpaid' | 'paused' {
   switch (status) {
     case 'active':

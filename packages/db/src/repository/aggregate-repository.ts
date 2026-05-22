@@ -7,7 +7,7 @@ import {
   type AggregatePitchingFilters,
 } from '@npb/schemas'
 import type { QueryDatabase } from '../query-driver'
-import { toEnglishTeamName, toJapaneseTeamAliases } from './team-name-utils'
+import { toJapaneseTeamAliases } from './team-name-utils'
 
 export type AggregateRow = {
   kind: 'batting' | 'pitching' | 'events'
@@ -147,9 +147,8 @@ export async function aggregateEvents(
   const values: Array<string | number> = []
   appendGameClauses(clauses, values, normalized)
   if (normalized.team) {
-    const english = toEnglishTeamName(normalized.team) ?? normalized.team
     clauses.push('events.offense_team = ?')
-    values.push(english)
+    values.push(normalized.team)
   }
   if (normalized.batter_name) {
     clauses.push('events.batter_name = ?')

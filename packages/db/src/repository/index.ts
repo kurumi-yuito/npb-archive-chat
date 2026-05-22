@@ -29,6 +29,7 @@ export {
 } from './games-repository'
 export {
   searchPitchingLines,
+  searchCurrentPitchingStats,
   type PitchingLineRow,
 } from './pitching-repository'
 export {
@@ -63,7 +64,9 @@ export {
 } from './chat-account-repository'
 export {
   FREE_CHAT_MONTHLY_LIMIT,
+  consumeChatUsageForFreeUser,
   currentUsageMonthKey,
   getChatUsageCount,
   incrementChatUsageForFreeUser,
+  refundChatUsageForFreeUser,
 } from './chat-usage-repository'

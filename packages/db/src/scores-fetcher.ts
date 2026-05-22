@@ -23,7 +23,7 @@ export function buildScoresSlugFromGameId(gameId: string): string {
 
   const farmSlug = gameId.match(/^f\d{8}([a-z0-9]+-[a-z0-9]+-\d{2})$/i)
   if (farmSlug?.[1]) {
-    return `f${farmSlug[1]}`
+    return farmSlug[1]
   }
 
   const direct = gameId.match(/^[a-z0-9]+-[a-z0-9]+-\d{2}$/i)

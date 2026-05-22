@@ -129,6 +129,22 @@ export async function resolveStructuredQueryPlayer(
   }
 
   if (candidates.length > 1) {
+    if (!hasExplicitYearFilter(structuredQuery)) {
+      const mostRecent = pickMostRecentCandidate(candidates)
+      if (mostRecent) {
+        return {
+          structuredQuery: replacePlayerFilter(structuredQuery, target.field, mostRecent),
+          resolution: {
+            input,
+            player_id: mostRecent.player_id,
+            name: mostRecent.name,
+            primary_team: mostRecent.primary_team,
+            status: 'resolved',
+            candidates: [mostRecent],
+          },
+        }
+      }
+    }
     return {
       structuredQuery,
       resolution: { input, player_id: null, name: null, primary_team: null, status: 'ambiguous', candidates },
@@ -370,4 +386,14 @@ function normalizeLookupKey(value: string): string {
     .normalize('NFKC')
     .replace(/[・･.\-_\s\u3000]/gu, '')
     .toLowerCase()
+}
+
+function pickMostRecentCandidate(candidates: PlayerCandidate[]): PlayerCandidate | null {
+  const withMaxYear = candidates.map((c) => ({
+    candidate: c,
+    maxYear: c.years.length > 0 ? Math.max(...c.years) : 0,
+  }))
+  const topYear = Math.max(...withMaxYear.map((x) => x.maxYear))
+  const topCandidates = withMaxYear.filter((x) => x.maxYear === topYear)
+  return topCandidates.length === 1 ? topCandidates[0]!.candidate : null
 }

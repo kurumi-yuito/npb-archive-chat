@@ -3,6 +3,14 @@ import type { ChatAccountRow, QueryDatabase } from '@npb/db'
 import { getOrCreateChatAccount } from '@npb/db'
 import { getBillingPlanDetails } from './billing-plans'
 
+const PRO_ACTIVE_BILLING_STATUSES = ['active', 'trialing'] as const
+
+/** Returns true only when plan=pro AND billing is in an active state. */
+export function isEffectivePro(account: Pick<ChatAccount, 'plan' | 'billingStatus'>): boolean {
+  if (account.plan !== 'pro') return false
+  return (PRO_ACTIVE_BILLING_STATUSES as readonly string[]).includes(account.billingStatus)
+}
+
 export async function getEffectiveChatAccount(
   database: QueryDatabase,
   userId: string,

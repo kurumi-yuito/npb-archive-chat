@@ -1,6 +1,6 @@
 import { createHmac } from 'node:crypto'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { mapStripeSubscriptionStatusToBillingStatus, verifyStripeWebhookSignature } from '../server/utils/stripe-billing'
+import { mapStripeSubscriptionStatusToBillingStatus, resolveSubscriptionPlan, verifyStripeWebhookSignature } from '../server/utils/stripe-billing'
 
 describe('stripe-billing', () => {
   afterEach(() => {
@@ -20,6 +20,15 @@ describe('stripe-billing', () => {
 
     expect(verifyStripeWebhookSignature(payload, signature, secret)).toBe(true)
     expect(verifyStripeWebhookSignature(payload, signature, 'wrong')).toBe(false)
+  })
+
+  it('resolveSubscriptionPlan returns free when subscription is deleted or billing status is canceled', () => {
+    expect(resolveSubscriptionPlan(true, 'active')).toBe('free')
+    expect(resolveSubscriptionPlan(true, 'canceled')).toBe('free')
+    expect(resolveSubscriptionPlan(false, 'canceled')).toBe('free')
+    expect(resolveSubscriptionPlan(false, 'active')).toBe('pro')
+    expect(resolveSubscriptionPlan(false, 'trialing')).toBe('pro')
+    expect(resolveSubscriptionPlan(false, 'past_due')).toBe('pro')
   })
 
   it('maps Stripe subscription statuses to billing statuses', () => {

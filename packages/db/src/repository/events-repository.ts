@@ -6,7 +6,6 @@ import {
   type SearchEventsFilters,
 } from '@npb/schemas'
 import type { QueryDatabase } from '../query-driver'
-import { toEnglishTeamName } from './team-name-utils'
 
 export type EventRow = {
   gameId: string
@@ -106,9 +105,8 @@ export async function searchEvents(
   }
 
   if (normalizedFilters.team) {
-    const english = toEnglishTeamName(normalizedFilters.team) ?? normalizedFilters.team
     clauses.push('events.offense_team = ?')
-    values.push(english)
+    values.push(normalizedFilters.team)
   }
 
   if (normalizedFilters.batter_name) {

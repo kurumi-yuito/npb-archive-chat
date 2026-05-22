@@ -3,6 +3,7 @@ import {
   type SearchRosterEntriesFilters,
 } from '@npb/schemas'
 import type { QueryDatabase } from '../query-driver'
+import { toJapaneseTeamAliases } from './team-name-utils'
 
 export type RosterEntryRow = {
   gameId: string
@@ -21,7 +22,7 @@ export async function searchRosterEntries(
   filters: SearchRosterEntriesFilters = {},
 ): Promise<RosterEntryRow[]> {
   const normalized = searchRosterEntriesFiltersSchema.parse(filters)
-  const clauses: string[] = []
+  const clauses: string[] = ["roster_entries.game_id NOT LIKE 'f%'"]
   const values: Array<string | number> = []
 
   if (normalized.game_id) {
@@ -45,8 +46,9 @@ export async function searchRosterEntries(
     values.push(normalized.year_to)
   }
   if (normalized.team) {
-    clauses.push('roster_entries.team = ?')
-    values.push(normalized.team)
+    const teams = toJapaneseTeamAliases(normalized.team)
+    clauses.push(`roster_entries.team IN (${teams.map(() => '?').join(', ')})`)
+    values.push(...teams)
   }
   if (normalized.player_name) {
     clauses.push('roster_entries.player_name = ?')
@@ -74,7 +76,7 @@ export async function searchRosterEntries(
       FROM roster_entries
       INNER JOIN games ON games.game_id = roster_entries.game_id
       ${whereClause}
-      ORDER BY games.date ASC, roster_entries.game_id ASC, roster_entries.entry_index ASC
+      ORDER BY games.date DESC, roster_entries.game_id DESC, roster_entries.entry_index ASC
       LIMIT ?`,
     )
     .all(...values, limit)

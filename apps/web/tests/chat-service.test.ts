@@ -693,6 +693,153 @@ describe('chat-service', () => {
     expect(response.answer.summary).not.toContain('選手を特定できない')
   })
 
+  it('does not call generateFinalAnswer when result_count is 0 with a resolved player', async () => {
+    let finalAnswerCalled = false
+
+    const service = createChatService(createFakeQueryService({
+      empty: true,
+      playerCandidates: [
+        { player_id: 'unique-yamada', name: '山田', primary_team: '巨人', roles: ['batter'], teams: ['巨人'], years: [2025] },
+      ],
+    }), {
+      parseStructuredQueryFromMessage: async () => ({
+        intent: 'search_batting',
+        filters: { year: 2025, player_name: '山田' },
+      }),
+      generateFinalAnswer: async () => {
+        finalAnswerCalled = true
+        return 'should not be called'
+      },
+    })
+
+    const response = await service.answerQuestion('2025年の山田の打撃成績')
+
+    expect(response.answer.result_count).toBe(0)
+    expect(finalAnswerCalled).toBe(false)
+  })
+
+  it('does not call generateFinalAnswer when player resolution is ambiguous', async () => {
+    let finalAnswerCalled = false
+
+    const service = createChatService(createFakeQueryService({
+      playerCandidates: [
+        { player_id: '11111', name: '鈴木', primary_team: '巨人', roles: ['batter'], teams: ['巨人'], years: [2025] },
+        { player_id: '22222', name: '鈴木', primary_team: '阪神', roles: ['batter'], teams: ['阪神'], years: [2025] },
+      ],
+    }), {
+      parseStructuredQueryFromMessage: async () => ({
+        intent: 'search_events',
+        filters: { year: 2025, batter_name: '鈴木', event_type: 'plate_appearance', result_text_contains: 'ホームラン' },
+      }),
+      generateFinalAnswer: async () => {
+        finalAnswerCalled = true
+        return 'should not be called'
+      },
+    })
+
+    const response = await service.answerQuestion('2025年の鈴木のホームラン')
+
+    expect(response.answer.resolved_player?.status).toBe('ambiguous')
+    expect(finalAnswerCalled).toBe(false)
+  })
+
+  it('does not call generateFinalAnswer when player resolution is not_found', async () => {
+    let finalAnswerCalled = false
+
+    const service = createChatService(createFakeQueryService({
+      playerCandidates: [],
+    }), {
+      parseStructuredQueryFromMessage: async () => ({
+        intent: 'search_batting',
+        filters: { year: 2025, player_name: '架空選手' },
+      }),
+      generateFinalAnswer: async () => {
+        finalAnswerCalled = true
+        return 'should not be called'
+      },
+    })
+
+    const response = await service.answerQuestion('2025年の架空選手の打撃成績')
+
+    expect(response.answer.resolved_player?.status).toBe('not_found')
+    expect(finalAnswerCalled).toBe(false)
+  })
+
+  it('does not call generateFinalAnswer when remaining_count is greater than zero', async () => {
+    let finalAnswerCalled = false
+    const manyEvents = Array.from({ length: 21 }, (_, i) => ({
+      gameId: `r20250101g-t-${String(i + 1).padStart(2, '0')}`,
+      gameDate: '2025-01-01',
+      sequence: i + 1,
+      inning: 1,
+      half: 'top' as const,
+      offenseTeam: '巨人',
+      eventType: 'plate_appearance' as const,
+      eventSubtype: 'standard' as const,
+      batterName: '山田',
+      pitcherName: '田中',
+      runnerName: null,
+      resultText: 'ヒット',
+      eventAttributesJson: null,
+      sourceUrl: 'https://npb.jp/scores/2025/0101/g-t-01/playbyplay.html',
+    }))
+
+    const service = createChatService(createFakeQueryService({
+      searchEvents: async () => manyEvents,
+    }), {
+      parseStructuredQueryFromMessage: async () => ({
+        intent: 'search_events',
+        filters: { year: 2025, batter_name: '山田' },
+      }),
+      generateFinalAnswer: async () => {
+        finalAnswerCalled = true
+        return 'should not be called'
+      },
+    })
+
+    const response = await service.answerQuestion('2025年の山田の打席')
+
+    expect(response.answer.result_count).toBe(21)
+    expect(response.answer.remaining_count).toBeGreaterThan(0)
+    expect(finalAnswerCalled).toBe(false)
+  })
+
+  it('calls generateFinalAnswer and returns its result when DB results are present', async () => {
+    let finalAnswerCalled = false
+
+    const service = createChatService(createFakeQueryService(), {
+      parseStructuredQueryFromMessage: async () => ({
+        intent: 'search_batting',
+        filters: { year: 2024, player_name: '山田' },
+      }),
+      generateFinalAnswer: async () => {
+        finalAnswerCalled = true
+        return 'LLM生成のサマリー'
+      },
+    })
+
+    const response = await service.answerQuestion('2024年の山田の打撃成績')
+
+    expect(response.answer.result_count).toBeGreaterThan(0)
+    expect(finalAnswerCalled).toBe(true)
+    expect(response.answer.summary).toBe('LLM生成のサマリー')
+  })
+
+  it('returns a non-empty deterministic summary when generateFinalAnswer is not configured', async () => {
+    const service = createChatService(createFakeQueryService(), {
+      parseStructuredQueryFromMessage: async () => ({
+        intent: 'search_batting',
+        filters: { year: 2024, player_name: '山田' },
+      }),
+    })
+
+    const response = await service.answerQuestion('2024年の山田の打撃成績')
+
+    expect(response.answer.result_count).toBeGreaterThan(0)
+    expect(typeof response.answer.summary).toBe('string')
+    expect(response.answer.summary.length).toBeGreaterThan(0)
+  })
+
   it('falls back from empty event highlight search to game detail evidence', async () => {
     const service = createChatService(createFakeQueryService({
       searchEvents: async (filters) => filters.game_id

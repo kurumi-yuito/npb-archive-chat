@@ -169,6 +169,8 @@ export const searchBattingLinesFiltersSchema = z.object({
   player_id: z.string().min(1).optional(),
   team: z.string().min(1).optional(),
   result_text_contains: z.string().min(1).optional(),
+  batting_order: z.number().int().min(1).max(9).optional(),
+  position: z.string().min(1).optional(),
   recent: z.boolean().optional(),
   limit: z.number().int().positive().max(500).optional(),
 })
@@ -427,7 +429,7 @@ export const chatResponseSchema = z.object({
         strikeouts: z.number().int().nonnegative(),
         runs: z.number().int().nonnegative(),
         earnedRuns: z.number().int().nonnegative(),
-        sourceKind: z.enum(['box', 'bis_pitching']).optional(),
+        sourceKind: z.enum(['box', 'bis_pitching', 'bis_pitching_farm']).optional(),
         sourceUrl: z.string().nullable().optional(),
         statsJson: z.string().nullable().optional(),
       }),

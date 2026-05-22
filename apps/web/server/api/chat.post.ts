@@ -1,10 +1,10 @@
 import { readBody } from 'h3'
 import { ZodError } from 'zod'
 import {
-  FREE_CHAT_MONTHLY_LIMIT,
+  consumeChatUsageForFreeUser,
   currentUsageMonthKey,
   getChatUsageCount,
-  incrementChatUsageForFreeUser,
+  refundChatUsageForFreeUser,
 } from '@npb/db'
 import { chatResponseSchema } from '@npb/schemas'
 import { createChatService } from '../services/chat-service'
@@ -26,7 +26,7 @@ import {
   resolveChatRuntimeAuthConfig,
   resolveChatRuntimeStripeBillingConfig,
 } from '../utils/chat-runtime-config'
-import { getEffectiveChatAccount } from '../utils/chat-account-response'
+import { getEffectiveChatAccount, isEffectivePro } from '../utils/chat-account-response'
 import { parseChatIdentity } from '../utils/parse-chat-identity'
 import { parseChatRequestBody } from '../utils/parse-chat-request'
 import { createPublicApiError } from '../utils/public-api-error'
@@ -61,15 +61,19 @@ export default defineEventHandler(async (event) => {
     )
     const month = currentUsageMonthKey()
 
-    if (account.plan === 'free') {
-      const used = await getChatUsageCount(metaDatabase, identity.userId, month)
-      if (used >= FREE_CHAT_MONTHLY_LIMIT) {
+    let freeUserCreditConsumed = false
+    if (!isEffectivePro(account)) {
+      const consumed = await consumeChatUsageForFreeUser(metaDatabase, identity.userId, month)
+      if (!consumed) {
+        const used = await getChatUsageCount(metaDatabase, identity.userId, month)
         throw createPublicApiError(429, 'usage_limit_exceeded', 'Monthly chat limit reached for free plan', {
           usage: buildFreeUsageSnapshot(month, used),
         })
       }
+      freeUserCreditConsumed = true
     }
 
+    try {
     const cloudflareEnv = event.context.cloudflare?.env
     const chatQueryLlmConfig = {
       baseUrl:
@@ -143,16 +147,21 @@ export default defineEventHandler(async (event) => {
       history: body.history,
     })
 
-    const usage =
-      account.plan === 'free'
-        ? await (async () => {
-            await incrementChatUsageForFreeUser(metaDatabase, identity.userId, month)
-            const after = await getChatUsageCount(metaDatabase, identity.userId, month)
-            return buildFreeUsageInfo(month, after)
-          })()
-        : buildProUsageInfo(month)
+    const usage = !isEffectivePro(account)
+      ? await (async () => {
+          // Usage was already incremented atomically before the LLM call.
+          const after = await getChatUsageCount(metaDatabase, identity.userId, month)
+          return buildFreeUsageInfo(month, after)
+        })()
+      : buildProUsageInfo(month)
 
     return chatResponseSchema.parse({ ...core, usage })
+    } catch (innerError) {
+      if (freeUserCreditConsumed) {
+        await refundChatUsageForFreeUser(metaDatabase, identity.userId, month).catch(() => {})
+      }
+      throw innerError
+    }
   } catch (error) {
     if (error instanceof ZodError) {
       throw createPublicApiError(500, 'internal_validation_failed', 'Internal response validation failed', {

@@ -237,6 +237,9 @@ function shouldUseFinalAnswerLlm(
   if (shouldSkipForPlayerResolution(resolution)) {
     return false
   }
+  if (core.answer.result_count === 0) {
+    return false
+  }
   if ((core.answer.remaining_count ?? 0) > 0) {
     return false
   }

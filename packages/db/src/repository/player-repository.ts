@@ -224,14 +224,17 @@ function mode(values: string[]): string | null {
 function mergeFallbackCandidates(candidates: PlayerCandidate[]): PlayerCandidate[] {
   const merged: PlayerCandidate[] = []
   for (const candidate of candidates) {
-    const target = candidate.player_id
-      ? undefined
-      : merged.find((current) =>
-          current.player_id &&
-          current.name === candidate.name &&
-          candidate.teams.length > 0 &&
-          candidate.teams.every((team) => current.teams.some((currentTeam) => sameTeamAlias(currentTeam, team))),
-        )
+    if (candidate.player_id) {
+      merged.push(candidate)
+      continue
+    }
+
+    const target = merged.find((current) =>
+      current.player_id &&
+      current.name === candidate.name &&
+      candidate.teams.length > 0 &&
+      candidate.teams.every((team) => current.teams.some((currentTeam) => sameTeamAlias(currentTeam, team))),
+    )
 
     if (!target) {
       merged.push(candidate)

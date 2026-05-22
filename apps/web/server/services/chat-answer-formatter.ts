@@ -123,7 +123,7 @@ function buildSummary(
     if (isEvaluationQuestion(question, structuredQuery.filters)) {
       return formatPitchingEvaluationSummary(results.pitching as PitchingLineRow[])
     }
-    if (first.sourceKind === 'bis_pitching') {
+    if (first.sourceKind === 'bis_pitching' || first.sourceKind === 'bis_pitching_farm') {
       return formatBisPitchingSummary(first, resultCount)
     }
     return `条件に一致する投手成績が${resultCount}件あります。先頭は${first.gameDate}の${first.pitcherName}で、${first.inningsPitched}回 ${first.strikeouts}奪三振です。`
@@ -198,6 +198,8 @@ function formatBisBattingSummary(row: BattingLineRow, resultCount: number): stri
 
 function formatBisPitchingSummary(row: PitchingLineRow, resultCount: number): string {
   const year = row.gameDate.slice(0, 4)
+  const isFarm = row.sourceKind === 'bis_pitching_farm'
+  const league = isFarm ? '二軍' : '一軍'
   const stats = parseStatsJson(row.statsJson)
   const statLine = [
     statPart(stats, '登板', '登板'),
@@ -206,13 +208,13 @@ function formatBisPitchingSummary(row: PitchingLineRow, resultCount: number): st
     statPart(stats, 'セーブ', 'セーブ'),
     statPart(stats, 'ホールド', 'ホールド'),
     statPart(stats, '投球回', '投球回'),
-    statPart(stats, '奪三振', '奪三振'),
+    statPart(stats, '三振', '奪三振') ?? statPart(stats, '奪三振', '奪三振'),
     statPart(stats, '失点', '失点'),
     statPart(stats, '自責点', '自責点'),
     statPart(stats, '防御率', '防御率'),
   ].filter(Boolean)
   return [
-    `${year}年の${row.team} ${row.pitcherName}の投手成績です。`,
+    `${year}年${league}の${row.team} ${row.pitcherName}の投手成績です。`,
     ...(statLine.length > 0 ? [statLine.join('、')] : []),
     ...(resultCount > 1 ? [`同条件の成績行が${resultCount}件あります。`] : []),
     ...(row.sourceUrl ? [`source: ${row.sourceUrl}`] : []),
@@ -551,9 +553,10 @@ function positiveCountStatPart(stats: Record<string, unknown>, key: string, labe
 
 function formatPitchingEvaluationSummary(rows: PitchingLineRow[]): string {
   const pitcherName = rows[0]?.pitcherName ?? '対象投手'
-  const seasonRow = rows.find((row) => row.sourceKind === 'bis_pitching')
+  const seasonRow = rows.find((row) => row.sourceKind === 'bis_pitching' || row.sourceKind === 'bis_pitching_farm')
   if (seasonRow) {
-    return formatBisPitchingEvaluationSummary(seasonRow, rows.length)
+    const gameRowCount = rows.filter((row) => row.sourceKind !== 'bis_pitching' && row.sourceKind !== 'bis_pitching_farm').length
+    return formatBisPitchingEvaluationSummary(seasonRow, gameRowCount)
   }
   const gameRows = rows.slice(0, 5)
   const totals = gameRows.reduce(
@@ -580,17 +583,19 @@ function formatPitchingEvaluationSummary(rows: PitchingLineRow[]): string {
 function formatBisPitchingEvaluationSummary(row: PitchingLineRow, resultCount: number): string {
   const stats = parseStatsJson(row.statsJson)
   const year = row.gameDate.slice(0, 4)
+  const isFarm = row.sourceKind === 'bis_pitching_farm'
+  const league = isFarm ? '二軍' : '一軍'
   const positives = [
     positiveCountStatPart(stats, '登板', '登板'),
     positiveCountStatPart(stats, '勝利', '勝利'),
     positiveCountStatPart(stats, 'セーブ', 'セーブ'),
     positiveCountStatPart(stats, 'ホールド', 'ホールド'),
-    positiveCountStatPart(stats, '奪三振', '奪三振'),
+    positiveCountStatPart(stats, '三振', '奪三振') ?? positiveCountStatPart(stats, '奪三振', '奪三振'),
     statPart(stats, '投球回', '投球回'),
     statPart(stats, '防御率', '防御率'),
   ].filter(Boolean)
   return [
-    `${row.team} ${row.pitcherName}は、DBで確認できる${year}年シーズン投手成績からポジティブに評価できます。`,
+    `${row.team} ${row.pitcherName}は、DBで確認できる${year}年${league}シーズン投手成績からポジティブに評価できます。`,
     positives.length > 0
       ? `根拠は${positives.join('、')}です。`
       : '根拠となる成績行は確認できていますが、主要指標の値はDB行から取り出せませんでした。',

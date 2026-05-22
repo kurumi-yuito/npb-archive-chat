@@ -58,7 +58,7 @@ export async function searchBattingLines(
     values.push(normalized.year_to)
   }
   if (normalized.player_name) {
-    clauses.push('batting_lines.player_name = ?')
+    clauses.push(`${compactNameSql('?')} LIKE ${compactNameSql('batting_lines.player_name')} || '%'`)
     values.push(normalized.player_name)
   }
   if (normalized.player_id) {
@@ -73,6 +73,14 @@ export async function searchBattingLines(
   if (normalized.result_text_contains) {
     clauses.push('batting_lines.raw_text LIKE ?')
     values.push(`%${normalized.result_text_contains}%`)
+  }
+  if (normalized.batting_order !== undefined) {
+    clauses.push('batting_lines.batting_order = ?')
+    values.push(normalized.batting_order)
+  }
+  if (normalized.position) {
+    clauses.push("REPLACE(REPLACE(batting_lines.position, '(', ''), ')', '') = ?")
+    values.push(normalized.position)
   }
 
   const whereClause = clauses.length > 0 ? `WHERE ${clauses.join(' AND ')}` : ''

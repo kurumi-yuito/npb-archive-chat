@@ -5,6 +5,7 @@ import { resolveChatRuntimeStripeBillingConfig } from '../../utils/chat-runtime-
 import {
   isStripeBillingConfigured,
   mapStripeSubscriptionStatusToBillingStatus,
+  resolveSubscriptionPlan,
   verifyStripeWebhookSignature,
 } from '../../utils/stripe-billing'
 import { getServerMetaDatabase } from '../../utils/server-database'
@@ -87,7 +88,7 @@ export default defineEventHandler(async (event) => {
       ? 'canceled'
       : mapStripeSubscriptionStatusToBillingStatus(parsed.data.object.status)
     await updateChatAccountBillingState(database, userId, {
-      plan: isDeleted ? 'free' : 'pro',
+      plan: resolveSubscriptionPlan(isDeleted, billingStatus),
       billingStatus,
       billingProvider: 'stripe',
       stripeCustomerId: parsed.data.object.customer,

@@ -67,16 +67,16 @@ describe('enrich-scores-calendar', () => {
   it('derives scores slug/base url from game_id', () => {
     expect(buildScoresSlug('r20250328g-t-01')).toBe('g-t-01')
     expect(buildScoresSlug('r20250401s-d-03')).toBe('s-d-03')
-    expect(buildScoresSlug('f20250314c-t-02')).toBe('fc-t-02')
-    expect(buildScoresSlug('f20250315db-s-01')).toBe('fdb-s-01')
-    expect(buildScoresSlug('f20250315a-l-02')).toBe('fa-l-02')
-    expect(buildScoresSlug('f20250316h-b-01')).toBe('fh-b-01')
+    expect(buildScoresSlug('f20250314c-t-02')).toBe('c-t-02')
+    expect(buildScoresSlug('f20250315db-s-01')).toBe('db-s-01')
+    expect(buildScoresSlug('f20250315a-l-02')).toBe('a-l-02')
+    expect(buildScoresSlug('f20250316h-b-01')).toBe('h-b-01')
     expect(buildScoresSlug('g-t-01')).toBe('g-t-01')
     expect(buildScoresBaseUrl(2024, '0329', 'r20240329g-t-01')).toBe(
       'https://npb.jp/scores/2024/0329/g-t-01/',
     )
     expect(buildScoresBaseUrl(2025, '0314', 'f20250314c-t-02')).toBe(
-      'https://npb.jp/scores/2025/0314/fc-t-02/',
+      'https://npb.jp/scores/2025/0314/c-t-02/',
     )
     expect(
       buildScoresBaseUrlFromCanonicalUrl('https://npb.jp/scores/2025/0328/c-t-01/index.html'),
@@ -305,7 +305,7 @@ describe('enrich-scores-calendar', () => {
     expect(result.discoveredGames).toBe(2)
     expect(result.loadedGames).toBe(2)
     expect(result.failedGames).toBe(0)
-    expect(requestedUrls.some((url) => url.includes('/0814/fc-t-02/'))).toBe(false)
+    expect(requestedUrls.some((url) => url.includes('/0814/c-t-02/'))).toBe(false)
     expect(requestedUrls.some((url) => url.includes('/0817/e-f-01/'))).toBe(false)
 
     const dbAfter = openDatabase(sqliteAbsolutePath)
@@ -316,7 +316,7 @@ describe('enrich-scores-calendar', () => {
     dbAfter.close()
   })
 
-  it('records non-scores canonical games as explicitly skipped', async () => {
+  it('attempts scores fetch for farm games with BIS-only canonical url, records page failures when 404', async () => {
     const workspaceRoot = await mkdtemp(path.join(tmpdir(), 'npb-enrich-calendar-farm-'))
     const sqliteRelativePath = 'data/npb.sqlite'
     const sqliteAbsolutePath = path.join(workspaceRoot, sqliteRelativePath)
@@ -353,17 +353,12 @@ describe('enrich-scores-calendar', () => {
       progressEvery: 0,
     })
 
+    // Farm games now always attempt scores fetch; BIS-only canonical URL is ignored
     expect(result.loadedGames).toBe(0)
-    expect(result.failedGames).toBe(1)
-    expect(result.failures).toEqual([
-      {
-        date: '2025-08-14',
-        gameId: 'f20250814c-t-02',
-        stage: 'skip',
-        reason: 'scores_canonical_not_available',
-      },
-    ])
-    expect(requestedUrls).toEqual([])
+    expect(requestedUrls.some((url) => url.includes('npb.jp/scores/2025/0814/c-t-02/'))).toBe(true)
+    expect(result.failures.every((f) => f.gameId === 'f20250814c-t-02')).toBe(true)
+    expect(result.failures.some((f) => f.stage === 'box')).toBe(true)
+    expect(result.failures.some((f) => f.stage === 'index')).toBe(true)
   })
 
   it('skips duplicate same-card rows when one row already has a scores canonical url', async () => {

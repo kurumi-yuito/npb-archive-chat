@@ -1,4 +1,4 @@
-import { createHmac, randomUUID } from 'node:crypto'
+import { createHmac, randomUUID, timingSafeEqual } from 'node:crypto'
 import { getCookie, getHeader, getRequestURL, setCookie, type H3Event } from 'h3'
 import { createPublicApiError } from './public-api-error'
 
@@ -50,6 +50,16 @@ export function getSignedGuestUserId(event: H3Event, secret: string): string | n
   return parseSignedUserCookie(getCookie(event, USER_COOKIE), secret)
 }
 
+/** Creates a signed cookie value for testing. Format: `userId.hmac` */
+export function createSignedCookieValue(userId: string, secret: string): string {
+  return signUserId(userId, secret)
+}
+
+/** Verifies a signed cookie value and returns the userId, or null if invalid. */
+export function verifyCookieSignature(value: string | undefined, secret: string): string | null {
+  return parseSignedUserCookie(value, secret)
+}
+
 export function setSignedAuthUserId(event: H3Event, userId: string, secret: string): void {
   setSignedUserCookie(event, AUTH_USER_COOKIE, userId, secret)
 }
@@ -99,7 +109,10 @@ function parseSignedUserCookie(value: string | undefined, secret: string): strin
   if (!userId || !signature) {
     return null
   }
-  return sign(userId, secret) === signature ? userId : null
+  const expected = Buffer.from(sign(userId, secret))
+  const actual = Buffer.from(signature)
+  if (expected.length !== actual.length) return null
+  return timingSafeEqual(expected, actual) ? userId : null
 }
 
 function signUserId(userId: string, secret: string): string {

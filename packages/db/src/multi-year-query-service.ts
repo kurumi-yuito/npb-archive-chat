@@ -6,6 +6,7 @@ import {
   aggregatePitchingLines,
   listSourceSnapshotsByGameIds,
   searchBattingLines,
+  searchCurrentPitchingStats,
   searchEvents,
   searchGameDetails,
   searchGames,
@@ -78,7 +79,13 @@ export function createSingleDatabaseQueryService(database: QueryDatabase): ChatQ
     searchEvents: (filters) => searchEvents(database, filters),
     searchGames: (filters) => searchGames(database, filters),
     searchBattingLines: (filters) => searchBattingLines(database, filters),
-    searchPitchingLines: (filters) => searchPitchingLines(database, filters),
+    searchPitchingLines: async (filters) => {
+      const gameRows = await searchPitchingLines(database, filters)
+      const needsBis = filters.pitcher_name && !filters.game_date && !filters.year && !filters.year_from && !filters.year_to
+      if (!needsBis) return gameRows
+      const bisRows = await searchCurrentPitchingStats(database, filters, 15)
+      return [...gameRows, ...bisRows]
+    },
     searchRosterEntries: (filters) => searchRosterEntries(database, filters),
     searchPlayerAffiliations: (filters) => searchPlayerAffiliations(database, filters),
     searchGameDetails: (filters) => searchGameDetails(database, filters),
@@ -149,13 +156,24 @@ export function createMultiYearQueryService({
         (row) => `${row.gameDate}:${row.gameId}:${row.team}:${row.playerName}`,
         filters.limit ?? 50,
       ),
-    searchPitchingLines: (filters) =>
-      runAcrossYears(
+    searchPitchingLines: async (filters) => {
+      const gameRows = await runAcrossYears(
         filters,
         searchPitchingLines,
         (row) => `${row.gameDate}:${row.gameId}:${row.team}:${row.pitcherName}`,
         filters.limit ?? 50,
-      ),
+      )
+      // BIS season stats are excluded from runAcrossYears (they get cut by the sort+limit).
+      // Fetch them separately from the most recent years and append after game rows.
+      const needsBis = filters.pitcher_name && !filters.game_date && !filters.year && !filters.year_from && !filters.year_to
+      if (!needsBis) return gameRows
+      const bisRows = []
+      for (const year of [...availableYears(filters)].sort((a, b) => b - a).slice(0, 3)) {
+        const rows = await searchCurrentPitchingStats(openYear(year), filters, 5)
+        bisRows.push(...rows)
+      }
+      return [...gameRows, ...bisRows]
+    },
     searchRosterEntries: (filters) =>
       runAcrossYears(
         filters,

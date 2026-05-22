@@ -14,7 +14,7 @@ export type PitchingLineRow = {
   strikeouts: number
   runs: number
   earnedRuns: number
-  sourceKind?: 'box' | 'bis_pitching'
+  sourceKind?: 'box' | 'bis_pitching' | 'bis_pitching_farm'
   sourceUrl?: string | null
   statsJson?: string | null
 }
@@ -25,6 +25,7 @@ export async function searchPitchingLines(
 ): Promise<PitchingLineRow[]> {
   const normalized = searchPitchingLinesFiltersSchema.parse(filters)
   const limit = normalized.limit ?? 50
+
   const currentRows = normalized.game_date || normalized.recent
     ? []
     : await searchCurrentPitchingStats(database, normalized, limit)
@@ -56,7 +57,7 @@ export async function searchPitchingLines(
   }
 
   if (normalized.pitcher_name) {
-    clauses.push('pitching_lines.pitcher_name = ?')
+    clauses.push(`${compactNameSql('?')} LIKE ${compactNameSql('pitching_lines.pitcher_name')} || '%'`)
     values.push(normalized.pitcher_name)
   }
 
@@ -92,10 +93,11 @@ export async function searchPitchingLines(
       LIMIT ?`,
     )
     .all(...values, limit)
-  return rows as PitchingLineRow[]
+  const gameRows = rows as PitchingLineRow[]
+  return gameRows
 }
 
-async function searchCurrentPitchingStats(
+export async function searchCurrentPitchingStats(
   database: QueryDatabase,
   filters: SearchPitchingLinesFilters,
   limit: number,
@@ -129,16 +131,17 @@ async function searchCurrentPitchingStats(
   const rows = await database
     .prepare(
       `SELECT
-        'bis:' || player_pitching_stats.year || ':' || player_pitching_stats.team_id || ':idp1' AS gameId,
+        'bis:' || player_pitching_stats.year || ':' || player_pitching_stats.team_id || ':' ||
+          CASE WHEN player_pitching_stats.source_url LIKE '%idp2%' THEN 'idp2' ELSE 'idp1' END AS gameId,
         printf('%04d-01-01', player_pitching_stats.year) AS gameDate,
         player_pitching_stats.team_name AS team,
         player_pitching_stats.player_name AS pitcherName,
         COALESCE(json_extract(player_pitching_stats.values_json, '$.投球回'), '0') AS inningsPitched,
         CAST(COALESCE(json_extract(player_pitching_stats.values_json, '$.投球数'), '0') AS INTEGER) AS pitchCount,
-        CAST(COALESCE(json_extract(player_pitching_stats.values_json, '$.奪三振'), '0') AS INTEGER) AS strikeouts,
+        CAST(COALESCE(json_extract(player_pitching_stats.values_json, '$.三振'), json_extract(player_pitching_stats.values_json, '$.奪三振'), '0') AS INTEGER) AS strikeouts,
         CAST(COALESCE(json_extract(player_pitching_stats.values_json, '$.失点'), '0') AS INTEGER) AS runs,
         CAST(COALESCE(json_extract(player_pitching_stats.values_json, '$.自責点'), '0') AS INTEGER) AS earnedRuns,
-        'bis_pitching' AS sourceKind,
+        CASE WHEN player_pitching_stats.source_url LIKE '%idp2%' THEN 'bis_pitching_farm' ELSE 'bis_pitching' END AS sourceKind,
         player_pitching_stats.source_url AS sourceUrl,
         player_pitching_stats.values_json AS statsJson
       FROM player_pitching_stats

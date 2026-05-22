@@ -285,7 +285,10 @@ function buildYearScopedDeleteStatements(table: ImportTable, year: number): stri
   }
 
   if (table === 'source_snapshots' || table === 'events' || table === 'batting_lines' || table === 'pitching_lines' || table === 'roster_entries') {
-    return [`DELETE FROM ${quotedTable} WHERE game_id LIKE 'r${yearText}%';`]
+    return [
+      `DELETE FROM ${quotedTable} WHERE game_id LIKE 'r${yearText}%';`,
+      `DELETE FROM ${quotedTable} WHERE game_id LIKE 'f${yearText}%';`,
+    ]
   }
 
   return []

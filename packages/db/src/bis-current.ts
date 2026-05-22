@@ -279,6 +279,8 @@ function buildTeamPages(year: number, teamId: string): Array<{ key: string; url:
     { key: `idb1_${teamId}`, url: `https://npb.jp/bis/${year}/stats/idb1_${teamId}.html`, sourceType: 'player_batting_stats' },
     { key: `idp1_${teamId}`, url: `https://npb.jp/bis/${year}/stats/idp1_${teamId}.html`, sourceType: 'player_pitching_stats' },
     { key: `idf1_${teamId}`, url: `https://npb.jp/bis/${year}/stats/idf1_${teamId}.html`, sourceType: 'player_fielding_stats' },
+    { key: `idb2_${teamId}`, url: `https://npb.jp/bis/${year}/stats/idb2_${teamId}.html`, sourceType: 'player_batting_stats' },
+    { key: `idp2_${teamId}`, url: `https://npb.jp/bis/${year}/stats/idp2_${teamId}.html`, sourceType: 'player_pitching_stats' },
     ...[3, 4, 5, 6, 7, 8, 9, 10].map((month) => ({
       key: `results_${teamId}_${String(month).padStart(2, '0')}`,
       url: `https://npb.jp/bis/teams/results_${teamId}_${String(month).padStart(2, '0')}.html`,

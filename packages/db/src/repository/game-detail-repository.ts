@@ -1,7 +1,6 @@
 import { gameDetailFiltersSchema, type GameDetailFilters } from '@npb/schemas'
 import type { QueryDatabase } from '../query-driver'
 import { venueSearchValues } from './venue-aliases'
-import { toEnglishTeamName } from './team-name-utils'
 
 export type GameDetailRow = {
   gameId: string
@@ -43,9 +42,8 @@ export async function searchGameDetails(
     values.push(normalized.year_to)
   }
   if (normalized.team) {
-    const english = toEnglishTeamName(normalized.team) ?? normalized.team
     clauses.push('(games.home_team_name LIKE ? OR games.away_team_name LIKE ?)')
-    values.push(`%${english}%`, `%${english}%`)
+    values.push(`%${normalized.team}%`, `%${normalized.team}%`)
   }
   if (normalized.venue) {
     const venues = venueSearchValues(normalized.venue)

@@ -104,6 +104,23 @@ const playerAliasEntries = [
   ['高松', '髙松'],
 ] as const
 
+const positionAliasEntries = [
+  ['ショート', '遊'], ['遊撃', '遊'], ['遊撃手', '遊'], ['ss', '遊'],
+  ['セカンド', '二'], ['二塁', '二'], ['二塁手', '二'], ['2b', '二'],
+  ['サード', '三'], ['三塁', '三'], ['三塁手', '三'], ['3b', '三'],
+  ['ファースト', '一'], ['一塁', '一'], ['一塁手', '一'], ['1b', '一'],
+  ['キャッチャー', '捕'], ['捕手', '捕'], ['c', '捕'],
+  ['ピッチャー', '投'], ['投手', '投'], ['p', '投'],
+  ['レフト', '左'], ['左翼', '左'], ['左翼手', '左'], ['lf', '左'],
+  ['センター', '中'], ['中堅', '中'], ['中堅手', '中'], ['cf', '中'],
+  ['ライト', '右'], ['右翼', '右'], ['右翼手', '右'], ['rf', '右'],
+  ['指名打者', '指'], ['dh', '指'],
+] as const
+
+const positionAliasMap = new Map(
+  positionAliasEntries.map(([alias, canonical]) => [normalizeLookupKey(alias), canonical]),
+)
+
 const teamAliasMap = new Map(
   teamAliasEntries.map(([alias, canonical]) => [normalizeLookupKey(alias), canonical]),
 )
@@ -132,6 +149,7 @@ export function normalizeChatStructuredQuery(
         ...structuredQuery.filters,
         team: normalizeTeamName(structuredQuery.filters.team),
         player_name: normalizePlayerName(structuredQuery.filters.player_name),
+        position: normalizePosition((structuredQuery.filters as { position?: string }).position),
       },
     })
   }
@@ -253,6 +271,15 @@ export function normalizePlayerName(value: string | undefined): string | undefin
   }
 
   return playerAliasMap.get(normalizeLookupKey(normalized)) ?? normalized
+}
+
+export function normalizePosition(value: string | undefined): string | undefined {
+  const normalized = normalizeFreeText(value)
+  if (!normalized) {
+    return undefined
+  }
+
+  return positionAliasMap.get(normalizeLookupKey(normalized)) ?? normalized
 }
 
 function normalizeResultTextContains(value: string | undefined): string | undefined {
