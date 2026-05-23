@@ -423,7 +423,9 @@ function inningRuns(value: string | undefined): number {
 }
 
 function formatBattingEvaluationSummary(rows: BattingLineRow[], resultCount: number): string {
-  const playerName = rows[0]?.playerName ?? '対象選手'
+  const first = rows[0]!
+  const playerName = first.playerName ?? '対象選手'
+  const teamPrefix = first.team ? `${first.team} ` : ''
   const gameRows = rows.filter((row) => row.sourceKind !== 'bis_batting').slice(0, 5)
   if (gameRows.length === 0) {
     return formatBisBattingEvaluationSummary(rows[0]!, resultCount)
@@ -446,7 +448,7 @@ function formatBattingEvaluationSummary(rows: BattingLineRow[], resultCount: num
     average !== null ? `打率${average.toFixed(3).replace(/^0/u, '')}` : undefined,
   ].filter(Boolean)
   return [
-    `${playerName}は、DBで確認できる直近${gameRows.length}試合の打撃内容を見る限り、ポジティブに評価できます。`,
+    `${teamPrefix}${playerName}は、DBで確認できる直近${gameRows.length}試合の打撃内容を見る限り、ポジティブに評価できます。`,
     positives.length > 0
       ? `根拠は${positives.join('、')}です。`
       : '安打や打点は確認できませんが、直近試合の出場実績は確認できます。',
@@ -555,8 +557,8 @@ function formatPitchingEvaluationSummary(rows: PitchingLineRow[]): string {
   const pitcherName = rows[0]?.pitcherName ?? '対象投手'
   const seasonRow = rows.find((row) => row.sourceKind === 'bis_pitching' || row.sourceKind === 'bis_pitching_farm')
   if (seasonRow) {
-    const gameRowCount = rows.filter((row) => row.sourceKind !== 'bis_pitching' && row.sourceKind !== 'bis_pitching_farm').length
-    return formatBisPitchingEvaluationSummary(seasonRow, gameRowCount)
+    const gameRows = rows.filter((row) => row.sourceKind !== 'bis_pitching' && row.sourceKind !== 'bis_pitching_farm')
+    return formatBisPitchingEvaluationSummary(seasonRow, gameRows)
   }
   const gameRows = rows.slice(0, 5)
   const totals = gameRows.reduce(
@@ -580,7 +582,7 @@ function formatPitchingEvaluationSummary(rows: PitchingLineRow[]): string {
   ].join('\n')
 }
 
-function formatBisPitchingEvaluationSummary(row: PitchingLineRow, resultCount: number): string {
+function formatBisPitchingEvaluationSummary(row: PitchingLineRow, gameRows: PitchingLineRow[]): string {
   const stats = parseStatsJson(row.statsJson)
   const year = row.gameDate.slice(0, 4)
   const isFarm = row.sourceKind === 'bis_pitching_farm'
@@ -594,12 +596,17 @@ function formatBisPitchingEvaluationSummary(row: PitchingLineRow, resultCount: n
     statPart(stats, '投球回', '投球回'),
     statPart(stats, '防御率', '防御率'),
   ].filter(Boolean)
+  const recentGames = gameRows.slice(0, 5)
+  const gameLines = recentGames.map((r) => {
+    const gameLeague = r.gameId.startsWith('f') ? '二軍' : '一軍'
+    return `  ${r.gameDate} ${gameLeague} ${r.team} ${r.pitcherName}: ${r.inningsPitched}回 ${r.strikeouts}奪三振 自責${r.earnedRuns}`
+  })
   return [
     `${row.team} ${row.pitcherName}は、DBで確認できる${year}年${league}シーズン投手成績からポジティブに評価できます。`,
     positives.length > 0
       ? `根拠は${positives.join('、')}です。`
       : '根拠となる成績行は確認できていますが、主要指標の値はDB行から取り出せませんでした。',
-    ...(resultCount > 1 ? [`同条件の成績行が${resultCount}件あります。`] : []),
+    ...(gameLines.length > 0 ? [`個別試合記録（直近${gameLines.length}件）:`, ...gameLines] : []),
     ...(row.sourceUrl ? [`source: ${row.sourceUrl}`] : []),
   ].join('\n')
 }
