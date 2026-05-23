@@ -14,6 +14,8 @@ Thumbs.db
 coverage
 data/**
 !data/.gitkeep
+apps/web/data/**
+packages/db/data/**
 *.log
 .idea
 .vscode/*

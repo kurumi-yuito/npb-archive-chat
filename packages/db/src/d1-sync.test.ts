@@ -63,9 +63,15 @@ describe('runD1Sync', () => {
     expect(result.years[0]?.rowCounts.games).toBe(1)
     expect(result.years[0]?.rowCounts.events).toBe(1)
 
-    const sql = await readFile(result.years[0]!.sqlPath, 'utf8')
-    expect(sql).toContain('DELETE FROM "games" WHERE year = 2025;')
-    expect(sql).toContain('INSERT OR REPLACE INTO "games" ("schema_version", "year", "mmdd", "game_id"')
-    expect(sql).toContain('DELETE FROM "events" WHERE game_id LIKE \'r2025%\';')
+    const year = result.years[0]!
+    const sqlPaths = year.sqlPaths
+    expect(sqlPaths.length).toBe(14) // one per table
+
+    const gamesSql = await readFile(sqlPaths.find((p) => p.endsWith('_games.sql'))!, 'utf8')
+    expect(gamesSql).toContain('DELETE FROM "games" WHERE year = 2025;')
+    expect(gamesSql).toContain('INSERT OR REPLACE INTO "games" ("schema_version", "year", "mmdd", "game_id"')
+
+    const eventsSql = await readFile(sqlPaths.find((p) => p.endsWith('_events.sql'))!, 'utf8')
+    expect(eventsSql).toContain('DELETE FROM "events" WHERE game_id LIKE \'r2025%\';')
   })
 })

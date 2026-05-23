@@ -84,7 +84,15 @@ export function createSingleDatabaseQueryService(database: QueryDatabase): ChatQ
       const needsBis = filters.pitcher_name && !filters.game_date && !filters.year && !filters.year_from && !filters.year_to
       if (!needsBis) return gameRows
       const bisRows = await searchCurrentPitchingStats(database, filters, 15)
-      return [...gameRows, ...bisRows]
+      if (bisRows.length === 0) return gameRows
+      if (filters.recent) {
+        const bisYear = Math.max(...bisRows.map((r) => Number(r.gameDate.slice(0, 4))))
+        const recentGameRows = gameRows.filter(
+          (r) => r.sourceKind !== 'bis_pitching' && r.sourceKind !== 'bis_pitching_farm' && Number(r.gameDate.slice(0, 4)) >= bisYear - 1,
+        )
+        return [...bisRows, ...recentGameRows]
+      }
+      return [...bisRows, ...gameRows]
     },
     searchRosterEntries: (filters) => searchRosterEntries(database, filters),
     searchPlayerAffiliations: (filters) => searchPlayerAffiliations(database, filters),
@@ -157,22 +165,48 @@ export function createMultiYearQueryService({
         filters.limit ?? 50,
       ),
     searchPitchingLines: async (filters) => {
-      const gameRows = await runAcrossYears(
+      const needsBis = filters.pitcher_name && !filters.game_date && !filters.year && !filters.year_from && !filters.year_to
+      if (!needsBis) {
+        return runAcrossYears(
+          filters,
+          searchPitchingLines,
+          (row) => `${row.gameDate}:${row.gameId}:${row.team}:${row.pitcherName}`,
+          filters.limit ?? 50,
+        )
+      }
+      // Fetch BIS season stats from the most recent years first.
+      const bisRows: PitchingLineRow[] = []
+      for (const year of [...availableYears(filters)].sort((a, b) => b - a).slice(0, 3)) {
+        bisRows.push(...await searchCurrentPitchingStats(openYear(year), filters, 5))
+      }
+      // Deduplicate: the same player's season row may appear in multiple year DBs.
+      const seen = new Set<string>()
+      const dedupedBis = bisRows.filter((row) => {
+        const key = `${row.gameDate.slice(0, 4)}:${row.pitcherName}:${row.team}:${row.sourceKind}`
+        if (seen.has(key)) return false
+        seen.add(key)
+        return true
+      })
+      // For evaluation queries (no recent flag), BIS season stats are authoritative.
+      // Don't include old box-score rows from unrelated seasons.
+      const allGameRows = await runAcrossYears(
         filters,
         searchPitchingLines,
         (row) => `${row.gameDate}:${row.gameId}:${row.team}:${row.pitcherName}`,
         filters.limit ?? 50,
       )
-      // BIS season stats are excluded from runAcrossYears (they get cut by the sort+limit).
-      // Fetch them separately from the most recent years and append after game rows.
-      const needsBis = filters.pitcher_name && !filters.game_date && !filters.year && !filters.year_from && !filters.year_to
-      if (!needsBis) return gameRows
-      const bisRows = []
-      for (const year of [...availableYears(filters)].sort((a, b) => b - a).slice(0, 3)) {
-        const rows = await searchCurrentPitchingStats(openYear(year), filters, 5)
-        bisRows.push(...rows)
+      // Repository's searchPitchingLines may also return BIS rows; strip them since we handle BIS separately.
+      const gameRows = allGameRows.filter(
+        (r) => r.sourceKind !== 'bis_pitching' && r.sourceKind !== 'bis_pitching_farm',
+      )
+      if (dedupedBis.length === 0) return gameRows
+      if (filters.recent) {
+        const bisYear = Math.max(...dedupedBis.map((r) => Number(r.gameDate.slice(0, 4))))
+        const recentGameRows = gameRows.filter((r) => Number(r.gameDate.slice(0, 4)) >= bisYear - 1)
+        return [...dedupedBis, ...recentGameRows]
       }
-      return [...gameRows, ...bisRows]
+      // BIS（最新シーズン）を先頭に置き、box score 行を続ける。
+      return [...dedupedBis, ...gameRows]
     },
     searchRosterEntries: (filters) =>
       runAcrossYears(

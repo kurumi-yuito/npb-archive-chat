@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import path from 'node:path'
-import { mkdirSync } from 'node:fs'
+import { mkdirSync, rmSync } from 'node:fs'
+import { tmpdir } from 'node:os'
 import { fileURLToPath } from 'node:url'
 import { parseRawGameFromDir } from '@npb/parser'
 import {
@@ -15,6 +16,7 @@ import {
   sqliteDatabaseToQuery,
   upstreamParserPackage,
 } from './index.js'
+import { createMultiYearQueryService } from './multi-year-query-service.js'
 import { loadRichGame } from './loader'
 
 const packageRoot = path.resolve(fileURLToPath(new URL('..', import.meta.url)))
@@ -257,6 +259,131 @@ describe('@npb/db', () => {
       expect(sourceSnapshotCount).toBe(4)
     } finally {
       database.close()
+    }
+  })
+
+  it('searchPitchingLines deduplicates BIS rows when the same player appears in multiple year DBs', async () => {
+    const sqliteDir = path.join(tmpdir(), `npb-test-dedup-${Date.now()}`)
+    mkdirSync(sqliteDir, { recursive: true })
+
+    const bisRow = {
+      year: 2026,
+      team_id: 'db',
+      team_name: '横浜DeNAベイスターズ',
+      player_key: 'name:藤浪 晋太郎',
+      player_id: null,
+      player_name: '藤浪 晋太郎',
+      row_index: 1,
+      values_json: JSON.stringify({ 選手: '藤浪 晋太郎', 登板: '4', 三振: '11', 投球回: '9', 防御率: '2.00' }),
+      source_url: 'https://npb.jp/bis/2026/stats/idp2_db.html',
+    }
+
+    // 同じBIS行を2つのDBに挿入（deployed環境で2025/2026両方のDBに同じ行が入る状況を再現）
+    for (const yearFile of ['npb-2025.sqlite', 'npb-2026.sqlite']) {
+      const db = openDatabase(path.join(sqliteDir, yearFile))
+      migrateDatabase(db)
+      db.prepare(
+        `INSERT INTO player_pitching_stats
+          (year, team_id, team_name, player_key, player_id, player_name, row_index, values_json, source_url)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      ).run(
+        bisRow.year, bisRow.team_id, bisRow.team_name, bisRow.player_key,
+        bisRow.player_id, bisRow.player_name, bisRow.row_index,
+        bisRow.values_json, bisRow.source_url,
+      )
+      db.close()
+    }
+
+    const service = createMultiYearQueryService({ sqliteDir, years: [2025, 2026] })
+    try {
+      const rows = await service.searchPitchingLines({ pitcher_name: '藤浪' })
+
+      // dedupにより1件のみ返る（2件返るのは誤り）
+      expect(rows).toHaveLength(1)
+      expect(rows[0].pitcherName).toBe('藤浪 晋太郎')
+      expect(rows[0].sourceKind).toBe('bis_pitching_farm')
+      expect(rows[0].gameDate.slice(0, 4)).toBe('2026')
+    } finally {
+      service.close()
+      rmSync(sqliteDir, { recursive: true, force: true })
+    }
+  })
+
+  it('searchPitchingLines puts BIS first then all box-score rows regardless of age when BIS data exists', async () => {
+    const sqliteDir = path.join(tmpdir(), `npb-test-recencyfilter-${Date.now()}`)
+    mkdirSync(sqliteDir, { recursive: true })
+
+    const insertGame = (db: ReturnType<typeof openDatabase>, gameId: string, year: number, date: string) => {
+      const mmdd = date.slice(5).replace('-', '')
+      db.prepare(
+        `INSERT INTO games
+          (schema_version, game_id, year, mmdd, date, date_label, venue, canonical_url, matchup_text,
+           away_team_name, home_team_name, linescore_json, result_pitchers_json,
+           batteries_json, home_runs_json, latest_order_json, fetched_at, loaded_at)
+         VALUES (1, ?, ?, ?, ?, ?, '甲子園', 'https://example.com', 'A vs B',
+                 'A', 'B', '{}', '{}', '{}', '{}', '{}', datetime('now'), datetime('now'))`,
+      ).run(gameId, year, mmdd, date, `${year}年テスト`)
+    }
+    const insertPitchingLine = (db: ReturnType<typeof openDatabase>, gameId: string, team: string) => {
+      db.prepare(
+        `INSERT INTO pitching_lines
+          (game_id, team, pitcher_name, innings_pitched, pitch_count, batters_faced,
+           hits, home_runs, walks, hit_batters, strikeouts, wild_pitches, balks,
+           runs, earned_runs, headers_json, row_index)
+         VALUES (?, ?, '藤浪 晋太郎', '7', 110, 25, 3, 0, 2, 0, 9, 0, 0, 0, 0, '{}', 1)`,
+      ).run(gameId, team)
+    }
+
+    // 2026 DB: BIS farm row (今シーズン)
+    const db2026 = openDatabase(path.join(sqliteDir, 'npb-2026.sqlite'))
+    migrateDatabase(db2026)
+    db2026.prepare(
+      `INSERT INTO player_pitching_stats
+        (year, team_id, team_name, player_key, player_id, player_name, row_index, values_json, source_url)
+       VALUES (2026, 'db', '横浜DeNAベイスターズ', 'name:藤浪 晋太郎', null, '藤浪 晋太郎', 1, ?, ?)`,
+    ).run(JSON.stringify({ 登板: '4', 三振: '11', 防御率: '2.00' }), 'https://npb.jp/bis/2026/stats/idp2_db.html')
+    db2026.close()
+
+    // 2025 DB: box score rows（前シーズン）
+    const db2025 = openDatabase(path.join(sqliteDir, 'npb-2025.sqlite'))
+    migrateDatabase(db2025)
+    insertGame(db2025, 'r20250831h-s-01', 2025, '2025-08-31')
+    insertPitchingLine(db2025, 'r20250831h-s-01', '阪神タイガース')
+    db2025.close()
+
+    // 2022 DB: box score rows（古い年 → 年指定クエリで使えるよう全件保持）
+    const db2022 = openDatabase(path.join(sqliteDir, 'npb-2022.sqlite'))
+    migrateDatabase(db2022)
+    insertGame(db2022, 'r20220831h-s-01', 2022, '2022-08-31')
+    insertPitchingLine(db2022, 'r20220831h-s-01', '阪神タイガース')
+    db2022.close()
+
+    const service = createMultiYearQueryService({ sqliteDir, years: [2022, 2025, 2026] })
+    try {
+      // フルネームで検索（苗字のみだと pitching_lines の LIKE 条件にマッチしない）
+      const rows = await service.searchPitchingLines({ pitcher_name: '藤浪 晋太郎' })
+
+      // recent なし: BIS（今シーズン）が先頭、次に box score 全件（年代フィルタなし・昇順）
+      expect(rows).toHaveLength(3)
+      expect(rows[0].sourceKind).toBe('bis_pitching_farm')
+      expect(rows[0].gameDate.slice(0, 4)).toBe('2026')
+      // box rows は runAcrossYears の昇順ソートにより 2022 → 2025 の順
+      expect(rows[1].sourceKind).toBe('box')
+      expect(rows[1].gameDate.slice(0, 4)).toBe('2022')
+      expect(rows[2].sourceKind).toBe('box')
+      expect(rows[2].gameDate.slice(0, 4)).toBe('2025')
+
+      // recent=true: BIS（今シーズン）が先頭、box は BIS年-1（2025）のみ。2022 は含まれない
+      const recentRows = await service.searchPitchingLines({ pitcher_name: '藤浪 晋太郎', recent: true })
+      expect(recentRows).toHaveLength(2)
+      expect(recentRows[0].sourceKind).toBe('bis_pitching_farm')
+      expect(recentRows[0].gameDate.slice(0, 4)).toBe('2026')
+      expect(recentRows[1].sourceKind).toBe('box')
+      expect(recentRows[1].gameDate.slice(0, 4)).toBe('2025')
+      expect(recentRows.every((r) => r.gameDate.slice(0, 4) !== '2022')).toBe(true)
+    } finally {
+      service.close()
+      rmSync(sqliteDir, { recursive: true, force: true })
     }
   })
 })

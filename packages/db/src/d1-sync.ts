@@ -51,6 +51,7 @@ export type SyncD1YearResult = {
   year: number
   sqlitePath: string
   sqlPath: string
+  sqlPaths: string[]
   rowCounts: Record<ImportTable, number>
   totalRows: number
   executed: boolean
@@ -164,7 +165,8 @@ export async function runD1Sync(options: SyncD1Args): Promise<SyncD1Result> {
       years.push({
         year,
         sqlitePath,
-        sqlPath,
+        sqlPath: yearResult.sqlPaths[0] ?? sqlPath,
+        sqlPaths: yearResult.sqlPaths,
         rowCounts: yearResult.rowCounts,
         totalRows: yearResult.totalRows,
         executed: false,
@@ -177,14 +179,18 @@ export async function runD1Sync(options: SyncD1Args): Promise<SyncD1Result> {
 
   if (!options.dryRun) {
     for (const yearResult of years) {
-      const executed = executeD1Import(d1Database, yearResult.sqlPath, workspaceRoot)
-      if (!executed) {
-        throw new Error(`D1 import failed for year ${yearResult.year}`)
+      for (const chunkPath of yearResult.sqlPaths) {
+        const executed = executeD1Import(d1Database, chunkPath, workspaceRoot)
+        if (!executed) {
+          throw new Error(`D1 import failed for year ${yearResult.year} (${path.basename(chunkPath)})`)
+        }
       }
       yearResult.executed = true
     }
     if (!options.keepFiles) {
-      await Promise.all(years.map((yearResult) => rm(yearResult.sqlPath, { force: true })))
+      await Promise.all(
+        years.flatMap((yearResult) => yearResult.sqlPaths.map((p) => rm(p, { force: true }))),
+      )
     }
   }
 
@@ -215,30 +221,36 @@ export async function runD1Sync(options: SyncD1Args): Promise<SyncD1Result> {
 async function buildD1ImportFile(database: SqliteDatabase, year: number, sqlPath: string): Promise<{
   rowCounts: Record<ImportTable, number>
   totalRows: number
+  sqlPaths: string[]
 }> {
   const rowCounts = Object.fromEntries(
     IMPORT_TABLES.map((table) => [table, 0]),
   ) as Record<ImportTable, number>
-  const statements: string[] = []
+  const sqlPaths: string[] = []
+  const dir = path.dirname(sqlPath)
+  const base = path.basename(sqlPath, '.sql')
 
   for (const table of IMPORT_TABLES) {
     const exists = tableExists(database, table)
+    const deleteStatements = buildYearScopedDeleteStatements(table, year)
     if (!exists) {
+      const tablePath = path.join(dir, `${base}_${table}.sql`)
+      await writeFile(tablePath, `${deleteStatements.join('\n')}\n`, 'utf8')
+      sqlPaths.push(tablePath)
       continue
     }
 
-    statements.push(...buildYearScopedDeleteStatements(table, year))
     const { columns, rows } = readTableRows(database, table)
-    if (rows.length === 0) {
-      continue
-    }
     rowCounts[table] = rows.length
-    statements.push(...buildInsertStatements(table, columns, rows))
+
+    const statements = [...deleteStatements, ...buildInsertStatements(table, columns, rows)]
+    const tablePath = path.join(dir, `${base}_${table}.sql`)
+    await writeFile(tablePath, `${statements.join('\n')}\n`, 'utf8')
+    sqlPaths.push(tablePath)
   }
 
   const totalRows = Object.values(rowCounts).reduce((sum, count) => sum + count, 0)
-  await writeFile(sqlPath, `${statements.join('\n')}\n`, 'utf8')
-  return { rowCounts, totalRows }
+  return { rowCounts, totalRows, sqlPaths }
 }
 
 function tableExists(database: SqliteDatabase, table: string): boolean {

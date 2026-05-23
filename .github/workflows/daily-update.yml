@@ -114,7 +114,19 @@ jobs:
           else
             args+=(--storage r2 --r2-bucket "$NPB_R2_BUCKET")
           fi
-          pnpm --filter @npb/db run update:daily -- "${args[@]}" | tee data/logs/update-daily-action.log
+          pnpm --filter @npb/db run update:daily -- "${args[@]}" --include-bis-current | tee data/logs/update-daily-action.log
+
+      - name: Enrich farm game box scores
+        if: ${{ env.IS_DRY_RUN != 'true' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          current_year=$(TZ=Asia/Tokyo date +%Y)
+          pnpm --filter @npb/db run enrich:bis-farm-boxes -- \
+            --year "$current_year" \
+            --sqlite-path "data/npb-${current_year}.sqlite" \
+            --delay-ms 300 \
+            | tee data/logs/enrich-bis-farm-boxes-action.log
 
       - name: Sync updated SQLite data to D1
         if: ${{ env.IS_DRY_RUN != 'true' }}
@@ -197,6 +209,7 @@ jobs:
             data/logs/update-daily-summary.json
             data/logs/update-job.log
             data/logs/enrich-scores-calendar.log
+            data/logs/enrich-bis-farm-boxes-action.log
             data/logs/d1-sync-action.log
             data/logs/d1-sync/summary.json
           if-no-files-found: ignore

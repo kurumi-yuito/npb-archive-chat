@@ -131,6 +131,33 @@ describe('chat-answer-formatter', () => {
     expect(answer.summary).toContain('打率.429')
   })
 
+  it('pitching evaluation with only a BIS farm row shows current season farm stats cleanly', () => {
+    const results = emptyResults()
+    // multi-year serviceがdedupしてBIS行1件だけ返す想定
+    results.pitching = [
+      bisPitchingFarmRow('2026', '横浜DeNAベイスターズ', '藤浪 晋太郎', {
+        登板: '4', 勝利: '0', 敗北: '1', 三振: '11', 投球回: '9', 防御率: '2.00',
+      }),
+    ]
+
+    const answer = formatChatAnswer({
+      question: '藤浪の最近の調子は',
+      structuredQuery: { intent: 'search_pitching', filters: { pitcher_name: '藤浪' } },
+      results,
+      sources: [],
+    })
+
+    expect(answer.result_count).toBe(1)
+    expect(answer.summary).toContain('2026年二軍')
+    expect(answer.summary).toContain('藤浪 晋太郎')
+    expect(answer.summary).toContain('登板4')
+    expect(answer.summary).toContain('防御率2.00')
+    // 2025年・2022年・「試合単位成績はDBに未登録」などの余計な情報は出ない
+    expect(answer.summary).not.toContain('2025年')
+    expect(answer.summary).not.toContain('2022年')
+    expect(answer.summary).not.toContain('未登録')
+  })
+
   it('calculates batting sabermetrics from official season stats', () => {
     const results = emptyResults()
     results.batting = [{
@@ -225,6 +252,53 @@ function eventRow(index: number): EventRow {
     resultText: 'レフト2ランホームラン（打点2）',
     eventAttributesJson: null,
     sourceUrl: `https://npb.jp/scores/2025/05${day}/s-d-${day}/playbyplay.html`,
+  }
+}
+
+function pitchingBoxRow(
+  gameDate: string,
+  team: string,
+  pitcherName: string,
+  inningsPitched: string,
+  strikeouts: number,
+  earnedRuns: number,
+) {
+  const d = gameDate.replaceAll('-', '')
+  return {
+    gameId: `r${d}box-01`,
+    gameDate,
+    team,
+    pitcherName,
+    inningsPitched,
+    pitchCount: 80,
+    strikeouts,
+    runs: earnedRuns,
+    earnedRuns,
+    sourceKind: 'box' as const,
+    sourceUrl: null,
+    statsJson: null,
+  }
+}
+
+function bisPitchingFarmRow(
+  year: string,
+  team: string,
+  pitcherName: string,
+  stats: Record<string, string>,
+) {
+  return {
+    gameId: `bis:${year}:farm:idp2`,
+    gameDate: `${year}-01-01`,
+    team,
+    pitcherName,
+    inningsPitched: stats['投球回'] ?? '0',
+    pitchCount: 0,
+    strikeouts: Number(stats['三振'] ?? 0),
+    runs: Number(stats['失点'] ?? 0),
+    earnedRuns: Number(stats['自責点'] ?? 0),
+    sourceKind: 'bis_pitching_farm' as const,
+    sourceUrl: `https://npb.jp/bis/${year}/stats/idp2_db.html`,
+    statsJson: JSON.stringify({ ...stats }),
   }
 }
 
