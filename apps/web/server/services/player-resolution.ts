@@ -9,43 +9,13 @@ export type PlayerResolution = {
   primary_team?: string | null
   status: 'resolved' | 'ambiguous' | 'not_found'
   candidates: PlayerCandidate[]
+  yearShiftNote?: string
 }
 
 type ResolutionTarget = {
   field: 'batter_name' | 'pitcher_name' | 'runner_name' | 'player_name'
   value: string
 }
-
-const latinAliasEntries = [
-  ['yamada', '山田'],
-  ['tetsutoyamada', '山田'],
-  ['yamadatetsuto', '山田'],
-  ['takamatsu', '髙松'],
-  ['takahashi', '高橋'],
-  ['tanaka', '田中'],
-  ['sato', '佐藤'],
-  ['satoh', '佐藤'],
-  ['saitoh', '齋藤'],
-  ['saito', '齋藤'],
-  ['suzuki', '鈴木'],
-  ['nakamura', '中村'],
-  ['kobayashi', '小林'],
-  ['yoshida', '吉田'],
-  ['yamamoto', '山本'],
-  ['morishita', '森下'],
-] as const
-
-const playerAliasEntries = [
-  ['高松', '髙松'],
-  ['髙松', '髙松'],
-] as const
-
-const playerEntityAliasEntries = [
-  ['山田哲人', { name: '山田', player_id: '91895133' }],
-  ['山田哲', { name: '山田', player_id: '91895133' }],
-  ['tetsutoyamada', { name: '山田', player_id: '91895133' }],
-  ['yamadatetsuto', { name: '山田', player_id: '91895133' }],
-] as const
 
 const teamAliasEntries = [
   ['ヤクルト', ['ヤクルト', '東京ヤクルトスワローズ']],
@@ -67,13 +37,6 @@ const teamAliasEntries = [
   ['楽天', ['楽天', '東北楽天ゴールデンイーグルス']],
 ] as const
 
-const latinAliasMap = new Map<string, string>(latinAliasEntries)
-const playerAliasMap = new Map(
-  playerAliasEntries.map(([alias, canonical]) => [normalizeLookupKey(alias), canonical]),
-)
-const playerEntityAliasMap = new Map(
-  playerEntityAliasEntries.map(([alias, entity]) => [normalizeLookupKey(alias), entity]),
-)
 const teamAliasMap = new Map(
   teamAliasEntries.map(([alias, teams]) => [normalizeLookupKey(alias), teams]),
 )
@@ -88,11 +51,10 @@ export async function resolveStructuredQueryPlayer(
   }
 
   const input = target.value
-  const entityAlias = entityAliasForPlayerInput(input)
   const aliases = aliasesForPlayerInput(input)
   const candidateFilters = {
     ...yearFilters(structuredQuery),
-    name: entityAlias?.name ?? input,
+    name: input,
     aliases,
     latestOnly: structuredQuery.intent === 'player_affiliation' && !hasExplicitYearFilter(structuredQuery),
     limit: 10,
@@ -101,9 +63,8 @@ export async function resolveStructuredQueryPlayer(
   let candidates = selectCandidatesForInput(
     input,
     collapseSameEntityFallbacks(
-      filterCandidates(rawCandidates, entityAlias, teamQualifier(structuredQuery)),
+      filterCandidates(rawCandidates, teamQualifier(structuredQuery)),
     ),
-    entityAlias,
   )
 
   if (candidates.length === 0 && hasExplicitYearFilter(structuredQuery)) {
@@ -115,9 +76,8 @@ export async function resolveStructuredQueryPlayer(
     candidates = selectCandidatesForInput(
       input,
       collapseSameEntityFallbacks(
-        filterCandidates(fallbackCandidates, entityAlias, teamQualifier(structuredQuery)),
+        filterCandidates(fallbackCandidates, teamQualifier(structuredQuery)),
       ),
-      entityAlias,
     )
   }
 
@@ -152,8 +112,10 @@ export async function resolveStructuredQueryPlayer(
   }
 
   const candidate = candidates[0]!
+  const resolvedQuery = replacePlayerFilter(structuredQuery, target.field, candidate)
+  const yearShift = detectYearShift(structuredQuery, candidate)
   return {
-    structuredQuery: replacePlayerFilter(structuredQuery, target.field, candidate),
+    structuredQuery: yearShift ? applyYearShift(resolvedQuery, yearShift.targetYear) : resolvedQuery,
     resolution: {
       input,
       player_id: candidate.player_id,
@@ -161,8 +123,40 @@ export async function resolveStructuredQueryPlayer(
       primary_team: candidate.primary_team,
       status: 'resolved',
       candidates,
+      ...(yearShift ? { yearShiftNote: yearShift.note } : {}),
     },
   }
+}
+
+function detectYearShift(
+  structuredQuery: ChatStructuredQuery,
+  candidate: PlayerCandidate,
+): { targetYear: number; note: string } | null {
+  const filters = structuredQuery.filters as { year?: number; year_from?: number; year_to?: number }
+  const requestedYear = filters.year
+  if (!requestedYear || candidate.years.length === 0) {
+    return null
+  }
+  if (candidate.years.includes(requestedYear)) {
+    return null
+  }
+  const latestYear = Math.max(...candidate.years)
+  return {
+    targetYear: latestYear,
+    note: `${requestedYear}年はNPBに在籍していないデータです（メジャー移籍・引退等の可能性）。代わりに最終在籍年（${latestYear}年）のデータを表示します。`,
+  }
+}
+
+function applyYearShift(structuredQuery: ChatStructuredQuery, targetYear: number): ChatStructuredQuery {
+  return {
+    ...structuredQuery,
+    filters: {
+      ...structuredQuery.filters,
+      year: targetYear,
+      year_from: undefined,
+      year_to: undefined,
+    },
+  } as ChatStructuredQuery
 }
 
 function findResolutionTarget(structuredQuery: ChatStructuredQuery): ResolutionTarget | null {
@@ -233,12 +227,8 @@ function hasExplicitYearFilter(structuredQuery: ChatStructuredQuery): boolean {
 
 function aliasesForPlayerInput(input: string): string[] {
   const normalized = normalizeFreeText(input) ?? input
-  const key = normalizeLookupKey(normalized)
   return [
     normalized,
-    playerEntityAliasMap.get(key)?.name,
-    playerAliasMap.get(key),
-    latinAliasMap.get(key),
     ...displayNameFallbackAliases(normalized),
   ].filter(Boolean) as string[]
 }
@@ -259,11 +249,6 @@ function displayNameFallbackAliases(input: string): string[] {
   return aliases
 }
 
-function entityAliasForPlayerInput(input: string): { name: string; player_id: string } | undefined {
-  const normalized = normalizeFreeText(input) ?? input
-  return playerEntityAliasMap.get(normalizeLookupKey(normalized))
-}
-
 function teamQualifier(structuredQuery: ChatStructuredQuery): string[] {
   const team = (structuredQuery.filters as { team?: unknown }).team
   if (typeof team !== 'string' || !team.trim()) {
@@ -275,13 +260,9 @@ function teamQualifier(structuredQuery: ChatStructuredQuery): string[] {
 
 function filterCandidates(
   candidates: PlayerCandidate[],
-  entityAlias: { name: string; player_id: string } | undefined,
   teamAliases: string[],
 ): PlayerCandidate[] {
   let filtered = candidates
-  if (entityAlias) {
-    filtered = filtered.filter((candidate) => candidate.player_id === entityAlias.player_id)
-  }
   if (teamAliases.length > 0) {
     filtered = filtered.filter((candidate) =>
       candidate.teams.some((team) => teamAliases.includes(team)) ||
@@ -294,12 +275,7 @@ function filterCandidates(
 function selectCandidatesForInput(
   input: string,
   candidates: PlayerCandidate[],
-  entityAlias: { name: string; player_id: string } | undefined,
 ): PlayerCandidate[] {
-  if (entityAlias) {
-    return candidates
-  }
-
   const inputKey = normalizeLookupKey(normalizeFreeText(input) ?? input)
   const exact = candidates.filter((candidate) => normalizeLookupKey(candidate.name) === inputKey)
   if (exact.length > 0) {
@@ -308,10 +284,27 @@ function selectCandidatesForInput(
 
   const surnameMatches = candidates.filter((candidate) => {
     const nameKey = normalizeLookupKey(candidate.name)
-    return nameKey.length >= 2 && inputKey.startsWith(nameKey)
+    return nameKey.length >= 1 && inputKey.startsWith(nameKey)
   })
   if (surnameMatches.length > 0) {
-    return collapseSameEntityFallbacks(surnameMatches)
+    const collapsed = collapseSameEntityFallbacks(surnameMatches)
+    // Full-name input (3+ chars) that matches multiple surname-only candidates is ambiguous
+    // — events tables often store just the surname (e.g. "村上" for both 村上頌樹 and 村上宗隆).
+    // When collapsed to a single candidate (already disambiguated by team/profile), trust it.
+    if (inputKey.length > 2 && collapsed.length > 1) {
+      return []
+    }
+    // Full-name input resolved to a single no-player_id surname candidate: unverifiable, don't resolve.
+    // player_id candidates with incompatible profiles were already removed by searchPlayerCandidates.
+    if (inputKey.length > 2 && collapsed.length === 1 && !collapsed[0]!.player_id) {
+      return []
+    }
+    return collapsed
+  }
+
+  // Input is 3+ chars (full name) but no candidate matched — don't resolve to an unrelated candidate.
+  if (inputKey.length > 2) {
+    return []
   }
 
   return candidates

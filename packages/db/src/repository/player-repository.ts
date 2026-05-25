@@ -13,6 +13,50 @@ export type SearchPlayerCandidatesFilters = {
   limit?: number
 }
 
+async function fetchProfileNamesForIds(
+  database: QueryDatabase,
+  playerIds: string[],
+): Promise<Map<string, string>> {
+  if (playerIds.length === 0) return new Map()
+  const placeholders = playerIds.map(() => '?').join(', ')
+  try {
+    const rows = await database
+      .prepare(`SELECT player_id, full_name FROM player_profiles WHERE player_id IN (${placeholders})`)
+      .all(...playerIds) as Array<{ player_id: string; full_name: string }>
+    return new Map(rows.map((r) => [r.player_id, r.full_name]))
+  } catch {
+    return new Map()
+  }
+}
+
+async function resolvePlayerIdsFromProfiles(
+  database: QueryDatabase,
+  aliases: string[],
+): Promise<string[]> {
+  if (aliases.length === 0) return []
+  const values: string[] = []
+  const clauses: string[] = []
+  for (const alias of aliases) {
+    const compact = alias.replace(/[ 　]/gu, '')
+    const normalized = alias.replace(/[　]/gu, ' ').trim()
+    values.push(compact, `${normalized} %`)
+    clauses.push(
+      `(REPLACE(REPLACE(player_profiles.full_name,' ',''),char(12288),'') = ? OR player_profiles.full_name LIKE ?)`,
+    )
+  }
+  try {
+    const rows = await database
+      .prepare(`SELECT player_id FROM player_profiles WHERE ${clauses.join(' OR ')} LIMIT 30`)
+      .all(...values) as Array<{ player_id: string }>
+    const ids = [...new Set(rows.map((r) => r.player_id))]
+    // Only filter when the profile lookup yields a unique player — multiple matches mean the input
+    // is an ambiguous surname and filtering would incorrectly narrow to the first hit.
+    return ids.length === 1 ? ids : []
+  } catch {
+    return []
+  }
+}
+
 export async function searchPlayerCandidates(
   database: QueryDatabase,
   filters: SearchPlayerCandidatesFilters,
@@ -21,6 +65,8 @@ export async function searchPlayerCandidates(
   if (aliases.length === 0) {
     return []
   }
+
+  const profilePlayerIds = await resolvePlayerIdsFromProfiles(database, [filters.name])
 
   const rows: RawPlayerMention[] = []
   rows.push(...await queryRawPlayerMentions(database, aliases, filters, {
@@ -79,7 +125,35 @@ export async function searchPlayerCandidates(
   }))
 
   const candidateRows = filters.latestOnly ? latestMentionRows(rows) : rows
-  return mergeFallbackCandidates(groupPlayerMentions(candidateRows, aliases)).slice(0, filters.limit ?? 10)
+  let candidates = mergeFallbackCandidates(groupPlayerMentions(candidateRows, aliases))
+
+  if (profilePlayerIds.length > 0) {
+    // When we know exactly which player the input refers to (unique profile match),
+    // only keep candidates that are that player. If none exist in this year range,
+    // return empty so the caller can handle not_found / year-shift fallback.
+    candidates = candidates.filter((c) => c.player_id && profilePlayerIds.includes(c.player_id))
+  } else if (filters.name.replace(/[ 　]/gu, '').length > 2) {
+    // No profile found for the input (player not in current NPB registry).
+    // For full-name inputs (>2 compact chars), filter out all player_id candidates whose
+    // profile name is incompatible with the input. This prevents "村上宗隆" from resolving
+    // to "村上 頌樹" (13315153, 阪神) — a different player who happens to share the surname.
+    const playerIdsToCheck = [...new Set(
+      candidates.filter((c) => c.player_id).map((c) => c.player_id as string),
+    )]
+    if (playerIdsToCheck.length > 0) {
+      const inputCompact = filters.name.replace(/[ 　]/gu, '')
+      const profileNames = await fetchProfileNamesForIds(database, playerIdsToCheck)
+      candidates = candidates.filter((c) => {
+        if (!c.player_id) return true
+        const profileFullName = profileNames.get(c.player_id)
+        if (!profileFullName) return true
+        const profileCompact = profileFullName.replace(/[ 　]/gu, '')
+        return inputCompact.startsWith(profileCompact) || profileCompact.startsWith(inputCompact)
+      })
+    }
+  }
+
+  return candidates.slice(0, filters.limit ?? 10)
 }
 
 type RawPlayerMention = {
@@ -105,8 +179,9 @@ async function queryRawPlayerMentions(
   const clauses = [`${source.nameColumn} IS NOT NULL`, `${source.nameColumn} <> ''`]
   clauses.push(`(${
     aliases.map((alias) => {
-      values.push(alias, `%${alias}%`)
-      return `(${source.nameColumn} = ? OR ${source.nameColumn} LIKE ?)`
+      const compact = alias.replace(/[ 　]/gu, '')
+      values.push(compact, `%${compact}%`)
+      return `(${compactNameCol(source.nameColumn)} = ? OR ${compactNameCol(source.nameColumn)} LIKE ?)`
     }).join(' OR ')
   })`)
   if (filters.year) {
@@ -223,15 +298,23 @@ function mode(values: string[]): string | null {
 
 function mergeFallbackCandidates(candidates: PlayerCandidate[]): PlayerCandidate[] {
   const merged: PlayerCandidate[] = []
+
+  // First pass: populate merged with all player_id candidates so they can act as merge targets
   for (const candidate of candidates) {
     if (candidate.player_id) {
       merged.push(candidate)
+    }
+  }
+
+  // Second pass: try to fold no-player_id candidates into an existing player_id candidate
+  for (const candidate of candidates) {
+    if (candidate.player_id) {
       continue
     }
 
     const target = merged.find((current) =>
       current.player_id &&
-      current.name === candidate.name &&
+      samePlayerName(current.name, candidate.name) &&
       candidate.teams.length > 0 &&
       candidate.teams.every((team) => current.teams.some((currentTeam) => sameTeamAlias(currentTeam, team))),
     )
@@ -251,6 +334,18 @@ function mergeFallbackCandidates(candidates: PlayerCandidate[]): PlayerCandidate
 
 function unique<T>(values: T[]): T[] {
   return [...new Set(values)]
+}
+
+function compactNameCol(col: string): string {
+  return `REPLACE(REPLACE(${col}, ' ', ''), char(12288), '')`
+}
+
+function samePlayerName(a: string, b: string): boolean {
+  if (a === b) return true
+  const normalize = (s: string) => s.replace(/[\s　]/gu, '')
+  const na = normalize(a)
+  const nb = normalize(b)
+  return na === nb || na.startsWith(nb) || nb.startsWith(na)
 }
 
 function sameTeamAlias(left: string, right: string): boolean {
