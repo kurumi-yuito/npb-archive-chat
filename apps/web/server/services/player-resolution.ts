@@ -89,7 +89,11 @@ export async function resolveStructuredQueryPlayer(
   }
 
   if (candidates.length > 1) {
-    if (!hasExplicitYearFilter(structuredQuery)) {
+    const inputKey = normalizeLookupKey(normalizeFreeText(input) ?? input)
+    // Short surname inputs (≤2 Japanese chars) must never be auto-resolved by recency:
+    // multiple active players can share a surname and the ambiguity cannot be resolved without more context.
+    const isFullNameInput = inputKey.length > 2
+    if (isFullNameInput && !hasExplicitYearFilter(structuredQuery)) {
       const mostRecent = pickMostRecentCandidate(candidates)
       if (mostRecent) {
         return {

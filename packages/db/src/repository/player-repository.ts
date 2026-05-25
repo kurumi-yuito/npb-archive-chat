@@ -342,7 +342,8 @@ function compactNameCol(col: string): string {
 
 function samePlayerName(a: string, b: string): boolean {
   if (a === b) return true
-  const normalize = (s: string) => s.replace(/[\s　]/gu, '')
+  // Strip BIS annotation prefixes (*, ＊, +, ＋) and whitespace before comparing
+  const normalize = (s: string) => s.replace(/^[*＊+＋\s　]+/u, '').replace(/[\s　]/gu, '')
   const na = normalize(a)
   const nb = normalize(b)
   return na === nb || na.startsWith(nb) || nb.startsWith(na)

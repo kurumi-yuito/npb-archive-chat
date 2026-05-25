@@ -102,6 +102,11 @@ export const runnerEventAttributesSchema = z.object({
 
 export const inningHalfSchema = z.enum(['top', 'bottom'])
 
+const coercedName = z.union([
+  z.string().min(1),
+  z.array(z.string().min(1)).min(1).transform((a) => a[0]!),
+])
+
 export const searchEventsFiltersSchema = z.object({
   year: z.number().int().min(1936).optional(),
   year_from: z.number().int().min(1936).optional(),
@@ -111,15 +116,15 @@ export const searchEventsFiltersSchema = z.object({
   inning: z.number().int().positive().optional(),
   half: inningHalfSchema.optional(),
   team: z.string().min(1).optional(),
-  batter_name: z.string().min(1).optional(),
+  batter_name: coercedName.optional(),
   batter_player_id: z.string().min(1).optional(),
-  pitcher_name: z.string().min(1).optional(),
+  pitcher_name: coercedName.optional(),
   pitcher_player_id: z.string().min(1).optional(),
-  runner_name: z.string().min(1).optional(),
+  runner_name: coercedName.optional(),
   runner_player_id: z.string().min(1).optional(),
   event_type: playByPlayEventTypeSchema.optional(),
   event_subtype: playByPlayEventSubtypeSchema.optional(),
-  player_name: z.string().min(1).optional(),
+  player_name: coercedName.optional(),
   player_id: z.string().min(1).optional(),
   result_text_contains: z.string().min(1).optional(),
   limit: z.number().int().positive().max(500).optional(),
@@ -154,7 +159,7 @@ export const searchPitchingLinesFiltersSchema = z.object({
   year_from: z.number().int().min(1936).optional(),
   year_to: z.number().int().min(1936).optional(),
   game_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
-  pitcher_name: z.string().min(1).optional(),
+  pitcher_name: coercedName.optional(),
   team: z.string().min(1).optional(),
   recent: z.boolean().optional(),
   limit: z.number().int().positive().max(500).optional(),
@@ -165,7 +170,7 @@ export const searchBattingLinesFiltersSchema = z.object({
   year_from: z.number().int().min(1936).optional(),
   year_to: z.number().int().min(1936).optional(),
   game_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
-  player_name: z.string().min(1).optional(),
+  player_name: coercedName.optional(),
   player_id: z.string().min(1).optional(),
   team: z.string().min(1).optional(),
   result_text_contains: z.string().min(1).optional(),
@@ -213,12 +218,14 @@ export const aggregateBattingFiltersSchema = searchBattingLinesFiltersSchema.omi
   limit: true,
 }).extend({
   limit: z.number().int().positive().max(100).optional(),
+  sort_by: z.enum(['hits', 'atBats', 'runsBattedIn', 'stolenBases', 'walks', 'strikeouts', 'battingAverage', 'ops', 'games']).optional(),
 })
 
 export const aggregatePitchingFiltersSchema = searchPitchingLinesFiltersSchema.omit({
   limit: true,
 }).extend({
   limit: z.number().int().positive().max(100).optional(),
+  sort_by: z.enum(['era', 'whip', 'strikeouts', 'wins', 'games', 'inningsPitched', 'hitsAllowed', 'walks', 'earnedRuns']).optional(),
 })
 
 export const aggregateEventsFiltersSchema = searchEventsFiltersSchema.omit({
