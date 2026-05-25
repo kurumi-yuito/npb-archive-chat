@@ -88,8 +88,30 @@ export async function resolveStructuredQueryPlayer(
     }
   }
 
+  // For short surname inputs (≤2 chars), a year-filtered search may narrow down to a single
+  // candidate even when multiple players share the surname. Do a broader search without year
+  // filter to detect the ambiguity.
+  const inputKey = normalizeLookupKey(normalizeFreeText(input) ?? input)
+  if (inputKey.length <= 2 && candidates.length === 1) {
+    const broadCandidates = await queryService.searchPlayerCandidates({
+      name: candidateFilters.name,
+      aliases,
+      limit: 10,
+    })
+    const broadSelected = selectCandidatesForInput(
+      input,
+      collapseSameEntityFallbacks(filterCandidates(broadCandidates, teamQualifier(structuredQuery))),
+    )
+    const broadEntityCount = broadSelected.filter((c) => c.player_id).length
+    if (broadEntityCount > 1) {
+      return {
+        structuredQuery,
+        resolution: { input, player_id: null, name: null, primary_team: null, status: 'ambiguous', candidates: broadSelected },
+      }
+    }
+  }
+
   if (candidates.length > 1) {
-    const inputKey = normalizeLookupKey(normalizeFreeText(input) ?? input)
     // Short surname inputs (≤2 Japanese chars) must never be auto-resolved by recency:
     // multiple active players can share a surname and the ambiguity cannot be resolved without more context.
     const isFullNameInput = inputKey.length > 2
