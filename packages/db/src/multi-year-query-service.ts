@@ -3,6 +3,7 @@ import path from 'node:path'
 import {
   aggregateBattingLines,
   aggregateEvents,
+  aggregateGameResults,
   aggregatePitchingLines,
   listSourceSnapshotsByGameIds,
   searchBattingLines,
@@ -14,6 +15,7 @@ import {
   searchPlayerAffiliations,
   searchPlayerCandidates,
   searchRosterEntries,
+  canonicalTeamName,
   type AggregateRow,
   type BattingLineRow,
   type EventRow,
@@ -32,6 +34,7 @@ import { openDatabase, type SqliteDatabase } from './sqlite'
 import type {
   AggregateBattingFilters,
   AggregateEventsFilters,
+  AggregateGamesFilters,
   AggregatePitchingFilters,
   GameDetailFilters,
   PlayerAffiliationFilters,
@@ -64,6 +67,7 @@ export type ChatQueryService = {
   aggregateBattingLines: (filters: AggregateBattingFilters) => Promise<AggregateRow[]>
   aggregatePitchingLines: (filters: AggregatePitchingFilters) => Promise<AggregateRow[]>
   aggregateEvents: (filters: AggregateEventsFilters) => Promise<AggregateRow[]>
+  aggregateGameResults: (filters: AggregateGamesFilters) => Promise<AggregateRow[]>
   searchPlayerCandidates: (filters: SearchPlayerCandidatesFilters) => Promise<PlayerCandidate[]>
   listSourceSnapshotsByGameIds: (gameIds: string[]) => Promise<SourceSnapshotRow[]>
   close: () => void
@@ -100,6 +104,7 @@ export function createSingleDatabaseQueryService(database: QueryDatabase): ChatQ
     aggregateBattingLines: (filters) => aggregateBattingLines(database, filters),
     aggregatePitchingLines: (filters) => aggregatePitchingLines(database, filters),
     aggregateEvents: (filters) => aggregateEvents(database, filters),
+    aggregateGameResults: (filters) => aggregateGameResults(database, filters),
     searchPlayerCandidates: (filters) => searchPlayerCandidates(database, filters),
     listSourceSnapshotsByGameIds: (gameIds) => listSourceSnapshotsByGameIds(database, gameIds),
     close: () => database.close(),
@@ -241,6 +246,9 @@ export function createMultiYearQueryService({
       await runAggregateAcrossYears(filters, (db) => aggregateEvents(db, filters)),
       filters.limit ?? 50,
     ),
+    aggregateGameResults: async (filters) => mergeGameResultAggregates(
+      await runAggregateAcrossYears(filters, (db) => aggregateGameResults(db, filters)),
+    ),
     searchPlayerCandidates: async (filters) => mergePlayerCandidates(
       await runPlayerCandidateAcrossYears(filters),
       filters.limit ?? 10,
@@ -339,7 +347,9 @@ function inferYearFromGameId(gameId: string): number | null {
 function mergeAggregates(rows: AggregateRow[], limit: number): AggregateRow[] {
   const merged = new Map<string, AggregateRow>()
   for (const row of rows) {
-    const key = `${row.kind}:${row.label}`
+    const rawTeam = typeof row.stats.team === 'string' ? row.stats.team : ''
+    const teamKey = rawTeam ? `:${canonicalTeamName(rawTeam)}` : ''
+    const key = `${row.kind}:${row.label}${teamKey}`
     const current = merged.get(key)
     if (!current) {
       merged.set(key, { ...row, stats: { ...row.stats } })
@@ -360,10 +370,30 @@ function mergeAggregates(rows: AggregateRow[], limit: number): AggregateRow[] {
     .slice(0, limit)
 }
 
+function mergeGameResultAggregates(rows: AggregateRow[]): AggregateRow[] {
+  if (rows.length === 0) {
+    return []
+  }
+  const merged: AggregateRow = { ...rows[0]!, stats: { ...rows[0]!.stats } }
+  for (const row of rows.slice(1)) {
+    merged.total += row.total
+    for (const key of ['wins', 'losses', 'draws', 'total_games'] as const) {
+      const cur = merged.stats[key]
+      const add = row.stats[key]
+      if (typeof cur === 'number' && typeof add === 'number') {
+        merged.stats[key] = cur + add
+      }
+    }
+  }
+  return [merged]
+}
+
 function mergePlayerCandidates(rows: PlayerCandidate[], limit: number): PlayerCandidate[] {
   const merged = new Map<string, PlayerCandidate>()
   for (const row of rows) {
-    const key = row.player_id ?? `${row.name}:${row.primary_team ?? row.teams.join('/')}`
+    const rawTeam = row.primary_team ?? row.teams[0] ?? ''
+    const canonTeam = rawTeam ? canonicalTeamName(rawTeam) : ''
+    const key = row.player_id ?? `${row.name}:${canonTeam}`
     const current = merged.get(key)
     if (!current) {
       merged.set(key, { ...row, roles: [...row.roles], teams: [...row.teams], years: [...row.years] })

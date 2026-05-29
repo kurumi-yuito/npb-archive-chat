@@ -31,7 +31,11 @@ export async function searchBattingLines(
 ): Promise<BattingLineRow[]> {
   const normalized = searchBattingLinesFiltersSchema.parse(filters)
   const limit = normalized.limit ?? 50
-  const currentRows = normalized.game_date || normalized.recent
+  // batting_order / position are box-score-only fields; BIS stats don't have them.
+  // Skip BIS entirely when either is specified to avoid returning unfiltered season stats.
+  const skipBis = normalized.game_date || normalized.recent
+    || normalized.batting_order !== undefined || normalized.position !== undefined
+  const currentRows = skipBis
     ? []
     : await searchCurrentBattingStats(database, normalized, limit)
   if (currentRows.length > 0) {
@@ -62,7 +66,7 @@ export async function searchBattingLines(
     values.push(normalized.player_name)
   }
   if (normalized.player_id) {
-    clauses.push('batting_lines.player_url LIKE ?')
+    clauses.push('(batting_lines.player_url IS NULL OR batting_lines.player_url LIKE ?)')
     values.push(playerIdPattern(normalized.player_id))
   }
   if (normalized.team) {
@@ -79,8 +83,9 @@ export async function searchBattingLines(
     values.push(normalized.batting_order)
   }
   if (normalized.position) {
-    clauses.push("REPLACE(REPLACE(batting_lines.position, '(', ''), ')', '') = ?")
-    values.push(normalized.position)
+    // Match "(遊)" (starter), "遊" (bare), and composite forms like "打遊" (sub→SS).
+    clauses.push("batting_lines.position LIKE ?")
+    values.push(`%${normalized.position}%`)
   }
 
   const whereClause = clauses.length > 0 ? `WHERE ${clauses.join(' AND ')}` : ''
@@ -227,6 +232,8 @@ function teamAliases(team: string): string[] {
     ソフトバンク: ['ソフトバンク', '福岡ソフトバンクホークス'],
     日本ハム: ['日本ハム', '北海道日本ハムファイターズ'],
     楽天: ['楽天', '東北楽天ゴールデンイーグルス'],
+    セリーグ: ['巨人', '読売ジャイアンツ', 'ヤクルト', '東京ヤクルトスワローズ', 'DeNA', '横浜DeNAベイスターズ', '中日', '中日ドラゴンズ', '阪神', '阪神タイガース', '広島', '広島東洋カープ'],
+    パリーグ: ['日本ハム', '北海道日本ハムファイターズ', '楽天', '東北楽天ゴールデンイーグルス', '西武', '埼玉西武ライオンズ', 'ロッテ', '千葉ロッテマリーンズ', 'オリックス', 'オリックス・バファローズ', 'ソフトバンク', '福岡ソフトバンクホークス'],
   }
   return [...new Set(aliases[normalized] ?? [team])]
 }

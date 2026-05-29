@@ -1,5 +1,6 @@
 import {
   parseEnrichScoresCalendarArgs,
+  parsePlayerProfilesUpdateArgs,
   parseUpdateBisCurrentArgs,
   parseRebuildYearFromR2Args,
   parseBackfillScoresCanonicalArgs,
@@ -13,6 +14,7 @@ import {
   runScoresCalendarEnrichment,
   runBackfillScoresCanonical,
   runBisCurrentUpdate,
+  runPlayerProfilesUpdate,
   rebuildYearFromR2,
   runIncrementalUpdate,
   parseEnrichBisFarmBoxesArgs,
@@ -23,6 +25,8 @@ const KNOWN_COMMANDS = new Set([
   'migrate',
   'update:bis-current',
   'update-bis-current',
+  'update:player-profiles',
+  'update-player-profiles',
   'update-year',
   'update:daily',
   'update-daily',
@@ -110,6 +114,13 @@ async function main() {
   if (command === 'enrich:bis-farm-boxes' || command === 'enrich-bis-farm-boxes') {
     const args = parseEnrichBisFarmBoxesArgs(tail)
     const result = await runBisFarmBoxEnrichment(args)
+    process.stdout.write(`${JSON.stringify(result, null, 2)}\n`)
+    return
+  }
+
+  if (command === 'update:player-profiles' || command === 'update-player-profiles') {
+    const args = parsePlayerProfilesUpdateArgs(tail)
+    const result = await runPlayerProfilesUpdate(args)
     process.stdout.write(`${JSON.stringify(result, null, 2)}\n`)
     return
   }

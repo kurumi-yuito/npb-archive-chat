@@ -365,6 +365,7 @@ describe('chat eval: db-backed query plan, result, formatter regression', () => 
     })
   })
 
+
   it('18 unknown full name with ambiguous surname stops safely', async () => {
     const { service, calls } = createEvalService()
 
@@ -387,13 +388,14 @@ describe('chat eval: db-backed query plan, result, formatter regression', () => 
     })
   })
 
-  it('20 multiple surname candidates remain ambiguous', async () => {
+  it('20 nonexistent full name with ambiguous surname returns not_found', async () => {
     const { service } = createEvalService()
 
     const response = await service.answerQuestion('山田花子の所属チームは')
 
     expect(response.answer.resolved_player?.input).toBe('山田花子')
-    expect(response.answer.resolved_player?.status).toBe('ambiguous')
+    // "山田花子" doesn't exist — surname-only "山田" candidates collapse to >1, so not_found
+    expect(response.answer.resolved_player?.status).toBe('not_found')
     expect(response.answer.result_count).toBe(0)
   })
 
@@ -516,6 +518,9 @@ function insertEvalFixture(database: WritableDatabase) {
     playerUrl: 'https://npb.jp/bis/players/12345678.html',
     index: 1,
   })
+
+  insertPlayerProfile(database, { playerId: '91895133', fullName: '山田 哲人' })
+  insertPlayerProfile(database, { playerId: '99999999', fullName: '山田 大輔' })
 
   insertCurrentTeamRoster(database, {
     year: 2026,
@@ -768,6 +773,15 @@ function insertRosterEntry(
     input.playerName,
     null,
   )
+}
+
+function insertPlayerProfile(
+  database: WritableDatabase,
+  input: { playerId: string; fullName: string },
+) {
+  database.prepare(
+    `INSERT OR IGNORE INTO player_profiles (player_id, full_name, source_url) VALUES (?, ?, ?)`,
+  ).run(input.playerId, input.fullName, `https://npb.jp/bis/players/${input.playerId}.html`)
 }
 
 function insertCurrentTeamRoster(

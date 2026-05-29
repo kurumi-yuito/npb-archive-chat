@@ -240,6 +240,16 @@ export function normalizeChatStructuredQuery(
     })
   }
 
+  if (structuredQuery.intent === 'aggregate_games') {
+    return chatStructuredQuerySchema.parse({
+      intent: 'aggregate_games',
+      filters: {
+        ...structuredQuery.filters,
+        team: normalizeTeamName(structuredQuery.filters.team),
+      },
+    })
+  }
+
   return chatStructuredQuerySchema.parse({
     intent: 'search_events',
     filters: {
@@ -316,6 +326,7 @@ export function normalizeFreeText(value: string | undefined): string | undefined
 function normalizeLookupKey(value: string): string {
   return value
     .normalize('NFKC')
+    .replace(/^[*＊+＋\s　]+/u, '')
     .replace(/[・･]/gu, '')
     .replace(/[‐‑‒–—―ーｰ−]/gu, 'ー')
     .replace(/[ \u3000\t\r\n]+/gu, '')

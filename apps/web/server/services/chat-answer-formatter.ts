@@ -82,80 +82,106 @@ function buildSummary(
     return `選手を特定できないため検索できませんでした。入力「${playerResolution.input}」に一致する選手候補はDB内に見つかりません。`
   }
   if (playerResolution?.status === 'ambiguous') {
-    return `どの${playerResolution.input}ですか。選手候補が複数あるため検索を実行しませんでした。候補: ${formatCandidates(playerResolution.candidates)}`
+    return `どの${playerResolution.input}ですか。選手候補が複数あるため検索を実行しませんでした。候補：${formatCandidates(playerResolution.candidates)}。フルネームまたはチーム名を指定してください。`
   }
 
+  const yearShiftPrefix = playerResolution?.yearShiftNote ? `【注意】${playerResolution.yearShiftNote}\n\n` : ''
+
   if (resultCount === 0) {
+    let notFoundMsg: string
     if (structuredQuery.intent === 'search_games') {
-      return '条件に一致する試合は見つかりませんでした。'
+      notFoundMsg = '条件に一致する試合は見つかりませんでした。'
+    } else if (structuredQuery.intent === 'search_batting' || structuredQuery.intent === 'aggregate_batting') {
+      notFoundMsg = '条件に一致する打撃成績は見つかりませんでした。DB結果にないため、推測では回答しません。'
+    } else if (structuredQuery.intent === 'search_pitching') {
+      notFoundMsg = '条件に一致する投手成績は見つかりませんでした。'
+    } else if (structuredQuery.intent === 'aggregate_pitching') {
+      notFoundMsg = '条件に一致する投手集計は見つかりませんでした。DB結果にないため、推測では回答しません。'
+    } else if (structuredQuery.intent === 'search_roster') {
+      notFoundMsg = '条件に一致するロスターは見つかりませんでした。DB結果にないため、推測では回答しません。'
+    } else if (structuredQuery.intent === 'player_affiliation') {
+      notFoundMsg = '条件に一致する所属チーム情報は見つかりませんでした。DB結果にないため、推測では回答しません。'
+    } else if (structuredQuery.intent === 'game_detail') {
+      notFoundMsg = '条件に一致する試合詳細は見つかりませんでした。DB結果にないため、推測では回答しません。'
+    } else if (structuredQuery.intent === 'aggregate_events') {
+      notFoundMsg = '条件に一致するイベント集計は見つかりませんでした。DB結果にないため、推測では回答しません。'
+    } else if (structuredQuery.intent === 'aggregate_games') {
+      notFoundMsg = '条件に一致する試合結果が見つかりませんでした。DB結果にないため、推測では回答しません。'
+    } else {
+      notFoundMsg = '条件に一致するイベントは見つかりませんでした。'
     }
-    if (structuredQuery.intent === 'search_batting' || structuredQuery.intent === 'aggregate_batting') {
-      return '条件に一致する打撃成績は見つかりませんでした。DB結果にないため、推測では回答しません。'
-    }
-    if (structuredQuery.intent === 'search_pitching') {
-      return '条件に一致する投手成績は見つかりませんでした。'
-    }
-    if (structuredQuery.intent === 'aggregate_pitching') {
-      return '条件に一致する投手集計は見つかりませんでした。DB結果にないため、推測では回答しません。'
-    }
-    if (structuredQuery.intent === 'search_roster') {
-      return '条件に一致するロスターは見つかりませんでした。DB結果にないため、推測では回答しません。'
-    }
-    if (structuredQuery.intent === 'player_affiliation') {
-      return '条件に一致する所属チーム情報は見つかりませんでした。DB結果にないため、推測では回答しません。'
-    }
-    if (structuredQuery.intent === 'game_detail') {
-      return '条件に一致する試合詳細は見つかりませんでした。DB結果にないため、推測では回答しません。'
-    }
-    if (structuredQuery.intent === 'aggregate_events') {
-      return '条件に一致するイベント集計は見つかりませんでした。DB結果にないため、推測では回答しません。'
-    }
-    return '条件に一致するイベントは見つかりませんでした。'
+    return `${yearShiftPrefix}${notFoundMsg}`
   }
 
   if (structuredQuery.intent === 'search_games') {
     const first = results.games[0] as GameSummaryRow
-    return `条件に一致する試合が${resultCount}件あります。先頭は${first.date}の${first.matchupText}です。`
+    return `${yearShiftPrefix}条件に一致する試合が${resultCount}件あります。先頭は${first.date}の${first.matchupText}です。`
   }
 
   if (structuredQuery.intent === 'search_pitching') {
     const first = results.pitching[0] as PitchingLineRow
     if (isEvaluationQuestion(question, structuredQuery.filters)) {
-      return formatPitchingEvaluationSummary(results.pitching as PitchingLineRow[])
+      const gapNote = buildRecentGapNote(
+        (results.pitching as PitchingLineRow[]).filter((r) => r.sourceKind === 'box').map((r) => r.gameDate),
+        structuredQuery.filters,
+      )
+      return `${yearShiftPrefix}${formatPitchingEvaluationSummary(results.pitching as PitchingLineRow[])}${gapNote}`
     }
     if (first.sourceKind === 'bis_pitching' || first.sourceKind === 'bis_pitching_farm') {
-      return formatBisPitchingSummary(first, resultCount)
+      return `${yearShiftPrefix}${formatBisPitchingSummary(first, resultCount)}`
     }
-    return `条件に一致する投手成績が${resultCount}件あります。先頭は${first.gameDate}の${first.pitcherName}で、${first.inningsPitched}回 ${first.strikeouts}奪三振です。`
+    return `${yearShiftPrefix}条件に一致する投手成績が${resultCount}件あります。先頭は${first.gameDate}の${first.pitcherName}で、${first.inningsPitched}回 ${first.strikeouts}奪三振です。`
   }
 
   if (structuredQuery.intent === 'search_batting') {
     const first = results.batting[0] as BattingLineRow
     if (isEvaluationQuestion(question, structuredQuery.filters)) {
-      return formatBattingEvaluationSummary(results.batting as BattingLineRow[], resultCount)
+      const gapNote = buildRecentGapNote(
+        (results.batting as BattingLineRow[]).filter((r) => r.sourceKind !== 'bis_batting').map((r) => r.gameDate),
+        structuredQuery.filters,
+      )
+      return `${yearShiftPrefix}${formatBattingEvaluationSummary(results.batting as BattingLineRow[], resultCount)}${gapNote}`
     }
     if (first.sourceKind === 'bis_batting') {
-      return formatBisBattingSummary(first, resultCount)
+      return `${yearShiftPrefix}${formatBisBattingSummary(first, resultCount)}`
     }
-    return `条件に一致する打撃成績が${resultCount}件あります。先頭は${formatDateJa(first.gameDate)}の${first.playerName}で、${first.atBats}打数${first.hits}安打${first.runsBattedIn}打点です。`
+    return `${yearShiftPrefix}条件に一致する打撃成績が${resultCount}件あります。先頭は${formatDateJa(first.gameDate)}の${first.playerName}で、${first.atBats}打数${first.hits}安打${first.runsBattedIn}打点です。`
   }
 
   if (structuredQuery.intent === 'search_roster') {
     const first = results.roster[0] as RosterEntryRow
     const starter = first.starter === true ? 'スタメン' : '登録'
-    return `条件に一致するロスターが${resultCount}件あります。先頭は${first.gameDate} ${first.gameId} の${first.team} ${first.playerName}（${starter}）です。`
+    return `${yearShiftPrefix}条件に一致するロスターが${resultCount}件あります。先頭は${first.gameDate} ${first.gameId} の${first.team} ${first.playerName}（${starter}）です。`
   }
 
   if (structuredQuery.intent === 'player_affiliation') {
-    return formatPlayerAffiliationSummary(structuredQuery, results.affiliations, playerResolution)
+    return `${yearShiftPrefix}${formatPlayerAffiliationSummary(structuredQuery, results.affiliations, playerResolution)}`
   }
 
   if (structuredQuery.intent === 'game_detail') {
-    return formatGameDetailSummary(
+    return `${yearShiftPrefix}${formatGameDetailSummary(
       results.gameDetails as GameDetailRow[],
       results.events as EventSummaryRow[],
       resultCount,
-    )
+    )}`
+  }
+
+  if (structuredQuery.intent === 'aggregate_games') {
+    const row = results.aggregates[0] as AggregateRow
+    const wins = Number(row.stats.wins ?? 0)
+    const losses = Number(row.stats.losses ?? 0)
+    const draws = Number(row.stats.draws ?? 0)
+    const total = Number(row.stats.total_games ?? row.total)
+    const noResult = total - wins - losses - draws
+    const filters = structuredQuery.filters as { year?: number; year_from?: number; year_to?: number }
+    const yearLabel = filters.year
+      ? `${filters.year}年`
+      : filters.year_from && filters.year_to
+        ? `${filters.year_from}〜${filters.year_to}年`
+        : 'DB収録期間'
+    const drawText = draws > 0 ? `、引き分け${draws}` : ''
+    const noResultText = noResult > 0 ? `（スコア未確定${noResult}試合除く）` : ''
+    return `${yearShiftPrefix}${yearLabel}の${row.label}の成績: ${total}試合、${wins}勝${losses}敗${drawText}${noResultText}。数値はDB集計結果のみを使っています。`
   }
 
   if (
@@ -164,10 +190,10 @@ function buildSummary(
     structuredQuery.intent === 'aggregate_events'
   ) {
     const first = results.aggregates[0] as AggregateRow
-    return `条件に一致する集計結果が${resultCount}件あります。先頭は${first.label}で、対象件数は${first.total}件です。数値はDB集計結果のみを使っています。`
+    return `${yearShiftPrefix}条件に一致する集計結果が${resultCount}件あります。先頭は${first.label}で、対象件数は${first.total}件です。数値はDB集計結果のみを使っています。`
   }
 
-  return formatEventListSummary(structuredQuery, results.events, resultCount, playerResolution)
+  return `${yearShiftPrefix}${formatEventListSummary(structuredQuery, results.events, resultCount, playerResolution)}`
 }
 
 function formatBisBattingSummary(row: BattingLineRow, resultCount: number): string {
@@ -615,6 +641,30 @@ function isEvaluationQuestion(question: string, filters: Record<string, unknown>
   return Boolean(filters.recent) || /評価|調子|状態|最近どう|どう思/u.test(question)
 }
 
+function buildRecentGapNote(gameDates: string[], filters: Record<string, unknown>): string {
+  if (!filters.recent || gameDates.length === 0) return ''
+  const newest = gameDates.reduce((a, b) => (a > b ? a : b))
+  const todayJst = currentJstDate()
+  const diffDays = Math.round(
+    (new Date(todayJst).getTime() - new Date(newest).getTime()) / (1000 * 60 * 60 * 24),
+  )
+  if (diffDays < 7) return ''
+  return `\n【重要】最新の試合記録は${formatDateJa(newest)}です。本日（${todayJst}）まで${diffDays}日間の空白があります。この間に試合出場記録が見当たらないため、故障・登録抹消・長期欠場の可能性があります。LLMはこの空白を必ず回答に明記してください。`
+}
+
+function currentJstDate(): string {
+  const parts = new Intl.DateTimeFormat('ja-JP', {
+    timeZone: 'Asia/Tokyo',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(new Date())
+  const year = parts.find((p) => p.type === 'year')?.value
+  const month = parts.find((p) => p.type === 'month')?.value
+  const day = parts.find((p) => p.type === 'day')?.value
+  return `${year}-${month}-${day}`
+}
+
 function parseStatsJson(value: string | null | undefined): Record<string, unknown> {
   return parseJsonObject(value)
 }
@@ -896,15 +946,55 @@ function formatEventListItem(event: EventSummaryRow, index: number): string[] {
 }
 
 function formatCandidates(candidates: PlayerCandidate[]): string {
-  return candidates
-    .slice(0, 10)
+  const confirmed = candidates.filter((c) => c.player_id)
+  const withTeam = candidates.filter((c) => !c.player_id && (c.primary_team || c.teams.length > 0))
+  // If 2+ confirmed entities exist, show only those (clean list). Otherwise include
+  // candidates that at least have team info so the user can disambiguate by team name.
+  const displayCandidates = confirmed.length >= 2 ? confirmed : [...confirmed, ...withTeam]
+  return displayCandidates
+    .slice(0, 8)
     .map((candidate) => {
+      const displayName = candidate.name
+        .replace(/^[*＊+＋ \t　]+/u, '')
+        .replace(/[　]/gu, '')
       const years = candidate.years.length > 0
-        ? `${Math.min(...candidate.years)}-${Math.max(...candidate.years)}`
-        : 'year不明'
-      const team = candidate.primary_team ?? candidate.teams[0] ?? 'team不明'
-      const playerId = candidate.player_id ?? 'player_id不明'
-      return `${candidate.name}(player_id=${playerId}, ${team}, ${years})`
+        ? `${Math.min(...candidate.years)}-${Math.max(...candidate.years)}年`
+        : ''
+      const team = candidate.primary_team ?? candidate.teams[0] ?? ''
+      const shortTeam = shortTeamName(team)
+      const parts = [shortTeam, years].filter(Boolean).join('・')
+      return parts ? `${displayName}（${parts}）` : displayName
     })
     .join('、')
+}
+
+function shortTeamName(team: string): string {
+  const map: Record<string, string> = {
+    東京ヤクルトスワローズ: 'ヤクルト',
+    ヤクルト: 'ヤクルト',
+    横浜DeNAベイスターズ: 'DeNA',
+    DeNA: 'DeNA',
+    読売ジャイアンツ: '巨人',
+    巨人: '巨人',
+    阪神タイガース: '阪神',
+    阪神: '阪神',
+    中日ドラゴンズ: '中日',
+    中日: '中日',
+    広島東洋カープ: '広島',
+    広島: '広島',
+    'オリックス・バファローズ': 'オリックス',
+    オリックスバファローズ: 'オリックス',
+    オリックス: 'オリックス',
+    埼玉西武ライオンズ: '西武',
+    西武: '西武',
+    福岡ソフトバンクホークス: 'ソフトバンク',
+    ソフトバンク: 'ソフトバンク',
+    千葉ロッテマリーンズ: 'ロッテ',
+    ロッテ: 'ロッテ',
+    北海道日本ハムファイターズ: '日本ハム',
+    日本ハム: '日本ハム',
+    東北楽天ゴールデンイーグルス: '楽天',
+    楽天: '楽天',
+  }
+  return map[team] ?? team
 }

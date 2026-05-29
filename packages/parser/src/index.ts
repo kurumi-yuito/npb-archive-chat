@@ -13,6 +13,7 @@ export { parseScoresRosterHtml } from './scores-roster.js'
 export {
   emptyBisCurrentDataset,
   parseBisGenericTeamTableHtml,
+  parseBisPlayerProfileHtml,
   parseBisPlayerStatsHtml,
   parseBisTeamMonthlyResultsHtml,
   parseBisTeamRosterHtml,
@@ -20,6 +21,7 @@ export {
   type BisCurrentDataset,
   type BisCurrentRosterEntry,
   type BisGenericTeamRow,
+  type BisPlayerProfile,
   type BisPlayerStatsRow,
   type BisSourceSnapshot,
   type BisSourceType,

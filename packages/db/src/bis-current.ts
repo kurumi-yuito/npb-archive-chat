@@ -3,6 +3,7 @@ import { findWorkspaceRoot } from '@npb/crawler'
 import {
   emptyBisCurrentDataset,
   parseBisGenericTeamTableHtml,
+  parseBisPlayerProfileHtml,
   parseBisPlayerStatsHtml,
   parseBisTeamMonthlyResultsHtml,
   parseBisTeamRosterHtml,
@@ -399,4 +400,115 @@ function parseNonNegativeInteger(value: string | undefined, label: string): numb
     throw new Error(`Invalid ${label}: ${value ?? '(missing)'}`)
   }
   return Number.parseInt(value, 10)
+}
+
+export type PlayerProfilesUpdateArgs = {
+  sqlitePath?: string
+  sqliteDir?: string
+  year?: number
+  delayMs?: number
+  userAgent?: string
+  dryRun?: boolean
+  limit?: number
+}
+
+export type PlayerProfilesUpdateResult = {
+  total: number
+  fetched: number
+  skipped: number
+  failed: number
+  sqlitePath: string
+}
+
+export function parsePlayerProfilesUpdateArgs(argv: string[]): PlayerProfilesUpdateArgs {
+  const args = [...argv]
+  while (args[0] === '--') args.shift()
+  const result: PlayerProfilesUpdateArgs = {}
+  while (args.length > 0) {
+    const arg = args.shift()
+    if (arg === '--year') { result.year = parsePositiveInteger(args.shift(), 'year'); continue }
+    if (arg?.startsWith('--year=')) { result.year = parsePositiveInteger(arg.slice('--year='.length), 'year'); continue }
+    if (arg === '--sqlite-path') { result.sqlitePath = args.shift(); continue }
+    if (arg?.startsWith('--sqlite-path=')) { result.sqlitePath = arg.slice('--sqlite-path='.length); continue }
+    if (arg === '--sqlite-dir') { result.sqliteDir = args.shift(); continue }
+    if (arg?.startsWith('--sqlite-dir=')) { result.sqliteDir = arg.slice('--sqlite-dir='.length); continue }
+    if (arg === '--delay-ms') { result.delayMs = parseNonNegativeInteger(args.shift(), 'delay-ms'); continue }
+    if (arg?.startsWith('--delay-ms=')) { result.delayMs = parseNonNegativeInteger(arg.slice('--delay-ms='.length), 'delay-ms'); continue }
+    if (arg === '--user-agent') { result.userAgent = args.shift(); continue }
+    if (arg?.startsWith('--user-agent=')) { result.userAgent = arg.slice('--user-agent='.length); continue }
+    if (arg === '--limit') { result.limit = parsePositiveInteger(args.shift(), 'limit'); continue }
+    if (arg?.startsWith('--limit=')) { result.limit = parsePositiveInteger(arg.slice('--limit='.length), 'limit'); continue }
+    if (arg === '--dry-run') { result.dryRun = true; continue }
+    throw new Error(`Unknown argument: ${arg}`)
+  }
+  return result
+}
+
+export async function runPlayerProfilesUpdate(options: PlayerProfilesUpdateArgs): Promise<PlayerProfilesUpdateResult> {
+  const year = options.year ?? new Date().getFullYear()
+  const sqlitePath = options.sqlitePath ?? path.join(options.sqliteDir ?? DEFAULT_SQLITE_DIR, `npb-${year}.sqlite`)
+  const db = openDatabase(sqlitePath)
+  try {
+    migrateDatabase(db)
+
+    const playerIds = db
+      .prepare('SELECT DISTINCT player_id FROM current_team_roster WHERE player_id IS NOT NULL ORDER BY player_id')
+      .all()
+      .map((row) => String((row as { player_id: string }).player_id))
+
+    const existingIds = new Set(
+      db
+        .prepare('SELECT player_id FROM player_profiles')
+        .all()
+        .map((row) => String((row as { player_id: string }).player_id)),
+    )
+
+    const toFetch = playerIds.filter((id) => !existingIds.has(id))
+    const limit = options.limit ?? toFetch.length
+    let fetched = 0
+    let failed = 0
+
+    for (const playerId of toFetch.slice(0, limit)) {
+      if (options.dryRun) {
+        continue
+      }
+      const url = `https://npb.jp/bis/players/${playerId}.html`
+      try {
+        const response = await fetch(url, {
+          headers: { 'user-agent': options.userAgent ?? DEFAULT_USER_AGENT },
+        })
+        if (!response.ok) {
+          process.stderr.write(`Profile fetch ${response.status}: ${url}\n`)
+          failed += 1
+          continue
+        }
+        const html = await response.text()
+        const profile = parseBisPlayerProfileHtml(html, playerId, url)
+        if (profile?.fullName) {
+          db.prepare(
+            `INSERT OR REPLACE INTO player_profiles (player_id, full_name, team_name, year_teams_json, source_url, fetched_at) VALUES (?, ?, ?, ?, ?, ?)`,
+          ).run(profile.playerId, profile.fullName, profile.teamName, profile.yearTeamsJson, profile.sourceUrl, new Date().toISOString())
+          fetched += 1
+        } else {
+          failed += 1
+        }
+        if (options.delayMs) {
+          await new Promise((resolve) => setTimeout(resolve, options.delayMs))
+        }
+      } catch (error) {
+        process.stderr.write(`Profile fetch error for ${playerId}: ${String(error)}\n`)
+        failed += 1
+      }
+    }
+
+    return {
+      total: playerIds.length,
+      fetched,
+      skipped: existingIds.size + (options.dryRun ? toFetch.slice(0, limit).length : 0),
+      failed,
+      sqlitePath,
+    }
+  } finally {
+    db.close()
+  }
 }

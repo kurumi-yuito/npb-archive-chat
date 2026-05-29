@@ -1,16 +1,18 @@
 import {
   aggregateBattingFiltersSchema,
   aggregateEventsFiltersSchema,
+  aggregateGamesFiltersSchema,
   aggregatePitchingFiltersSchema,
   type AggregateBattingFilters,
   type AggregateEventsFilters,
+  type AggregateGamesFilters,
   type AggregatePitchingFilters,
 } from '@npb/schemas'
 import type { QueryDatabase } from '../query-driver'
 import { toJapaneseTeamAliases, toEnglishLeagueTeams } from './team-name-utils'
 
 export type AggregateRow = {
-  kind: 'batting' | 'pitching' | 'events'
+  kind: 'batting' | 'pitching' | 'events' | 'games'
   label: string
   total: number
   stats: Record<string, string | number | null>
@@ -39,6 +41,13 @@ export async function aggregateBattingLines(
   }
 
   const whereClause = clauses.length > 0 ? `WHERE ${clauses.join(' AND ')}` : ''
+  const isSeasonRanking = !normalized.player_name && !normalized.game_date &&
+    normalized.year && !normalized.year_from && !normalized.year_to
+  const havingClause = (normalized.sort_by === 'battingAverage' || normalized.sort_by === 'ops')
+    ? isSeasonRanking
+      ? 'HAVING SUM(batting_lines.at_bats) >= 10 AND COUNT(*) >= 3'
+      : 'HAVING SUM(batting_lines.at_bats) >= 10'
+    : ''
   const rows = await database
     .prepare(
       `SELECT
@@ -51,11 +60,19 @@ export async function aggregateBattingLines(
         SUM(batting_lines.runs_batted_in) AS runsBattedIn,
         SUM(batting_lines.stolen_bases) AS stolenBases,
         SUM(COALESCE(batting_lines.walks, 0)) AS walks,
-        SUM(COALESCE(batting_lines.strikeouts, 0)) AS strikeouts
+        SUM(COALESCE(batting_lines.strikeouts, 0)) AS strikeouts,
+        COALESCE(SUM(hr_stats.hr_count), 0) AS homeRuns
       FROM batting_lines
       INNER JOIN games ON games.game_id = batting_lines.game_id
+      LEFT JOIN (
+        SELECT game_id, batter_name, COUNT(*) AS hr_count
+        FROM events
+        WHERE result_text LIKE '%ホームラン%'
+        GROUP BY game_id, batter_name
+      ) hr_stats ON hr_stats.game_id = batting_lines.game_id AND hr_stats.batter_name = batting_lines.player_name
       ${whereClause}
       GROUP BY batting_lines.player_name, batting_lines.team
+      ${havingClause}
       ORDER BY ${battingSortClause(normalized.sort_by)}, label ASC
       LIMIT ?`,
     )
@@ -71,6 +88,7 @@ export async function aggregateBattingLines(
       atBats: Number(row.atBats ?? 0),
       runs: Number(row.runs ?? 0),
       hits: Number(row.hits ?? 0),
+      homeRuns: Number(row.homeRuns ?? 0),
       runsBattedIn: Number(row.runsBattedIn ?? 0),
       stolenBases: Number(row.stolenBases ?? 0),
       walks: Number(row.walks ?? 0),
@@ -95,6 +113,14 @@ export async function aggregatePitchingLines(
     const teams = toJapaneseTeamAliases(normalized.team)
     clauses.push(`pitching_lines.team IN (${teams.map(() => '?').join(', ')})`)
     values.push(...teams)
+  }
+  if (normalized.min_innings_per_start != null) {
+    clauses.push(`${PER_GAME_IP_SQL} >= ?`)
+    values.push(normalized.min_innings_per_start)
+  }
+  if (normalized.max_earned_runs_per_start != null) {
+    clauses.push(`pitching_lines.earned_runs IS NOT NULL AND pitching_lines.earned_runs <= ?`)
+    values.push(normalized.max_earned_runs_per_start)
   }
 
   const whereClause = clauses.length > 0 ? `WHERE ${clauses.join(' AND ')}` : ''
@@ -200,6 +226,7 @@ export async function aggregateEvents(
     .prepare(
       `SELECT
         COALESCE(events.batter_name, events.pitcher_name, events.runner_name, events.offense_team, events.event_subtype) AS label,
+        MAX(events.offense_team) AS team,
         COUNT(*) AS total
       FROM events
       INNER JOIN games ON games.game_id = events.game_id
@@ -210,17 +237,20 @@ export async function aggregateEvents(
     )
     .all(...values, normalized.limit ?? 50)
 
-  return (rows as Array<{ label: string | null; total: number }>).map((row) => ({
+  return (rows as Array<{ label: string | null; team: string | null; total: number }>).map((row) => ({
     kind: 'events',
     label: row.label ?? 'unknown',
     total: Number(row.total ?? 0),
     stats: {
+      team: row.team ?? null,
       events: Number(row.total ?? 0),
     },
   }))
 }
 
 const IP_SQL = `SUM(CASE WHEN pitching_lines.innings_pitched LIKE '%.%' THEN CAST(SUBSTR(pitching_lines.innings_pitched,1,INSTR(pitching_lines.innings_pitched,'.')-1) AS REAL)+CAST(SUBSTR(pitching_lines.innings_pitched,INSTR(pitching_lines.innings_pitched,'.')+1) AS REAL)/3.0 ELSE CAST(COALESCE(pitching_lines.innings_pitched,'0') AS REAL) END)`
+
+const PER_GAME_IP_SQL = `CASE WHEN pitching_lines.innings_pitched LIKE '%.%' THEN CAST(SUBSTR(pitching_lines.innings_pitched,1,INSTR(pitching_lines.innings_pitched,'.')-1) AS REAL)+CAST(SUBSTR(pitching_lines.innings_pitched,INSTR(pitching_lines.innings_pitched,'.')+1) AS REAL)/3.0 ELSE CAST(COALESCE(pitching_lines.innings_pitched,'0') AS REAL) END`
 
 function battingSortClause(sortBy: string | undefined): string {
   switch (sortBy) {
@@ -252,7 +282,7 @@ function pitchingSortClause(sortBy: string | undefined): string {
       return `CASE WHEN ${IP_SQL} > 0 THEN (SUM(pitching_lines.hits)+SUM(COALESCE(pitching_lines.walks,0)))*1.0/${IP_SQL} ELSE 999 END ASC`
     case 'inningsPitched':
       return `${IP_SQL} DESC`
-    case 'wins': return 'SUM(pitching_lines.wins) DESC'
+    case 'wins': return `SUM(CASE WHEN pitching_lines.decision = '○' THEN 1 ELSE 0 END) DESC`
     case 'games': return 'COUNT(*) DESC'
     case 'hitsAllowed': return 'SUM(pitching_lines.hits) ASC'
     case 'walks': return 'SUM(pitching_lines.walks) ASC'
@@ -286,4 +316,81 @@ function appendGameClauses(
     clauses.push('games.year <= ?')
     values.push(filters.year_to)
   }
+}
+
+export async function aggregateGameResults(
+  database: QueryDatabase,
+  filters: AggregateGamesFilters = {},
+): Promise<AggregateRow[]> {
+  const normalized = aggregateGamesFiltersSchema.parse(filters)
+  if (!normalized.team) {
+    return []
+  }
+
+  const teamPattern = `%${normalized.team}%`
+  const clauses: string[] = [
+    "games.game_id NOT LIKE 'f%'",
+    '(games.home_team_name LIKE ? OR games.away_team_name LIKE ?)',
+  ]
+  // Positional values: first two are for the WHERE team filter
+  const values: Array<string | number> = [teamPattern, teamPattern]
+
+  if (normalized.year) {
+    clauses.push('games.year = ?')
+    values.push(normalized.year)
+  }
+  if (normalized.year_from) {
+    clauses.push('games.year >= ?')
+    values.push(normalized.year_from)
+  }
+  if (normalized.year_to) {
+    clauses.push('games.year <= ?')
+    values.push(normalized.year_to)
+  }
+
+  const whereClause = `WHERE ${clauses.join(' AND ')}`
+
+  // CASE expressions follow WHERE values; teamPattern appears 4 more times for SELECT CASE
+  const rows = await database
+    .prepare(
+      `SELECT
+        COUNT(*) AS total_games,
+        SUM(CASE
+          WHEN (games.home_team_name LIKE ? AND CAST(json_extract(games.linescore_json, '$.runs.home') AS INTEGER) > CAST(json_extract(games.linescore_json, '$.runs.away') AS INTEGER))
+            OR (games.away_team_name LIKE ? AND CAST(json_extract(games.linescore_json, '$.runs.away') AS INTEGER) > CAST(json_extract(games.linescore_json, '$.runs.home') AS INTEGER))
+          THEN 1 ELSE 0 END) AS wins,
+        SUM(CASE
+          WHEN (games.home_team_name LIKE ? AND CAST(json_extract(games.linescore_json, '$.runs.home') AS INTEGER) < CAST(json_extract(games.linescore_json, '$.runs.away') AS INTEGER))
+            OR (games.away_team_name LIKE ? AND CAST(json_extract(games.linescore_json, '$.runs.away') AS INTEGER) < CAST(json_extract(games.linescore_json, '$.runs.home') AS INTEGER))
+          THEN 1 ELSE 0 END) AS losses,
+        SUM(CASE
+          WHEN json_extract(games.linescore_json, '$.runs.home') IS NOT NULL
+            AND CAST(json_extract(games.linescore_json, '$.runs.home') AS INTEGER) = CAST(json_extract(games.linescore_json, '$.runs.away') AS INTEGER)
+          THEN 1 ELSE 0 END) AS draws
+      FROM games
+      ${whereClause}`,
+    )
+    .all(teamPattern, teamPattern, teamPattern, teamPattern, ...values)
+
+  const row = (rows as Array<Record<string, number | null>>)[0]
+  if (!row) {
+    return []
+  }
+
+  const total = Number(row.total_games ?? 0)
+  if (total === 0) {
+    return []
+  }
+
+  return [{
+    kind: 'games',
+    label: normalized.team,
+    total,
+    stats: {
+      wins: Number(row.wins ?? 0),
+      losses: Number(row.losses ?? 0),
+      draws: Number(row.draws ?? 0),
+      total_games: total,
+    },
+  }]
 }

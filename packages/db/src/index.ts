@@ -62,8 +62,10 @@ import {
 import {
   BIS_TEAMS,
   loadBisCurrentDataset,
+  parsePlayerProfilesUpdateArgs,
   parseUpdateBisCurrentArgs,
   runBisCurrentUpdate,
+  runPlayerProfilesUpdate,
 } from './bis-current'
 import { migrateDatabase, resolveMigrationsDir } from './migrations'
 import { sqliteDatabaseToQuery, withTransactionAsync } from './query-driver'
@@ -127,6 +129,8 @@ export {
   listLoadedGameIdsByYear,
   listSourceSnapshotsByGameIds,
   loadBisCurrentDataset,
+  parsePlayerProfilesUpdateArgs,
+  runPlayerProfilesUpdate,
   migrateDatabase,
   resolveMigrationsDir,
   openDatabase,

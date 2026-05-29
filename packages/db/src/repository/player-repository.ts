@@ -29,10 +29,12 @@ async function fetchProfileNamesForIds(
   }
 }
 
+type ProfileMatch = { player_id: string; knownTeams: string[] }
+
 async function resolvePlayerIdsFromProfiles(
   database: QueryDatabase,
   aliases: string[],
-): Promise<string[]> {
+): Promise<ProfileMatch[]> {
   if (aliases.length === 0) return []
   const values: string[] = []
   const clauses: string[] = []
@@ -46,12 +48,21 @@ async function resolvePlayerIdsFromProfiles(
   }
   try {
     const rows = await database
-      .prepare(`SELECT player_id FROM player_profiles WHERE ${clauses.join(' OR ')} LIMIT 30`)
-      .all(...values) as Array<{ player_id: string }>
+      .prepare(`SELECT player_id, year_teams_json FROM player_profiles WHERE ${clauses.join(' OR ')} LIMIT 30`)
+      .all(...values) as Array<{ player_id: string; year_teams_json: string | null }>
     const ids = [...new Set(rows.map((r) => r.player_id))]
     // Only filter when the profile lookup yields a unique player — multiple matches mean the input
     // is an ambiguous surname and filtering would incorrectly narrow to the first hit.
-    return ids.length === 1 ? ids : []
+    if (ids.length !== 1) return []
+    const row = rows.find((r) => r.player_id === ids[0])!
+    let knownTeams: string[] = []
+    try {
+      const yearTeams = JSON.parse(row.year_teams_json ?? '{}') as Record<string, string>
+      knownTeams = Object.values(yearTeams).filter(Boolean)
+    } catch {
+      // ignore parse errors
+    }
+    return [{ player_id: ids[0]!, knownTeams }]
   } catch {
     return []
   }
@@ -66,7 +77,8 @@ export async function searchPlayerCandidates(
     return []
   }
 
-  const profilePlayerIds = await resolvePlayerIdsFromProfiles(database, [filters.name])
+  const profileMatches = await resolvePlayerIdsFromProfiles(database, [filters.name])
+  const profilePlayerIds = profileMatches.map((m) => m.player_id)
 
   const rows: RawPlayerMention[] = []
   rows.push(...await queryRawPlayerMentions(database, aliases, filters, {
@@ -81,12 +93,13 @@ export async function searchPlayerCandidates(
     nameColumn: 'player_batting_stats.player_name',
     yearColumn: 'player_batting_stats.year',
   }))
-  rows.push(...await queryRawPlayerMentions(database, aliases, filters, {
+  const bisRows = await queryRawPlayerMentions(database, aliases, filters, {
     sql: 'SELECT player_pitching_stats.player_name AS name, player_pitching_stats.player_id AS player_url, ? AS role, player_pitching_stats.team_name AS team, player_pitching_stats.year AS year FROM player_pitching_stats',
     role: 'bis_pitching',
     nameColumn: 'player_pitching_stats.player_name',
     yearColumn: 'player_pitching_stats.year',
-  }))
+  })
+  rows.push(...bisRows)
   rows.push(...await queryRawPlayerMentions(database, aliases, filters, {
     sql: `SELECT events.batter_name AS name, COALESCE(NULLIF(events.batter_url, ''), CASE WHEN json_valid(events.event_attributes_json) THEN json_extract(events.event_attributes_json, '$.batter_links[0].url') ELSE NULL END) AS player_url, ? AS role, events.offense_team AS team, games.year AS year FROM events INNER JOIN games ON games.game_id = events.game_id`,
     role: 'batter',
@@ -129,9 +142,36 @@ export async function searchPlayerCandidates(
 
   if (profilePlayerIds.length > 0) {
     // When we know exactly which player the input refers to (unique profile match),
-    // only keep candidates that are that player. If none exist in this year range,
-    // return empty so the caller can handle not_found / year-shift fallback.
-    candidates = candidates.filter((c) => c.player_id && profilePlayerIds.includes(c.player_id))
+    // only keep candidates that are that player.
+    const idFiltered = candidates.filter((c) => c.player_id && profilePlayerIds.includes(c.player_id))
+    if (idFiltered.length > 0) {
+      candidates = idFiltered
+    } else if (profilePlayerIds.length === 1) {
+      // Historical batting/event rows often lack player_url links. Since the profile search
+      // already uniquely identified one player, inject that player_id into name-only candidates
+      // so downstream resolution (year-shift, team injection) can proceed correctly.
+      // Guard: only inject if the candidate's team is compatible with the profile's known teams.
+      // This prevents e.g. "大谷翔平" (日本ハム 2013-2017) from being injected onto a
+      // different surname-only pitcher "大谷" at ロッテ who has no URL link.
+      const knownPlayerId = profilePlayerIds[0]!
+      const knownTeams = profileMatches[0]!.knownTeams
+      // Compute canonical team aliases from the profile (e.g. "読 売" → "巨人") so that
+      // downstream team filters in the resolution layer can match transferred players correctly.
+      const canonicalTeams = [...new Set(knownTeams.map(teamAliasKey))]
+      candidates = candidates
+        .filter((c) => !c.player_id)
+        .filter((c) => {
+          if (knownTeams.length === 0 || c.teams.length === 0) return true
+          return c.teams.some((t) => knownTeams.some((kt) => sameTeamAlias(kt, t)))
+        })
+        .map((c) => ({
+          ...c,
+          player_id: knownPlayerId,
+          teams: [...new Set([...c.teams, ...canonicalTeams])],
+        }))
+    } else {
+      candidates = idFiltered
+    }
   } else if (filters.name.replace(/[ 　]/gu, '').length > 2) {
     // No profile found for the input (player not in current NPB registry).
     // For full-name inputs (>2 compact chars), filter out all player_id candidates whose
@@ -180,8 +220,8 @@ async function queryRawPlayerMentions(
   clauses.push(`(${
     aliases.map((alias) => {
       const compact = alias.replace(/[ 　]/gu, '')
-      values.push(compact, `%${compact}%`)
-      return `(${compactNameCol(source.nameColumn)} = ? OR ${compactNameCol(source.nameColumn)} LIKE ?)`
+      values.push(compact, `%${compact}%`, compact)
+      return `(${compactNameCol(source.nameColumn)} = ? OR ${compactNameCol(source.nameColumn)} LIKE ? OR (? LIKE ${compactNameCol(source.nameColumn)} || '%' AND LENGTH(${compactNameCol(source.nameColumn)}) >= 2))`
     }).join(' OR ')
   })`)
   if (filters.year) {
@@ -248,8 +288,9 @@ function groupPlayerMentions(rows: RawPlayerMention[], aliases: string[]): Playe
       years: unique(group.years).sort((a, b) => a - b),
     }))
     .sort((left, right) => {
-      const leftExact = aliases.includes(left.name) ? 0 : 1
-      const rightExact = aliases.includes(right.name) ? 0 : 1
+      const compactName = (s: string) => s.replace(/[ 　]/gu, '')
+      const leftExact = aliases.some((a) => compactName(a) === compactName(left.name)) ? 0 : 1
+      const rightExact = aliases.some((a) => compactName(a) === compactName(right.name)) ? 0 : 1
       if (leftExact !== rightExact) return leftExact - rightExact
       const leftId = left.player_id ? 0 : 1
       const rightId = right.player_id ? 0 : 1
@@ -320,7 +361,25 @@ function mergeFallbackCandidates(candidates: PlayerCandidate[]): PlayerCandidate
     )
 
     if (!target) {
-      merged.push(candidate)
+      // Also try to fold into an existing no-player_id candidate with the same name and compatible team.
+      // This handles BIS stats tables that store abbreviated vs full team names (e.g. "オリックス" vs "オリックス・バファローズ").
+      // No-team candidates (e.g. pitcher events, which record no offense team) may come from a
+      // different player sharing the same surname — require year overlap before merging.
+      const noIdTarget = merged.find((current) =>
+        !current.player_id &&
+        samePlayerName(current.name, candidate.name) &&
+        (candidate.teams.length === 0
+          ? current.years.length === 0 || candidate.years.some((y) => current.years.includes(y))
+          : candidate.teams.every((team) => current.teams.some((currentTeam) => sameTeamAlias(currentTeam, team)))),
+      )
+      if (noIdTarget) {
+        noIdTarget.roles = unique([...noIdTarget.roles, ...candidate.roles])
+        noIdTarget.teams = unique([...noIdTarget.teams, ...candidate.teams])
+        noIdTarget.years = unique([...noIdTarget.years, ...candidate.years]).sort((a, b) => a - b)
+        noIdTarget.primary_team ??= candidate.primary_team
+      } else {
+        merged.push(candidate)
+      }
       continue
     }
 
@@ -346,7 +405,7 @@ function samePlayerName(a: string, b: string): boolean {
   const normalize = (s: string) => s.replace(/^[*＊+＋\s　]+/u, '').replace(/[\s　]/gu, '')
   const na = normalize(a)
   const nb = normalize(b)
-  return na === nb || na.startsWith(nb) || nb.startsWith(na)
+  return na === nb
 }
 
 function sameTeamAlias(left: string, right: string): boolean {
@@ -357,26 +416,36 @@ function teamAliasKey(team: string): string {
   const normalized = team.replace(/[・･.\-_\s\u3000]/gu, '')
   const aliases: Record<string, string> = {
     東京ヤクルトスワローズ: 'ヤクルト',
+    東京ヤクルト: 'ヤクルト',
     ヤクルト: 'ヤクルト',
     オリックスバファローズ: 'オリックス',
     オリックス: 'オリックス',
     埼玉西武ライオンズ: '西武',
+    埼玉西武: '西武',
     西武: '西武',
     読売ジャイアンツ: '巨人',
+    読売: '巨人',
     巨人: '巨人',
     千葉ロッテマリーンズ: 'ロッテ',
+    千葉ロッテ: 'ロッテ',
     ロッテ: 'ロッテ',
     福岡ソフトバンクホークス: 'ソフトバンク',
+    福岡ソフトバンク: 'ソフトバンク',
     ソフトバンク: 'ソフトバンク',
     北海道日本ハムファイターズ: '日本ハム',
+    北海道日本ハム: '日本ハム',
     日本ハム: '日本ハム',
     東北楽天ゴールデンイーグルス: '楽天',
+    東北楽天: '楽天',
     楽天: '楽天',
     阪神タイガース: '阪神',
     阪神: '阪神',
     広島東洋カープ: '広島',
+    広島東洋: '広島',
     広島: '広島',
     横浜DeNAベイスターズ: 'DeNA',
+    横浜DeNA: 'DeNA',
+    横浜: 'DeNA',
     DeNA: 'DeNA',
     中日ドラゴンズ: '中日',
     中日: '中日',

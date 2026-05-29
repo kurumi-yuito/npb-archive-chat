@@ -512,7 +512,7 @@ describe('chat-service', () => {
     }
   })
 
-  it('resolves romanized player names before home run event search', async () => {
+  it('romanized player names return not_found without a latin alias map', async () => {
     const database = openDatabase()
 
     try {
@@ -524,18 +524,9 @@ describe('chat-service', () => {
 
       expect(response.answer.resolved_player).toMatchObject({
         input: 'Yamada',
-        player_id: 'yamada',
-        name: '山田',
-        status: 'resolved',
+        status: 'not_found',
       })
-      expect(response.structured_query.filters).toMatchObject({
-        year: 2025,
-        batter_name: '山田',
-        batter_player_id: 'yamada',
-        event_type: 'plate_appearance',
-        result_text_contains: 'ホームラン',
-      })
-      expect(response.answer.result_count).toBe(1)
+      expect(response.answer.result_count).toBe(0)
     } finally {
       database.close()
     }
@@ -574,7 +565,7 @@ describe('chat-service', () => {
     expect(response.answer.summary).toContain('どの山田ですか')
   })
 
-  it('resolves a full-name player alias to one entity', async () => {
+  it('full name with ambiguous surname returns not_found without player_profiles', async () => {
     const service = createChatService(createFakeQueryService({
       playerCandidates: [
         { player_id: '91895133', name: '山田', primary_team: 'ヤクルト', roles: ['batter'], teams: ['ヤクルト'], years: [2025] },
@@ -594,18 +585,12 @@ describe('chat-service', () => {
 
     const response = await service.answerQuestion('2025年に山田哲人が打ったホームラン一覧')
 
+    // "山田哲人" is a full name (3+ chars) that matches >1 surname-only candidates → not_found
     expect(response.answer.resolved_player).toMatchObject({
       input: '山田哲人',
-      player_id: '91895133',
-      name: '山田',
-      primary_team: 'ヤクルト',
-      status: 'resolved',
+      status: 'not_found',
     })
-    expect(response.structured_query.filters).toMatchObject({
-      batter_name: '山田',
-      batter_player_id: '91895133',
-    })
-    expect(response.answer.result_count).toBe(1)
+    expect(response.answer.result_count).toBe(0)
   })
 
   it('resolves a team-qualified same-surname player to one entity', async () => {
@@ -682,15 +667,43 @@ describe('chat-service', () => {
       player_id: 'murakami',
       status: 'resolved',
     })
+    // year shifts 2026→2025 because candidate.years=[2025] does not include 2026
     expect(response.structured_query.filters).toMatchObject({
-      year: 2026,
+      year: 2025,
       team: 'ヤクルト',
       player_name: '村上',
       player_id: 'murakami',
     })
     expect(response.answer.result_count).toBe(0)
-    expect(response.answer.summary).toBe('条件に一致する打撃成績は見つかりませんでした。DB結果にないため、推測では回答しません。')
+    expect(response.answer.summary).toContain('2026年はNPBに在籍していない')
     expect(response.answer.summary).not.toContain('選手を特定できない')
+  })
+
+  it('returns ambiguous when year-filtered search yields one candidate but broad search finds multiple (surname ambiguity)', async () => {
+    // Simulates "村上宗隆 vs 村上頌樹": year-filtered search only sees 村上頌樹 (stored as "村上 頌樹")
+    // but broad search reveals both. The old code used selectCandidatesForInput on the broad
+    // results which only counted exact name "村上" matches (村上宗隆), missing 村上頌樹 (name "村上 頌樹").
+    const service = createChatService(createFakeQueryService({
+      playerCandidatesForFilters: (filters) => filters.year === 2026
+        ? [{ player_id: '13315153', name: '村上 頌樹', primary_team: '阪神', roles: ['batter'], teams: ['阪神'], years: [2026] }]
+        : [
+            { player_id: '13315153', name: '村上 頌樹', primary_team: '阪神', roles: ['batter'], teams: ['阪神'], years: [2025, 2026] },
+            { player_id: '11111111', name: '村上宗隆', primary_team: 'ヤクルト', roles: ['batter'], teams: ['ヤクルト'], years: [2022, 2023, 2024, 2025, 2026] },
+          ],
+    }), {
+      parseStructuredQueryFromMessage: async () => ({
+        intent: 'aggregate_batting',
+        filters: { year: 2026, player_name: '村上' },
+      }),
+    })
+
+    const response = await service.answerQuestion('村上の今シーズン成績')
+
+    expect(response.answer.resolved_player).toMatchObject({
+      input: '村上',
+      status: 'ambiguous',
+    })
+    expect(response.answer.result_count).toBe(0)
   })
 
   it('does not call generateFinalAnswer when result_count is 0 with a resolved player', async () => {
@@ -973,6 +986,7 @@ function createFakeQueryService(options: {
     aggregateBattingLines: async () => [],
     aggregatePitchingLines: async () => [],
     aggregateEvents: async () => [],
+    aggregateGameResults: async () => [],
     searchPlayerCandidates: async (filters) => options.playerCandidatesForFilters?.(filters) ?? options.playerCandidates ?? (
       filters.name === '存在しない選手'
         ? []

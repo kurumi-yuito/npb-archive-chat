@@ -5,6 +5,7 @@ export {
 export {
   aggregateBattingLines,
   aggregateEvents,
+  aggregateGameResults,
   aggregatePitchingLines,
   type AggregateRow,
 } from './aggregate-repository'
@@ -45,6 +46,7 @@ export {
   searchRosterEntries,
   type RosterEntryRow,
 } from './roster-repository'
+export { canonicalTeamName } from './team-name-utils'
 export {
   listSourceSnapshotsByGameIds,
   type SourceSnapshotRow,

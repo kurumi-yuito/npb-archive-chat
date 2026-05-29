@@ -226,12 +226,22 @@ export const aggregatePitchingFiltersSchema = searchPitchingLinesFiltersSchema.o
 }).extend({
   limit: z.number().int().positive().max(100).optional(),
   sort_by: z.enum(['era', 'whip', 'strikeouts', 'wins', 'games', 'inningsPitched', 'hitsAllowed', 'walks', 'earnedRuns']).optional(),
+  min_innings_per_start: z.number().nonnegative().optional(),
+  max_earned_runs_per_start: z.number().nonnegative().optional(),
 })
 
 export const aggregateEventsFiltersSchema = searchEventsFiltersSchema.omit({
   limit: true,
 }).extend({
   limit: z.number().int().positive().max(100).optional(),
+})
+
+export const aggregateGamesFiltersSchema = z.object({
+  year: z.number().int().min(1936).max(2099).optional(),
+  year_from: z.number().int().min(1936).max(2099).optional(),
+  year_to: z.number().int().min(1936).max(2099).optional(),
+  team: z.string().min(1).max(40).optional(),
+  limit: z.number().int().positive().max(30).optional(),
 })
 
 export const chatIntentSchema = z.enum([
@@ -245,6 +255,7 @@ export const chatIntentSchema = z.enum([
   'aggregate_batting',
   'aggregate_pitching',
   'aggregate_events',
+  'aggregate_games',
 ])
 
 export const chatHistoryMessageSchema = z.object({
@@ -366,6 +377,10 @@ export const chatStructuredQuerySchema = z.discriminatedUnion('intent', [
     filters: aggregateEventsFiltersSchema,
   }),
   z.object({
+    intent: z.literal('aggregate_games'),
+    filters: aggregateGamesFiltersSchema,
+  }),
+  z.object({
     intent: z.literal('off_topic'),
     filters: z.object({}),
   }),
@@ -404,9 +419,9 @@ export const chatResponseSchema = z.object({
         sequence: z.number().int().nonnegative(),
         inning: z.number().int().positive(),
         half: inningHalfSchema,
-        offenseTeam: z.string().min(1),
-        eventType: playByPlayEventTypeSchema,
-        eventSubtype: playByPlayEventSubtypeSchema,
+        offenseTeam: z.string(),
+        eventType: z.string().min(1),
+        eventSubtype: z.string().min(1),
         batterName: z.string().nullable(),
         pitcherName: z.string().nullable(),
         runnerName: z.string().nullable(),
@@ -501,7 +516,7 @@ export const chatResponseSchema = z.object({
     ),
     aggregates: z.array(
       z.object({
-        kind: z.enum(['batting', 'pitching', 'events']),
+        kind: z.enum(['batting', 'pitching', 'events', 'games']),
         label: z.string().min(1),
         total: z.number().int().nonnegative(),
         stats: z.record(z.union([z.string(), z.number(), z.null()])),
@@ -783,6 +798,7 @@ export type GameDetailFilters = z.infer<typeof gameDetailFiltersSchema>
 export type AggregateBattingFilters = z.infer<typeof aggregateBattingFiltersSchema>
 export type AggregatePitchingFilters = z.infer<typeof aggregatePitchingFiltersSchema>
 export type AggregateEventsFilters = z.infer<typeof aggregateEventsFiltersSchema>
+export type AggregateGamesFilters = z.infer<typeof aggregateGamesFiltersSchema>
 export type ChatIntent = z.infer<typeof chatIntentSchema>
 export type ChatRequest = z.infer<typeof chatRequestSchema>
 export type ChatPlan = z.infer<typeof chatPlanSchema>

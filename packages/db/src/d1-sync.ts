@@ -34,6 +34,7 @@ const IMPORT_TABLES = [
   'player_pitching_stats',
   'player_fielding_stats',
   'team_monthly_results',
+  'player_profiles',
 ] as const
 
 type ImportTable = (typeof IMPORT_TABLES)[number]

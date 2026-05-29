@@ -6,6 +6,7 @@ import {
   type SearchEventsFilters,
 } from '@npb/schemas'
 import type { QueryDatabase } from '../query-driver'
+import { toEnglishLeagueTeams } from './team-name-utils'
 
 export type EventRow = {
   gameId: string
@@ -105,8 +106,14 @@ export async function searchEvents(
   }
 
   if (normalizedFilters.team) {
-    clauses.push('events.offense_team = ?')
-    values.push(normalizedFilters.team)
+    const leagueTeams = toEnglishLeagueTeams(normalizedFilters.team)
+    if (leagueTeams) {
+      clauses.push(`events.offense_team IN (${leagueTeams.map(() => '?').join(', ')})`)
+      values.push(...leagueTeams)
+    } else {
+      clauses.push('events.offense_team = ?')
+      values.push(normalizedFilters.team)
+    }
   }
 
   if (normalizedFilters.batter_name) {

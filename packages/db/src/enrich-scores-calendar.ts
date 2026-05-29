@@ -237,17 +237,12 @@ export async function runScoresCalendarEnrichment(
         )
       }
 
-      // Farm games have their canonicalUrl set to a BIS English fs*.html page, not a scores page.
-      // Ignore the non-scores canonical URL for farm games and derive scores URL from game ID instead.
-      const canonicalScoresBaseUrl = isFarmGameId(game.gameId)
-        ? null
-        : buildScoresBaseUrlFromCanonicalUrl(game.canonicalUrl)
-      if (game.canonicalUrl && !canonicalScoresBaseUrl && !isFarmGameId(game.gameId)) {
-        const reason = duplicateGroupsWithScores.has(duplicateGroupKey(game) ?? '')
-          ? 'duplicate_or_reversed_game'
-          : 'scores_canonical_not_available'
-        failures.push({ date: game.date, gameId: game.gameId, stage: 'skip', reason })
-        logger.error(`[scores:skipped] date=${game.date} game_id=${game.gameId} stage=skip reason=${reason}`)
+      // Non-scores canonical URLs (e.g. BIS English pages) are set for both farm and regular games.
+      // In all cases, derive the scores URL from game_id when canonical URL is not a scores page.
+      const canonicalScoresBaseUrl = buildScoresBaseUrlFromCanonicalUrl(game.canonicalUrl)
+      if (!canonicalScoresBaseUrl && duplicateGroupsWithScores.has(duplicateGroupKey(game) ?? '')) {
+        failures.push({ date: game.date, gameId: game.gameId, stage: 'skip', reason: 'duplicate_or_reversed_game' })
+        logger.error(`[scores:skipped] date=${game.date} game_id=${game.gameId} stage=skip reason=duplicate_or_reversed_game`)
         continue
       }
 

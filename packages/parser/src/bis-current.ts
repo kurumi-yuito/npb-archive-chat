@@ -226,3 +226,40 @@ function inferGameDate(year: number, month: number, text: string): string | null
   }
   return `${year}-${String(month).padStart(2, '0')}-${match[1].padStart(2, '0')}`
 }
+
+export type BisPlayerProfile = {
+  playerId: string
+  fullName: string
+  teamName: string | null
+  yearTeamsJson: string
+  sourceUrl: string
+}
+
+export function parseBisPlayerProfileHtml(html: string, playerId: string, sourceUrl: string): BisPlayerProfile | null {
+  const titleMatch = html.match(/<title>([^<]+)<\/title>/i)
+  if (!titleMatch) return null
+  // Title: "牧　秀悟（横浜DeNAベイスターズ） | 個人年度別成績 | NPB.jp 日本野球機構"
+  // cleanText converts U+3000 (全角スペース) to regular space
+  const titleText = cleanText(titleMatch[1])
+  const nameTeamMatch = titleText.match(/^([^（(|]+?)(?:（([^）)]+)）)?\s*(?:\|.*)?$/)
+  if (!nameTeamMatch) return null
+  const fullName = nameTeamMatch[1].trim()
+  if (!fullName) return null
+  const teamName = nameTeamMatch[2]?.trim() ?? null
+
+  const yearTeams: Record<string, string> = {}
+  for (const table of parseDataTables(html)) {
+    const yearIdx = table.headers.findIndex((h) => h === '年度')
+    const teamIdx = table.headers.findIndex((h) => h.includes('球団') || h === '所属')
+    if (yearIdx < 0 || teamIdx < 0) continue
+    for (const row of table.rows) {
+      const year = row.cells[yearIdx]?.text
+      const team = row.cells[teamIdx]?.text
+      if (year && /^\d{4}$/u.test(year) && team && team !== '計') {
+        yearTeams[year] = team
+      }
+    }
+  }
+
+  return { playerId, fullName, teamName, yearTeamsJson: JSON.stringify(yearTeams), sourceUrl }
+}

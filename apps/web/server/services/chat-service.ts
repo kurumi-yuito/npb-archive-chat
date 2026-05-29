@@ -1,5 +1,8 @@
 import {
   chatResponseCoreSchema,
+  aggregateGamesFiltersSchema,
+  type AggregateBattingFilters,
+  type AggregatePitchingFilters,
   type ChatRequest,
   type ChatResponseCore,
   type ChatStructuredQuery,
@@ -53,9 +56,10 @@ export function createChatService(
       message: string,
       options: { history?: ChatRequest['history'] } = {},
     ): Promise<ChatResponseCore> {
-      const parsedQuery = normalizeStructuredQuery(await queryParser(message, {
+      const rawParsedQuery = normalizeStructuredQuery(await queryParser(message, {
         history: options.history,
       }))
+      const parsedQuery = rewriteToAggregateGamesIfNeeded(message, rawParsedQuery)
 
       if (parsedQuery.intent === 'off_topic') {
         return chatResponseCoreSchema.parse({
@@ -82,7 +86,7 @@ export function createChatService(
 
       const resolved = await resolvePlayer(queryService, parsedQuery)
       let structuredQuery = resolved.structuredQuery
-      const playerResolution = resolved.resolution
+      let playerResolution = resolved.resolution
 
       const emptyResults: ChatResponseCore['results'] = {
         events: [],
@@ -121,7 +125,206 @@ export function createChatService(
                         ? { ...emptyResults, aggregates: await queryService.aggregateBattingLines(structuredQuery.filters) }
                         : structuredQuery.intent === 'aggregate_pitching'
                           ? { ...emptyResults, aggregates: await queryService.aggregatePitchingLines(structuredQuery.filters) }
-                          : { ...emptyResults, aggregates: await queryService.aggregateEvents(structuredQuery.filters) }
+                          : structuredQuery.intent === 'aggregate_events'
+                            ? { ...emptyResults, aggregates: await queryService.aggregateEvents(structuredQuery.filters) }
+                            : { ...emptyResults, aggregates: await queryService.aggregateGameResults(structuredQuery.filters) }
+
+      // Year-walk fallback for not_found: when player resolution failed (e.g. ambiguous surname
+      // across all years), try resolving in progressively older years where the player may have
+      // been the sole bearer of that name in the data.
+      if (
+        playerResolution?.status === 'not_found' &&
+        (structuredQuery.intent === 'aggregate_pitching' || structuredQuery.intent === 'aggregate_batting')
+      ) {
+        const aggFilters = structuredQuery.filters as Record<string, unknown>
+        const requestedYear = (aggFilters.year as number | undefined) ?? new Date().getFullYear()
+        for (let y = requestedYear - 1; y >= 2016; y--) {
+          const yearQuery = {
+            ...structuredQuery,
+            filters: { ...structuredQuery.filters, year: y, year_from: undefined, year_to: undefined },
+          } as ChatStructuredQuery
+          const yearResolved = await resolvePlayer(queryService, yearQuery)
+          if (yearResolved.resolution?.status === 'resolved') {
+            const resolvedQuery = yearResolved.structuredQuery
+            if (resolvedQuery.intent === 'aggregate_pitching') {
+              results = { ...emptyResults, aggregates: await queryService.aggregatePitchingLines(resolvedQuery.filters) }
+            } else if (resolvedQuery.intent === 'aggregate_batting') {
+              results = { ...emptyResults, aggregates: await queryService.aggregateBattingLines(resolvedQuery.filters) }
+            }
+            structuredQuery = resolvedQuery
+            playerResolution = {
+              ...yearResolved.resolution,
+              yearShiftNote: `${requestedYear}年のデータはデータベースに未登録のため、代わりに最終確認年（${y}年）のデータを表示します。`,
+            }
+            break
+          }
+        }
+      }
+
+      if (
+        !shouldSkipForPlayerResolution(playerResolution) &&
+        structuredQuery.intent === 'aggregate_batting' &&
+        results.aggregates.length === 0
+      ) {
+        const aggFilters = structuredQuery.filters as Record<string, unknown>
+        if (aggFilters.player_name) {
+          const fallbackBatting = await queryService.searchBattingLines({
+            player_name: aggFilters.player_name as string,
+            ...(aggFilters.team ? { team: aggFilters.team as string } : {}),
+            ...(aggFilters.year ? { year: aggFilters.year as number } : {}),
+            ...(aggFilters.year_from ? { year_from: aggFilters.year_from as number } : {}),
+            ...(aggFilters.year_to ? { year_to: aggFilters.year_to as number } : {}),
+            limit: 50,
+          })
+          if (fallbackBatting.length > 0) {
+            structuredQuery = { intent: 'search_batting', filters: {
+              player_name: aggFilters.player_name as string,
+              ...(aggFilters.team ? { team: aggFilters.team as string } : {}),
+              ...(aggFilters.year ? { year: aggFilters.year as number } : {}),
+              ...(aggFilters.year_from ? { year_from: aggFilters.year_from as number } : {}),
+              ...(aggFilters.year_to ? { year_to: aggFilters.year_to as number } : {}),
+              limit: 50,
+            }}
+            results = { ...emptyResults, batting: fallbackBatting }
+          }
+        } else if (aggFilters.result_text_contains) {
+          // e.g. 得点圏打率 → result_text_contains='得点圏' yields 0 results; retry without that filter
+          const retryAggregates = await queryService.aggregateBattingLines({
+            ...(aggFilters.year ? { year: aggFilters.year as number } : {}),
+            ...(aggFilters.year_from ? { year_from: aggFilters.year_from as number } : {}),
+            ...(aggFilters.year_to ? { year_to: aggFilters.year_to as number } : {}),
+            ...(aggFilters.team ? { team: aggFilters.team as string } : {}),
+            ...(aggFilters.sort_by ? { sort_by: aggFilters.sort_by as AggregateBattingFilters['sort_by'] } : {}),
+            ...(aggFilters.limit ? { limit: aggFilters.limit as number } : {}),
+          })
+          if (retryAggregates.length > 0) {
+            structuredQuery = {
+              intent: 'aggregate_batting',
+              filters: {
+                ...(aggFilters.year ? { year: aggFilters.year as number } : {}),
+                ...(aggFilters.year_from ? { year_from: aggFilters.year_from as number } : {}),
+                ...(aggFilters.year_to ? { year_to: aggFilters.year_to as number } : {}),
+                ...(aggFilters.team ? { team: aggFilters.team as string } : {}),
+                ...(aggFilters.sort_by ? { sort_by: aggFilters.sort_by as AggregateBattingFilters['sort_by'] } : {}),
+                ...(aggFilters.limit ? { limit: aggFilters.limit as number } : {}),
+              },
+            }
+            results = { ...emptyResults, aggregates: retryAggregates }
+          }
+        }
+      }
+
+      if (
+        !shouldSkipForPlayerResolution(playerResolution) &&
+        playerResolution !== null &&
+        playerResolution.status === 'resolved' &&
+        structuredQuery.intent === 'aggregate_batting' &&
+        results.aggregates.length === 0 &&
+        results.batting.length === 0
+      ) {
+        const aggFilters = structuredQuery.filters as Record<string, unknown>
+        const requestedYear = aggFilters.year as number | undefined
+        if (requestedYear) {
+          const candidateYears = playerResolution.candidates
+            .flatMap((c) => c.years)
+            .filter((y) => y < requestedYear)
+          if (candidateYears.length > 0) {
+            const latestPriorYear = Math.max(...candidateYears)
+            const shiftedFilters = { ...aggFilters, year: latestPriorYear } as AggregateBattingFilters
+            const shiftedAggregates = await queryService.aggregateBattingLines(shiftedFilters)
+            if (shiftedAggregates.length > 0) {
+              structuredQuery = { intent: 'aggregate_batting', filters: shiftedFilters }
+              results = { ...emptyResults, aggregates: shiftedAggregates }
+              playerResolution = {
+                ...playerResolution,
+                yearShiftNote: `${requestedYear}年のデータはデータベースに未登録のため、代わりに最終確認年（${latestPriorYear}年）のデータを表示します。`,
+              }
+            }
+          }
+        }
+      }
+
+      if (
+        !shouldSkipForPlayerResolution(playerResolution) &&
+        structuredQuery.intent === 'aggregate_pitching' &&
+        results.aggregates.length === 0
+      ) {
+        const aggFilters = structuredQuery.filters as Record<string, unknown>
+        if (aggFilters.pitcher_name || aggFilters.player_name) {
+          const pitcherName = (aggFilters.pitcher_name ?? aggFilters.player_name) as string
+          const fallbackPitching = await queryService.searchPitchingLines({
+            pitcher_name: pitcherName,
+            ...(aggFilters.team ? { team: aggFilters.team as string } : {}),
+            ...(aggFilters.year ? { year: aggFilters.year as number } : {}),
+            ...(aggFilters.year_from ? { year_from: aggFilters.year_from as number } : {}),
+            ...(aggFilters.year_to ? { year_to: aggFilters.year_to as number } : {}),
+            limit: 20,
+          })
+          if (fallbackPitching.length > 0) {
+            structuredQuery = {
+              intent: 'search_pitching',
+              filters: {
+                pitcher_name: pitcherName,
+                ...(aggFilters.team ? { team: aggFilters.team as string } : {}),
+                ...(aggFilters.year ? { year: aggFilters.year as number } : {}),
+                ...(aggFilters.year_from ? { year_from: aggFilters.year_from as number } : {}),
+                ...(aggFilters.year_to ? { year_to: aggFilters.year_to as number } : {}),
+                limit: 20,
+              },
+            }
+            results = { ...emptyResults, pitching: fallbackPitching }
+          }
+        }
+      }
+
+      if (
+        !shouldSkipForPlayerResolution(playerResolution) &&
+        playerResolution !== null &&
+        playerResolution.status === 'resolved' &&
+        structuredQuery.intent === 'aggregate_pitching' &&
+        results.aggregates.length === 0 &&
+        results.pitching.length === 0
+      ) {
+        const aggFilters = structuredQuery.filters as Record<string, unknown>
+        const requestedYear = aggFilters.year as number | undefined
+        if (requestedYear) {
+          const candidateYears = playerResolution.candidates
+            .flatMap((c) => c.years)
+            .filter((y) => y < requestedYear)
+          if (candidateYears.length > 0) {
+            const latestPriorYear = Math.max(...candidateYears)
+            const shiftedFilters = { ...aggFilters, year: latestPriorYear } as AggregatePitchingFilters
+            const shiftedAggregates = await queryService.aggregatePitchingLines(shiftedFilters)
+            if (shiftedAggregates.length > 0) {
+              structuredQuery = { intent: 'aggregate_pitching', filters: shiftedFilters }
+              results = { ...emptyResults, aggregates: shiftedAggregates }
+              playerResolution = {
+                ...playerResolution,
+                yearShiftNote: `${requestedYear}年のデータはデータベースに未登録のため、代わりに最終確認年（${latestPriorYear}年）のデータを表示します。`,
+              }
+            }
+          }
+        }
+      }
+
+      if (
+        !shouldSkipForPlayerResolution(playerResolution) &&
+        structuredQuery.intent === 'game_detail' &&
+        results.gameDetails.length === 0 &&
+        structuredQuery.filters.game_date
+      ) {
+        const fallbackGames = await queryService.searchGames({
+          game_date: structuredQuery.filters.game_date,
+          limit: 12,
+        })
+        if (fallbackGames.length > 0) {
+          structuredQuery = {
+            intent: 'search_games',
+            filters: { game_date: structuredQuery.filters.game_date, limit: 12 },
+          }
+          results = { ...emptyResults, games: fallbackGames }
+        }
+      }
 
       if (!shouldSkipForPlayerResolution(playerResolution) && structuredQuery.intent === 'game_detail') {
         const gameDate = results.gameDetails[0]?.date
@@ -234,8 +437,11 @@ function shouldUseFinalAnswerLlm(
   core: ChatResponseCore,
   resolution: PlayerResolution | null,
 ): boolean {
-  if (shouldSkipForPlayerResolution(resolution)) {
+  if (resolution?.status === 'ambiguous') {
     return false
+  }
+  if (resolution?.status === 'not_found') {
+    return true
   }
   if (core.answer.result_count === 0) {
     return false
@@ -335,5 +541,37 @@ async function searchGameDetailsFromEventQuery(
       gameDetails,
       events: await searchGameDetailEventsForChat(queryService, gameDetails),
     },
+  }
+}
+
+const WIN_LOSS_PATTERN = /チームの勝利数|チームの勝ち数|チームの勝ち星|チームの敗北数|チームの負け数|チームの引き分け数|チームの勝敗|何勝何敗|(?:\d+)?勝(?:\d+)?敗|勝利数|勝ち星|勝ち数|敗北数|負け数|引き分け数|何勝|何敗/u
+
+function rewriteToAggregateGamesIfNeeded(
+  message: string,
+  query: ChatStructuredQuery,
+): ChatStructuredQuery {
+  if (query.intent === 'aggregate_games') {
+    return query
+  }
+  if (query.intent === 'aggregate_pitching' || query.intent === 'search_pitching') {
+    return query
+  }
+  if (!WIN_LOSS_PATTERN.test(message)) {
+    return query
+  }
+  const filters = query.filters as Record<string, unknown>
+  if (filters.pitcher_name || filters.player_name) {
+    return query
+  }
+  const team = typeof filters.team === 'string' ? filters.team : undefined
+  if (!team) {
+    return query
+  }
+  const year = typeof filters.year === 'number' ? filters.year : undefined
+  const year_from = typeof filters.year_from === 'number' ? filters.year_from : undefined
+  const year_to = typeof filters.year_to === 'number' ? filters.year_to : undefined
+  return {
+    intent: 'aggregate_games',
+    filters: aggregateGamesFiltersSchema.parse({ year, year_from, year_to, team }),
   }
 }
