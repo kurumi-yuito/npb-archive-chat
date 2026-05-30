@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import {
+  classifyBisCurrentIssue,
   parseUpdateDailyArgs,
   resolveDailyDateRange,
+  type UpdateDailyIssue,
 } from './update-daily'
 
 describe('update-daily', () => {
@@ -34,26 +36,26 @@ describe('update-daily', () => {
     })
   })
 
-  it('uses the last three JST dates by default', () => {
+  it('uses the last three JST dates ending yesterday by default', () => {
     expect(
       resolveDailyDateRange({
         now: new Date('2026-05-02T16:00:00.000Z'),
       }),
     ).toEqual({
-      from: '2026-05-01',
-      to: '2026-05-03',
+      from: '2026-04-30',
+      to: '2026-05-02',
     })
   })
 
-  it('resolves --days as an inclusive JST range ending today', () => {
+  it('resolves --days as an inclusive JST range ending yesterday', () => {
     expect(
       resolveDailyDateRange({
         days: 5,
         now: new Date('2026-05-03T00:00:00.000Z'),
       }),
     ).toEqual({
-      from: '2026-04-29',
-      to: '2026-05-03',
+      from: '2026-04-28',
+      to: '2026-05-02',
     })
   })
 
@@ -64,5 +66,37 @@ describe('update-daily', () => {
     expect(() => resolveDailyDateRange({ from: '2025-04-06', to: '2025-04-05' })).toThrow(
       /after --to/,
     )
+  })
+
+  it('treats BIS current failures as non-strict warnings', () => {
+    const warnings: UpdateDailyIssue[] = []
+    const errors: UpdateDailyIssue[] = []
+
+    classifyBisCurrentIssue(2026, new Error('fetch failed'), false, warnings, errors)
+
+    expect(errors).toEqual([])
+    expect(warnings).toEqual([
+      {
+        year: 2026,
+        stage: 'update:bis-current',
+        reason: 'fetch failed',
+      },
+    ])
+  })
+
+  it('treats BIS current failures as strict errors', () => {
+    const warnings: UpdateDailyIssue[] = []
+    const errors: UpdateDailyIssue[] = []
+
+    classifyBisCurrentIssue(2026, new Error('fetch failed'), true, warnings, errors)
+
+    expect(warnings).toEqual([])
+    expect(errors).toEqual([
+      {
+        year: 2026,
+        stage: 'update:bis-current',
+        reason: 'fetch failed',
+      },
+    ])
   })
 })

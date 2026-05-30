@@ -18,6 +18,8 @@ import { withTransaction } from './sqlite'
 
 const DEFAULT_SQLITE_DIR = 'data'
 const DEFAULT_USER_AGENT = 'npb-archive-chat/0.1 (+https://npb.jp/)'
+const BIS_FETCH_ATTEMPTS = 3
+const BIS_FETCH_RETRY_DELAY_MS = 750
 
 export const BIS_TEAMS: BisTeamInfo[] = [
   { teamId: 'g', teamName: '読売ジャイアンツ' },
@@ -296,13 +298,45 @@ async function fetchOrReadRaw(url: string, key: string, storage: ObjectStorage, 
   if (existing?.trim()) {
     return existing
   }
-  const response = await fetch(url, { headers: { 'user-agent': userAgent ?? DEFAULT_USER_AGENT } })
-  if (!response.ok) {
-    throw new Error(`BIS fetch failed: ${response.status} ${url}`)
+
+  let lastError: unknown
+  for (let attempt = 1; attempt <= BIS_FETCH_ATTEMPTS; attempt += 1) {
+    try {
+      const response = await fetch(url, { headers: { 'user-agent': userAgent ?? DEFAULT_USER_AGENT } })
+      if (response.ok) {
+        const html = await response.text()
+        await storage.putText(key, html, 'text/html; charset=utf-8')
+        return html
+      }
+      lastError = new Error(`HTTP ${response.status}`)
+      if (!isRetryableBisFetchStatus(response.status) || attempt === BIS_FETCH_ATTEMPTS) {
+        break
+      }
+    } catch (error) {
+      lastError = error
+      if (attempt === BIS_FETCH_ATTEMPTS) {
+        break
+      }
+    }
+    await sleep(BIS_FETCH_RETRY_DELAY_MS * attempt)
   }
-  const html = await response.text()
-  await storage.putText(key, html, 'text/html; charset=utf-8')
-  return html
+
+  throw new Error(`BIS fetch failed after ${BIS_FETCH_ATTEMPTS} attempts: ${url} (${formatBisFetchError(lastError)})`)
+}
+
+function isRetryableBisFetchStatus(status: number): boolean {
+  return status === 408 || status === 429 || status >= 500
+}
+
+function formatBisFetchError(error: unknown): string {
+  if (error instanceof Error) {
+    return error.message
+  }
+  return String(error)
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
 function selectTeams(team: string | undefined): BisTeamInfo[] {

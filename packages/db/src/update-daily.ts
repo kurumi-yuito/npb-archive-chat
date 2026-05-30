@@ -296,7 +296,7 @@ export async function runDailyUpdate(options: UpdateDailyArgs): Promise<UpdateDa
           r2Endpoint: options.r2Endpoint,
         })
       } catch (error) {
-        errors.push(createIssue(yearRange.year, 'update:bis-current', error))
+        classifyBisCurrentIssue(yearRange.year, error, options.strict === true, warnings, errors)
       }
     }
 
@@ -363,9 +363,10 @@ export function resolveDailyDateRange(
 
   const days = options.days ?? DEFAULT_DAYS
   const today = formatJstDate(options.now ?? new Date())
+  const to = addDays(today, -1)
   return {
-    from: addDays(today, -(days - 1)),
-    to: today,
+    from: addDays(to, -(days - 1)),
+    to,
   }
 }
 
@@ -444,6 +445,21 @@ function classifyEnrichmentIssues(
     } else {
       errors.push(issue)
     }
+  }
+}
+
+export function classifyBisCurrentIssue(
+  year: number,
+  error: unknown,
+  strict: boolean,
+  warnings: UpdateDailyIssue[],
+  errors: UpdateDailyIssue[],
+): void {
+  const issue = createIssue(year, 'update:bis-current', error)
+  if (strict) {
+    errors.push(issue)
+  } else {
+    warnings.push(issue)
   }
 }
 
