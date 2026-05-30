@@ -169,10 +169,10 @@ function detectYearShift(
   }
   const latestYear = Math.max(...candidate.years)
   const yearGap = requestedYear - latestYear
-  // Gap ≥ 2 years: the player has likely left NPB (MLB transfer, retirement, etc.)
-  // Gap = 1: the player may still be in NPB with delayed box-score data
-  const note = yearGap >= 2
-    ? `${requestedYear}年はNPBには在籍していないため、代わりに最終在籍年（${latestYear}年）のデータを表示します。`
+  // Requested-year data is expected to be complete for the covered period; if the
+  // player only appears in older years, treat it as a non-roster year and shift.
+  const note = yearGap >= 1
+    ? `${requestedYear}年はNPBに在籍していないため、代わりに最終在籍年（${latestYear}年）のデータを表示します。`
     : `${requestedYear}年のデータはデータベースに未登録のため、代わりに最終確認年（${latestYear}年）のデータを表示します。`
   return { targetYear: latestYear, note }
 }
@@ -333,14 +333,7 @@ function selectCandidatesForInput(
     const collapsed = collapseSameEntityFallbacks(surnameMatches)
     // Full-name input (3+ chars) that matches multiple surname-only candidates is ambiguous
     // — events tables often store just the surname (e.g. "村上" for both 村上頌樹 and 村上宗隆).
-    // When collapsed to a single candidate (already disambiguated by team/profile), trust it.
     if (inputKey.length > 2 && collapsed.length > 1) {
-      // If profile filtering already removed all player_id candidates but one, that one is
-      // the best match — no-id surname rows from unrelated players sharing the surname.
-      const idCandidates = collapsed.filter((c) => c.player_id)
-      if (idCandidates.length === 1) {
-        return idCandidates
-      }
       return []
     }
     // A full-name input (3+ chars) that falls back to a single surname-only no-player_id

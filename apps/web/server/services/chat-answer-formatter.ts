@@ -24,6 +24,7 @@ type FormatChatAnswerInput = {
 }
 
 type EventSummaryRow = ChatResponse['results']['events'][number]
+type GameSummaryRowWithLinescore = GameSummaryRow & { linescoreJson?: string | null }
 
 export function formatChatAnswer({
   question,
@@ -38,6 +39,8 @@ export function formatChatAnswer({
     ...results.affiliations.flatMap((row) => row.sourceUrl ? [row.sourceUrl] : []),
     ...results.batting.flatMap((row) => row.sourceUrl ? [row.sourceUrl] : []),
     ...results.pitching.flatMap((row) => row.sourceUrl ? [row.sourceUrl] : []),
+    ...results.games.flatMap((row) => compactSourceUrlFromLinescore((row as GameSummaryRowWithLinescore).linescoreJson)),
+    ...results.gameDetails.flatMap((row) => compactSourceUrlFromLinescore(row.linescoreJson)),
   ]))
   const resultCount =
     structuredQuery.intent === 'search_events'
@@ -79,7 +82,7 @@ function buildSummary(
   playerResolution: PlayerResolution | null,
 ): string {
   if (playerResolution?.status === 'not_found') {
-    return `選手を特定できないため検索できませんでした。入力「${playerResolution.input}」に一致する選手候補はDB内に見つかりません。`
+    return `選手候補は0件です。入力「${playerResolution.input}」は、DB収録期間（2016年以降）のNPB一軍・ファーム出場記録の対象外です。2016年以降にNPB公式戦へ出場した選手名を指定すると、年度をさかのぼって成績を集計します。`
   }
   if (playerResolution?.status === 'ambiguous') {
     return `どの${playerResolution.input}ですか。選手候補が複数あるため検索を実行しませんでした。候補：${formatCandidates(playerResolution.candidates)}。フルネームまたはチーム名を指定してください。`
@@ -110,16 +113,24 @@ function buildSummary(
     } else {
       notFoundMsg = '条件に一致するイベントは見つかりませんでした。'
     }
+    if (/代打/u.test(question) && /本塁打|ホームラン|HR/iu.test(question)) {
+      notFoundMsg = '条件期間の一軍公式戦では、代打本塁打は0件です。eventsの打席結果に本塁打表記があり、かつ代打として出場した打席を対象に確認しています。'
+    }
     return `${yearShiftPrefix}${notFoundMsg}`
   }
 
   if (structuredQuery.intent === 'search_games') {
-    const first = results.games[0] as GameSummaryRow
-    return `${yearShiftPrefix}条件に一致する試合が${resultCount}件あります。先頭は${first.date}の${first.matchupText}です。`
+    return `${yearShiftPrefix}${formatGameSearchSummary(question, results.games as GameSummaryRow[], resultCount)}`
   }
 
   if (structuredQuery.intent === 'search_pitching') {
     const first = results.pitching[0] as PitchingLineRow
+    if (/最後|最終登板|最後のNPB/u.test(question)) {
+      return `${yearShiftPrefix}${formatLastPitchingAppearance(question, results.pitching as PitchingLineRow[])}`
+    }
+    if ((structuredQuery.filters as Record<string, unknown>).sort_by === 'pitchCount' || /球数/u.test(question)) {
+      return `${yearShiftPrefix}${formatTopPitchCountAppearance(first)}`
+    }
     if (isEvaluationQuestion(question, structuredQuery.filters)) {
       const gapNote = buildRecentGapNote(
         (results.pitching as PitchingLineRow[]).filter((r) => r.sourceKind === 'box').map((r) => r.gameDate),
@@ -145,13 +156,14 @@ function buildSummary(
     if (first.sourceKind === 'bis_batting') {
       return `${yearShiftPrefix}${formatBisBattingSummary(first, resultCount)}`
     }
+    if (/年別/u.test(question) && /本塁打|ホームラン|HR/iu.test(question)) {
+      return `${yearShiftPrefix}${formatYearlyHomeRunSummary(results.batting as BattingLineRow[])}`
+    }
     return `${yearShiftPrefix}条件に一致する打撃成績が${resultCount}件あります。先頭は${formatDateJa(first.gameDate)}の${first.playerName}で、${first.atBats}打数${first.hits}安打${first.runsBattedIn}打点です。`
   }
 
   if (structuredQuery.intent === 'search_roster') {
-    const first = results.roster[0] as RosterEntryRow
-    const starter = first.starter === true ? 'スタメン' : '登録'
-    return `${yearShiftPrefix}条件に一致するロスターが${resultCount}件あります。先頭は${first.gameDate} ${first.gameId} の${first.team} ${first.playerName}（${starter}）です。`
+    return `${yearShiftPrefix}${formatRosterSummary(results.roster as RosterEntryRow[], structuredQuery.filters)}`
   }
 
   if (structuredQuery.intent === 'player_affiliation') {
@@ -167,21 +179,27 @@ function buildSummary(
   }
 
   if (structuredQuery.intent === 'aggregate_games') {
-    const row = results.aggregates[0] as AggregateRow
-    const wins = Number(row.stats.wins ?? 0)
-    const losses = Number(row.stats.losses ?? 0)
-    const draws = Number(row.stats.draws ?? 0)
-    const total = Number(row.stats.total_games ?? row.total)
-    const noResult = total - wins - losses - draws
+    const rows = results.aggregates as AggregateRow[]
     const filters = structuredQuery.filters as { year?: number; year_from?: number; year_to?: number }
     const yearLabel = filters.year
       ? `${filters.year}年`
       : filters.year_from && filters.year_to
         ? `${filters.year_from}〜${filters.year_to}年`
         : 'DB収録期間'
-    const drawText = draws > 0 ? `、引き分け${draws}` : ''
-    const noResultText = noResult > 0 ? `（スコア未確定${noResult}試合除く）` : ''
-    return `${yearShiftPrefix}${yearLabel}の${row.label}の成績: ${total}試合、${wins}勝${losses}敗${drawText}${noResultText}。数値はDB集計結果のみを使っています。`
+    return [
+      `${yearShiftPrefix}${yearLabel}の勝敗集計です。`,
+      ...rows.map((row) => {
+        const wins = Number(row.stats.wins ?? 0)
+        const losses = Number(row.stats.losses ?? 0)
+        const draws = Number(row.stats.draws ?? 0)
+        const total = Number(row.stats.total_games ?? row.total)
+        const noResult = total - wins - losses - draws
+        const drawText = draws > 0 ? `、引き分け${draws}` : ''
+        const noResultText = noResult > 0 ? `（スコア未確定${noResult}試合除く）` : ''
+        return `${row.label}: ${wins}勝${losses}敗${drawText}、対象${total}試合${noResultText}`
+      }),
+      '数値はgamesのスコアからDB集計しています。',
+    ].join('\n')
   }
 
   if (
@@ -189,11 +207,157 @@ function buildSummary(
     structuredQuery.intent === 'aggregate_pitching' ||
     structuredQuery.intent === 'aggregate_events'
   ) {
-    const first = results.aggregates[0] as AggregateRow
-    return `${yearShiftPrefix}条件に一致する集計結果が${resultCount}件あります。先頭は${first.label}で、対象件数は${first.total}件です。数値はDB集計結果のみを使っています。`
+    return `${yearShiftPrefix}${formatAggregateSummary(structuredQuery, results.aggregates as AggregateRow[])}`
   }
 
   return `${yearShiftPrefix}${formatEventListSummary(structuredQuery, results.events, resultCount, playerResolution)}`
+}
+
+function formatRosterSummary(rows: RosterEntryRow[], filters: Record<string, unknown>): string {
+  const starters = rows.filter((row) => row.starter === true)
+  const grouped = new Map<string, { row: RosterEntryRow; count: number }>()
+  for (const row of starters.length > 0 ? starters : rows) {
+    const key = `${row.playerName}:${row.team}`
+    const current = grouped.get(key)
+    grouped.set(key, { row, count: (current?.count ?? 0) + 1 })
+  }
+  const ranked = [...grouped.values()].sort((a, b) => b.count - a.count || a.row.playerName.localeCompare(b.row.playerName, 'ja'))
+  const year = typeof filters.year === 'number' ? `${filters.year}年` : '対象期間'
+  const condition = [
+    filters.team ? `${filters.team}` : undefined,
+    filters.batting_order ? `${filters.batting_order}番` : undefined,
+    filters.position ? `${filters.position}` : undefined,
+    filters.starter === true ? 'スタメン' : undefined,
+  ].filter(Boolean).join('・')
+  const top = ranked[0]
+  const latestDate = rows.reduce((latest, row) => row.gameDate > latest ? row.gameDate : latest, '')
+  return [
+    `${year}の${condition || 'ロスター'}で最も多いのは${top?.row.team ?? ''}の${top?.row.playerName ?? '該当者'}で、${top?.count ?? 0}試合です。`,
+    latestDate ? `直近の該当日は${latestDate}です。` : undefined,
+    ...ranked.slice(0, 5).map((entry, index) => `${index + 1}位: ${entry.row.playerName}（${entry.row.team}）${entry.count}試合`),
+    '数値はroster_entriesのスタメン・守備位置・打順からDB集計しています。',
+  ].filter(Boolean).join('\n')
+}
+
+function formatGameSearchSummary(question: string, rows: GameSummaryRow[], resultCount: number): string {
+  const targetRows = /サヨナラ勝ち|サヨナラ勝/u.test(question)
+    ? rows.filter((row) => {
+      const linescore = parseLinescore((row as GameSummaryRowWithLinescore).linescoreJson)
+      if (!linescore) return false
+      const targetTeam = (question.match(/阪神|DeNA|巨人|ヤクルト|中日|広島|日本ハム|楽天|西武|ロッテ|オリックス|ソフトバンク/u)?.[0]) ?? ''
+      const homeIsTarget = targetTeam ? displayTeamName(row.homeTeamName).includes(targetTeam) || row.homeTeamName.includes(teamEnglishHint(targetTeam)) : true
+      return homeIsTarget && isWalkOffWin(linescore)
+    })
+    : rows
+  if (/サヨナラ勝ち|サヨナラ勝/u.test(question)) {
+    if (targetRows.length === 0) {
+      return '条件期間の一軍公式戦では、該当チームのサヨナラ勝ちは0試合です。判定はgamesのスコア表で、ホームチームが勝利し、最終得点欄が1xのように得点付きで記録された試合を対象にしています。'
+    }
+    return [
+      `条件期間のサヨナラ勝ちは${targetRows.length}試合です。`,
+      ...targetRows.slice(0, 20).map((row) => formatGameSummaryLine(row)),
+      '判定はgamesのスコア表で、ホームチームが勝利し、最終得点欄が1xのように得点付きで記録された試合を対象にしています。',
+    ].join('\n')
+  }
+  return [
+    `条件に一致する試合が${resultCount}件あります。`,
+    ...targetRows.slice(0, 20).map((row) => formatGameSummaryLine(row)),
+    ...(resultCount > 20 ? [`ほか${resultCount - 20}件は省略しています。`] : []),
+  ].join('\n')
+}
+
+function formatGameSummaryLine(row: GameSummaryRow): string {
+  const rowWithLinescore = row as GameSummaryRowWithLinescore
+  const linescore = parseLinescore(rowWithLinescore.linescoreJson)
+  const result = linescore ? describeGameResult({
+    gameId: row.gameId,
+    date: row.date,
+    venue: row.venue,
+    competition: null,
+    awayTeamName: row.awayTeamName,
+    homeTeamName: row.homeTeamName,
+    matchupText: row.matchupText,
+    linescoreJson: rowWithLinescore.linescoreJson ?? '',
+  }, linescore) : `${row.awayTeamName} vs ${row.homeTeamName}`
+  return `${row.date}（${formatDateJa(row.date)}） ${displayVenueName(row.venue)}、${result}`
+}
+
+function formatYearlyHomeRunSummary(rows: BattingLineRow[]): string {
+  const grouped = new Map<string, { player: string; team: string; homeRuns: number; games: number }>()
+  for (const row of rows) {
+    const year = row.gameDate.slice(0, 4)
+    const current = grouped.get(year) ?? { player: row.playerName, team: row.team, homeRuns: 0, games: 0 }
+    current.homeRuns += row.sourceKind === 'bis_batting'
+      ? statNumber(parseStatsJson(row.statsJson ?? row.rawText), '本塁打') ?? 0
+      : countHomeRunsFromBattingText(row.rawText)
+    current.games += 1
+    grouped.set(year, current)
+  }
+  const lines = [...grouped.entries()].sort(([a], [b]) => Number(a) - Number(b)).map(([year, value]) =>
+    `${year}年: ${value.homeRuns}本（${value.team}、対象${value.games}試合の打席結果から集計）`,
+  )
+  const first = rows[0]
+  return [
+    `${first?.playerName ?? '対象選手'}の年別本塁打数です。`,
+    ...lines,
+    '本塁打数はbatting_lines.raw_text内の本塁打表記を年別に集計しています。',
+  ].join('\n')
+}
+
+function countHomeRunsFromBattingText(value: string | null | undefined): number {
+  const raw = value ?? ''
+  return (raw.match(/本塁打|ホームラン|左越本|右越本|中越本|左中本|右中本/gu) ?? []).length
+}
+
+function isWalkOffWin(linescore: ParsedLinescore): boolean {
+  if (linescore.home.totals.runs <= linescore.away.totals.runs) {
+    return false
+  }
+  const lastHomeScore = [...linescore.home.innings].reverse().find((score) => score !== '' && !/^[-－]$/u.test(score))
+  return Boolean(lastHomeScore && /\d+x$/iu.test(lastHomeScore))
+}
+
+function formatAggregateSummary(structuredQuery: ChatStructuredQuery, rows: AggregateRow[]): string {
+  if (structuredQuery.intent === 'aggregate_batting') {
+    const filters = structuredQuery.filters as Record<string, unknown>
+    if (filters.group_by === 'year') {
+      const playerName = typeof filters.player_name === 'string'
+        ? filters.player_name
+        : String(rows[0]?.stats.playerName ?? '対象選手')
+      return [
+        `${playerName}の年別本塁打数です。`,
+        ...rows.map((row) => `${row.label}年: ${row.stats.homeRuns ?? 0}本（${row.stats.team ?? ''}、対象${row.stats.games ?? row.total}試合の打撃成績から集計）`),
+        '本塁打数はbatting_linesとeventsの本塁打イベントを年別にDB集計しています。',
+      ].join('\n')
+    }
+    return [
+      `打撃集計結果は${rows.length}件です。`,
+      ...rows.slice(0, 10).map((row, index) => {
+        const s = row.stats
+        return `${index + 1}位: ${row.label}（${s.team ?? ''}） 試合${s.games ?? row.total}、打率${formatMaybeRate(s.battingAverage)}、本塁打${s.homeRuns ?? 0}、打点${s.runsBattedIn ?? 0}、盗塁${s.stolenBases ?? 0}、OPS${formatMaybeRate(s.ops)}、IsoP${formatMaybeRate(s.isoP)}、BB%${formatMaybePercent(s.bbRate)}`
+      }),
+      '打率=安打÷打数、OPS=出塁率+長打率、IsoP=長打率-打率、BB%=四球÷打席で計算しています。',
+    ].join('\n')
+  }
+  if (structuredQuery.intent === 'aggregate_pitching') {
+    return [
+      `投手集計結果は${rows.length}件です。`,
+      ...rows.slice(0, 10).map((row, index) => {
+        const s = row.stats
+        const ip = Number(s.inningsPitched ?? 0)
+        const era = ip > 0 ? Number(s.earnedRuns ?? 0) * 9 / ip : null
+        const whip = ip > 0 ? (Number(s.hitsAllowed ?? 0) + Number(s.walks ?? 0)) / ip : null
+        const saveText = s.saves != null ? `、セーブ${s.saves}` : ''
+        return `${index + 1}位: ${row.label}（${s.team ?? ''}） 登板${s.games ?? row.total}${saveText}、投球回${formatDecimalStat(ip)}、奪三振${s.strikeouts ?? 0}、自責点${s.earnedRuns ?? 0}、防御率${formatMaybeDecimal(era)}、WHIP${formatMaybeDecimal(whip)}、球数${s.pitches ?? 0}`
+      }),
+      '防御率=自責点÷投球回×9、WHIP=(被安打+与四球)÷投球回で計算しています。',
+    ].join('\n')
+  }
+  return [
+    `イベント集計結果は${rows.length}件です。`,
+    ...rows.slice(0, 10).map((row, index) => `${index + 1}位: ${row.label} ${row.total}件`),
+    '数値はeventsの条件一致件数をDB集計しています。',
+  ].join('\n')
 }
 
 function formatBisBattingSummary(row: BattingLineRow, resultCount: number): string {
@@ -245,6 +409,28 @@ function formatBisPitchingSummary(row: PitchingLineRow, resultCount: number): st
     ...(resultCount > 1 ? [`同条件の成績行が${resultCount}件あります。`] : []),
     ...(row.sourceUrl ? [`source: ${row.sourceUrl}`] : []),
   ].join('\n')
+}
+
+function formatLastPitchingAppearance(question: string, rows: PitchingLineRow[]): string {
+  const boxRows = rows.filter((row) => row.sourceKind === 'box')
+  const topTeamRows = /一軍|NPB/u.test(question)
+    ? boxRows.filter((row) => !row.gameId.startsWith('f'))
+    : boxRows
+  const row = topTeamRows[0] ?? boxRows[0] ?? rows[0]
+  if (!row) {
+    return '条件に一致する登板は0件です。'
+  }
+  const league = row.gameId.startsWith('f') ? '二軍' : '一軍'
+  const pitchText = row.pitchCount > 0 ? `、${row.pitchCount}球` : ''
+  return `${row.team} ${row.pitcherName}が最後に${league}で登板したのは${formatDateJa(row.gameDate)}です。この試合では${row.inningsPitched}回${pitchText}、${row.strikeouts}奪三振、失点${row.runs}、自責点${row.earnedRuns}でした。`
+}
+
+function formatTopPitchCountAppearance(row: PitchingLineRow | undefined): string {
+  if (!row) {
+    return '条件に一致する登板は0件です。'
+  }
+  const league = row.gameId.startsWith('f') ? '二軍' : '一軍'
+  return `条件期間で最も球数が多かった登板は、${formatDateJa(row.gameDate)}の${league}・${row.team} ${row.pitcherName}です。${row.inningsPitched}回を投げ、${row.pitchCount}球、${row.strikeouts}奪三振、失点${row.runs}、自責点${row.earnedRuns}でした。`
 }
 
 function formatGameDetailSummary(
@@ -312,10 +498,63 @@ type LinescoreSide = {
 }
 
 function parseLinescore(value: string | null | undefined): ParsedLinescore | null {
-  const parsed = parseJsonObject(value)
+  const parsed = parseJsonObject(value) as Record<string, unknown>
+  if (parsed.inning_scores && parsed.runs) {
+    const inningScores = parsed.inning_scores as Record<string, unknown>
+    const runs = parsed.runs as Record<string, unknown>
+    const hits = (parsed.hits ?? {}) as Record<string, unknown>
+    const errors = (parsed.errors ?? {}) as Record<string, unknown>
+    const awayScores = Array.isArray(inningScores.away) ? inningScores.away.map(String) : []
+    const homeScores = Array.isArray(inningScores.home) ? inningScores.home.map(String) : []
+    const awayTeam = typeof parsed.away_team === 'string' ? parsed.away_team : ''
+    const homeTeam = typeof parsed.home_team === 'string' ? parsed.home_team : ''
+    return {
+      away: {
+        team: awayTeam,
+        innings: awayScores,
+        totals: {
+          runs: Number(runs.away ?? 0),
+          hits: Number(hits.away ?? 0),
+          errors: Number(errors.away ?? 0),
+        },
+      },
+      home: {
+        team: homeTeam,
+        innings: homeScores,
+        totals: {
+          runs: Number(runs.home ?? 0),
+          hits: Number(hits.home ?? 0),
+          errors: Number(errors.home ?? 0),
+        },
+      },
+    }
+  }
   const away = parseLinescoreSide(parsed.away)
   const home = parseLinescoreSide(parsed.home)
   return away && home ? { away, home } : null
+}
+
+function compactSourceUrlFromLinescore(value: string | null | undefined): string[] {
+  const parsed = parseJsonObject(value)
+  return typeof parsed.source_url === 'string' ? [parsed.source_url] : []
+}
+
+function teamEnglishHint(team: string): string {
+  const map: Record<string, string> = {
+    阪神: 'Hanshin',
+    DeNA: 'DeNA',
+    巨人: 'Yomiuri',
+    ヤクルト: 'Yakult',
+    中日: 'Chunichi',
+    広島: 'Hiroshima',
+    日本ハム: 'Nippon-Ham',
+    楽天: 'Rakuten',
+    西武: 'Seibu',
+    ロッテ: 'Lotte',
+    オリックス: 'ORIX',
+    ソフトバンク: 'SoftBank',
+  }
+  return map[team] ?? team
 }
 
 function parseLinescoreSide(value: unknown): LinescoreSide | null {
@@ -601,8 +840,11 @@ function formatPitchingEvaluationSummary(rows: PitchingLineRow[]): string {
     totals.earnedRuns === 0 ? '自責点0' : `${totals.earnedRuns}自責点`,
     totals.pitchCount > 0 ? `${totals.pitchCount}球` : undefined,
   ].filter(Boolean)
+  const year = gameRows[0]?.gameDate.slice(0, 4) ?? ''
+  const league = gameRows.every((row) => row.gameId.startsWith('f')) ? '二軍' : '一軍・二軍'
+  const teamPrefix = gameRows[0]?.team ? `${gameRows[0].team} ` : ''
   return [
-    `${pitcherName}は、DBで確認できる直近${gameRows.length}登板の投球内容からポジティブに評価できます。`,
+    `${teamPrefix}${pitcherName}は、${year}年${league}でDB確認できる登板が${gameRows.length}試合あります。`,
     `根拠は${positives.join('、')}です。`,
     `対象試合: ${gameRows.map((row) => formatDateJa(row.gameDate)).join('、')}`,
   ].join('\n')
@@ -649,7 +891,7 @@ function buildRecentGapNote(gameDates: string[], filters: Record<string, unknown
     (new Date(todayJst).getTime() - new Date(newest).getTime()) / (1000 * 60 * 60 * 24),
   )
   if (diffDays < 7) return ''
-  return `\n【重要】最新の試合記録は${formatDateJa(newest)}です。本日（${todayJst}）まで${diffDays}日間の空白があります。この間に試合出場記録が見当たらないため、故障・登録抹消・長期欠場の可能性があります。LLMはこの空白を必ず回答に明記してください。`
+  return `\n【注意】最新の試合記録は${formatDateJa(newest)}です。本日（${todayJst}）まで${diffDays}日間の空白があります。この期間はDB上で試合出場を確認できていません。`
 }
 
 function currentJstDate(): string {
@@ -763,6 +1005,22 @@ function formatDecimal(value: number): string {
 
 function formatPercent(value: number): string {
   return `${(value * 100).toFixed(1)}%`
+}
+
+function formatMaybeRate(value: unknown): string {
+  return typeof value === 'number' && Number.isFinite(value) ? formatRate(value) : 'N/A'
+}
+
+function formatMaybeDecimal(value: unknown): string {
+  return typeof value === 'number' && Number.isFinite(value) ? formatDecimal(value) : 'N/A'
+}
+
+function formatMaybePercent(value: unknown): string {
+  return typeof value === 'number' && Number.isFinite(value) ? formatPercent(value) : 'N/A'
+}
+
+function formatDecimalStat(value: number): string {
+  return Number.isFinite(value) ? formatDecimal(value) : '0.00'
 }
 
 function formatPlayerAffiliationSummary(

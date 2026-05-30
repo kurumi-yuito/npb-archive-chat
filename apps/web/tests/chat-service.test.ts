@@ -632,7 +632,7 @@ describe('chat-service', () => {
     const response = await service.answerQuestion('2016–2026横断で存在しない選手のイベント検索')
 
     expect(response.answer.result_count).toBe(0)
-    expect(response.answer.summary).toContain('選手を特定できない')
+    expect(response.answer.summary).toContain('選手候補は0件')
     expect(response.results.events).toHaveLength(0)
   })
 
@@ -817,7 +817,7 @@ describe('chat-service', () => {
     expect(finalAnswerCalled).toBe(false)
   })
 
-  it('calls generateFinalAnswer and returns its result when DB results are present', async () => {
+  it('uses deterministic search_batting summary instead of final LLM', async () => {
     let finalAnswerCalled = false
 
     const service = createChatService(createFakeQueryService(), {
@@ -834,8 +834,8 @@ describe('chat-service', () => {
     const response = await service.answerQuestion('2024年の山田の打撃成績')
 
     expect(response.answer.result_count).toBeGreaterThan(0)
-    expect(finalAnswerCalled).toBe(true)
-    expect(response.answer.summary).toBe('LLM生成のサマリー')
+    expect(finalAnswerCalled).toBe(false)
+    expect(response.answer.summary).toContain('打撃成績')
   })
 
   it('returns a non-empty deterministic summary when generateFinalAnswer is not configured', async () => {

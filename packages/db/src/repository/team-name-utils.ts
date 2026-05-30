@@ -54,6 +54,16 @@ export function toEnglishTeamName(team: string): string | undefined {
   return japaneseToEnglishMap[team]
 }
 
+/** games テーブル用: NPB.jp score data can contain English short names and occasional Japanese names. */
+export function toGameTeamAliases(team: string): string[] {
+  const japaneseAliases = japaneseTeamAliasMap[team] ?? [team]
+  const english = toEnglishTeamName(team)
+  return [...new Set([
+    ...japaneseAliases,
+    ...(english ? [english] : []),
+  ])]
+}
+
 /** events テーブル用リーグ展開: 「パ・リーグ」→日英両方の球団名リスト、単チームの場合は null */
 export function toEnglishLeagueTeams(team: string): string[] | null {
   return allLeagueTeamsMap[team] ?? null

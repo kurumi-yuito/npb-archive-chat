@@ -1,5 +1,6 @@
 import { searchGamesFiltersSchema, type SearchGamesFilters } from '@npb/schemas'
 import type { QueryDatabase } from '../query-driver'
+import { toGameTeamAliases } from './team-name-utils'
 import { venueSearchValues } from './venue-aliases'
 
 /** 一覧・検索向けの最小列（詳細 JSON は含めない） */
@@ -10,6 +11,7 @@ export type GameSummaryRow = {
   homeTeamName: string
   matchupText: string
   venue: string
+  linescoreJson: string | null
 }
 
 export type GameMatchingRow = {
@@ -61,15 +63,33 @@ export async function searchGames(
     values.push(normalized.game_id)
   }
 
-  if (normalized.team) {
-    clauses.push('(games.home_team_name LIKE ? OR games.away_team_name LIKE ?)')
-    values.push(`%${normalized.team}%`, `%${normalized.team}%`)
+  if (normalized.team && normalized.opponent) {
+    const teams = toGameTeamAliases(normalized.team)
+    const opponents = toGameTeamAliases(normalized.opponent)
+    clauses.push(`(((${teams.map(() => 'games.home_team_name LIKE ?').join(' OR ')}) AND (${opponents.map(() => 'games.away_team_name LIKE ?').join(' OR ')})) OR ((${opponents.map(() => 'games.home_team_name LIKE ?').join(' OR ')}) AND (${teams.map(() => 'games.away_team_name LIKE ?').join(' OR ')})))`)
+    values.push(
+      ...teams.map((team) => `%${team}%`),
+      ...opponents.map((team) => `%${team}%`),
+      ...opponents.map((team) => `%${team}%`),
+      ...teams.map((team) => `%${team}%`),
+    )
+  } else if (normalized.team) {
+    const teams = toGameTeamAliases(normalized.team)
+    clauses.push(`(${teams.map(() => '(games.home_team_name LIKE ? OR games.away_team_name LIKE ?)').join(' OR ')})`)
+    for (const team of teams) {
+      values.push(`%${team}%`, `%${team}%`)
+    }
   }
 
   if (normalized.venue) {
     const venues = venueSearchValues(normalized.venue)
     clauses.push(`games.venue IN (${venues.map(() => '?').join(', ')})`)
     values.push(...venues)
+  }
+
+  if (normalized.competition) {
+    clauses.push('games.competition LIKE ?')
+    values.push(`%${normalized.competition}%`)
   }
 
   const whereClause = clauses.length > 0 ? `WHERE ${clauses.join(' AND ')}` : ''
@@ -83,7 +103,8 @@ export async function searchGames(
         games.away_team_name AS awayTeamName,
         games.home_team_name AS homeTeamName,
         games.matchup_text AS matchupText,
-        games.venue AS venue
+        games.venue AS venue,
+        games.linescore_json AS linescoreJson
       FROM games
       ${whereClause}
       ORDER BY games.date ASC, games.game_id ASC

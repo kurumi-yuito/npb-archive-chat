@@ -172,6 +172,7 @@ export function normalizeChatStructuredQuery(
         ...structuredQuery.filters,
         team: normalizeTeamName(structuredQuery.filters.team),
         player_name: normalizePlayerName(structuredQuery.filters.player_name),
+        position: normalizePosition((structuredQuery.filters as { position?: string }).position),
       },
     })
   }

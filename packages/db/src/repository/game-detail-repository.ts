@@ -1,7 +1,7 @@
 import { gameDetailFiltersSchema, type GameDetailFilters } from '@npb/schemas'
 import type { QueryDatabase } from '../query-driver'
 import { venueSearchValues } from './venue-aliases'
-import { toEnglishTeamName } from './team-name-utils'
+import { toGameTeamAliases } from './team-name-utils'
 
 export type GameDetailRow = {
   gameId: string
@@ -43,10 +43,7 @@ export async function searchGameDetails(
     values.push(normalized.year_to)
   }
   if (normalized.team) {
-    const englishName = toEnglishTeamName(normalized.team)
-    const searchTerms = englishName && englishName !== normalized.team
-      ? [normalized.team, englishName]
-      : [normalized.team]
+    const searchTerms = toGameTeamAliases(normalized.team)
     const teamClauses = searchTerms.flatMap(() => [
       'games.home_team_name LIKE ?',
       'games.away_team_name LIKE ?',
@@ -60,6 +57,10 @@ export async function searchGameDetails(
     const venues = venueSearchValues(normalized.venue)
     clauses.push(`games.venue IN (${venues.map(() => '?').join(', ')})`)
     values.push(...venues)
+  }
+  if (normalized.competition) {
+    clauses.push('games.competition LIKE ?')
+    values.push(`%${normalized.competition}%`)
   }
   if (normalized.player_name) {
     clauses.push(`EXISTS (
@@ -85,7 +86,7 @@ export async function searchGameDetails(
         games.linescore_json AS linescoreJson
       FROM games
       ${whereClause}
-      ORDER BY games.date ASC, games.game_id ASC
+      ORDER BY games.date DESC, games.game_id DESC
       LIMIT ?`,
     )
     .all(...values, limit)

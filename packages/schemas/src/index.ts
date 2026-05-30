@@ -106,6 +106,7 @@ const coercedName = z.union([
   z.string().min(1),
   z.array(z.string().min(1)).min(1).transform((a) => a[0]!),
 ])
+const coercedText = coercedName
 
 export const searchEventsFiltersSchema = z.object({
   year: z.number().int().min(1936).optional(),
@@ -115,7 +116,7 @@ export const searchEventsFiltersSchema = z.object({
   game_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   inning: z.number().int().positive().optional(),
   half: inningHalfSchema.optional(),
-  team: z.string().min(1).optional(),
+  team: coercedText.optional(),
   batter_name: coercedName.optional(),
   batter_player_id: z.string().min(1).optional(),
   pitcher_name: coercedName.optional(),
@@ -148,8 +149,10 @@ export const searchGamesFiltersSchema = z.object({
   year_to: z.number().int().min(1936).optional(),
   game_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   game_id: z.string().min(1).optional(),
-  team: z.string().min(1).optional(),
+  team: coercedText.optional(),
+  opponent: coercedText.optional(),
   venue: z.string().min(1).optional(),
+  competition: z.string().min(1).optional(),
   limit: z.number().int().positive().max(500).optional(),
 })
 
@@ -160,8 +163,9 @@ export const searchPitchingLinesFiltersSchema = z.object({
   year_to: z.number().int().min(1936).optional(),
   game_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   pitcher_name: coercedName.optional(),
-  team: z.string().min(1).optional(),
+  team: coercedText.optional(),
   recent: z.boolean().optional(),
+  sort_by: z.enum(['date', 'pitchCount']).optional(),
   limit: z.number().int().positive().max(500).optional(),
 })
 
@@ -188,6 +192,8 @@ export const searchRosterEntriesFiltersSchema = z.object({
   game_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   team: z.string().min(1).optional(),
   player_name: z.string().min(1).optional(),
+  batting_order: z.number().int().min(1).max(9).optional(),
+  position: z.string().min(1).optional(),
   starter: z.boolean().optional(),
   limit: z.number().int().positive().max(500).optional(),
 })
@@ -210,6 +216,7 @@ export const gameDetailFiltersSchema = z.object({
   game_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   team: z.string().min(1).optional(),
   venue: z.string().min(1).optional(),
+  competition: z.string().min(1).optional(),
   player_name: z.string().min(1).optional(),
   limit: z.number().int().positive().max(100).optional(),
 })
@@ -218,16 +225,18 @@ export const aggregateBattingFiltersSchema = searchBattingLinesFiltersSchema.omi
   limit: true,
 }).extend({
   limit: z.number().int().positive().max(100).optional(),
-  sort_by: z.enum(['hits', 'atBats', 'runsBattedIn', 'stolenBases', 'walks', 'strikeouts', 'battingAverage', 'ops', 'games']).optional(),
+  group_by: z.enum(['player', 'year']).optional(),
+  sort_by: z.enum(['hits', 'atBats', 'runsBattedIn', 'stolenBases', 'walks', 'strikeouts', 'battingAverage', 'ops', 'isoP', 'bbRate', 'games']).optional(),
 })
 
 export const aggregatePitchingFiltersSchema = searchPitchingLinesFiltersSchema.omit({
   limit: true,
 }).extend({
   limit: z.number().int().positive().max(100).optional(),
-  sort_by: z.enum(['era', 'whip', 'strikeouts', 'wins', 'games', 'inningsPitched', 'hitsAllowed', 'walks', 'earnedRuns']).optional(),
+  sort_by: z.enum(['era', 'whip', 'strikeouts', 'wins', 'saves', 'games', 'inningsPitched', 'hitsAllowed', 'walks', 'earnedRuns']).optional(),
   min_innings_per_start: z.number().nonnegative().optional(),
   max_earned_runs_per_start: z.number().nonnegative().optional(),
+  max_runs_per_start: z.number().nonnegative().optional(),
 })
 
 export const aggregateEventsFiltersSchema = searchEventsFiltersSchema.omit({
@@ -240,7 +249,10 @@ export const aggregateGamesFiltersSchema = z.object({
   year: z.number().int().min(1936).max(2099).optional(),
   year_from: z.number().int().min(1936).max(2099).optional(),
   year_to: z.number().int().min(1936).max(2099).optional(),
-  team: z.string().min(1).max(40).optional(),
+  team: coercedText.optional(),
+  opponent: coercedText.optional(),
+  venue: z.string().min(1).max(80).optional(),
+  competition: z.string().min(1).max(80).optional(),
   limit: z.number().int().positive().max(30).optional(),
 })
 

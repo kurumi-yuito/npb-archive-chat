@@ -380,7 +380,7 @@ function buildPlayerAffiliationFilters(
       explicit.team ??
       matchValue(message, /(?:team|チーム)(?:=|:)\s*([^\s、。]+)/u) ??
       extractTeamQualifierFromPhrase(phrase),
-    player_name,
+    player_name: player_name ?? '',
     limit: toInt(explicit.limit),
   }
 }

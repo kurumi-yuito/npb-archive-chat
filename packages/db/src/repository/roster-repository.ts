@@ -54,6 +54,14 @@ export async function searchRosterEntries(
     clauses.push('roster_entries.player_name = ?')
     values.push(normalized.player_name)
   }
+  if (normalized.batting_order !== undefined) {
+    clauses.push('roster_entries.batting_order = ?')
+    values.push(normalized.batting_order)
+  }
+  if (normalized.position) {
+    clauses.push('roster_entries.position LIKE ?')
+    values.push(`%${normalized.position}%`)
+  }
   if (normalized.starter !== undefined) {
     clauses.push('roster_entries.starter = ?')
     values.push(normalized.starter ? 1 : 0)
