@@ -706,6 +706,59 @@ describe('chat-service', () => {
     expect(response.answer.result_count).toBe(0)
   })
 
+  it('resolves a surname through player_id-bearing roster rows before treating transfer history as ambiguous', async () => {
+    const database = openDatabase()
+
+    try {
+      migrateDatabase(database)
+      database.prepare(
+        `INSERT INTO current_team_roster
+          (year, team_id, team_name, player_key, player_id, player_name, position, uniform_number, bats, throws, source_url)
+         VALUES (2026, 'db', '横浜DeNAベイスターズ', '41045137', '41045137', '藤浪 晋太郎', '投手', '27', '右', '右', 'https://npb.jp/bis/teams/rst_db.html')`,
+      ).run()
+      database.prepare(
+        `INSERT INTO games
+          (schema_version, game_id, year, mmdd, date, date_label, venue, canonical_url, matchup_text,
+           away_team_name, home_team_name, linescore_json, result_pitchers_json,
+           batteries_json, home_runs_json, latest_order_json, fetched_at, loaded_at)
+         VALUES (1, 'f20260522db-d-05', 2026, '0522', '2026-05-22', '2026年5月22日',
+                 '横須賀', 'https://npb.jp/bis/eng/2026/games/fs2026052200480.html',
+                 'DeNA vs 中日', '中日', '横浜DeNA', '{}', '{}', '{}', '{}', '{}', datetime('now'), datetime('now'))`,
+      ).run()
+      database.prepare(
+        `INSERT INTO pitching_lines
+          (game_id, team, row_index, pitcher_name, pitcher_url, pitch_count, batters_faced,
+           innings_pitched, hits, home_runs, walks, hit_batters, strikeouts, wild_pitches,
+           balks, runs, earned_runs, headers_json)
+         VALUES ('f20260522db-d-05', '横浜DeNAベイスターズ', 1, '藤浪', NULL, 88, 20,
+                 '5', 3, 0, 2, 0, 8, 0, 0, 1, 1, '{}')`,
+      ).run()
+
+      const service = createChatService(sqliteDatabaseToQuery(database), {
+        parseStructuredQueryFromMessage: async () => ({
+          intent: 'search_pitching',
+          filters: { pitcher_name: '藤浪', recent: true },
+        }),
+      })
+
+      const response = await service.answerQuestion('藤浪って最近何してんの')
+
+      expect(response.answer.resolved_player).toMatchObject({
+        input: '藤浪',
+        player_id: '41045137',
+        status: 'resolved',
+        name: '藤浪 晋太郎',
+        primary_team: '横浜DeNAベイスターズ',
+      })
+      expect(response.answer.result_count).toBe(1)
+      expect(response.answer.summary).not.toContain('どの藤浪ですか')
+      expect(response.answer.summary).toContain('横浜DeNAベイスターズ 藤浪')
+      expect(response.answer.summary).toContain('2026年二軍')
+    } finally {
+      database.close()
+    }
+  })
+
   it('does not call generateFinalAnswer when result_count is 0 with a resolved player', async () => {
     let finalAnswerCalled = false
 

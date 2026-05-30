@@ -713,10 +713,10 @@ function formatBattingEvaluationSummary(rows: BattingLineRow[], resultCount: num
     average !== null ? `打率${average.toFixed(3).replace(/^0/u, '')}` : undefined,
   ].filter(Boolean)
   return [
-    `${teamPrefix}${playerName}は、DBで確認できる直近${gameRows.length}試合の打撃内容を見る限り、ポジティブに評価できます。`,
+    `${teamPrefix}${playerName}の直近${gameRows.length}試合の打撃内容です。`,
     positives.length > 0
-      ? `根拠は${positives.join('、')}です。`
-      : '安打や打点は確認できませんが、直近試合の出場実績は確認できます。',
+      ? `内容は${positives.join('、')}です。`
+      : '安打や打点はありませんが、直近試合には出場しています。',
     `対象試合: ${gameRows.map((row) => formatDateJa(row.gameDate)).join('、')}`,
   ].join('\n')
 }
@@ -738,10 +738,10 @@ function formatBisBattingEvaluationSummary(row: BattingLineRow, resultCount: num
     sabermetrics.bbK !== null ? `BB/K${formatDecimal(sabermetrics.bbK)}` : undefined,
   ].filter(Boolean)
   return [
-    `${row.team} ${row.playerName}は、DBで確認できる${year}年シーズン成績からポジティブに評価できます。`,
+    `${row.team} ${row.playerName}の${year}年シーズン打撃成績です。`,
     positives.length > 0
-      ? `根拠は${positives.join('、')}です。`
-      : '根拠となる成績行は確認できていますが、主要指標の値はDB行から取り出せませんでした。',
+      ? `内容は${positives.join('、')}です。`
+      : '主要指標は成績行から取り出せませんでした。',
     ...(resultCount > 1 ? [`同条件の成績行が${resultCount}件あります。`] : []),
     ...(row.sourceUrl ? [`source: ${row.sourceUrl}`] : []),
   ].join('\n')
@@ -844,8 +844,8 @@ function formatPitchingEvaluationSummary(rows: PitchingLineRow[]): string {
   const league = gameRows.every((row) => row.gameId.startsWith('f')) ? '二軍' : '一軍・二軍'
   const teamPrefix = gameRows[0]?.team ? `${gameRows[0].team} ` : ''
   return [
-    `${teamPrefix}${pitcherName}は、${year}年${league}でDB確認できる登板が${gameRows.length}試合あります。`,
-    `根拠は${positives.join('、')}です。`,
+    `${teamPrefix}${pitcherName}は、${year}年${league}で${gameRows.length}試合に登板しています。`,
+    `内容は${positives.join('、')}です。`,
     `対象試合: ${gameRows.map((row) => formatDateJa(row.gameDate)).join('、')}`,
   ].join('\n')
 }
@@ -855,8 +855,8 @@ function formatBisPitchingEvaluationSummary(row: PitchingLineRow, gameRows: Pitc
   const year = row.gameDate.slice(0, 4)
   const isFarm = row.sourceKind === 'bis_pitching_farm'
   const league = isFarm ? '二軍' : '一軍'
+  const appearances = statValue(stats, '登板')
   const positives = [
-    positiveCountStatPart(stats, '登板', '登板'),
     positiveCountStatPart(stats, '勝利', '勝利'),
     positiveCountStatPart(stats, 'セーブ', 'セーブ'),
     positiveCountStatPart(stats, 'ホールド', 'ホールド'),
@@ -870,10 +870,10 @@ function formatBisPitchingEvaluationSummary(row: PitchingLineRow, gameRows: Pitc
     return `  ${r.gameDate} ${gameLeague} ${r.team} ${r.pitcherName}: ${r.inningsPitched}回 ${r.strikeouts}奪三振 自責${r.earnedRuns}`
   })
   return [
-    `${row.team} ${row.pitcherName}は、DBで確認できる${year}年${league}シーズン投手成績からポジティブに評価できます。`,
+    `${row.team} ${row.pitcherName}は、${year}年は${league}で${appearances ?? '複数'}試合に登板しています。`,
     positives.length > 0
-      ? `根拠は${positives.join('、')}です。`
-      : '根拠となる成績行は確認できていますが、主要指標の値はDB行から取り出せませんでした。',
+      ? `シーズン成績は${positives.join('、')}です。`
+      : '主要指標は成績行から取り出せませんでした。',
     ...(gameLines.length > 0 ? [`個別試合記録（直近${gameLines.length}件）:`, ...gameLines] : []),
     ...(row.sourceUrl ? [`source: ${row.sourceUrl}`] : []),
   ].join('\n')
@@ -891,7 +891,7 @@ function buildRecentGapNote(gameDates: string[], filters: Record<string, unknown
     (new Date(todayJst).getTime() - new Date(newest).getTime()) / (1000 * 60 * 60 * 24),
   )
   if (diffDays < 7) return ''
-  return `\n【注意】最新の試合記録は${formatDateJa(newest)}です。本日（${todayJst}）まで${diffDays}日間の空白があります。この期間はDB上で試合出場を確認できていません。`
+  return `\n【注意】記録されている直近の出場は${formatDateJa(newest)}です。本日（${todayJst}）まで${diffDays}日間、試合出場の記録はありません。`
 }
 
 function currentJstDate(): string {
@@ -975,6 +975,14 @@ function statPart(stats: Record<string, unknown>, key: string, label: string): s
     return undefined
   }
   return `${label}${String(value)}`
+}
+
+function statValue(stats: Record<string, unknown>, key: string): string | undefined {
+  const value = stats[key]
+  if (value === null || value === undefined || value === '') {
+    return undefined
+  }
+  return String(value)
 }
 
 function statNumber(stats: Record<string, unknown>, key: string): number | null {

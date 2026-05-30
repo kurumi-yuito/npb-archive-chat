@@ -47,9 +47,12 @@ async function resolvePlayerIdsFromProfiles(
     )
   }
   try {
-    const rows = await database
+    const profileRows = await database
       .prepare(`SELECT player_id, team_name, year_teams_json FROM player_profiles WHERE ${clauses.join(' OR ')} LIMIT 30`)
       .all(...values) as Array<{ player_id: string; team_name: string | null; year_teams_json: string | null }>
+    const rows = profileRows.length > 0
+      ? profileRows
+      : await resolvePlayerRowsFromIdSources(database, aliases)
     const ids = [...new Set(rows.map((r) => r.player_id))]
     // Only filter when the profile lookup yields a unique player — multiple matches mean the input
     // is an ambiguous surname and filtering would incorrectly narrow to the first hit.
@@ -62,10 +65,69 @@ async function resolvePlayerIdsFromProfiles(
     } catch {
       // ignore parse errors
     }
+    knownTeams = [...new Set([
+      ...knownTeams,
+      ...rows.filter((r) => r.player_id === ids[0]).map((r) => r.team_name).filter(Boolean) as string[],
+    ])]
     return [{ player_id: ids[0]!, knownTeams, currentTeam: row.team_name ?? null }]
   } catch {
     return []
   }
+}
+
+async function resolvePlayerRowsFromIdSources(
+  database: QueryDatabase,
+  aliases: string[],
+): Promise<Array<{ player_id: string; team_name: string | null; year_teams_json: string | null }>> {
+  const values: string[] = []
+  const clauses = aliases.map((alias) => {
+    const compact = alias.replace(/[ 　]/gu, '')
+    values.push(compact, `${compact}%`)
+    return `(compact_name = ? OR compact_name LIKE ?)`
+  })
+  if (clauses.length === 0) {
+    return []
+  }
+  return await database
+    .prepare(
+      `SELECT
+        player_id,
+        team_name,
+        NULL AS year_teams_json
+      FROM (
+        SELECT current_team_roster.player_id AS player_id,
+               current_team_roster.team_name AS team_name,
+               REPLACE(REPLACE(current_team_roster.player_name,' ',''),char(12288),'') AS compact_name,
+               current_team_roster.year AS year
+          FROM current_team_roster
+         WHERE current_team_roster.player_id IS NOT NULL AND current_team_roster.player_id <> ''
+        UNION ALL
+        SELECT player_batting_stats.player_id AS player_id,
+               player_batting_stats.team_name AS team_name,
+               REPLACE(REPLACE(player_batting_stats.player_name,' ',''),char(12288),'') AS compact_name,
+               player_batting_stats.year AS year
+          FROM player_batting_stats
+         WHERE player_batting_stats.player_id IS NOT NULL AND player_batting_stats.player_id <> ''
+        UNION ALL
+        SELECT player_pitching_stats.player_id AS player_id,
+               player_pitching_stats.team_name AS team_name,
+               REPLACE(REPLACE(player_pitching_stats.player_name,' ',''),char(12288),'') AS compact_name,
+               player_pitching_stats.year AS year
+          FROM player_pitching_stats
+         WHERE player_pitching_stats.player_id IS NOT NULL AND player_pitching_stats.player_id <> ''
+        UNION ALL
+        SELECT player_fielding_stats.player_id AS player_id,
+               player_fielding_stats.team_name AS team_name,
+               REPLACE(REPLACE(player_fielding_stats.player_name,' ',''),char(12288),'') AS compact_name,
+               player_fielding_stats.year AS year
+          FROM player_fielding_stats
+         WHERE player_fielding_stats.player_id IS NOT NULL AND player_fielding_stats.player_id <> ''
+      )
+      WHERE ${clauses.join(' OR ')}
+      ORDER BY year DESC
+      LIMIT 30`,
+    )
+    .all(...values) as Array<{ player_id: string; team_name: string | null; year_teams_json: string | null }>
 }
 
 export async function searchPlayerCandidates(

@@ -111,7 +111,7 @@ describe('chat-answer-formatter', () => {
     expect(answer.summary).toContain('1回裏 巨人 大城: ライト2ランホームラン')
   })
 
-  it('formats recent batting lines as a positive player evaluation', () => {
+  it('formats recent batting lines as current batting form', () => {
     const results = emptyResults()
     results.batting = [
       battingRow('2026-05-16', 4, 2, 1, 0),
@@ -125,7 +125,7 @@ describe('chat-answer-formatter', () => {
       sources: [],
     })
 
-    expect(answer.summary).toContain('ヤクルト 村上は、DBで確認できる直近2試合の打撃内容を見る限り、ポジティブに評価できます。')
+    expect(answer.summary).toContain('ヤクルト 村上の直近2試合の打撃内容です。')
     expect(answer.summary).toContain('2試合で3安打')
     expect(answer.summary).toContain('打点')
     expect(answer.summary).toContain('打率.429')
@@ -147,9 +147,9 @@ describe('chat-answer-formatter', () => {
     })
 
     expect(answer.result_count).toBe(1)
-    expect(answer.summary).toContain('2026年二軍')
+    expect(answer.summary).toContain('2026年は二軍で4試合に登板')
     expect(answer.summary).toContain('藤浪 晋太郎')
-    expect(answer.summary).toContain('登板4')
+    expect(answer.summary).toContain('4試合に登板')
     expect(answer.summary).toContain('防御率2.00')
     expect(answer.summary).not.toContain('2025年')
     expect(answer.summary).not.toContain('未登録')
@@ -181,9 +181,9 @@ describe('chat-answer-formatter', () => {
 
     expect(answer.result_count).toBe(6)
     // BIS統計は二軍シーズン成績として表示
-    expect(answer.summary).toContain('2026年二軍')
+    expect(answer.summary).toContain('2026年は二軍で5試合に登板')
     expect(answer.summary).toContain('藤浪 晋太郎')
-    expect(answer.summary).toContain('登板5')
+    expect(answer.summary).toContain('5試合に登板')
     expect(answer.summary).toContain('防御率1.93')
 
     // 個別試合は全て「二軍」として表示（「一軍」は一切出ない）
@@ -219,9 +219,9 @@ describe('chat-answer-formatter', () => {
     })
 
     // BIS統計は一軍シーズン成績
-    expect(answer.summary).toContain('2025年一軍')
+    expect(answer.summary).toContain('2025年は一軍で20試合に登板')
     expect(answer.summary).toContain('青柳 晃洋')
-    expect(answer.summary).toContain('登板20')
+    expect(answer.summary).toContain('20試合に登板')
 
     // 個別試合は「一軍」として表示（「二軍」は出ない）
     expect(answer.summary).toContain('個別試合記録')
