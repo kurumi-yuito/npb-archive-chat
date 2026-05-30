@@ -220,7 +220,8 @@ function buildBattingFilters(
     team:
       explicit.team ??
       matchValue(message, /(?:team|チーム)(?:は|=|:)\s*([^\s、。]+)/u) ??
-      (isEvaluation ? extractTeamQualifierFromPhrase(evaluationPhrase) : extractTeamQualifierFromPhrase(battingPhrase)),
+      (isEvaluation ? extractTeamQualifierFromPhrase(evaluationPhrase) : extractTeamQualifierFromPhrase(battingPhrase)) ??
+      matchKnownTeamAnywhere(message),
     result_text_contains: explicit.result_text_contains,
     recent: isEvaluation ? true : undefined,
     limit: toInt(explicit.limit),
@@ -290,7 +291,8 @@ function buildEventsFilters(
     team:
       explicit.team ??
       matchValue(message, /(?:team|チーム)(?:は|=|:)\s*([^\s、。]+)/u) ??
-      teamFromHomeRunPhrase,
+      teamFromHomeRunPhrase ??
+      matchKnownTeamAnywhere(message),
     batter_name:
       explicit.batter_name ??
       explicit.batter ??
@@ -330,6 +332,11 @@ function buildRosterFilters(
   message: string,
   explicit: Record<string, string>,
 ): SearchRosterEntriesFilters {
+  const rosterPhrase = matchValue(message, /(?:\d{4}年(?:の)?|横断で)?(.+?)(?:のスタメン|のロスター)/u)
+  const rosterTeam = extractTeamQualifierFromPhrase(rosterPhrase) ?? matchKnownTeamAnywhere(rosterPhrase)
+  const rosterPlayer = rosterTeam
+    ? undefined
+    : extractPlayerNameFromPhrase(rosterPhrase)
   return {
     ...matchYearRange(message, explicit),
     game_id: explicit.game_id ?? matchGameId(message),
@@ -338,12 +345,13 @@ function buildRosterFilters(
       explicit.team ??
       matchValue(message, /(?:team|チーム)(?:は|=|:)\s*([^\s、。]+)/u) ??
       matchTeamFromMatchup(message) ??
-      matchKnownTeamForGameQuestion(message),
+      matchKnownTeamForGameQuestion(message) ??
+      rosterTeam,
     player_name:
       explicit.player_name ??
-      (matchGameId(message) || matchTeamFromMatchup(message)
+      (matchGameId(message) || matchTeamFromMatchup(message) || rosterTeam
         ? undefined
-        : extractPlayerNameFromPhrase(matchValue(message, /(?:\d{4}年(?:の)?|横断で)?(.+?)(?:のスタメン|のロスター)/u))),
+        : rosterPlayer),
     starter: /スタメン/u.test(message) ? true : undefined,
     limit: toInt(explicit.limit),
   }
@@ -356,18 +364,23 @@ function buildPlayerAffiliationFilters(
   const phrase =
     matchValue(message, /(?:\d{4}年(?:の)?|横断で)?(.+?)(?:の所属チーム|はどこのチーム|はどのチーム|は所属|の所属|の在籍|は在籍|のチームは|チームは)/u) ??
     matchValue(message, /(?:所属|在籍|チーム)(?:は|=|:)\s*([^\s、。]+)/u)
+  // Strip colloquial particles that follow player names (e.g. "田中将大って今" → "田中将大")
+  const rawPlayerName =
+    explicit.player_name ??
+    explicit.batter_name ??
+    explicit.pitcher_name ??
+    extractPlayerNameFromPhrase(phrase) ??
+    extractPlayerNameFromPhrase(message.replace(/(?:所属チーム|どこのチーム|所属|在籍|チームは).*/u, ''))
+  const player_name = rawPlayerName
+    ?.replace(/(?:って(?:今|現在|どこ|は|なの)?|は今|は現在|の今|今は?)$/u, '')
+    .trim() || undefined
   return {
     ...matchYearRange(message, explicit),
     team:
       explicit.team ??
       matchValue(message, /(?:team|チーム)(?:=|:)\s*([^\s、。]+)/u) ??
       extractTeamQualifierFromPhrase(phrase),
-    player_name:
-      explicit.player_name ??
-      explicit.batter_name ??
-      explicit.pitcher_name ??
-      extractPlayerNameFromPhrase(phrase) ??
-      extractPlayerNameFromPhrase(message.replace(/(?:所属チーム|どこのチーム|所属|在籍|チームは).*/u, '')),
+    player_name,
     limit: toInt(explicit.limit),
   }
 }
@@ -581,8 +594,31 @@ function extractPlayerNameFromPhrase(value: string | undefined): string | undefi
     .map((segment) => segment.trim())
     .filter(Boolean)
 
-  const lastSegment = segments.at(-1)
+  // Filter out year-like segments (e.g. "2021年", "2023年と") to avoid returning years as player names
+  const nonYearSegments = segments.filter((s) => !/^\d{4}年/.test(s))
+  const lastSegment = (nonYearSegments.length > 0 ? nonYearSegments : segments).at(-1)
   return lastSegment || trimmed
+}
+
+function matchKnownTeamAnywhere(message: string | undefined): string | undefined {
+  if (!message) return undefined
+  return [
+    'ソフトバンク',
+    '日本ハム',
+    'オリックス',
+    'ロッテ',
+    '西武',
+    '楽天',
+    '阪神',
+    '広島',
+    '巨人',
+    '読売',
+    '東京ヤクルト',
+    'ヤクルト',
+    '中日',
+    'DeNA',
+    '横浜',
+  ].find((team) => message.includes(team))
 }
 
 function extractTeamQualifierFromPhrase(value: string | undefined): string | undefined {

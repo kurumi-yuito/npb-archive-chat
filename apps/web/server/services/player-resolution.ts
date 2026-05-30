@@ -207,7 +207,13 @@ function replacePlayerFilter(
 ): ChatStructuredQuery {
   const playerIdField = playerIdFilterField(field)
   const existingTeam = (structuredQuery.filters as Record<string, unknown>).team
-  const injectTeam = candidate.primary_team && !existingTeam ? { team: candidate.primary_team } : {}
+  // Only inject primary_team when the player has appeared for a single canonical team throughout
+  // their career. For multi-team careers (transfers, MLB stints), injecting the historical primary
+  // would exclude records from other teams — the player name alone is the correct search key.
+  const distinctTeamKeys = new Set(candidate.teams.map(teamAliasKey))
+  const injectTeam = candidate.primary_team && !existingTeam && distinctTeamKeys.size <= 1
+    ? { team: candidate.primary_team }
+    : {}
   return {
     ...structuredQuery,
     filters: {

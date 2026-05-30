@@ -29,7 +29,7 @@ async function fetchProfileNamesForIds(
   }
 }
 
-type ProfileMatch = { player_id: string; knownTeams: string[] }
+type ProfileMatch = { player_id: string; knownTeams: string[]; currentTeam: string | null }
 
 async function resolvePlayerIdsFromProfiles(
   database: QueryDatabase,
@@ -48,8 +48,8 @@ async function resolvePlayerIdsFromProfiles(
   }
   try {
     const rows = await database
-      .prepare(`SELECT player_id, year_teams_json FROM player_profiles WHERE ${clauses.join(' OR ')} LIMIT 30`)
-      .all(...values) as Array<{ player_id: string; year_teams_json: string | null }>
+      .prepare(`SELECT player_id, team_name, year_teams_json FROM player_profiles WHERE ${clauses.join(' OR ')} LIMIT 30`)
+      .all(...values) as Array<{ player_id: string; team_name: string | null; year_teams_json: string | null }>
     const ids = [...new Set(rows.map((r) => r.player_id))]
     // Only filter when the profile lookup yields a unique player — multiple matches mean the input
     // is an ambiguous surname and filtering would incorrectly narrow to the first hit.
@@ -62,7 +62,7 @@ async function resolvePlayerIdsFromProfiles(
     } catch {
       // ignore parse errors
     }
-    return [{ player_id: ids[0]!, knownTeams }]
+    return [{ player_id: ids[0]!, knownTeams, currentTeam: row.team_name ?? null }]
   } catch {
     return []
   }
@@ -172,6 +172,17 @@ export async function searchPlayerCandidates(
     } else {
       candidates = idFiltered
     }
+
+    // Override primary_team with player_profiles.team_name (the official current registration)
+    // when a unique profile match exists. This takes precedence over the data-derived latestTeam
+    // because the profile reflects the player's current NPB registration regardless of which
+    // historical year's data dominates the search results.
+    const profileCurrentTeam = profileMatches[0]?.currentTeam
+    if (profileCurrentTeam && profilePlayerIds.length === 1) {
+      candidates = candidates.map((c) =>
+        c.player_id === profilePlayerIds[0] ? { ...c, primary_team: profileCurrentTeam } : c,
+      )
+    }
   } else if (filters.name.replace(/[ 　]/gu, '').length > 2) {
     // No profile found for the input (player not in current NPB registry).
     // For full-name inputs (>2 compact chars), filter out all player_id candidates whose
@@ -248,7 +259,7 @@ function groupPlayerMentions(rows: RawPlayerMention[], aliases: string[]): Playe
     name: string
     roles: string[]
     teams: string[]
-    teamMentions: string[]
+    teamYears: Array<{ team: string; year: number }>
     years: number[]
   }>()
 
@@ -264,13 +275,15 @@ function groupPlayerMentions(rows: RawPlayerMention[], aliases: string[]): Playe
       name,
       roles: [],
       teams: [],
-      teamMentions: [],
+      teamYears: [],
       years: [],
     }
     group.roles.push(row.role)
     if (row.team) {
       group.teams.push(row.team)
-      group.teamMentions.push(row.team)
+      if (Number.isFinite(row.year)) {
+        group.teamYears.push({ team: row.team, year: Number(row.year) })
+      }
     }
     if (Number.isFinite(row.year)) {
       group.years.push(Number(row.year))
@@ -282,7 +295,7 @@ function groupPlayerMentions(rows: RawPlayerMention[], aliases: string[]): Playe
     .map((group) => ({
       player_id: group.player_id,
       name: group.name,
-      primary_team: mode(group.teamMentions),
+      primary_team: latestTeam(group.teamYears),
       roles: unique(group.roles),
       teams: unique(group.teams),
       years: unique(group.years).sort((a, b) => a - b),
@@ -322,19 +335,9 @@ function uniqueStrings(values: Array<string | undefined>): string[] {
   return [...new Set(values.map((value) => value?.trim()).filter(Boolean) as string[])]
 }
 
-function mode(values: string[]): string | null {
-  let best: string | null = null
-  let bestCount = 0
-  const counts = new Map<string, number>()
-  for (const value of values) {
-    const count = (counts.get(value) ?? 0) + 1
-    counts.set(value, count)
-    if (count > bestCount) {
-      best = value
-      bestCount = count
-    }
-  }
-  return best
+function latestTeam(teamYears: Array<{ team: string; year: number }>): string | null {
+  if (teamYears.length === 0) return null
+  return teamYears.reduce((best, current) => current.year > best.year ? current : best).team
 }
 
 function mergeFallbackCandidates(candidates: PlayerCandidate[]): PlayerCandidate[] {

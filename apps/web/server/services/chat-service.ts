@@ -544,7 +544,7 @@ async function searchGameDetailsFromEventQuery(
   }
 }
 
-const WIN_LOSS_PATTERN = /チームの勝利数|チームの勝ち数|チームの勝ち星|チームの敗北数|チームの負け数|チームの引き分け数|チームの勝敗|何勝何敗|(?:\d+)?勝(?:\d+)?敗|勝利数|勝ち星|勝ち数|敗北数|負け数|引き分け数|何勝|何敗/u
+const WIN_LOSS_PATTERN = /チームの勝利数|チームの勝ち数|チームの勝ち星|チームの敗北数|チームの負け数|チームの引き分け数|チームの勝敗|何勝何敗|(?:\d+)?勝(?:\d+)?敗|勝利数|勝ち星|勝ち数|敗北数|負け数|引き分け数|何勝|何敗|勝敗|勝ち越し|負け越し/u
 
 function rewriteToAggregateGamesIfNeeded(
   message: string,
