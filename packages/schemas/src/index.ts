@@ -163,6 +163,7 @@ export const searchPitchingLinesFiltersSchema = z.object({
   year_to: z.number().int().min(1936).optional(),
   game_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   pitcher_name: coercedName.optional(),
+  pitcher_player_id: z.string().min(1).optional(),
   team: coercedText.optional(),
   recent: z.boolean().optional(),
   sort_by: z.enum(['date', 'pitchCount']).optional(),
@@ -192,6 +193,7 @@ export const searchRosterEntriesFiltersSchema = z.object({
   game_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   team: z.string().min(1).optional(),
   player_name: z.string().min(1).optional(),
+  player_id: z.string().min(1).optional(),
   batting_order: z.number().int().min(1).max(9).optional(),
   position: z.string().min(1).optional(),
   starter: z.boolean().optional(),
@@ -226,7 +228,7 @@ export const aggregateBattingFiltersSchema = searchBattingLinesFiltersSchema.omi
 }).extend({
   limit: z.number().int().positive().max(100).optional(),
   group_by: z.enum(['player', 'year']).optional(),
-  sort_by: z.enum(['hits', 'atBats', 'runsBattedIn', 'stolenBases', 'walks', 'strikeouts', 'battingAverage', 'ops', 'isoP', 'bbRate', 'games']).optional(),
+  sort_by: z.enum(['hits', 'atBats', 'homeRuns', 'runsBattedIn', 'stolenBases', 'walks', 'strikeouts', 'battingAverage', 'ops', 'isoP', 'bbRate', 'games']).optional(),
 })
 
 export const aggregatePitchingFiltersSchema = searchPitchingLinesFiltersSchema.omit({

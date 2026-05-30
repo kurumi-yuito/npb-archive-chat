@@ -116,7 +116,7 @@ export async function searchEvents(
     }
   }
 
-  if (normalizedFilters.batter_name) {
+  if (normalizedFilters.batter_name && !normalizedFilters.batter_player_id) {
     clauses.push('events.batter_name = ?')
     values.push(normalizedFilters.batter_name)
   }
@@ -125,7 +125,7 @@ export async function searchEvents(
     addPlayerIdFilter(clauses, values, 'events.batter_url', normalizedFilters.batter_player_id)
   }
 
-  if (normalizedFilters.pitcher_name) {
+  if (normalizedFilters.pitcher_name && !normalizedFilters.pitcher_player_id) {
     clauses.push('events.pitcher_name = ?')
     values.push(normalizedFilters.pitcher_name)
   }
@@ -134,7 +134,7 @@ export async function searchEvents(
     addPlayerIdFilter(clauses, values, 'events.pitcher_url', normalizedFilters.pitcher_player_id)
   }
 
-  if (normalizedFilters.runner_name) {
+  if (normalizedFilters.runner_name && !normalizedFilters.runner_player_id) {
     clauses.push('events.runner_name = ?')
     values.push(normalizedFilters.runner_name)
   }
@@ -153,7 +153,7 @@ export async function searchEvents(
     values.push(normalizedFilters.event_subtype)
   }
 
-  if (normalizedFilters.player_name) {
+  if (normalizedFilters.player_name && !normalizedFilters.player_id) {
     clauses.push(
       '(events.batter_name = ? OR events.pitcher_name = ? OR events.runner_name = ?)',
     )

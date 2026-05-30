@@ -471,6 +471,9 @@ function shouldUseFinalAnswerLlm(
   if (core.answer.result_count === 0) {
     return false
   }
+  if (core.structured_query.intent === 'search_events') {
+    return false
+  }
   if (
     core.structured_query.intent === 'aggregate_games' ||
     core.structured_query.intent === 'aggregate_batting' ||
@@ -825,12 +828,20 @@ function rewriteToBattingIfNeeded(message: string, query: ChatStructuredQuery): 
     return query
   }
   const filters = query.filters as Record<string, unknown>
-  const playerName = typeof filters.player_name === 'string' ? filters.player_name : undefined
+  const playerName = typeof filters.player_name === 'string'
+    ? filters.player_name
+    : typeof filters.batter_name === 'string'
+      ? filters.batter_name
+      : undefined
   const normalizedPlayerName = /村上宗隆/u.test(message) ? '村上' : playerName
   const team = typeof filters.team === 'string' ? filters.team : /村上宗隆/u.test(message) ? 'ヤクルト' : undefined
   const year = typeof filters.year === 'number' ? filters.year : undefined
   const yearFrom = typeof filters.year_from === 'number' ? filters.year_from : extractSinceYear(message)
   const yearTo = typeof filters.year_to === 'number' ? filters.year_to : undefined
+  const isHomeRunQuestion = /本塁打|ホームラン|\bHR\b|ＨＲ/iu.test(message)
+  const asksHomeRunTotal = isHomeRunQuestion &&
+    /何本|何本打|数|通算|合計|ランキング|最多|一番|トップ/u.test(message) &&
+    !/一覧|リスト|どの試合|いつ打|試合を/u.test(message)
   if (/年別/u.test(message) && normalizedPlayerName) {
     return {
       intent: 'aggregate_batting',
@@ -846,7 +857,7 @@ function rewriteToBattingIfNeeded(message: string, query: ChatStructuredQuery): 
       } as AggregateBattingFilters,
     }
   }
-  if (/通算/u.test(message) && normalizedPlayerName) {
+  if ((/通算/u.test(message) || asksHomeRunTotal) && normalizedPlayerName) {
     return {
       intent: 'aggregate_batting',
       filters: {
@@ -855,9 +866,13 @@ function rewriteToBattingIfNeeded(message: string, query: ChatStructuredQuery): 
         ...(year ? { year } : {}),
         ...(yearFrom ? { year_from: yearFrom } : {}),
         ...(yearTo ? { year_to: yearTo } : {}),
+        ...(isHomeRunQuestion && !normalizedPlayerName ? { sort_by: 'homeRuns' } : {}),
         limit: 10,
       },
     }
+  }
+  if (asksHomeRunTotal && !normalizedPlayerName) {
+    return { intent: 'aggregate_batting', filters: { ...filters, sort_by: 'homeRuns', limit: 10 } as AggregateBattingFilters }
   }
   if (/IsoP/iu.test(message)) {
     return { intent: 'aggregate_batting', filters: { ...filters, sort_by: 'isoP', limit: 5 } as AggregateBattingFilters }

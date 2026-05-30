@@ -25,7 +25,9 @@ export async function aggregateBattingLines(
 ): Promise<AggregateRow[]> {
   const normalized = aggregateBattingFiltersSchema.parse(filters)
   const groupByYear = normalized.group_by === 'year'
-  if (!groupByYear && !normalized.game_date && !normalized.batting_order && !normalized.position) {
+  const careerPlayerQuery = (normalized.player_name || normalized.player_id) &&
+    !normalized.year && !normalized.year_from && !normalized.year_to
+  if (!careerPlayerQuery && !groupByYear && !normalized.game_date && !normalized.batting_order && !normalized.position) {
     const bisRows = await aggregateCurrentBattingStats(database, normalized)
     if (bisRows.length > 0) {
       return bisRows
@@ -34,7 +36,9 @@ export async function aggregateBattingLines(
   const clauses: string[] = []
   const values: Array<string | number> = []
   appendGameClauses(clauses, values, normalized)
-  if (normalized.player_name) {
+  if (normalized.player_id) {
+    addBattingLinePlayerIdFilter(clauses, values, normalized.player_id, normalized.player_name)
+  } else if (normalized.player_name) {
     clauses.push(`${compactNameSql('?')} LIKE ${compactNameSql('batting_lines.player_name')} || '%'`)
     values.push(normalized.player_name)
   }
@@ -123,7 +127,9 @@ export async function aggregatePitchingLines(
   const clauses: string[] = []
   const values: Array<string | number> = []
   appendGameClauses(clauses, values, normalized)
-  if (normalized.pitcher_name) {
+  if (normalized.pitcher_player_id) {
+    addPitchingLinePlayerIdFilter(clauses, values, normalized.pitcher_player_id, normalized.pitcher_name)
+  } else if (normalized.pitcher_name) {
     clauses.push(`${compactNameSql('?')} LIKE ${compactNameSql('pitching_lines.pitcher_name')} || '%'`)
     values.push(normalized.pitcher_name)
   }
@@ -216,21 +222,45 @@ export async function aggregateEvents(
       values.push(normalized.team)
     }
   }
-  if (normalized.batter_name) {
+  if (normalized.batter_name && !normalized.batter_player_id) {
     clauses.push('events.batter_name = ?')
     values.push(normalized.batter_name)
   }
-  if (normalized.pitcher_name) {
-    clauses.push('events.pitcher_name = ?')
-    values.push(normalized.pitcher_name)
+  if (normalized.batter_player_id) {
+    addEventPlayerIdFilter(clauses, values, 'events.batter_url', normalized.batter_player_id)
   }
-  if (normalized.runner_name) {
+  if (normalized.pitcher_name) {
+    if (normalized.pitcher_player_id) {
+      addEventPlayerIdFilter(clauses, values, 'events.pitcher_url', normalized.pitcher_player_id)
+    } else {
+      clauses.push('events.pitcher_name = ?')
+      values.push(normalized.pitcher_name)
+    }
+  } else if (normalized.pitcher_player_id) {
+    addEventPlayerIdFilter(clauses, values, 'events.pitcher_url', normalized.pitcher_player_id)
+  }
+  if (normalized.runner_name && !normalized.runner_player_id) {
     clauses.push('events.runner_name = ?')
     values.push(normalized.runner_name)
   }
-  if (normalized.player_name) {
+  if (normalized.runner_player_id) {
+    addEventPlayerIdFilter(clauses, values, 'events.runner_url', normalized.runner_player_id)
+  }
+  if (normalized.player_name && !normalized.player_id) {
     clauses.push('(events.batter_name = ? OR events.pitcher_name = ? OR events.runner_name = ?)')
     values.push(normalized.player_name, normalized.player_name, normalized.player_name)
+  }
+  if (normalized.player_id) {
+    clauses.push(
+      `(
+        events.batter_url LIKE ?
+        OR events.pitcher_url LIKE ?
+        OR events.runner_url LIKE ?
+        OR events.event_attributes_json LIKE ?
+      )`,
+    )
+    const pattern = playerIdPattern(normalized.player_id)
+    values.push(pattern, pattern, pattern, pattern)
   }
   if (normalized.event_type) {
     clauses.push('events.event_type = ?')
@@ -293,6 +323,7 @@ function battingSortClause(sortBy: string | undefined): string {
     case 'bbRate':
       return 'CASE WHEN (SUM(batting_lines.at_bats)+SUM(COALESCE(batting_lines.walks, 0))) > 0 THEN CAST(SUM(COALESCE(batting_lines.walks, 0)) AS REAL)/(SUM(batting_lines.at_bats)+SUM(COALESCE(batting_lines.walks, 0))) ELSE 0 END DESC'
     case 'atBats': return 'SUM(batting_lines.at_bats) DESC'
+    case 'homeRuns': return 'COALESCE(SUM(hr_stats.hr_count), 0) DESC'
     case 'runsBattedIn': return 'SUM(batting_lines.runs_batted_in) DESC'
     case 'stolenBases': return 'SUM(batting_lines.stolen_bases) DESC'
     case 'walks': return 'SUM(COALESCE(batting_lines.walks, 0)) DESC'
@@ -320,6 +351,7 @@ function currentBattingSortClause(sortBy: string | undefined): string {
     case 'bbRate':
       return `CASE WHEN ${pa} > 0 THEN CAST(${bb} AS REAL)/${pa} ELSE 0 END DESC`
     case 'atBats': return `${ab} DESC`
+    case 'homeRuns': return "SUM(CAST(COALESCE(json_extract(values_json, '$.本塁打'), '0') AS INTEGER)) DESC"
     case 'runsBattedIn': return "SUM(CAST(COALESCE(json_extract(values_json, '$.打点'), '0') AS INTEGER)) DESC"
     case 'stolenBases': return "SUM(CAST(COALESCE(json_extract(values_json, '$.盗塁'), '0') AS INTEGER)) DESC"
     case 'walks': return `${bb} DESC`
@@ -353,6 +385,85 @@ function compactNameSql(column: string): string {
 
 function compactName(value: string): string {
   return value.replace(/[ \u3000*＊]/gu, '')
+}
+
+function addBattingLinePlayerIdFilter(
+  clauses: string[],
+  values: Array<string | number>,
+  playerId: string,
+  playerName?: string,
+): void {
+  const pattern = playerIdPattern(playerId)
+  const nameFallback = playerName
+    ? `OR (batting_lines.player_url IS NULL AND ${compactNameSql('?')} LIKE ${compactNameSql('batting_lines.player_name')} || '%')`
+    : ''
+  clauses.push(
+    `(
+      batting_lines.player_url LIKE ?
+      OR EXISTS (
+        SELECT 1
+        FROM events player_id_events
+        WHERE player_id_events.game_id = batting_lines.game_id
+          AND player_id_events.batter_name = batting_lines.player_name
+          AND (
+            player_id_events.batter_url LIKE ?
+            OR player_id_events.event_attributes_json LIKE ?
+          )
+      )
+      ${nameFallback}
+    )`,
+  )
+  values.push(pattern, pattern, pattern)
+  if (playerName) {
+    values.push(playerName)
+  }
+}
+
+function addPitchingLinePlayerIdFilter(
+  clauses: string[],
+  values: Array<string | number>,
+  playerId: string,
+  pitcherName?: string,
+): void {
+  const pattern = playerIdPattern(playerId)
+  const nameFallback = pitcherName
+    ? `OR (pitching_lines.pitcher_url IS NULL AND ${compactNameSql('?')} LIKE ${compactNameSql('pitching_lines.pitcher_name')} || '%')`
+    : ''
+  clauses.push(
+    `(
+      pitching_lines.pitcher_url LIKE ?
+      OR EXISTS (
+        SELECT 1
+        FROM events player_id_events
+        WHERE player_id_events.game_id = pitching_lines.game_id
+          AND player_id_events.pitcher_name = pitching_lines.pitcher_name
+          AND (
+            player_id_events.pitcher_url LIKE ?
+            OR player_id_events.event_attributes_json LIKE ?
+          )
+      )
+      ${nameFallback}
+    )`,
+  )
+  values.push(pattern, pattern, pattern)
+  if (pitcherName) {
+    values.push(pitcherName)
+  }
+}
+
+function addEventPlayerIdFilter(
+  clauses: string[],
+  values: Array<string | number>,
+  urlColumn: string,
+  playerId: string,
+): void {
+  const pattern = playerIdPattern(playerId)
+  clauses.push(`(${urlColumn} LIKE ? OR events.event_attributes_json LIKE ?)`)
+  values.push(pattern, pattern)
+}
+
+function playerIdPattern(playerId: string): string {
+  return `%${playerId}.html%`
 }
 
 function scoreSql(side: 'home' | 'away'): string {

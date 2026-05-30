@@ -339,12 +339,13 @@ describe('chat-service', () => {
         '2025-08-15の投手成績で team=ロッテ pitcher_name=益田 を見せて',
       )
 
-      expect(response.structured_query).toEqual({
+      expect(response.structured_query).toMatchObject({
         intent: 'search_pitching',
         filters: {
           game_date: '2025-08-15',
           team: 'ロッテ',
           pitcher_name: '益田',
+          pitcher_player_id: 'masuda',
         },
       })
       expect(response.results.pitching).toHaveLength(1)
@@ -510,6 +511,60 @@ describe('chat-service', () => {
     } finally {
       database.close()
     }
+  })
+
+  it('resolves player_id before player home run existence event searches', async () => {
+    const eventCalls: Array<Parameters<ChatQueryService['searchEvents']>[0]> = []
+    const service = createChatService(createFakeQueryService({
+      playerCandidates: [
+        { player_id: '41045137', name: '藤浪 晋太郎', primary_team: 'DeNA', roles: ['batter', 'pitcher'], teams: ['阪神', 'DeNA'], years: [2016, 2026] },
+      ],
+      searchEvents: async (filters) => {
+        eventCalls.push(filters)
+        return [{
+          gameId: 'r20210416t-s-04',
+          gameDate: '2021-04-16',
+          sequence: 1,
+          inning: 2,
+          half: 'bottom',
+          offenseTeam: '阪神',
+          eventType: 'plate_appearance',
+          eventSubtype: 'standard',
+          batterName: '藤浪',
+          pitcherName: '石川',
+          runnerName: null,
+          resultText: 'レフト2ランホームラン（打点2）',
+          eventAttributesJson: '{"batter_links":[{"name":"藤浪","url":"https://npb.jp/bis/players/41045137.html"}]}',
+          sourceUrl: 'https://npb.jp/scores/2021/0416/t-s-04/playbyplay.html',
+        }]
+      },
+    }), {
+      parseStructuredQueryFromMessage: async () => ({
+        intent: 'search_events',
+        filters: {
+          batter_name: '藤浪',
+          event_type: 'plate_appearance',
+          result_text_contains: 'ホームラン',
+        },
+      }),
+    })
+
+    const response = await service.answerQuestion('藤浪ってホームラン打ったことある？')
+
+    expect(response.structured_query).toMatchObject({
+      intent: 'search_events',
+      filters: {
+        batter_name: '藤浪 晋太郎',
+        batter_player_id: '41045137',
+      },
+    })
+    expect(eventCalls[0]).toMatchObject({
+      batter_name: '藤浪 晋太郎',
+      batter_player_id: '41045137',
+    })
+    expect(response.answer.result_count).toBe(1)
+    expect(response.answer.summary).toContain('藤浪 晋太郎が打ったホームランは1件です')
+    expect(response.answer.summary).not.toContain('条件に一致するイベントは見つかりません')
   })
 
   it('romanized player names return not_found without a latin alias map', async () => {
@@ -981,6 +1036,7 @@ function createFakeQueryService(options: {
   }>
   searchEvents?: ChatQueryService['searchEvents']
   searchGameDetails?: ChatQueryService['searchGameDetails']
+  aggregateBattingLines?: ChatQueryService['aggregateBattingLines']
 } = {}): ChatQueryService {
   const emptyResults = options.empty === true
   return {
@@ -1036,7 +1092,7 @@ function createFakeQueryService(options: {
           sourceUrl: 'https://npb.jp/scores/2024/0401/g-t-01/roster.html',
         }],
     searchGameDetails: options.searchGameDetails ?? (async () => []),
-    aggregateBattingLines: async () => [],
+    aggregateBattingLines: options.aggregateBattingLines ?? (async () => []),
     aggregatePitchingLines: async () => [],
     aggregateEvents: async () => [],
     aggregateGameResults: async () => [],

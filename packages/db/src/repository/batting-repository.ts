@@ -61,13 +61,11 @@ export async function searchBattingLines(
     clauses.push('games.year <= ?')
     values.push(normalized.year_to)
   }
-  if (normalized.player_name) {
+  if (normalized.player_id) {
+    addBattingLinePlayerIdFilter(clauses, values, normalized.player_id, normalized.player_name)
+  } else if (normalized.player_name) {
     clauses.push(`${compactNameSql('?')} LIKE ${compactNameSql('batting_lines.player_name')} || '%'`)
     values.push(normalized.player_name)
-  }
-  if (normalized.player_id) {
-    clauses.push('(batting_lines.player_url IS NULL OR batting_lines.player_url LIKE ?)')
-    values.push(playerIdPattern(normalized.player_id))
   }
   if (normalized.team) {
     const teams = toJapaneseTeamAliases(normalized.team)
@@ -148,10 +146,6 @@ async function searchCurrentBattingStats(
     clauses.push(`player_batting_stats.team_name IN (${teams.map(() => '?').join(', ')})`)
     values.push(...teams)
   }
-  if (filters.player_name) {
-    clauses.push(`${compactNameSql('player_batting_stats.player_name')} LIKE ?`)
-    values.push(`%${compactName(filters.player_name)}%`)
-  }
   if (filters.player_id) {
     clauses.push(`(
       player_batting_stats.player_id = ?
@@ -165,6 +159,9 @@ async function searchCurrentBattingStats(
       )
     )`)
     values.push(filters.player_id, filters.player_id)
+  } else if (filters.player_name) {
+    clauses.push(`${compactNameSql('player_batting_stats.player_name')} LIKE ?`)
+    values.push(`%${compactName(filters.player_name)}%`)
   }
   if (filters.result_text_contains) {
     clauses.push('player_batting_stats.values_json LIKE ?')
@@ -211,6 +208,38 @@ function compactName(value: string): string {
 
 function playerIdPattern(playerId: string): string {
   return `%${playerId}.html%`
+}
+
+function addBattingLinePlayerIdFilter(
+  clauses: string[],
+  values: Array<string | number>,
+  playerId: string,
+  playerName?: string,
+): void {
+  const pattern = playerIdPattern(playerId)
+  const nameFallback = playerName
+    ? `OR (batting_lines.player_url IS NULL AND ${compactNameSql('?')} LIKE ${compactNameSql('batting_lines.player_name')} || '%')`
+    : ''
+  clauses.push(
+    `(
+      batting_lines.player_url LIKE ?
+      OR EXISTS (
+        SELECT 1
+        FROM events player_id_events
+        WHERE player_id_events.game_id = batting_lines.game_id
+          AND player_id_events.batter_name = batting_lines.player_name
+          AND (
+            player_id_events.batter_url LIKE ?
+            OR player_id_events.event_attributes_json LIKE ?
+          )
+      )
+      ${nameFallback}
+    )`,
+  )
+  values.push(pattern, pattern, pattern)
+  if (playerName) {
+    values.push(playerName)
+  }
 }
 
 function teamAliases(team: string): string[] {

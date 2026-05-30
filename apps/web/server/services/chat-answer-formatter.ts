@@ -185,7 +185,7 @@ function buildSummary(
       ? `${filters.year}年`
       : filters.year_from && filters.year_to
         ? `${filters.year_from}〜${filters.year_to}年`
-        : 'DB収録期間'
+        : '対象期間'
     return [
       `${yearShiftPrefix}${yearLabel}の勝敗集計です。`,
       ...rows.map((row) => {
@@ -207,7 +207,7 @@ function buildSummary(
     structuredQuery.intent === 'aggregate_pitching' ||
     structuredQuery.intent === 'aggregate_events'
   ) {
-    return `${yearShiftPrefix}${formatAggregateSummary(structuredQuery, results.aggregates as AggregateRow[])}`
+    return `${yearShiftPrefix}${formatAggregateSummary(question, structuredQuery, results.aggregates as AggregateRow[], playerResolution)}`
   }
 
   return `${yearShiftPrefix}${formatEventListSummary(structuredQuery, results.events, resultCount, playerResolution)}`
@@ -317,9 +317,17 @@ function isWalkOffWin(linescore: ParsedLinescore): boolean {
   return Boolean(lastHomeScore && /\d+x$/iu.test(lastHomeScore))
 }
 
-function formatAggregateSummary(structuredQuery: ChatStructuredQuery, rows: AggregateRow[]): string {
+function formatAggregateSummary(
+  question: string,
+  structuredQuery: ChatStructuredQuery,
+  rows: AggregateRow[],
+  playerResolution: PlayerResolution | null,
+): string {
   if (structuredQuery.intent === 'aggregate_batting') {
     const filters = structuredQuery.filters as Record<string, unknown>
+    if (/本塁打|ホームラン|HR/iu.test(question) && (filters.player_name || filters.player_id)) {
+      return formatPlayerHomeRunAggregate(question, rows, filters, playerResolution)
+    }
     if (filters.group_by === 'year') {
       const playerName = typeof filters.player_name === 'string'
         ? filters.player_name
@@ -358,6 +366,46 @@ function formatAggregateSummary(structuredQuery: ChatStructuredQuery, rows: Aggr
     ...rows.slice(0, 10).map((row, index) => `${index + 1}位: ${row.label} ${row.total}件`),
     '数値はeventsの条件一致件数をDB集計しています。',
   ].join('\n')
+}
+
+function formatPlayerHomeRunAggregate(
+  question: string,
+  rows: AggregateRow[],
+  filters: Record<string, unknown>,
+  playerResolution: PlayerResolution | null,
+): string {
+  const playerName = playerResolution?.status === 'resolved'
+    ? playerResolution.name ?? String(filters.player_name ?? '対象選手')
+    : String(filters.player_name ?? rows[0]?.stats.playerName ?? rows[0]?.label ?? '対象選手')
+  const yearLabel = filters.year
+    ? `${filters.year}年`
+    : filters.year_from && filters.year_to
+      ? `${filters.year_from}〜${filters.year_to}年`
+      : filters.year_from
+        ? `${filters.year_from}年以降`
+        : 'DB収録期間'
+  const totalHomeRuns = rows.reduce((sum, row) => sum + Number(row.stats.homeRuns ?? row.stats['本塁打'] ?? 0), 0)
+  const totalGames = rows.reduce((sum, row) => sum + Number(row.stats.games ?? row.total ?? 0), 0)
+  const teams = [...new Set(rows.map((row) => String(row.stats.team ?? '')).filter(Boolean).map(displayTeamName))]
+  const teamText = teams.length > 0 ? `（${teams.join('、')}）` : ''
+  const firstLine = totalHomeRuns > 0
+    ? `${playerName}は、${yearLabel}のNPB公式戦で本塁打を${totalHomeRuns}本打っています。`
+    : `${playerName}は、${yearLabel}のNPB公式戦で本塁打0本です。`
+  const detailLine = totalGames > 0
+    ? `対象は${teamText}${totalGames}試合分の打撃記録です。`
+    : undefined
+  const breakdown = rows.length > 1
+    ? rows.map((row) => `${displayTeamName(String(row.stats.team ?? row.label))}: ${Number(row.stats.homeRuns ?? 0)}本`).join('、')
+    : undefined
+  const method = /打ったこと|ある/u.test(question)
+    ? '本塁打の有無は、同じ選手の打撃記録と本塁打イベントを突き合わせて確認しています。'
+    : '本塁打数は、同じ選手の打撃記録と本塁打イベントから集計しています。'
+  return [
+    firstLine,
+    detailLine,
+    breakdown ? `内訳: ${breakdown}` : undefined,
+    method,
+  ].filter(Boolean).join('\n')
 }
 
 function formatBisBattingSummary(row: BattingLineRow, resultCount: number): string {

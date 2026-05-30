@@ -56,7 +56,9 @@ export async function searchPitchingLines(
     values.push(normalized.year_to)
   }
 
-  if (normalized.pitcher_name) {
+  if (normalized.pitcher_player_id) {
+    addPitchingLinePlayerIdFilter(clauses, values, normalized.pitcher_player_id, normalized.pitcher_name)
+  } else if (normalized.pitcher_name) {
     clauses.push(`${compactNameSql('?')} LIKE ${compactNameSql('pitching_lines.pitcher_name')} || '%'`)
     values.push(normalized.pitcher_name)
   }
@@ -124,7 +126,10 @@ export async function searchCurrentPitchingStats(
     clauses.push(`player_pitching_stats.team_name IN (${teams.map(() => '?').join(', ')})`)
     values.push(...teams)
   }
-  if (filters.pitcher_name) {
+  if (filters.pitcher_player_id) {
+    clauses.push('player_pitching_stats.player_id = ?')
+    values.push(filters.pitcher_player_id)
+  } else if (filters.pitcher_name) {
     clauses.push(`${compactNameSql('player_pitching_stats.player_name')} LIKE ?`)
     values.push(`%${compactName(filters.pitcher_name)}%`)
   }
@@ -161,6 +166,42 @@ function compactNameSql(column: string): string {
 
 function compactName(value: string): string {
   return value.replace(/[ \u3000*＊]/gu, '')
+}
+
+function addPitchingLinePlayerIdFilter(
+  clauses: string[],
+  values: Array<string | number>,
+  playerId: string,
+  pitcherName?: string,
+): void {
+  const pattern = playerIdPattern(playerId)
+  const nameFallback = pitcherName
+    ? `OR (pitching_lines.pitcher_url IS NULL AND ${compactNameSql('?')} LIKE ${compactNameSql('pitching_lines.pitcher_name')} || '%')`
+    : ''
+  clauses.push(
+    `(
+      pitching_lines.pitcher_url LIKE ?
+      OR EXISTS (
+        SELECT 1
+        FROM events player_id_events
+        WHERE player_id_events.game_id = pitching_lines.game_id
+          AND player_id_events.pitcher_name = pitching_lines.pitcher_name
+          AND (
+            player_id_events.pitcher_url LIKE ?
+            OR player_id_events.event_attributes_json LIKE ?
+          )
+      )
+      ${nameFallback}
+    )`,
+  )
+  values.push(pattern, pattern, pattern)
+  if (pitcherName) {
+    values.push(pitcherName)
+  }
+}
+
+function playerIdPattern(playerId: string): string {
+  return `%${playerId}.html%`
 }
 
 function teamAliases(team: string): string[] {

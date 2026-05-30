@@ -50,7 +50,16 @@ export async function searchRosterEntries(
     clauses.push(`roster_entries.team IN (${teams.map(() => '?').join(', ')})`)
     values.push(...teams)
   }
-  if (normalized.player_name) {
+  if (normalized.player_id) {
+    const nameFallback = normalized.player_name
+      ? ` OR (roster_entries.player_url IS NULL AND roster_entries.player_name = ?)`
+      : ''
+    clauses.push(`(roster_entries.player_url LIKE ?${nameFallback})`)
+    values.push(playerIdPattern(normalized.player_id))
+    if (normalized.player_name) {
+      values.push(normalized.player_name)
+    }
+  } else if (normalized.player_name) {
     clauses.push('roster_entries.player_name = ?')
     values.push(normalized.player_name)
   }
@@ -93,4 +102,8 @@ export async function searchRosterEntries(
     ...row,
     starter: row.starter == null ? null : Boolean(row.starter),
   }))
+}
+
+function playerIdPattern(playerId: string): string {
+  return `%${playerId}.html%`
 }

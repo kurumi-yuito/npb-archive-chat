@@ -10,6 +10,7 @@ import {
   migrateDatabase,
   openDatabase,
   resolveMigrationsDir,
+  searchBattingLines,
   searchEvents,
   searchGames,
   searchPitchingLines,
@@ -191,6 +192,35 @@ describe('@npb/db', () => {
             event.eventType === plateAppearance.event_type,
         ),
       ).toBe(true)
+
+      const batterPlayerId = plateAppearance.batter!.player!.url?.match(/\/players\/([^/]+)\.html/u)?.[1]
+      expect(batterPlayerId).toBeTruthy()
+      const byBatterPlayerId = await searchEvents(q, {
+        game_date: richGame.game_meta.date,
+        batter_name: `${plateAppearance.batter!.player!.name} フルネーム`,
+        batter_player_id: batterPlayerId!,
+        event_type: plateAppearance.event_type,
+      })
+      expect(byBatterPlayerId.length).toBeGreaterThan(0)
+      expect(byBatterPlayerId.some((event) => event.batterName === plateAppearance.batter!.player!.name)).toBe(true)
+
+      const battingByPlayerId = await searchBattingLines(q, {
+        game_date: richGame.game_meta.date,
+        player_name: `${plateAppearance.batter!.player!.name} フルネーム`,
+        player_id: batterPlayerId!,
+      })
+      expect(battingByPlayerId.length).toBeGreaterThan(0)
+      expect(battingByPlayerId.some((line) => line.playerName === plateAppearance.batter!.player!.name)).toBe(true)
+
+      const pitcherPlayerId = plateAppearance.pitcher!.url?.match(/\/players\/([^/]+)\.html/u)?.[1]
+      expect(pitcherPlayerId).toBeTruthy()
+      const pitchingByPlayerId = await searchPitchingLines(q, {
+        game_date: richGame.game_meta.date,
+        pitcher_name: `${plateAppearance.pitcher!.name} フルネーム`,
+        pitcher_player_id: pitcherPlayerId!,
+      })
+      expect(pitchingByPlayerId.length).toBeGreaterThan(0)
+      expect(pitchingByPlayerId.some((line) => line.pitcherName === plateAppearance.pitcher!.name)).toBe(true)
 
       const pinchHitterEvents = await searchEvents(q, {
         game_date: richGame.game_meta.date,
