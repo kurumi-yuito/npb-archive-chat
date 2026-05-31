@@ -127,57 +127,36 @@ function toggleSidebar() {
 
 <template>
   <main class="chat-shell">
-    <button
+    <!-- SP: sidebar overlay backdrop -->
+    <div
       v-if="sidebarOpen"
       class="sidebar-backdrop"
-      type="button"
-      aria-label="サイドバーを閉じる"
+      role="presentation"
       @click="toggleSidebar"
     />
+
     <aside
       class="sidebar"
       :class="{ 'is-open': sidebarOpen }"
       aria-label="ユーザー設定"
     >
       <div class="brand">
-        <NuxtLink
-          class="brand__home"
-          to="/"
-        >
-          NPB Archive
-        </NuxtLink>
-        <p class="brand__title">
-          検索チャット
-        </p>
+        <NuxtLink class="brand__link" to="/">NPB Archive</NuxtLink>
+        <p class="brand__tagline">検索チャット</p>
       </div>
 
       <section class="panel">
         <div class="panel__head">
-          <h2 class="panel__title">
-            アカウント
-          </h2>
-          <span
-            class="status-dot"
-            aria-hidden="true"
-          />
+          <h2 class="panel__title">アカウント</h2>
+          <span class="status-dot" aria-hidden="true" />
         </div>
-        <div
-          class="account-id"
-          :title="userId || 'local'"
-        >
+        <div class="account-id" :title="userId || 'local'">
           {{ accountInfo?.authProvider === 'google' ? 'Google アカウント' : 'ゲスト' }}
         </div>
-        <div
-          v-if="userId"
-          class="account-id account-id--sub"
-          :title="userId"
-        >
+        <div v-if="userId" class="account-id account-id--sub" :title="userId">
           {{ userId }}
         </div>
-        <dl
-          v-if="isGoogleAuthenticated"
-          class="account-details"
-        >
+        <dl v-if="isGoogleAuthenticated" class="account-details">
           <div>
             <dt>表示名</dt>
             <dd>{{ accountInfo?.displayName || '未設定' }}</dd>
@@ -196,54 +175,30 @@ function toggleSidebar() {
         >
           Google でログイン
         </button>
-        <button
-          v-else
-          class="text-button"
-          type="button"
-          @click="logout"
-        >
+        <button v-else class="text-button" type="button" @click="logout">
           ログアウト
         </button>
       </section>
 
       <section class="panel">
         <div class="panel__head">
-          <h2 class="panel__title">
-            プラン
-          </h2>
-          <span
-            class="plan-pill"
-            :class="`plan-pill--${plan}`"
-          >{{ plan }}</span>
+          <h2 class="panel__title">プラン</h2>
+          <span class="plan-pill" :class="`plan-pill--${plan}`">{{ plan }}</span>
         </div>
         <label class="select-field">
           <span>現在のプラン</span>
-          <select
-            :value="plan"
-            :disabled="accountSaving"
-            @change="onPlanChange"
-          >
+          <select :value="plan" :disabled="accountSaving" @change="onPlanChange">
             <option value="free">Free</option>
             <option value="pro">Pro</option>
           </select>
         </label>
-        <p
-          v-if="!isGoogleAuthenticated"
-          class="billing-note"
-        >
+        <p v-if="!isGoogleAuthenticated" class="billing-note">
           Pro は Google ログイン後に開始できます。
         </p>
-        <div
-          v-if="accountInfo?.billingPlan"
-          class="billing-meta"
-        >
+        <div v-if="accountInfo?.billingPlan" class="billing-meta">
           <div class="billing-meta__row">
             <span>料金</span>
             <strong>{{ accountInfo.billingPlan.monthlyPriceYen.toLocaleString('ja-JP') }}円 / 月</strong>
-          </div>
-          <div class="billing-meta__row">
-            <span>支払い方法</span>
-            <strong>{{ accountInfo.billingPlan.billingMethod }}</strong>
           </div>
           <div class="billing-meta__row">
             <span>上限</span>
@@ -257,25 +212,15 @@ function toggleSidebar() {
             <span>{{ usageInfo?.month ?? '---- --' }}</span>
             <strong>{{ usageLabel }}</strong>
           </div>
-          <div
-            class="usage-meter"
-            aria-hidden="true"
-          >
+          <div class="usage-meter" aria-hidden="true">
             <span :style="usageMeterStyle" />
           </div>
         </div>
       </section>
 
       <section class="panel panel--quiet">
-        <h2 class="panel__title">
-          直近の検索
-        </h2>
-        <p
-          v-if="!lastAssistant"
-          class="muted"
-        >
-          まだありません
-        </p>
+        <h2 class="panel__title">直近の検索</h2>
+        <p v-if="!lastAssistant" class="muted">まだありません</p>
         <template v-else>
           <div class="last-query">
             <span>{{ structuredQueryLabel(lastAssistant.structured_query) }}</span>
@@ -285,48 +230,26 @@ function toggleSidebar() {
       </section>
     </aside>
 
-    <section
-      class="workspace"
-      aria-label="チャット"
-    >
+    <section class="workspace" aria-label="チャット">
       <header class="topbar">
-        <button
-          class="topbar__menu"
-          type="button"
-          aria-label="サイドバーを開く"
-          @click="toggleSidebar"
-        >
-          <span />
-          <span />
-          <span />
+        <button class="topbar__menu" type="button" aria-label="メニュー" @click="toggleSidebar">
+          <span /><span /><span />
         </button>
-        <div>
-          <h1>NPBアーカイブ検索</h1>
-          <p>公式 scores / BIS 由来のDBだけを根拠に回答します。</p>
-        </div>
+        <h1 class="topbar__title">NPBアーカイブ</h1>
         <div class="topbar__usage">
           <span>{{ plan.toUpperCase() }}</span>
           <strong>{{ usageLabel }}</strong>
         </div>
       </header>
 
-      <section
-        v-if="lastError"
-        class="error-banner"
-        role="alert"
-      >
-        {{ lastError }}
-      </section>
+      <div v-if="lastError" class="error-banner" role="alert">{{ lastError }}</div>
 
-      <div
-        ref="conversationRef"
-        class="conversation"
-      >
-        <section
-          v-if="turns.length === 0"
-          class="empty-state"
-        >
-          <h2>何を調べますか？</h2>
+      <div ref="conversationRef" class="conversation">
+        <!-- Empty state -->
+        <section v-if="turns.length === 0" class="empty-state">
+          <div class="empty-state__icon">⚾</div>
+          <h2 class="empty-state__heading">何を調べますか？</h2>
+          <p class="empty-state__sub">2016年以降のNPB試合・選手・成績をDBから即答します</p>
           <div class="prompt-grid">
             <button
               v-for="prompt in examplePrompts"
@@ -341,126 +264,87 @@ function toggleSidebar() {
           </div>
         </section>
 
-        <article
-          v-for="turn in turns"
-          :key="turn.id"
-          class="turn"
-        >
+        <!-- Chat turns -->
+        <article v-for="turn in turns" :key="turn.id" class="turn">
+          <!-- User message -->
           <div class="message message--user">
-            <div class="avatar avatar--user">
-              ⚡
-            </div>
-            <div class="bubble bubble--user">
-              {{ turn.userMessage }}
-            </div>
+            <div class="bubble bubble--user">{{ turn.userMessage }}</div>
+            <div class="avatar avatar--user" aria-hidden="true">U</div>
           </div>
 
-          <div
-            v-if="turn.errorMessage"
-            class="message message--assistant"
-          >
-            <div class="avatar avatar--assistant">
-              ⚾
-            </div>
-            <div class="bubble bubble--error">
-              {{ turn.errorMessage }}
-            </div>
+          <!-- Error -->
+          <div v-if="turn.errorMessage" class="message message--assistant">
+            <div class="avatar avatar--assistant" aria-hidden="true">⚾</div>
+            <div class="bubble bubble--error">{{ turn.errorMessage }}</div>
           </div>
 
-          <div
-            v-else-if="turn.assistant"
-            class="message message--assistant"
-          >
-            <div class="avatar avatar--assistant">
-              ⚾
-            </div>
+          <!-- Assistant answer -->
+          <div v-else-if="turn.assistant" class="message message--assistant">
+            <div class="avatar avatar--assistant" aria-hidden="true">⚾</div>
             <div class="answer">
-              <div class="answer__head">
-                <span class="intent-chip">
-                  {{ structuredQueryLabel(turn.assistant.structured_query) }}
-                </span>
-                <span>{{ turn.assistant.answer.result_count }}件</span>
-                <span v-if="turn.assistant.answer.remaining_count">
+              <div class="answer__meta">
+                <span class="intent-chip">{{ structuredQueryLabel(turn.assistant.structured_query) }}</span>
+                <span class="answer__count">{{ turn.assistant.answer.result_count }}件</span>
+                <span v-if="turn.assistant.answer.remaining_count" class="answer__count">
                   省略 {{ turn.assistant.answer.remaining_count }}件
                 </span>
               </div>
-              <p class="answer__summary">
-                {{ turn.assistant.answer.summary }}
-              </p>
 
-              <div
-                v-if="turn.assistant.answer.resolved_player?.status === 'ambiguous'"
-                class="result-section"
-              >
-                <h3>候補</h3>
+              <p class="answer__summary">{{ turn.assistant.answer.summary }}</p>
+
+              <!-- Ambiguous player candidates -->
+              <div v-if="turn.assistant.answer.resolved_player?.status === 'ambiguous'" class="result-section">
+                <h3 class="result-title">候補選手</h3>
                 <ul class="candidate-list">
                   <li
                     v-for="candidate in turn.assistant.answer.resolved_player.candidates"
                     :key="`${candidate.player_id}-${candidate.name}-${candidate.primary_team}`"
                   >
-                    <span>{{ candidate.name }}</span>
-                    <small>
+                    <span class="candidate-name">{{ candidate.name }}</span>
+                    <small class="candidate-meta">
                       <template v-if="candidate.primary_team">{{ candidate.primary_team }}</template>
-                      <template v-if="candidate.player_id"> · {{ candidate.player_id }}</template>
                     </small>
                   </li>
                 </ul>
               </div>
 
-              <div
-                v-if="turn.assistant.results.events.length"
-                class="result-section"
-              >
-                <h3>イベント</h3>
+              <!-- Events -->
+              <div v-if="turn.assistant.results.events.length" class="result-section">
+                <h3 class="result-title">イベント</h3>
                 <ol class="event-list">
                   <li
                     v-for="event in visibleEvents(turn.assistant)"
                     :key="`${event.gameId}-${event.sequence}`"
+                    class="event-item"
                   >
-                    <div class="event-list__line">
+                    <div class="event-item__meta">
                       <strong>{{ event.gameDate }}</strong>
-                      <span>{{ event.gameId }}</span>
                       <span>{{ event.inning }}回{{ inningHalfLabel(event.half) }}</span>
                     </div>
-                    <p>
-                      <template v-if="event.pitcherName">
-                        {{ event.pitcherName }}から
-                      </template>{{ event.resultText }}
+                    <p class="event-item__text">
+                      <template v-if="event.pitcherName">{{ event.pitcherName }}から</template>{{ event.resultText }}
                     </p>
                     <a
                       v-if="event.sourceUrl"
                       :href="event.sourceUrl"
                       target="_blank"
                       rel="noopener noreferrer"
-                    >
-                      {{ sourceLabel(event.sourceUrl) }}
-                    </a>
+                      class="event-item__link"
+                    >{{ sourceLabel(event.sourceUrl) }}</a>
                   </li>
                 </ol>
               </div>
 
-              <div
-                v-if="turn.assistant.results.batting.length"
-                class="result-section"
-              >
-                <h3>打撃成績</h3>
-                <div class="data-table-wrap">
+              <!-- Batting stats -->
+              <div v-if="turn.assistant.results.batting.length" class="result-section">
+                <h3 class="result-title">打撃成績</h3>
+                <div class="table-wrap">
                   <table class="data-table">
                     <thead>
-                      <tr>
-                        <th>年</th>
-                        <th>チーム</th>
-                        <th>選手</th>
-                        <th>打数</th>
-                        <th>安打</th>
-                        <th>打点</th>
-                      </tr>
+                      <tr><th>年</th><th>チーム</th><th>選手</th><th>打数</th><th>安打</th><th>打点</th></tr>
                     </thead>
                     <tbody>
-                      <tr
-                        v-for="row in turn.assistant.results.batting"
-                        :key="`${row.gameId}-${row.playerName}`"
-                      >
+                      <tr v-for="row in turn.assistant.results.batting" :key="`${row.gameId}-${row.playerName}`">
                         <td>{{ row.gameDate.slice(0, 4) }}</td>
                         <td>{{ row.team }}</td>
                         <td>{{ row.playerName }}</td>
@@ -473,40 +357,27 @@ function toggleSidebar() {
                 </div>
               </div>
 
-              <div
-                v-if="turn.assistant.results.affiliations.length"
-                class="result-section"
-              >
-                <h3>所属</h3>
+              <!-- Affiliations -->
+              <div v-if="turn.assistant.results.affiliations.length" class="result-section">
+                <h3 class="result-title">所属</h3>
                 <ul class="simple-list">
-                  <li
-                    v-for="row in turn.assistant.results.affiliations"
-                    :key="`${row.year}-${row.team}-${row.playerId}`"
-                  >
+                  <li v-for="row in turn.assistant.results.affiliations" :key="`${row.year}-${row.team}-${row.playerId}`">
                     {{ row.year }}年 {{ row.playerName }} / {{ row.team }}
                   </li>
                 </ul>
               </div>
 
-              <div
-                v-if="visibleSources(turn.assistant).length"
-                class="result-section"
-              >
+              <!-- Sources: collapsed by default -->
+              <div v-if="visibleSources(turn.assistant).length" class="result-section">
                 <details class="source-details">
-                  <summary>ソース ({{ visibleSources(turn.assistant).length }}件)</summary>
+                  <summary class="source-details__toggle">
+                    ソース ({{ visibleSources(turn.assistant).length }}件)
+                  </summary>
                   <ul class="source-list">
-                    <li
-                      v-for="url in visibleSources(turn.assistant)"
-                      :key="url"
-                    >
-                      <a
-                        :href="url"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                      >
-                        <span aria-hidden="true">•</span>
-                        <strong>{{ sourceHost(url) }}</strong>
-                        <span class="muted">/{{ sourceLabel(url) }}</span>
+                    <li v-for="url in visibleSources(turn.assistant)" :key="url">
+                      <a :href="url" target="_blank" rel="noopener noreferrer" class="source-item">
+                        <span class="source-item__host">{{ sourceHost(url) }}</span>
+                        <span class="source-item__path">{{ sourceLabel(url) }}</span>
                       </a>
                     </li>
                   </ul>
@@ -515,31 +386,21 @@ function toggleSidebar() {
             </div>
           </div>
 
+          <!-- Typing indicator -->
           <div
-            v-else-if="
-              loading &&
-                !turn.assistant &&
-                !turn.errorMessage &&
-                turn.id === turns[turns.length - 1]?.id
-            "
+            v-else-if="loading && !turn.assistant && !turn.errorMessage && turn.id === turns[turns.length - 1]?.id"
             class="message message--assistant"
           >
-            <div class="avatar avatar--assistant">
-              ⚾
-            </div>
+            <div class="avatar avatar--assistant" aria-hidden="true">⚾</div>
             <div class="typing">
-              <span />
-              <span />
-              <span />
+              <span /><span /><span />
             </div>
           </div>
         </article>
       </div>
 
-      <form
-        class="composer"
-        @submit.prevent="submitText()"
-      >
+      <!-- Composer -->
+      <form class="composer" @submit.prevent="submitText()">
         <textarea
           v-model="input"
           class="composer__input"
@@ -550,25 +411,11 @@ function toggleSidebar() {
           :disabled="loading"
           @keydown="onKeydown"
         />
-        <button
-          class="composer__send"
-          type="submit"
-          :disabled="loading || !input.trim()"
-        >
-          <span
-            v-if="loading"
-            class="send-dots"
-            aria-label="送信中"
-          >
-            <span />
-            <span />
-            <span />
+        <button class="composer__send" type="submit" :disabled="loading || !input.trim()" aria-label="送信">
+          <span v-if="loading" class="send-dots" aria-hidden="true">
+            <span /><span /><span />
           </span>
-          <svg
-            v-else
-            aria-hidden="true"
-            viewBox="0 0 24 24"
-          >
+          <svg v-else viewBox="0 0 24 24" aria-hidden="true">
             <path d="M12 19V5m0 0-6 6m6-6 6 6" />
           </svg>
         </button>
@@ -578,305 +425,349 @@ function toggleSidebar() {
 </template>
 
 <style scoped>
+/* ── Design tokens ───────────────────────────────────── */
 .chat-shell {
-  --color-sidebar: #0d1f3c;
-  --color-accent: #e8323b;
-  --color-accent-surface: #fff0f1;
-  --color-bg: #f5f7fa;
-  --color-surface: #ffffff;
-  --color-border: #e2e8f0;
-  --color-text: #0f172a;
-  --color-muted: #64748b;
+  --c-sidebar:        #0d1f3c;
+  --c-sidebar-border: rgba(255, 255, 255, 0.08);
+  --c-accent:         #e8323b;
+  --c-accent-dim:     rgba(232, 50, 59, 0.12);
+  --c-bg:             #f4f6f9;
+  --c-surface:        #ffffff;
+  --c-border:         #e2e8f0;
+  --c-text:           #0f172a;
+  --c-muted:          #64748b;
+  --c-user-bubble:    #1e293b;
+  --radius:           10px;
+  --sidebar-w:        16rem;
+}
+
+/* ── Shell ──────────────────────────────────────────── */
+.chat-shell {
   height: 100vh;
   overflow: hidden;
   display: grid;
-  grid-template-columns: 16rem minmax(0, 1fr);
-  background: var(--color-bg);
-  color: var(--color-text);
-  font-family: "Noto Sans JP", Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  grid-template-columns: var(--sidebar-w) minmax(0, 1fr);
+  background: var(--c-bg);
+  color: var(--c-text);
+  font-family: Inter, "Hiragino Sans", "Hiragino Kaku Gothic ProN", Meiryo, ui-sans-serif, system-ui, sans-serif;
+  font-size: 15px;
+  line-height: 1.6;
 }
 
+/* ── Sidebar ────────────────────────────────────────── */
 .sidebar {
   height: 100vh;
-  padding: 1rem;
-  background: var(--color-sidebar);
-  color: #f9fafb;
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
-  overflow-y: auto;
-  transition: transform 0.2s ease;
+  gap: 0.5rem;
+  padding: 1rem 0.75rem 1.5rem;
+  background: var(--c-sidebar);
+  color: #f1f5f9;
+  transition: transform 0.24s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .sidebar-backdrop {
   display: none;
 }
 
-button {
-  transition: background 0.15s ease, border-color 0.15s ease, opacity 0.15s ease;
-}
-
+/* Brand */
 .brand {
-  padding: 0.25rem 0.25rem 0.75rem;
+  padding: 0.5rem 0.25rem 0.75rem;
+  border-bottom: 1px solid var(--c-sidebar-border);
+  margin-bottom: 0.25rem;
 }
 
-.brand__home {
-  color: inherit;
+.brand__link {
+  display: block;
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: #f1f5f9;
   text-decoration: none;
-  font-size: 0.82rem;
-  color: #cbd5e1;
+  letter-spacing: -0.01em;
 }
 
-.brand__title {
+.brand__tagline {
   margin: 0.25rem 0 0;
-  font-size: 1.15rem;
-  font-weight: 700;
+  font-size: 0.75rem;
+  color: #94a3b8;
 }
 
+/* Panel */
 .panel {
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 8px;
-  padding: 0.85rem;
-  background: rgba(255, 255, 255, 0.06);
+  border-radius: var(--radius);
+  padding: 0.9rem;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--c-sidebar-border);
 }
 
 .panel--quiet {
   margin-top: auto;
+  background: transparent;
+  border-color: transparent;
 }
 
 .panel__head {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 0.75rem;
-  margin-bottom: 0.65rem;
+  margin-bottom: 0.6rem;
 }
 
 .panel__title {
   margin: 0;
-  font-size: 0.82rem;
+  font-size: 0.72rem;
   font-weight: 700;
-  color: #e5e7eb;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #94a3b8;
 }
 
+/* Status dot */
 .status-dot {
-  width: 0.5rem;
-  height: 0.5rem;
-  border-radius: 999px;
+  width: 0.45rem;
+  height: 0.45rem;
+  border-radius: 50%;
   background: #22c55e;
+  box-shadow: 0 0 6px #22c55e;
 }
 
+/* Account */
 .account-id {
-  padding: 0.5rem;
+  padding: 0.4rem 0.6rem;
   border-radius: 6px;
-  background: rgba(0, 0, 0, 0.25);
+  background: rgba(0, 0, 0, 0.2);
   color: #cbd5e1;
-  font-size: 0.76rem;
+  font-size: 0.75rem;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.text-button {
-  margin-top: 0.6rem;
-  width: 100%;
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  border-radius: 6px;
-  padding: 0.45rem 0.6rem;
-  background: rgba(255, 255, 255, 0.08);
-  color: #f8fafc;
-  cursor: pointer;
-}
-
-.text-button:disabled {
-  cursor: not-allowed;
-  opacity: 0.55;
-}
-
-.select-field {
-  margin-top: 0.6rem;
-  display: grid;
-  gap: 0.35rem;
-  font-size: 0.76rem;
-  color: #cbd5e1;
-}
-
-.select-field select,
-.select-field input {
-  width: 100%;
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  border-radius: 6px;
-  padding: 0.5rem;
-  color: #f8fafc;
-  background: #1f2937;
-  box-sizing: border-box;
+.account-id--sub {
+  margin-top: 0.3rem;
+  font-size: 0.68rem;
+  color: #64748b;
 }
 
 .account-details {
   display: grid;
-  gap: 0.45rem;
-  margin: 0.65rem 0 0;
+  gap: 0.4rem;
+  margin: 0.6rem 0 0;
 }
 
 .account-details div {
   display: grid;
-  gap: 0.18rem;
+  gap: 0.1rem;
 }
 
 .account-details dt {
+  font-size: 0.68rem;
   color: #94a3b8;
-  font-size: 0.72rem;
 }
 
 .account-details dd {
   margin: 0;
-  color: #e5e7eb;
-  font-size: 0.78rem;
+  font-size: 0.75rem;
+  color: #e2e8f0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
+/* Buttons */
+.text-button {
+  display: block;
+  width: 100%;
+  margin-top: 0.6rem;
+  padding: 0.45rem 0.75rem;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.07);
+  color: #f1f5f9;
+  font-size: 0.82rem;
+  cursor: pointer;
+  text-align: center;
+  transition: background 0.15s;
+}
+
+.text-button:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.text-button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* Select */
+.select-field {
+  display: grid;
+  gap: 0.3rem;
+  margin-top: 0.5rem;
+  font-size: 0.75rem;
+  color: #94a3b8;
+}
+
+.select-field select {
+  width: 100%;
+  padding: 0.45rem 0.6rem;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 7px;
+  background: rgba(0, 0, 0, 0.2);
+  color: #f1f5f9;
+  font-size: 0.82rem;
+  box-sizing: border-box;
+}
+
+/* Plan pill */
+.plan-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.15rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.plan-pill--free {
+  background: rgba(14, 165, 233, 0.2);
+  color: #38bdf8;
+}
+
+.plan-pill--pro {
+  background: rgba(232, 50, 59, 0.2);
+  color: #fb7185;
+}
+
+/* Billing */
 .billing-note {
-  margin: 0.6rem 0 0;
-  color: #cbd5e1;
-  font-size: 0.76rem;
+  margin: 0.5rem 0 0;
+  font-size: 0.74rem;
+  color: #64748b;
 }
 
 .billing-meta {
   display: grid;
-  gap: 0.35rem;
-  margin-top: 0.65rem;
+  gap: 0.3rem;
+  margin-top: 0.6rem;
 }
 
 .billing-meta__row {
   display: flex;
   justify-content: space-between;
-  gap: 0.75rem;
-  font-size: 0.76rem;
-  color: #e5e7eb;
+  font-size: 0.74rem;
+  color: #cbd5e1;
 }
 
-.plan-pill,
-.intent-chip {
-  display: inline-flex;
-  align-items: center;
-  min-height: 1.45rem;
-  padding: 0 0.55rem;
-  border-radius: 999px;
-  font-size: 0.72rem;
-  font-weight: 700;
-}
-
-.plan-pill--free {
-  background: #e0f2fe;
-  color: #075985;
-}
-
-.plan-pill--pro {
-  background: #dcfce7;
-  color: #166534;
-}
-
+/* Usage */
 .usage-card {
-  margin-top: 0.7rem;
+  margin-top: 0.65rem;
 }
 
 .usage-card__top {
   display: flex;
   justify-content: space-between;
-  gap: 0.75rem;
-  font-size: 0.78rem;
-  color: #e5e7eb;
+  font-size: 0.75rem;
+  color: #e2e8f0;
 }
 
 .usage-meter {
-  height: 0.45rem;
+  height: 4px;
   margin-top: 0.45rem;
   border-radius: 999px;
+  background: rgba(255, 255, 255, 0.1);
   overflow: hidden;
-  background: rgba(255, 255, 255, 0.14);
 }
 
 .usage-meter span {
   display: block;
   height: 100%;
   border-radius: inherit;
-  background: var(--color-accent);
+  background: var(--c-accent);
+  transition: width 0.4s ease;
 }
 
+/* Last query */
 .last-query {
   display: flex;
   justify-content: space-between;
-  gap: 0.75rem;
-  font-size: 0.82rem;
+  font-size: 0.8rem;
+  color: #e2e8f0;
 }
 
 .muted {
   margin: 0;
-  color: #94a3b8;
-  font-size: 0.82rem;
+  font-size: 0.8rem;
+  color: #475569;
 }
 
+/* ── Workspace ──────────────────────────────────────── */
 .workspace {
   height: 100vh;
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  min-width: 0;
 }
 
+/* ── Topbar ─────────────────────────────────────────── */
 .topbar {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  padding: 1rem 1.25rem;
-  border-bottom: 1px solid #e5e7eb;
-  background: rgba(255, 255, 255, 0.92);
+  gap: 0.75rem;
+  padding: 0 1.25rem;
+  height: 3.25rem;
+  flex-shrink: 0;
+  background: var(--c-surface);
+  border-bottom: 1px solid var(--c-border);
 }
 
-.topbar h1 {
+.topbar__title {
+  flex: 1;
   margin: 0;
   font-size: 0.95rem;
-}
-
-.topbar p {
-  margin: 0.2rem 0 0;
-  color: #64748b;
-  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--c-text);
 }
 
 .topbar__usage {
-  min-width: 6.5rem;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
-  padding: 0.45rem 0.65rem;
-  background: #fff;
-  text-align: right;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.3rem 0.75rem;
+  border: 1px solid var(--c-border);
+  border-radius: 999px;
+  background: var(--c-bg);
+  font-size: 0.75rem;
+  white-space: nowrap;
 }
 
 .topbar__usage span {
-  display: block;
-  color: #64748b;
-  font-size: 0.7rem;
-  font-weight: 700;
+  color: var(--c-muted);
 }
 
 .topbar__usage strong {
-  font-size: 0.9rem;
+  color: var(--c-text);
 }
 
+/* Hamburger: hidden on desktop, shown on SP */
 .topbar__menu {
   display: none;
-  width: 2.25rem;
-  height: 2.25rem;
-  flex: 0 0 auto;
-  border: 1px solid var(--color-border);
-  border-radius: 8px;
-  background: var(--color-surface);
+  width: 2rem;
+  height: 2rem;
+  flex-shrink: 0;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  border: 1px solid var(--c-border);
+  border-radius: 7px;
+  background: transparent;
   cursor: pointer;
-  place-items: center;
-  gap: 0.22rem;
+  padding: 0;
 }
 
 .topbar__menu span {
@@ -884,120 +775,152 @@ button {
   width: 1rem;
   height: 2px;
   border-radius: 999px;
-  background: var(--color-text);
+  background: var(--c-text);
 }
 
+/* ── Error banner ───────────────────────────────────── */
 .error-banner {
   margin: 0.75rem 1.25rem 0;
+  padding: 0.65rem 0.9rem;
   border: 1px solid #fecaca;
-  border-radius: 8px;
-  padding: 0.7rem 0.85rem;
+  border-radius: var(--radius);
   background: #fef2f2;
   color: #991b1b;
-  font-size: 0.88rem;
+  font-size: 0.85rem;
+  flex-shrink: 0;
 }
 
+/* ── Conversation ───────────────────────────────────── */
 .conversation {
   flex: 1 1 0;
   overflow-y: auto;
-  padding: 1.25rem;
+  padding: 1.5rem 1.25rem;
 }
 
+/* ── Empty state ────────────────────────────────────── */
 .empty-state {
-  max-width: 48rem;
-  margin: 12vh auto 0;
+  max-width: 44rem;
+  margin: 8vh auto 0;
   text-align: center;
+  padding: 0 0.5rem;
 }
 
-.empty-state h2 {
-  margin: 0 0 1.25rem;
-  font-size: clamp(1.55rem, 4vw, 2.5rem);
+.empty-state__icon {
+  font-size: 2.5rem;
+  margin-bottom: 1rem;
+}
+
+.empty-state__heading {
+  margin: 0 0 0.5rem;
+  font-size: clamp(1.4rem, 4vw, 2rem);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.empty-state__sub {
+  margin: 0 0 1.5rem;
+  color: var(--c-muted);
+  font-size: 0.9rem;
 }
 
 .prompt-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.75rem;
+  gap: 0.65rem;
 }
 
 .prompt-card {
-  min-height: auto;
-  border: 1px solid #d7dce3;
-  border-left: 3px solid var(--color-accent);
-  border-radius: 8px;
-  padding: 0.8rem 1rem;
-  background: #fff;
-  color: #1f2937;
+  position: relative;
+  overflow: hidden;
+  padding: 0.85rem 1rem;
+  border: 1px solid var(--c-border);
+  border-radius: var(--radius);
+  background: var(--c-surface);
+  color: var(--c-text);
   text-align: left;
+  font-size: 0.875rem;
   cursor: pointer;
-  font-size: 0.9rem;
+  transition: box-shadow 0.15s, border-color 0.15s, transform 0.1s;
+}
+
+.prompt-card::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: var(--c-accent);
 }
 
 .prompt-card:hover {
-  border-color: #94a3b8;
-  background: #f8fafc;
-  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.08);
+  border-color: #b4bec8;
+  box-shadow: 0 4px 16px rgba(15, 23, 42, 0.1);
+  transform: translateY(-1px);
 }
 
+.prompt-card:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* ── Turn & messages ────────────────────────────────── */
 .turn {
-  max-width: 56rem;
-  margin: 0 auto 1.25rem;
+  max-width: 52rem;
+  margin: 0 auto 0.5rem;
 }
 
 .message {
-  display: grid;
-  grid-template-columns: 2rem minmax(0, 1fr);
+  display: flex;
   gap: 0.75rem;
-  margin-bottom: 0.9rem;
+  align-items: flex-start;
+  margin-bottom: 1rem;
 }
 
 .message--user {
-  max-width: 82%;
+  flex-direction: row-reverse;
+  max-width: 80%;
   margin-left: auto;
-  grid-template-columns: minmax(0, 1fr) 2rem;
 }
 
-.message--user .avatar {
-  grid-column: 2;
-  grid-row: 1;
-}
-
-.message--user .bubble {
-  grid-column: 1;
-  grid-row: 1;
-}
-
+/* Avatar */
 .avatar {
-  width: 2rem;
-  height: 2rem;
-  display: inline-grid;
-  place-items: center;
-  border-radius: 999px;
-  font-size: 0.72rem;
-  font-weight: 800;
+  width: 1.9rem;
+  height: 1.9rem;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  font-size: 0.78rem;
+  font-weight: 700;
+  user-select: none;
 }
 
 .avatar--user {
-  background: #1f2937;
+  background: var(--c-user-bubble);
   color: #fff;
+  font-size: 0.65rem;
 }
 
 .avatar--assistant {
-  background: #e0f2fe;
-  color: #075985;
-}
-
-.bubble,
-.answer {
-  border-radius: 8px;
-  padding: 0.8rem 0.9rem;
-  line-height: 1.6;
+  background: var(--c-accent-dim);
   font-size: 0.95rem;
 }
 
+/* Bubbles */
+.bubble {
+  border-radius: var(--radius);
+  padding: 0.7rem 0.95rem;
+  font-size: 0.9rem;
+  line-height: 1.65;
+}
+
 .bubble--user {
-  background: #1f2937;
+  background: var(--c-user-bubble);
   color: #fff;
+  border-radius: var(--radius) var(--radius) 4px var(--radius);
 }
 
 .bubble--error {
@@ -1006,299 +929,395 @@ button {
   color: #991b1b;
 }
 
+/* Answer block */
 .answer {
-  border: 1px solid #e5e7eb;
-  background: #fff;
+  flex: 1;
+  min-width: 0;
+  background: var(--c-surface);
+  border: 1px solid var(--c-border);
+  border-radius: 4px var(--radius) var(--radius) var(--radius);
+  padding: 0.9rem 1rem;
 }
 
-.answer__head {
+.answer__meta {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.5rem;
   align-items: center;
-  color: #64748b;
-  font-size: 0.78rem;
-  margin-bottom: 0.65rem;
+  gap: 0.45rem;
+  margin-bottom: 0.6rem;
 }
 
 .intent-chip {
-  background: var(--color-accent-surface);
-  color: var(--color-accent);
+  display: inline-flex;
+  align-items: center;
+  padding: 0.15rem 0.6rem;
+  border-radius: 999px;
+  background: var(--c-accent-dim);
+  color: var(--c-accent);
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.answer__count {
+  font-size: 0.78rem;
+  color: var(--c-muted);
 }
 
 .answer__summary {
   margin: 0;
   white-space: pre-wrap;
+  font-size: 0.9rem;
 }
 
+/* Result sections */
 .result-section {
-  margin-top: 1rem;
-  border-top: 1px solid #edf0f4;
+  margin-top: 0.9rem;
   padding-top: 0.9rem;
+  border-top: 1px solid var(--c-border);
 }
 
-.result-section h3 {
-  margin: 0 0 0.6rem;
-  font-size: 0.82rem;
-  color: #334155;
-}
-
-.source-details summary {
-  cursor: pointer;
-  color: #334155;
-  font-size: 0.82rem;
+.result-title {
+  margin: 0 0 0.5rem;
+  font-size: 0.72rem;
   font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--c-muted);
 }
 
-.candidate-list,
-.simple-list,
-.source-list {
+/* Candidate list */
+.candidate-list {
   list-style: none;
   margin: 0;
   padding: 0;
   display: grid;
-  gap: 0.45rem;
+  gap: 0.35rem;
 }
 
-.candidate-list li,
-.simple-list li {
+.candidate-list li {
   display: flex;
+  align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
-  border: 1px solid #edf0f4;
-  border-radius: 6px;
-  padding: 0.5rem 0.6rem;
+  padding: 0.45rem 0.65rem;
+  border: 1px solid var(--c-border);
+  border-radius: 7px;
+  font-size: 0.85rem;
 }
 
-.candidate-list small {
-  color: #64748b;
-}
-
-.event-list {
-  margin: 0;
-  padding-left: 1.2rem;
-}
-
-.event-list li {
-  margin-bottom: 0.75rem;
-}
-
-.event-list__line {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.45rem;
-  color: #475569;
-  font-size: 0.82rem;
-}
-
-.event-list p {
-  margin: 0.2rem 0;
-}
-
-.event-list a,
-.source-list a {
-  color: #2563eb;
-  word-break: break-all;
-  text-decoration: none;
-}
-
-.source-list a {
-  display: flex;
-  align-items: baseline;
-  gap: 0.35rem;
-  padding: 0.12rem 0;
-}
-
-.source-list span {
+.candidate-meta {
+  color: var(--c-muted);
   font-size: 0.78rem;
 }
 
-.source-list .muted {
-  color: var(--color-muted);
+/* Event list */
+.event-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.5rem;
+}
+
+.event-item {
+  padding: 0.55rem 0.65rem;
+  border: 1px solid var(--c-border);
+  border-radius: 7px;
+  font-size: 0.85rem;
+}
+
+.event-item__meta {
+  display: flex;
+  gap: 0.6rem;
+  color: var(--c-muted);
+  font-size: 0.78rem;
+  margin-bottom: 0.2rem;
+}
+
+.event-item__text {
+  margin: 0;
+}
+
+.event-item__link {
+  display: inline-block;
+  margin-top: 0.2rem;
+  font-size: 0.75rem;
+  color: var(--c-accent);
+  text-decoration: none;
+  word-break: break-all;
+}
+
+.event-item__link:hover {
+  text-decoration: underline;
+}
+
+/* Simple list */
+.simple-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.3rem;
+  font-size: 0.85rem;
+}
+
+/* Source */
+.source-details__toggle {
+  cursor: pointer;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--c-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  user-select: none;
+}
+
+.source-details__toggle:hover {
+  color: var(--c-text);
+}
+
+.source-list {
+  list-style: none;
+  margin: 0.5rem 0 0;
+  padding: 0;
+  display: grid;
+  gap: 0.2rem;
+}
+
+.source-item {
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  text-decoration: none;
+  padding: 0.2rem 0;
+  min-width: 0;
+}
+
+.source-item__host {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--c-text);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.source-item__path {
+  font-size: 0.75rem;
+  color: var(--c-muted);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  min-width: 0;
 }
 
-.data-table-wrap {
+.source-item:hover .source-item__host {
+  color: var(--c-accent);
+}
+
+/* Data table */
+.table-wrap {
   overflow-x: auto;
 }
 
 .data-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 0.84rem;
+  font-size: 0.82rem;
 }
 
 .data-table th,
 .data-table td {
-  border-bottom: 1px solid #edf0f4;
-  padding: 0.45rem 0.35rem;
+  padding: 0.45rem 0.5rem;
+  border-bottom: 1px solid var(--c-border);
   text-align: left;
   white-space: nowrap;
 }
 
 .data-table th {
-  color: #64748b;
+  color: var(--c-muted);
   font-weight: 700;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 
+.data-table tbody tr:hover {
+  background: var(--c-bg);
+}
+
+/* Typing indicator */
 .typing {
   display: inline-flex;
-  width: fit-content;
+  align-items: center;
   gap: 0.3rem;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
-  padding: 0.8rem 0.9rem;
-  background: #fff;
+  padding: 0.75rem 1rem;
+  background: var(--c-surface);
+  border: 1px solid var(--c-border);
+  border-radius: 4px var(--radius) var(--radius) var(--radius);
 }
 
 .typing span {
-  width: 0.45rem;
-  height: 0.45rem;
-  border-radius: 999px;
+  width: 0.42rem;
+  height: 0.42rem;
+  border-radius: 50%;
   background: #94a3b8;
-  animation: pulse 1s infinite ease-in-out;
+  animation: typing-pulse 1.2s infinite ease-in-out;
 }
 
 .typing span:nth-child(2) {
-  animation-delay: 0.15s;
+  animation-delay: 0.2s;
 }
 
 .typing span:nth-child(3) {
-  animation-delay: 0.3s;
+  animation-delay: 0.4s;
 }
 
+@keyframes typing-pulse {
+  0%, 60%, 100% {
+    opacity: 0.3;
+    transform: translateY(0);
+  }
+
+  30% {
+    opacity: 1;
+    transform: translateY(-3px);
+  }
+}
+
+/* ── Composer ───────────────────────────────────────── */
 .composer {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.6rem;
+  margin: 0.5rem 1.25rem 1rem;
+  padding: 0.6rem 0.6rem 0.6rem 1rem;
+  border: 1px solid var(--c-border);
+  border-radius: 14px;
+  background: var(--c-surface);
+  box-shadow: 0 2px 20px rgba(15, 23, 42, 0.08);
   flex-shrink: 0;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 0.65rem;
-  margin: 0 1.25rem 1rem;
-  padding: 0.75rem;
-  border: 1px solid #d7dce3;
-  border-radius: 8px;
-  background: var(--color-surface);
-  box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.06);
+  transition: box-shadow 0.15s, border-color 0.15s;
+}
+
+.composer:focus-within {
+  box-shadow: 0 2px 20px rgba(15, 23, 42, 0.12), 0 0 0 2px rgba(232, 50, 59, 0.15);
+  border-color: rgba(232, 50, 59, 0.35);
 }
 
 .composer__input {
-  min-height: 2.5rem;
-  max-height: 9rem;
-  resize: vertical;
+  flex: 1;
+  min-height: 1.5rem;
+  max-height: 8rem;
+  resize: none;
   border: 0;
   outline: 0;
   font: inherit;
+  font-size: 0.93rem;
   line-height: 1.5;
+  background: transparent;
+  color: var(--c-text);
+}
+
+.composer__input::placeholder {
+  color: #94a3b8;
 }
 
 .composer__send {
-  align-self: end;
-  width: 2.5rem;
-  min-width: 2.5rem;
-  height: 2.5rem;
+  flex-shrink: 0;
+  width: 2.25rem;
+  height: 2.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   border: 0;
-  border-radius: 50%;
-  background: var(--color-accent);
+  border-radius: 10px;
+  background: var(--c-accent);
   color: #fff;
-  font-weight: 700;
   cursor: pointer;
-  display: inline-grid;
-  place-items: center;
+  transition: background 0.15s, transform 0.1s, opacity 0.15s;
+}
+
+.composer__send:hover:not(:disabled) {
+  background: #c92030;
+  transform: scale(1.05);
+}
+
+.composer__send:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
 }
 
 .composer__send svg {
-  width: 1.15rem;
-  height: 1.15rem;
+  width: 1.1rem;
+  height: 1.1rem;
   fill: none;
   stroke: currentColor;
-  stroke-width: 2.2;
+  stroke-width: 2.5;
   stroke-linecap: round;
   stroke-linejoin: round;
 }
 
 .send-dots {
-  display: inline-flex;
-  gap: 0.16rem;
+  display: flex;
+  align-items: center;
+  gap: 3px;
 }
 
 .send-dots span {
-  width: 0.22rem;
-  height: 0.22rem;
-  border-radius: 999px;
-  background: currentColor;
-  animation: pulse 1s infinite ease-in-out;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: #fff;
+  animation: typing-pulse 1.2s infinite ease-in-out;
 }
 
 .send-dots span:nth-child(2) {
-  animation-delay: 0.15s;
+  animation-delay: 0.2s;
 }
 
 .send-dots span:nth-child(3) {
-  animation-delay: 0.3s;
+  animation-delay: 0.4s;
 }
 
-.composer__send:disabled,
-.prompt-card:disabled {
-  cursor: not-allowed;
-  opacity: 0.55;
-}
-
-@keyframes pulse {
-  0%, 80%, 100% {
-    opacity: 0.35;
-    transform: translateY(0);
-  }
-  40% {
-    opacity: 1;
-    transform: translateY(-0.15rem);
-  }
-}
-
+/* ── Responsive (SP ≤ 820px) ────────────────────────── */
 @media (max-width: 820px) {
   .chat-shell {
     grid-template-columns: 1fr;
   }
 
+  /* Sidebar becomes a fixed left drawer */
   .sidebar {
     position: fixed;
     inset: 0 auto 0 0;
-    z-index: 200;
-    width: min(16rem, 82vw);
-    height: 100vh;
+    width: min(var(--sidebar-w), 85vw);
+    height: 100%;
+    z-index: 300;
     transform: translateX(-100%);
+    box-shadow: none;
   }
 
   .sidebar.is-open {
     transform: translateX(0);
+    box-shadow: 8px 0 32px rgba(0, 0, 0, 0.3);
   }
 
+  /* Backdrop */
   .sidebar-backdrop {
+    display: block;
     position: fixed;
     inset: 0;
-    z-index: 190;
-    display: block;
-    border: 0;
-    padding: 0;
-    background: rgba(15, 23, 42, 0.42);
-    cursor: pointer;
+    z-index: 200;
+    background: rgba(15, 23, 42, 0.45);
+    backdrop-filter: blur(2px);
+  }
+
+  /* Show hamburger */
+  .topbar__menu {
+    display: flex;
   }
 
   .panel--quiet {
     margin-top: 0;
-  }
-
-  .topbar {
-    align-items: center;
-    gap: 0.7rem;
-  }
-
-  .topbar__menu {
-    display: inline-grid;
-  }
-
-  .topbar p {
-    display: none;
   }
 
   .prompt-grid {
@@ -1306,11 +1325,15 @@ button {
   }
 
   .message--user {
-    max-width: 100%;
+    max-width: 90%;
   }
 
   .composer {
-    margin: 0 0.75rem 0.75rem;
+    margin: 0.5rem 0.75rem 0.75rem;
+  }
+
+  .conversation {
+    padding: 1rem 0.85rem;
   }
 }
 </style>
