@@ -36,13 +36,7 @@ describe('chat-answer-formatter', () => {
 
     expect(answer.result_count).toBe(21)
     expect(answer.remaining_count).toBe(1)
-    expect(answer.summary).toContain('2025年ヤクルト山田が打ったホームランは21件です。')
-    expect(answer.summary).toContain('1. 2025-05-01 r20250501s-d-01 1回裏')
-    expect(answer.summary).toContain('松葉からレフト2ランホームラン（打点2）')
-    expect(answer.summary).toContain('source: https://npb.jp/scores/2025/0501/s-d-01/playbyplay.html')
-    expect(answer.summary).toContain('20. 2025-05-20 r20250520s-d-20 1回裏')
-    expect(answer.summary).not.toContain('21. 2025-05-21')
-    expect(answer.summary).toContain('ほか1件は省略しています。')
+    expect(answer.summary).toBe('2025年ヤクルト山田が打ったホームランは21件です。')
   })
 
   it('describes batter-vs-pitcher event searches with both player names', () => {
@@ -68,8 +62,7 @@ describe('chat-answer-formatter', () => {
       sources: [],
     })
 
-    expect(answer.summary).toContain('DeNA京田が砂田から打ったイベントは1件です。')
-    expect(answer.summary).toContain('砂田からライトフライ')
+    expect(answer.summary).toBe('DeNA京田が砂田から打ったイベントは1件です。')
   })
 
   it('formats game details with winner, score, and highlights without exposing game ids', () => {

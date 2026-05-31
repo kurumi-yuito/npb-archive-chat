@@ -74,13 +74,7 @@ describe('chat eval: db-backed query plan, result, formatter regression', () => 
     })
     expect(response.answer.result_count).toBe(12)
     expect(response.results.events).toHaveLength(12)
-    expect(response.answer.summary).toContain('2025年ヤクルト山田が打ったホームランは12件です。')
-    expect(response.answer.summary).toContain('1. 2025-05-01 r20250501s-d-01 1回裏')
-    expect(response.answer.summary).toContain('森下からレフトソロホームラン（打点1）')
-    expect(response.answer.summary).toContain(
-      'source: https://npb.jp/scores/2025/0501/r20250501s-d-01/playbyplay.html',
-    )
-    expect(response.answer.summary).toContain('12. 2025-05-12 r20250512s-d-12 1回裏')
+    expect(response.answer.summary).toBe('2025年ヤクルト山田が打ったホームランは12件です。')
   })
 
   it('03 romanized name without qualifier: stops safely instead of guessing', async () => {

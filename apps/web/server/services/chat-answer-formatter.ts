@@ -1260,19 +1260,7 @@ function formatEventListSummary(
   playerResolution: PlayerResolution | null,
 ): string {
   const title = describeEventSearch(structuredQuery, playerResolution)
-  const visibleEvents = events.slice(0, SEARCH_EVENTS_SUMMARY_LIMIT)
-  const remainingCount = Math.max(0, resultCount - visibleEvents.length)
-  const lines = [
-    `${title}は${resultCount}件です。`,
-    '',
-    ...visibleEvents.flatMap((event, index) => formatEventListItem(event, index + 1)),
-  ]
-
-  if (remainingCount > 0) {
-    lines.push('', `ほか${remainingCount}件は省略しています。`)
-  }
-
-  return lines.join('\n')
+  return `${title}は${resultCount}件です。`
 }
 
 function describeEventSearch(
@@ -1334,23 +1322,6 @@ function describeEventSearch(
   }
 
   return parts.length > 0 ? parts.join('') : '条件に一致するイベント'
-}
-
-function formatEventListItem(event: EventSummaryRow, index: number): string[] {
-  const half = event.half === 'top' ? '表' : '裏'
-  const result = event.pitcherName
-    ? `${event.pitcherName}から${event.resultText}`
-    : event.resultText
-  const lines = [
-    `${index}. ${event.gameDate} ${event.gameId} ${event.inning}回${half}`,
-    `   ${result}`,
-  ]
-
-  if (event.sourceUrl) {
-    lines.push(`   source: ${event.sourceUrl}`)
-  }
-
-  return lines
 }
 
 function formatCandidates(candidates: PlayerCandidate[]): string {
