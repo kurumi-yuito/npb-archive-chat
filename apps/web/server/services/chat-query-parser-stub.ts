@@ -261,6 +261,7 @@ function buildEventsFilters(
 ): SearchEventsFilters {
   const inningHalf = matchInningHalf(message)
   const subtypeRule = eventSubtypeRules.find((rule) => rule.pattern.test(message))
+  const batterPitcherMatchup = matchBatterPitcherEventQuestion(message)
   const batterFromPhrase = extractPlayerNameFromPhrase(
     matchValue(message, /(.+?)が代打/u),
   )
@@ -291,18 +292,21 @@ function buildEventsFilters(
     team:
       explicit.team ??
       matchValue(message, /(?:team|チーム)(?:は|=|:)\s*([^\s、。]+)/u) ??
+      batterPitcherMatchup?.batterTeam ??
       teamFromHomeRunPhrase ??
       matchKnownTeamAnywhere(message),
     batter_name:
       explicit.batter_name ??
       explicit.batter ??
       matchValue(message, /(?:打者|batter)(?:は|=|:)\s*([^\s、。]+)/u) ??
+      batterPitcherMatchup?.batterName ??
       batterFromPhrase ??
       batterFromHomeRunPhrase,
     pitcher_name:
       explicit.pitcher_name ??
       explicit.pitcher ??
       matchValue(message, /(?:投手|pitcher)(?:は|=|:)\s*([^\s、。]+)/u) ??
+      batterPitcherMatchup?.pitcherName ??
       extractPlayerNameFromPhrase(matchValue(message, /(.+?)から打った(?:本塁打|ホームラン|HR|ＨＲ)一覧/u)),
     runner_name:
       explicit.runner_name ??
@@ -326,6 +330,37 @@ function buildEventsFilters(
     player_name: explicit.player_name ?? playerFromEventSearchPhrase,
     limit: toInt(explicit.limit),
   }
+}
+
+function matchBatterPitcherEventQuestion(message: string): {
+  batterTeam?: string
+  batterName: string
+  pitcherName: string
+} | undefined {
+  if (!/対戦|対決|対した|当たった|対峙/u.test(message)) {
+    return undefined
+  }
+
+  const teamQualified = message.match(
+    /(.+?)の([^\s、。と]+)と(.+?)の([^\s、。がは]+)(?:が|は)?(?:対戦|対決|対した|当たった|対峙)/u,
+  )
+  if (teamQualified?.[2] && teamQualified[4]) {
+    return {
+      batterTeam: matchKnownTeamAnywhere(teamQualified[1]),
+      batterName: teamQualified[2].trim(),
+      pitcherName: teamQualified[4].trim(),
+    }
+  }
+
+  const bare = message.match(/([^\s、。と]+)と([^\s、。がは]+)(?:が|は)?(?:対戦|対決|対した|当たった|対峙)/u)
+  if (bare?.[1] && bare[2]) {
+    return {
+      batterName: extractPlayerNameFromPhrase(bare[1]) ?? bare[1].trim(),
+      pitcherName: extractPlayerNameFromPhrase(bare[2]) ?? bare[2].trim(),
+    }
+  }
+
+  return undefined
 }
 
 function buildRosterFilters(

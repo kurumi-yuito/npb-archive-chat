@@ -45,6 +45,33 @@ describe('chat-answer-formatter', () => {
     expect(answer.summary).toContain('ほか1件は省略しています。')
   })
 
+  it('describes batter-vs-pitcher event searches with both player names', () => {
+    const results = emptyResults()
+    results.events = [{
+      ...eventRow(1),
+      batterName: '京田',
+      pitcherName: '砂田',
+      resultText: 'ライトフライ',
+    }]
+
+    const answer = formatChatAnswer({
+      question: '横浜の京田と中日の砂田が対決したことってある？',
+      structuredQuery: {
+        intent: 'search_events',
+        filters: {
+          team: 'DeNA',
+          batter_name: '京田',
+          pitcher_name: '砂田',
+        },
+      },
+      results,
+      sources: [],
+    })
+
+    expect(answer.summary).toContain('DeNA京田が砂田から打ったイベントは1件です。')
+    expect(answer.summary).toContain('砂田からライトフライ')
+  })
+
   it('formats game details with winner, score, and highlights without exposing game ids', () => {
     const results = emptyResults()
     results.gameDetails = [{

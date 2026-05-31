@@ -375,6 +375,15 @@ describe('chat-query-parser', () => {
         player_name: '山田',
       },
     })
+
+    expect(parseStructuredQueryFromMessageStub('横浜の京田と中日の砂田が対決したことってある？')).toEqual({
+      intent: 'search_events',
+      filters: {
+        team: '横浜',
+        batter_name: '京田',
+        pitcher_name: '砂田',
+      },
+    })
   })
 
   it('routes affiliation questions to player_affiliation instead of event search', () => {

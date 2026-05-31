@@ -1311,7 +1311,9 @@ function describeEventSearch(
   const batterName = playerResolution?.status === 'resolved' && filters.batter_name
     ? playerResolution.name ?? filters.batter_name
     : filters.batter_name
-  if (batterName) {
+  if (batterName && filters.pitcher_name) {
+    parts.push(`${batterName}が${filters.pitcher_name}から打った`)
+  } else if (batterName) {
     parts.push(`${batterName}が打った`)
   } else if (filters.pitcher_name) {
     parts.push(`${filters.pitcher_name}から打った`)
