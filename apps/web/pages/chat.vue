@@ -427,16 +427,16 @@ function toggleSidebar() {
 <style scoped>
 /* ── Design tokens ───────────────────────────────────── */
 .chat-shell {
-  --c-sidebar:        #0d1f3c;
+  --c-sidebar:        #1e1b4b;
   --c-sidebar-border: rgba(255, 255, 255, 0.08);
-  --c-accent:         #e8323b;
-  --c-accent-dim:     rgba(232, 50, 59, 0.12);
-  --c-bg:             #f4f6f9;
+  --c-accent:         #4f46e5;
+  --c-accent-dim:     rgba(79, 70, 229, 0.1);
+  --c-bg:             #f5f5f7;
   --c-surface:        #ffffff;
   --c-border:         #e2e8f0;
   --c-text:           #0f172a;
   --c-muted:          #64748b;
-  --c-user-bubble:    #1e293b;
+  --c-user-bubble:    #1e1b4b;
   --radius:           10px;
   --sidebar-w:        16rem;
 }
@@ -1200,8 +1200,8 @@ function toggleSidebar() {
 }
 
 .composer:focus-within {
-  box-shadow: 0 2px 20px rgba(15, 23, 42, 0.12), 0 0 0 2px rgba(232, 50, 59, 0.15);
-  border-color: rgba(232, 50, 59, 0.35);
+  box-shadow: 0 2px 20px rgba(15, 23, 42, 0.12), 0 0 0 2px rgba(79, 70, 229, 0.15);
+  border-color: rgba(79, 70, 229, 0.35);
 }
 
 .composer__input {
@@ -1238,7 +1238,7 @@ function toggleSidebar() {
 }
 
 .composer__send:hover:not(:disabled) {
-  background: #c92030;
+  background: #4338ca;
   transform: scale(1.05);
 }
 
