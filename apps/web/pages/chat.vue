@@ -7,6 +7,7 @@ defineOptions({ name: 'ChatPage' })
 
 const input = ref('')
 const conversationRef = ref<HTMLElement | null>(null)
+const sidebarOpen = ref(false)
 const {
   turns,
   loading,
@@ -118,12 +119,24 @@ function onPlanChange(event: Event) {
 function loginWithGoogle() {
   window.location.href = '/api/auth/google/start'
 }
+
+function toggleSidebar() {
+  sidebarOpen.value = !sidebarOpen.value
+}
 </script>
 
 <template>
   <main class="chat-shell">
+    <button
+      v-if="sidebarOpen"
+      class="sidebar-backdrop"
+      type="button"
+      aria-label="サイドバーを閉じる"
+      @click="toggleSidebar"
+    />
     <aside
       class="sidebar"
+      :class="{ 'is-open': sidebarOpen }"
       aria-label="ユーザー設定"
     >
       <div class="brand">
@@ -214,10 +227,6 @@ function loginWithGoogle() {
             <option value="pro">Pro</option>
           </select>
         </label>
-        <p class="billing-note">
-          課金状態: {{ accountInfo?.billingProvider ?? 'internal' }} /
-          {{ accountInfo?.billingStatus ?? 'active' }}
-        </p>
         <p
           v-if="!isGoogleAuthenticated"
           class="billing-note"
@@ -272,10 +281,6 @@ function loginWithGoogle() {
             <span>{{ structuredQueryLabel(lastAssistant.structured_query) }}</span>
             <strong>{{ lastAssistant.answer.result_count }}件</strong>
           </div>
-          <details class="query-details">
-            <summary>query plan</summary>
-            <pre>{{ JSON.stringify(lastAssistant.structured_query, null, 2) }}</pre>
-          </details>
         </template>
       </section>
     </aside>
@@ -285,6 +290,16 @@ function loginWithGoogle() {
       aria-label="チャット"
     >
       <header class="topbar">
+        <button
+          class="topbar__menu"
+          type="button"
+          aria-label="サイドバーを開く"
+          @click="toggleSidebar"
+        >
+          <span />
+          <span />
+          <span />
+        </button>
         <div>
           <h1>NPBアーカイブ検索</h1>
           <p>公式 scores / BIS 由来のDBだけを根拠に回答します。</p>
@@ -333,7 +348,7 @@ function loginWithGoogle() {
         >
           <div class="message message--user">
             <div class="avatar avatar--user">
-              U
+              ⚡
             </div>
             <div class="bubble bubble--user">
               {{ turn.userMessage }}
@@ -345,7 +360,7 @@ function loginWithGoogle() {
             class="message message--assistant"
           >
             <div class="avatar avatar--assistant">
-              AI
+              ⚾
             </div>
             <div class="bubble bubble--error">
               {{ turn.errorMessage }}
@@ -357,7 +372,7 @@ function loginWithGoogle() {
             class="message message--assistant"
           >
             <div class="avatar avatar--assistant">
-              AI
+              ⚾
             </div>
             <div class="answer">
               <div class="answer__head">
@@ -477,22 +492,25 @@ function loginWithGoogle() {
                 v-if="visibleSources(turn.assistant).length"
                 class="result-section"
               >
-                <h3>ソース</h3>
-                <ul class="source-list">
-                  <li
-                    v-for="url in visibleSources(turn.assistant)"
-                    :key="url"
-                  >
-                    <a
-                      :href="url"
-                      target="_blank"
-                      rel="noopener noreferrer"
+                <details class="source-details">
+                  <summary>ソース ({{ visibleSources(turn.assistant).length }}件)</summary>
+                  <ul class="source-list">
+                    <li
+                      v-for="url in visibleSources(turn.assistant)"
+                      :key="url"
                     >
-                      <span>{{ sourceHost(url) }}</span>
-                      {{ sourceLabel(url) }}
-                    </a>
-                  </li>
-                </ul>
+                      <a
+                        :href="url"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        <span aria-hidden="true">•</span>
+                        <strong>{{ sourceHost(url) }}</strong>
+                        <span class="muted">/{{ sourceLabel(url) }}</span>
+                      </a>
+                    </li>
+                  </ul>
+                </details>
               </div>
             </div>
           </div>
@@ -507,7 +525,7 @@ function loginWithGoogle() {
             class="message message--assistant"
           >
             <div class="avatar avatar--assistant">
-              AI
+              ⚾
             </div>
             <div class="typing">
               <span />
@@ -537,7 +555,22 @@ function loginWithGoogle() {
           type="submit"
           :disabled="loading || !input.trim()"
         >
-          {{ loading ? '...' : '送信' }}
+          <span
+            v-if="loading"
+            class="send-dots"
+            aria-label="送信中"
+          >
+            <span />
+            <span />
+            <span />
+          </span>
+          <svg
+            v-else
+            aria-hidden="true"
+            viewBox="0 0 24 24"
+          >
+            <path d="M12 19V5m0 0-6 6m6-6 6 6" />
+          </svg>
         </button>
       </form>
     </section>
@@ -546,22 +579,41 @@ function loginWithGoogle() {
 
 <style scoped>
 .chat-shell {
-  min-height: 100vh;
+  --color-sidebar: #0d1f3c;
+  --color-accent: #e8323b;
+  --color-accent-surface: #fff0f1;
+  --color-bg: #f5f7fa;
+  --color-surface: #ffffff;
+  --color-border: #e2e8f0;
+  --color-text: #0f172a;
+  --color-muted: #64748b;
+  height: 100vh;
+  overflow: hidden;
   display: grid;
-  grid-template-columns: 18rem minmax(0, 1fr);
-  background: #f6f7f9;
-  color: #16181d;
-  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  grid-template-columns: 16rem minmax(0, 1fr);
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: "Noto Sans JP", Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 
 .sidebar {
-  min-height: 100vh;
+  height: 100vh;
   padding: 1rem;
-  background: #111827;
+  background: var(--color-sidebar);
   color: #f9fafb;
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
+  overflow-y: auto;
+  transition: transform 0.2s ease;
+}
+
+.sidebar-backdrop {
+  display: none;
+}
+
+button {
+  transition: background 0.15s ease, border-color 0.15s ease, opacity 0.15s ease;
 }
 
 .brand {
@@ -750,7 +802,7 @@ function loginWithGoogle() {
   display: block;
   height: 100%;
   border-radius: inherit;
-  background: #38bdf8;
+  background: var(--color-accent);
 }
 
 .last-query {
@@ -760,20 +812,6 @@ function loginWithGoogle() {
   font-size: 0.82rem;
 }
 
-.query-details {
-  margin-top: 0.65rem;
-  font-size: 0.76rem;
-  color: #cbd5e1;
-}
-
-.query-details pre {
-  max-height: 12rem;
-  overflow: auto;
-  padding: 0.55rem;
-  border-radius: 6px;
-  background: rgba(0, 0, 0, 0.25);
-}
-
 .muted {
   margin: 0;
   color: #94a3b8;
@@ -781,9 +819,10 @@ function loginWithGoogle() {
 }
 
 .workspace {
-  min-height: 100vh;
-  display: grid;
-  grid-template-rows: auto auto 1fr auto;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 .topbar {
@@ -798,7 +837,7 @@ function loginWithGoogle() {
 
 .topbar h1 {
   margin: 0;
-  font-size: 1.05rem;
+  font-size: 0.95rem;
 }
 
 .topbar p {
@@ -827,6 +866,27 @@ function loginWithGoogle() {
   font-size: 0.9rem;
 }
 
+.topbar__menu {
+  display: none;
+  width: 2.25rem;
+  height: 2.25rem;
+  flex: 0 0 auto;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-surface);
+  cursor: pointer;
+  place-items: center;
+  gap: 0.22rem;
+}
+
+.topbar__menu span {
+  display: block;
+  width: 1rem;
+  height: 2px;
+  border-radius: 999px;
+  background: var(--color-text);
+}
+
 .error-banner {
   margin: 0.75rem 1.25rem 0;
   border: 1px solid #fecaca;
@@ -838,7 +898,8 @@ function loginWithGoogle() {
 }
 
 .conversation {
-  overflow: auto;
+  flex: 1 1 0;
+  overflow-y: auto;
   padding: 1.25rem;
 }
 
@@ -860,10 +921,11 @@ function loginWithGoogle() {
 }
 
 .prompt-card {
-  min-height: 4rem;
+  min-height: auto;
   border: 1px solid #d7dce3;
+  border-left: 3px solid var(--color-accent);
   border-radius: 8px;
-  padding: 0.85rem;
+  padding: 0.8rem 1rem;
   background: #fff;
   color: #1f2937;
   text-align: left;
@@ -874,6 +936,7 @@ function loginWithGoogle() {
 .prompt-card:hover {
   border-color: #94a3b8;
   background: #f8fafc;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.08);
 }
 
 .turn {
@@ -959,8 +1022,8 @@ function loginWithGoogle() {
 }
 
 .intent-chip {
-  background: #eff6ff;
-  color: #1d4ed8;
+  background: var(--color-accent-surface);
+  color: var(--color-accent);
 }
 
 .answer__summary {
@@ -978,6 +1041,13 @@ function loginWithGoogle() {
   margin: 0 0 0.6rem;
   font-size: 0.82rem;
   color: #334155;
+}
+
+.source-details summary {
+  cursor: pointer;
+  color: #334155;
+  font-size: 0.82rem;
+  font-weight: 700;
 }
 
 .candidate-list,
@@ -1033,16 +1103,21 @@ function loginWithGoogle() {
 }
 
 .source-list a {
-  display: grid;
-  gap: 0.15rem;
-  border: 1px solid #edf0f4;
-  border-radius: 6px;
-  padding: 0.55rem 0.6rem;
+  display: flex;
+  align-items: baseline;
+  gap: 0.35rem;
+  padding: 0.12rem 0;
 }
 
 .source-list span {
-  color: #64748b;
-  font-size: 0.75rem;
+  font-size: 0.78rem;
+}
+
+.source-list .muted {
+  color: var(--color-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .data-table-wrap {
@@ -1095,6 +1170,7 @@ function loginWithGoogle() {
 }
 
 .composer {
+  flex-shrink: 0;
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 0.65rem;
@@ -1102,8 +1178,8 @@ function loginWithGoogle() {
   padding: 0.75rem;
   border: 1px solid #d7dce3;
   border-radius: 8px;
-  background: #fff;
-  box-shadow: 0 12px 34px rgba(15, 23, 42, 0.08);
+  background: var(--color-surface);
+  box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.06);
 }
 
 .composer__input {
@@ -1118,14 +1194,48 @@ function loginWithGoogle() {
 
 .composer__send {
   align-self: end;
-  min-width: 4.5rem;
+  width: 2.5rem;
+  min-width: 2.5rem;
   height: 2.5rem;
   border: 0;
-  border-radius: 7px;
-  background: #111827;
+  border-radius: 50%;
+  background: var(--color-accent);
   color: #fff;
   font-weight: 700;
   cursor: pointer;
+  display: inline-grid;
+  place-items: center;
+}
+
+.composer__send svg {
+  width: 1.15rem;
+  height: 1.15rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.send-dots {
+  display: inline-flex;
+  gap: 0.16rem;
+}
+
+.send-dots span {
+  width: 0.22rem;
+  height: 0.22rem;
+  border-radius: 999px;
+  background: currentColor;
+  animation: pulse 1s infinite ease-in-out;
+}
+
+.send-dots span:nth-child(2) {
+  animation-delay: 0.15s;
+}
+
+.send-dots span:nth-child(3) {
+  animation-delay: 0.3s;
 }
 
 .composer__send:disabled,
@@ -1151,9 +1261,27 @@ function loginWithGoogle() {
   }
 
   .sidebar {
-    min-height: auto;
-    display: grid;
-    grid-template-columns: 1fr;
+    position: fixed;
+    inset: 0 auto 0 0;
+    z-index: 200;
+    width: min(16rem, 82vw);
+    height: 100vh;
+    transform: translateX(-100%);
+  }
+
+  .sidebar.is-open {
+    transform: translateX(0);
+  }
+
+  .sidebar-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 190;
+    display: block;
+    border: 0;
+    padding: 0;
+    background: rgba(15, 23, 42, 0.42);
+    cursor: pointer;
   }
 
   .panel--quiet {
@@ -1161,7 +1289,16 @@ function loginWithGoogle() {
   }
 
   .topbar {
-    align-items: flex-start;
+    align-items: center;
+    gap: 0.7rem;
+  }
+
+  .topbar__menu {
+    display: inline-grid;
+  }
+
+  .topbar p {
+    display: none;
   }
 
   .prompt-grid {
