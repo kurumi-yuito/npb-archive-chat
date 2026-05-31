@@ -337,30 +337,66 @@ function matchBatterPitcherEventQuestion(message: string): {
   batterName: string
   pitcherName: string
 } | undefined {
-  if (!/対戦|対決|対した|当たった|対峙/u.test(message)) {
+  if (!/対戦|対決|対した|当たった|対峙|vs|VS|から|対/u.test(message)) {
     return undefined
   }
 
-  const teamQualified = message.match(
-    /(.+?)の([^\s、。と]+)と(.+?)の([^\s、。がは]+)(?:が|は)?(?:対戦|対決|対した|当たった|対峙)/u,
-  )
-  if (teamQualified?.[2] && teamQualified[4]) {
-    return {
-      batterTeam: matchKnownTeamAnywhere(teamQualified[1]),
-      batterName: teamQualified[2].trim(),
-      pitcherName: teamQualified[4].trim(),
+  const target = message.replace(/[？?].*$/u, '')
+  const reverseFromMatch = target.match(/(.+?)から(.+?)(?:が|は)?(?:打った|安打|本塁打|ホームラン|出塁|対戦|対決|打席)/u)
+  if (reverseFromMatch?.[1] && reverseFromMatch[2]) {
+    const pitcher = parseTeamQualifiedPlayerMention(reverseFromMatch[1])
+    const batter = parseTeamQualifiedPlayerMention(reverseFromMatch[2])
+    if (batter?.playerName && pitcher?.playerName) {
+      return {
+        batterTeam: batter.team,
+        batterName: batter.playerName,
+        pitcherName: pitcher.playerName,
+      }
     }
   }
 
-  const bare = message.match(/([^\s、。と]+)と([^\s、。がは]+)(?:が|は)?(?:対戦|対決|対した|当たった|対峙)/u)
-  if (bare?.[1] && bare[2]) {
+  const match =
+    target.match(/(.+?)と(.+?)(?:が|は|って|で)?(?:対戦|対決|対した|当たった|対峙)/u) ??
+    target.match(/(.+?)(?:vs|VS|対)(.+?)(?:が|は|って|で)?(?:対戦|対決|対した|当たった|対峙|したこと|ある|$)/u) ??
+    target.match(/(.+?)(?:は|が|って)(.+?)から(?:打った|安打|本塁打|ホームラン|出塁|対戦|対決|打席)/u)
+  if (match?.[1] && match[2]) {
+    const batter = parseTeamQualifiedPlayerMention(match[1])
+    const pitcher = parseTeamQualifiedPlayerMention(match[2])
+    if (!batter?.playerName || !pitcher?.playerName) {
+      return undefined
+    }
     return {
-      batterName: extractPlayerNameFromPhrase(bare[1]) ?? bare[1].trim(),
-      pitcherName: extractPlayerNameFromPhrase(bare[2]) ?? bare[2].trim(),
+      batterTeam: batter.team,
+      batterName: batter.playerName,
+      pitcherName: pitcher.playerName,
     }
   }
 
   return undefined
+}
+
+function parseTeamQualifiedPlayerMention(value: string): { team?: string; playerName: string } | null {
+  const cleaned = value
+    .replace(/^(?:ところで|ちなみに|えっと|あの|その|この|で、|で|、)+/u, '')
+    .replace(/^(?:打者|バッター|投手|ピッチャー)[=:：は\s]*/u, '')
+    .replace(/(?:選手|投手|打者)$/u, '')
+    .replace(/^[「『]/u, '')
+    .replace(/[」』]$/u, '')
+    .trim()
+  if (!cleaned) {
+    return null
+  }
+
+  const team = matchKnownTeamPrefix(cleaned)
+  if (!team) {
+    return { playerName: cleaned.replace(/^の/u, '').replace(/[、。,.]$/u, '').trim() }
+  }
+
+  const playerName = cleaned.slice(team.length).replace(/^の/u, '').replace(/[、。,.]$/u, '').trim()
+  if (!playerName) {
+    return null
+  }
+  return { team, playerName }
 }
 
 function buildRosterFilters(

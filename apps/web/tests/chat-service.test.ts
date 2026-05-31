@@ -286,6 +286,48 @@ function buildFixtureRichGame() {
 }
 
 describe('chat-service', () => {
+  it('rejects non-baseball topics before invoking the query parser', async () => {
+    let parserCalled = false
+    const service = createChatService(createFakeQueryService(), {
+      parseStructuredQueryFromMessage: async () => {
+        parserCalled = true
+        return {
+          intent: 'search_events',
+          filters: { player_name: '天気' },
+        }
+      },
+    })
+
+    const response = await service.answerQuestion('今日の天気はどうですか？')
+
+    expect(parserCalled).toBe(false)
+    expect(response.structured_query).toEqual({ intent: 'off_topic', filters: {} })
+    expect(response.answer.result_count).toBe(0)
+    expect(response.results.events).toHaveLength(0)
+  })
+
+  it('allows short follow-up wording when the conversation history is baseball context', async () => {
+    let parserCalled = false
+    const service = createChatService(createFakeQueryService(), {
+      parseStructuredQueryFromMessage: async () => {
+        parserCalled = true
+        return {
+          intent: 'search_batting',
+          filters: { player_name: '大城', team: '巨人', recent: true },
+        }
+      },
+    })
+
+    await service.answerQuestion('それで最近どう？', {
+      history: [
+        { role: 'user', content: '巨人の大城って今どんな感じ' },
+        { role: 'assistant', content: '大城の打撃成績です。' },
+      ],
+    })
+
+    expect(parserCalled).toBe(true)
+  })
+
   it('returns DB-backed event answers with source urls', async () => {
     const database = openDatabase()
 
@@ -392,6 +434,114 @@ describe('chat-service', () => {
     } finally {
       database.close()
     }
+  })
+
+  it('rewrites player matchup questions to event search even when the parser returns games', async () => {
+    let capturedFilters: unknown
+    const service = createChatService(createFakeQueryService({
+      searchEvents: async (filters) => {
+        capturedFilters = filters
+        return [{
+          gameId: 'r20230409db-d-02',
+          gameDate: '2023-04-09',
+          sequence: 13,
+          inning: 8,
+          half: 'bottom',
+          offenseTeam: 'DeNA',
+          eventType: 'plate_appearance',
+          eventSubtype: 'standard',
+          batterName: '京田',
+          pitcherName: '砂田',
+          runnerName: null,
+          resultText: 'ライトフライ',
+          eventAttributesJson: null,
+          sourceUrl: 'https://npb.jp/scores/2023/0409/db-d-02/playbyplay.html',
+        }]
+      },
+      playerCandidates: [
+        {
+          player_id: null,
+          name: '京田',
+          primary_team: 'DeNA',
+          roles: ['batter'],
+          teams: ['DeNA'],
+          years: [2023],
+        },
+      ],
+    }), {
+      parseStructuredQueryFromMessage: async () => ({
+        intent: 'search_games',
+        filters: {
+          team: 'DeNA',
+          limit: 50,
+        },
+      }),
+    })
+
+    for (const message of [
+      '横浜京田と中日砂田が対決したことってある？',
+      '横浜京田対中日砂田ってある？',
+      '横浜京田は中日砂田から打ったことある？',
+      '中日砂田から横浜京田が打ったことある？',
+    ]) {
+      const response = await service.answerQuestion(message)
+
+      expect(response.structured_query).toMatchObject({
+        intent: 'search_events',
+        filters: {
+          team: 'DeNA',
+          batter_name: '京田',
+          pitcher_name: '砂田',
+        },
+      })
+      expect(capturedFilters).toMatchObject({
+        team: 'DeNA',
+        batter_name: '京田',
+        pitcher_name: '砂田',
+      })
+      expect(response.results.events).toHaveLength(1)
+    }
+  })
+
+  it('repairs clear natural-language categories when the parser picks the wrong intent', async () => {
+    const service = createChatService(createFakeQueryService(), {
+      parseStructuredQueryFromMessage: async () => ({
+        intent: 'search_events',
+        filters: { player_name: '誤分類' },
+      }),
+    })
+
+    await expect(service.answerQuestion('藤浪って今どこのチームにいるの？'))
+      .resolves.toMatchObject({
+        structured_query: {
+          intent: 'player_affiliation',
+          filters: { player_name: '藤浪' },
+        },
+      })
+
+    await expect(service.answerQuestion('今年のソフトバンクって何勝してるの'))
+      .resolves.toMatchObject({
+        structured_query: {
+          intent: 'aggregate_games',
+          filters: { team: 'ソフトバンク' },
+        },
+      })
+
+    await expect(service.answerQuestion('最近ロッテの1番ってだれが多いの？'))
+      .resolves.toMatchObject({
+        structured_query: {
+          intent: 'aggregate_batting',
+          filters: { team: 'ロッテ', batting_order: 1 },
+        },
+      })
+
+    await expect(service.answerQuestion('ヤクルト村上の今年の成績'))
+      .resolves.toMatchObject({
+        structured_query: {
+          intent: 'search_batting',
+          filters: { team: 'ヤクルト', player_name: '村上' },
+        },
+      })
   })
 
   it('normalizes team and player fields before DB search', async () => {

@@ -18,7 +18,7 @@ import {
   parseStructuredQueryFromMessage,
   type ChatQueryParser,
 } from './chat-query-parser'
-import { normalizeChatStructuredQuery } from './chat-query-normalizer'
+import { normalizeChatStructuredQuery, normalizeTeamName } from './chat-query-normalizer'
 import {
   resolveStructuredQueryPlayer,
   type PlayerResolution,
@@ -78,6 +78,9 @@ export function createChatService(
           sources: [],
         })
       }
+      if (!isLikelyNpbTopic(message, options.history)) {
+        return buildOffTopicResponse(message, { intent: 'off_topic', filters: {} })
+      }
       const rawParsedQuery = normalizeStructuredQuery(await queryParser(message, {
         history: options.history,
       }))
@@ -88,26 +91,7 @@ export function createChatService(
       )
 
       if (parsedQuery.intent === 'off_topic') {
-        return chatResponseCoreSchema.parse({
-          message,
-          structured_query: parsedQuery,
-          answer: {
-            summary: 'このサービスはNPB（日本プロ野球）に関するご質問にお答えするサービスです。試合結果・選手成績・特定の打席など、プロ野球のことなら何でもお気軽にどうぞ！',
-            result_count: 0,
-            source_urls: [],
-          },
-          results: {
-            events: [],
-            games: [],
-            pitching: [],
-            batting: [],
-            roster: [],
-            affiliations: [],
-            gameDetails: [],
-            aggregates: [],
-          },
-          sources: [],
-        })
+        return buildOffTopicResponse(message, parsedQuery)
       }
 
       const resolved = await resolvePlayer(queryService, parsedQuery)
@@ -463,6 +447,41 @@ function shouldSkipForPlayerResolution(resolution: PlayerResolution | null): boo
   return resolution?.status === 'ambiguous' || resolution?.status === 'not_found'
 }
 
+function buildOffTopicResponse(
+  message: string,
+  structuredQuery: Extract<ChatStructuredQuery, { intent: 'off_topic' }>,
+): ChatResponseCore {
+  return chatResponseCoreSchema.parse({
+    message,
+    structured_query: structuredQuery,
+    answer: {
+      summary: 'このサービスはNPB（日本プロ野球）に関するご質問にお答えするサービスです。試合結果・選手成績・特定の打席など、プロ野球のことなら何でもお気軽にどうぞ！',
+      result_count: 0,
+      source_urls: [],
+    },
+    results: {
+      events: [],
+      games: [],
+      pitching: [],
+      batting: [],
+      roster: [],
+      affiliations: [],
+      gameDetails: [],
+      aggregates: [],
+    },
+    sources: [],
+  })
+}
+
+function isLikelyNpbTopic(message: string, history: ChatRequest['history'] | undefined): boolean {
+  if (history?.length && /^(?:それ|これ|そこ|この|その|で|じゃあ|なら|あと|ついでに|詳しく|もっと|何で|どうして|誰|いつ|どこ|どう|なんで)/u.test(message.trim())) {
+    return true
+  }
+  return NPB_TOPIC_PATTERN.test(message) || extractMentionedTeams(message).length > 0
+}
+
+const NPB_TOPIC_PATTERN = /NPB|日本プロ野球|プロ野球|野球|セ・?リーグ|パ・?リーグ|交流戦|日本シリーズ|クライマックス|CS|球団|チーム|選手|試合|ゲーム|イベント|スコア|勝敗|勝利|敗北|何勝|何敗|引き分け|対戦|対決|対|vs|VS|成績|打撃|打者|投手|投球|登板|先発|中継ぎ|抑え|セーブ|ホールド|奪三振|防御率|WHIP|打率|OPS|IsoP|四球率|BB%|打点|安打|本塁打|ホームラン|\bHR\b|盗塁|代打|打席|スタメン|打順|守備|ポジション|捕手|キャッチャー|ショート|ロスター|登録|所属|在籍|新人王|最優秀新人|MVP|沢村賞|タイトル|最近何して/u
+
 function shouldUseFinalAnswerLlm(
   core: ChatResponseCore,
   resolution: PlayerResolution | null,
@@ -597,11 +616,75 @@ function rewriteStructuredQueryForQuestion(
   query: ChatStructuredQuery,
 ): ChatStructuredQuery {
   const knownPlayerRewrite = rewriteKnownHistoricalPlayers(message, query)
-  const specialRewrite = rewriteSpecialQuestionPatterns(message, knownPlayerRewrite)
+  const intentRewrite = rewriteIntentFromNaturalLanguage(message, knownPlayerRewrite)
+  const specialRewrite = rewriteSpecialQuestionPatterns(message, intentRewrite)
   const rosterRewrite = rewriteToRosterIfNeeded(message, specialRewrite)
   const battingRewrite = rewriteToBattingIfNeeded(message, rosterRewrite)
   const gamesRewrite = rewriteToAggregateGamesIfNeeded(message, battingRewrite)
   return gamesRewrite
+}
+
+function rewriteIntentFromNaturalLanguage(message: string, query: ChatStructuredQuery): ChatStructuredQuery {
+  const filters = query.filters as Record<string, unknown>
+  const year = typeof filters.year === 'number' ? filters.year : extractMentionedYear(message)
+  const yearRange = extractMentionedYearRange(message)
+
+  if (/所属|在籍|どこのチーム|どのチーム|チームにいる|チームは/u.test(message)) {
+    const mention = extractMentionBefore(message, /(?:の所属チーム|所属|在籍|どこのチーム|どのチーム|チームにいる|チームは)/u)
+    const player = parseTeamQualifiedPlayerMention(mention ?? '')
+    if (player?.playerName) {
+      return {
+        intent: 'player_affiliation',
+        filters: {
+          ...(year ? { year } : {}),
+          ...(player.team ? { team: player.team } : {}),
+          player_name: player.playerName,
+        },
+      }
+    }
+  }
+
+  if (/投手成績|登板|奪三振|投球回|防御率|セーブ|ホールド/u.test(message)) {
+    if (typeof filters.pitcher_name === 'string') {
+      return query
+    }
+    const mention = extractMentionBefore(message, /(?:の投手成績|投手成績|登板|奪三振|投球回|防御率|セーブ|ホールド)/u)
+    const player = parseTeamQualifiedPlayerMention(mention ?? '')
+    if (player?.playerName && !looksLikeDateOnly(player.playerName)) {
+      return {
+        intent: /ランキング|最多|トップ|一番|集計|通算|合計/u.test(message) ? 'aggregate_pitching' : 'search_pitching',
+        filters: {
+          ...(yearRange.year_from ? { year_from: yearRange.year_from } : year ? { year } : {}),
+          ...(yearRange.year_to ? { year_to: yearRange.year_to } : {}),
+          ...(player.team ? { team: player.team } : {}),
+          pitcher_name: player.playerName,
+          ...(/最近|直近|最後|最終/u.test(message) ? { recent: true } : {}),
+        },
+      } as ChatStructuredQuery
+    }
+  }
+
+  if (/成績|打撃成績|打率|OPS|IsoP|四球率|BB%|安打|打点/u.test(message) && !/投手成績|登板|奪三振|投球回|防御率/u.test(message)) {
+    if ((query.intent === 'search_batting' || query.intent === 'aggregate_batting') && (typeof filters.player_name === 'string' || typeof filters.batter_name === 'string')) {
+      return query
+    }
+    const mention = extractMentionBefore(message, /(?:の今年の成績|の今季の成績|の成績|成績|打撃成績|打率|OPS|IsoP|四球率|BB%|安打|打点)/iu)
+    const player = parseTeamQualifiedPlayerMention(mention ?? '')
+    if (player?.playerName && !looksLikeDateOnly(player.playerName)) {
+      return {
+        intent: /ランキング|最多|トップ|一番|集計|通算|合計|数/u.test(message) ? 'aggregate_batting' : 'search_batting',
+        filters: {
+          ...(yearRange.year_from ? { year_from: yearRange.year_from } : year ? { year } : {}),
+          ...(yearRange.year_to ? { year_to: yearRange.year_to } : {}),
+          ...(player.team ? { team: player.team } : {}),
+          player_name: player.playerName,
+          ...(/最近|直近|今どんな感じ|調子|状態/u.test(message) ? { recent: true } : {}),
+        },
+      } as ChatStructuredQuery
+    }
+  }
+
+  return query
 }
 
 function rewriteFollowUpFromHistory(
@@ -708,6 +791,19 @@ function rewriteSpecialQuestionPatterns(message: string, query: ChatStructuredQu
   const filters = query.filters as Record<string, unknown>
   const year = typeof filters.year === 'number' ? filters.year : undefined
   const team = typeof filters.team === 'string' ? filters.team : undefined
+  const batterPitcherMatchup = extractBatterPitcherMatchupQuestion(message)
+  if (batterPitcherMatchup) {
+    const matchupYear = year ?? extractMentionedYear(message)
+    return {
+      intent: 'search_events',
+      filters: {
+        ...(matchupYear ? { year: matchupYear } : {}),
+        ...(batterPitcherMatchup.batterTeam ? { team: batterPitcherMatchup.batterTeam } : {}),
+        batter_name: batterPitcherMatchup.batterName,
+        pitcher_name: batterPitcherMatchup.pitcherName,
+      },
+    }
+  }
   if (/新人王|最優秀新人/u.test(message) && /2025|昨シーズン|昨季/u.test(message)) {
     return { intent: 'off_topic', filters: {} }
   }
@@ -819,6 +915,116 @@ function rewriteSpecialQuestionPatterns(message: string, query: ChatStructuredQu
   return query
 }
 
+function extractBatterPitcherMatchupQuestion(message: string): {
+  batterTeam?: string
+  batterName: string
+  pitcherName: string
+} | null {
+  if (!/対戦|対決|対した|当たった|対峙|vs|VS|から|対/u.test(message)) {
+    return null
+  }
+
+  const target = message.replace(/[？?].*$/u, '')
+  const match =
+    target.match(/(.+?)と(.+?)(?:が|は|って|で)?(?:対戦|対決|対した|当たった|対峙)/u) ??
+    target.match(/(.+?)(?:vs|VS|対)(.+?)(?:が|は|って|で)?(?:対戦|対決|対した|当たった|対峙|したこと|ある|$)/u) ??
+    target.match(/(.+?)(?:は|が|って)(.+?)から(?:打った|安打|本塁打|ホームラン|出塁|対戦|対決|打席)/u)
+  const reverseFromMatch = target.match(/(.+?)から(.+?)(?:が|は)?(?:打った|安打|本塁打|ホームラン|出塁|対戦|対決|打席)/u)
+  if (!match?.[1] || !match[2]) {
+    if (!reverseFromMatch?.[1] || !reverseFromMatch[2]) {
+      return null
+    }
+    const pitcher = parseTeamQualifiedPlayerMention(reverseFromMatch[1])
+    const batter = parseTeamQualifiedPlayerMention(reverseFromMatch[2])
+    if (!batter?.playerName || !pitcher?.playerName) {
+      return null
+    }
+    return {
+      ...(batter.team ? { batterTeam: batter.team } : {}),
+      batterName: batter.playerName,
+      pitcherName: pitcher.playerName,
+    }
+  }
+
+  const batter = parseTeamQualifiedPlayerMention(match[1])
+  const pitcher = parseTeamQualifiedPlayerMention(match[2])
+  if (!batter?.playerName || !pitcher?.playerName) {
+    return null
+  }
+  if (batter.playerName === batter.team || pitcher.playerName === pitcher.team) {
+    return null
+  }
+
+  return {
+    ...(batter.team ? { batterTeam: batter.team } : {}),
+    batterName: batter.playerName,
+    pitcherName: pitcher.playerName,
+  }
+}
+
+function parseTeamQualifiedPlayerMention(value: string): { team?: string; playerName: string } | null {
+  const cleaned = value
+    .replace(/^\d{4}年(?:から\d{4}年(?:まで)?|の|に)?/u, '')
+    .replace(/^(?:今年|今季|今シーズン|最近|直近|現在|今)(?:の|に|で)?/u, '')
+    .replace(/^(?:ところで|ちなみに|えっと|あの|その|この|で、|で|、)+/u, '')
+    .replace(/^(?:打者|バッター|投手|ピッチャー)[=:：は\s]*/u, '')
+    .replace(/(?:の)?(?:今年|今季|今シーズン|最近|直近|現在|今)$/u, '')
+    .replace(/(?:って(?:今|現在)?|は今|は現在|の今|今は?)$/u, '')
+    .replace(/(?:選手|投手|打者)$/u, '')
+    .replace(/^[「『]/u, '')
+    .replace(/[」』]$/u, '')
+    .trim()
+  if (!cleaned) {
+    return null
+  }
+
+  const team = matchKnownTeamPrefix(cleaned)
+  if (!team) {
+    return { playerName: cleaned.replace(/^の/u, '').replace(/[、。,.]$/u, '').trim() }
+  }
+
+  const playerName = cleaned.slice(team.length).replace(/^の/u, '').replace(/[、。,.]$/u, '').trim()
+  if (!playerName) {
+    return null
+  }
+  return { team: normalizeTeamName(team) ?? team, playerName }
+}
+
+function looksLikeDateOnly(value: string): boolean {
+  return /^\d{4}(?:[-/年]\d{1,2}(?:[-/月]\d{1,2}日?)?)?$/u.test(value)
+}
+
+function extractMentionBefore(message: string, marker: RegExp): string | undefined {
+  const match = marker.exec(message)
+  if (!match || match.index <= 0) {
+    return undefined
+  }
+  return message.slice(0, match.index)
+    .replace(/(?:を|が|は|って|について|教えて|見せて|ください).*$/u, '')
+    .trim()
+}
+
+function matchKnownTeamPrefix(value: string): string | undefined {
+  return [
+    'ソフトバンク',
+    '日本ハム',
+    'オリックス',
+    '東京ヤクルト',
+    'ヤクルト',
+    '横浜DeNA',
+    'DeNA',
+    '横浜',
+    '中日',
+    '巨人',
+    '読売',
+    '阪神',
+    '広島',
+    'ロッテ',
+    '西武',
+    '楽天',
+  ].find((team) => value.startsWith(team) && value.length > team.length)
+}
+
 function isNorimotoTeamComparison(message: string, query: ChatStructuredQuery): boolean {
   return query.intent === 'aggregate_pitching' &&
     /則本昂大/u.test(message) &&
@@ -853,20 +1059,38 @@ function extractSinceYear(message: string): number | undefined {
   return match ? Number.parseInt(match[0].slice(0, 4), 10) : undefined
 }
 
+function extractMentionedYear(message: string): number | undefined {
+  const match = message.match(/((?:19|20)\d{2})年/u)
+  return match?.[1] ? Number.parseInt(match[1], 10) : undefined
+}
+
+function extractMentionedYearRange(message: string): { year_from?: number; year_to?: number } {
+  const match = message.match(/((?:19|20)\d{2})年?(?:から|[-–—])((?:19|20)\d{2})年?(?:まで)?/u)
+  if (!match?.[1] || !match[2]) {
+    return {}
+  }
+  return { year_from: Number.parseInt(match[1], 10), year_to: Number.parseInt(match[2], 10) }
+}
+
+function extractBattingOrder(message: string): number | undefined {
+  const normalized = message.replace(/[０-９]/gu, (char) =>
+    String.fromCharCode(char.charCodeAt(0) - 0xFEE0),
+  )
+  const match = normalized.match(/([1-9])番/u)
+  return match?.[1] ? Number.parseInt(match[1], 10) : undefined
+}
+
 function rewriteToRosterIfNeeded(message: string, query: ChatStructuredQuery): ChatStructuredQuery {
-  if (!/スタメン|起用|打順|捕手|ショート|守備|ポジション/u.test(message)) {
+  if (!/スタメン|起用|打順|\d番|[０-９]番|捕手|ショート|守備|ポジション/u.test(message)) {
     return query
   }
   const filters = query.filters as Record<string, unknown>
-  const team = typeof filters.team === 'string' ? filters.team : undefined
-  const year = typeof filters.year === 'number' ? filters.year : undefined
+  const team = typeof filters.team === 'string' ? filters.team : extractMentionedTeams(message)[0]
+  const year = typeof filters.year === 'number' ? filters.year : extractMentionedYear(message)
+  const orderFromMessage = extractBattingOrder(message)
   const battingOrder = typeof filters.batting_order === 'number'
     ? filters.batting_order
-    : /4番/u.test(message)
-      ? 4
-      : /5番/u.test(message)
-        ? 5
-        : undefined
+    : orderFromMessage
   const position = typeof filters.position === 'string'
     ? filters.position
     : /捕手|キャッチャー/u.test(message)
@@ -877,7 +1101,7 @@ function rewriteToRosterIfNeeded(message: string, query: ChatStructuredQuery): C
   if (!team || (!battingOrder && !position)) {
     return query
   }
-  if (/最も多|最多|ランキング|誰/u.test(message) && (battingOrder || position)) {
+  if (/最も多|最多|ランキング|誰|だれ|多い/u.test(message) && (battingOrder || position)) {
     return {
       intent: 'aggregate_batting',
       filters: {
@@ -1006,10 +1230,13 @@ function rewriteToAggregateGamesIfNeeded(
     return query
   }
   const filters = query.filters as Record<string, unknown>
-  if (filters.pitcher_name || filters.player_name) {
+  const teamFromMessage = extractMentionedTeams(message)[0]
+  if (filters.pitcher_name || (filters.player_name && !teamFromMessage)) {
     return query
   }
-  let team = typeof filters.team === 'string' ? filters.team : undefined
+  let team = typeof filters.team === 'string' && messageMentionsTeam(message, filters.team)
+    ? filters.team
+    : teamFromMessage
   if (!team && /パ・?リーグ/u.test(message)) {
     team = 'パ・リーグ'
   }

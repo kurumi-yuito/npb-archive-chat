@@ -376,14 +376,23 @@ describe('chat-query-parser', () => {
       },
     })
 
-    expect(parseStructuredQueryFromMessageStub('横浜の京田と中日の砂田が対決したことってある？')).toEqual({
-      intent: 'search_events',
-      filters: {
-        team: '横浜',
-        batter_name: '京田',
-        pitcher_name: '砂田',
-      },
-    })
+    for (const message of [
+      '横浜の京田と中日の砂田が対決したことってある？',
+      '横浜京田と中日砂田が対決したことってある？',
+      '横浜京田対中日砂田ってある？',
+      '横浜京田vs中日砂田',
+      '横浜京田は中日砂田から打ったことある？',
+      '中日砂田から横浜京田が打ったことある？',
+    ]) {
+      expect(parseStructuredQueryFromMessageStub(message)).toEqual({
+        intent: 'search_events',
+        filters: {
+          team: '横浜',
+          batter_name: '京田',
+          pitcher_name: '砂田',
+        },
+      })
+    }
   })
 
   it('routes affiliation questions to player_affiliation instead of event search', () => {
