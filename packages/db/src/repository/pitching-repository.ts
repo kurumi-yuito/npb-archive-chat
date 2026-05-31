@@ -26,7 +26,7 @@ export async function searchPitchingLines(
   const normalized = searchPitchingLinesFiltersSchema.parse(filters)
   const limit = normalized.limit ?? 50
 
-  const currentRows = normalized.game_date || normalized.recent || normalized.sort_by === 'pitchCount'
+  const currentRows = normalized.game_date || normalized.game_id || normalized.recent || normalized.sort_by === 'pitchCount'
     ? []
     : await searchCurrentPitchingStats(database, normalized, limit)
   if (currentRows.length > 0) {
@@ -39,6 +39,10 @@ export async function searchPitchingLines(
   if (normalized.game_date) {
     clauses.push('games.date = ?')
     values.push(normalized.game_date)
+  }
+  if (normalized.game_id) {
+    clauses.push('pitching_lines.game_id = ?')
+    values.push(normalized.game_id)
   }
 
   if (normalized.year) {

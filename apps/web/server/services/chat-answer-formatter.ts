@@ -141,7 +141,7 @@ function buildSummary(
     if (first.sourceKind === 'bis_pitching' || first.sourceKind === 'bis_pitching_farm') {
       return `${yearShiftPrefix}${formatBisPitchingSummary(first, resultCount)}`
     }
-    return `${yearShiftPrefix}条件に一致する投手成績が${resultCount}件あります。先頭は${first.gameDate}の${first.pitcherName}で、${first.inningsPitched}回 ${first.strikeouts}奪三振です。`
+    return `${yearShiftPrefix}条件に一致する投手成績が${resultCount}件あります。先頭は${first.gameDate}の${first.pitcherName}で、${formatInningsForDisplay(first.inningsPitched)} ${first.strikeouts}奪三振です。`
   }
 
   if (structuredQuery.intent === 'search_batting') {
@@ -174,6 +174,8 @@ function buildSummary(
     return `${yearShiftPrefix}${formatGameDetailSummary(
       results.gameDetails as GameDetailRow[],
       results.events as EventSummaryRow[],
+      results.batting as BattingLineRow[],
+      results.pitching as PitchingLineRow[],
       resultCount,
     )}`
   }
@@ -470,7 +472,7 @@ function formatLastPitchingAppearance(question: string, rows: PitchingLineRow[])
   }
   const league = row.gameId.startsWith('f') ? '二軍' : '一軍'
   const pitchText = row.pitchCount > 0 ? `、${row.pitchCount}球` : ''
-  return `${row.team} ${row.pitcherName}が最後に${league}で登板したのは${formatDateJa(row.gameDate)}です。この試合では${row.inningsPitched}回${pitchText}、${row.strikeouts}奪三振、失点${row.runs}、自責点${row.earnedRuns}でした。`
+  return `${row.team} ${row.pitcherName}が最後に${league}で登板したのは${formatDateJa(row.gameDate)}です。この試合では${formatInningsForDisplay(row.inningsPitched)}${pitchText}、${row.strikeouts}奪三振、失点${row.runs}、自責点${row.earnedRuns}でした。`
 }
 
 function formatTopPitchCountAppearance(row: PitchingLineRow | undefined): string {
@@ -478,12 +480,34 @@ function formatTopPitchCountAppearance(row: PitchingLineRow | undefined): string
     return '条件に一致する登板は0件です。'
   }
   const league = row.gameId.startsWith('f') ? '二軍' : '一軍'
-  return `条件期間で最も球数が多かった登板は、${formatDateJa(row.gameDate)}の${league}・${row.team} ${row.pitcherName}です。${row.inningsPitched}回を投げ、${row.pitchCount}球、${row.strikeouts}奪三振、失点${row.runs}、自責点${row.earnedRuns}でした。`
+  return `条件期間で最も球数が多かった登板は、${formatDateJa(row.gameDate)}の${league}・${row.team} ${row.pitcherName}です。${formatInningsForDisplay(row.inningsPitched)}を投げ、${row.pitchCount}球、${row.strikeouts}奪三振、失点${row.runs}、自責点${row.earnedRuns}でした。`
+}
+
+function formatInningsForDisplay(value: string | number): string {
+  const text = String(value)
+  const match = text.match(/^(\d+)(?:\.(\d+))?$/u)
+  if (!match) {
+    return `${text}回`
+  }
+  const whole = match[1]
+  const fraction = match[2]
+  if (!fraction || /^0+$/u.test(fraction)) {
+    return `${whole}回`
+  }
+  if (fraction === '1') {
+    return `${whole}回1/3`
+  }
+  if (fraction === '2') {
+    return `${whole}回2/3`
+  }
+  return `${text}回`
 }
 
 function formatGameDetailSummary(
   rows: GameDetailRow[],
   events: EventSummaryRow[],
+  battingRows: BattingLineRow[],
+  pitchingRows: PitchingLineRow[],
   resultCount: number,
 ): string {
   const lines = rows.slice(0, 5).flatMap((row, index) => {
@@ -492,9 +516,17 @@ function formatGameDetailSummary(
     const highlights = linescore ? describeGameHighlights(linescore) : []
     const gameEvents = events.filter((event) => event.gameId === row.gameId)
     const eventHighlights = describeEventHighlights(gameEvents)
+    const gameBattingRows = battingRows.filter((line) => line.gameId === row.gameId)
+    const gamePitchingRows = pitchingRows.filter((line) => line.gameId === row.gameId)
+    const detailLines = [
+      ...(linescore ? describeScoringFlow(linescore) : []),
+      ...describePitchingLines(gamePitchingRows),
+      ...describeBattingLines(gameBattingRows),
+    ]
     return [
       `${index + 1}. ${formatDateJa(row.date)} ${displayVenueName(row.venue)}、${result}`,
       ...highlights.map((highlight) => `   ${highlight}`),
+      ...detailLines.map((detail) => `   ${detail}`),
       ...eventHighlights.map((highlight) => `   ${highlight}`),
       ...(gameEvents.length === 0 && !linescore ? ['   詳細な打席情報は確認できませんでした。'] : []),
     ]
@@ -507,6 +539,61 @@ function formatGameDetailSummary(
     ...lines,
     ...(resultCount > 5 ? ['', `ほか${resultCount - 5}件は省略しています。`] : []),
   ].join('\n')
+}
+
+function describeScoringFlow(linescore: ParsedLinescore): string[] {
+  const scoring = scoringInnings(linescore)
+  if (scoring.length === 0) {
+    return ['得点経過はなく、0-0のまま終了しています。']
+  }
+  const flow = scoring
+    .map((score) => `${score.inning}回${score.half}に${score.team}が${score.runs}点（${score.awayScoreAfter}-${score.homeScoreAfter}）`)
+    .join('、')
+  return [`得点経過: ${flow}。`]
+}
+
+function describePitchingLines(rows: PitchingLineRow[]): string[] {
+  const boxRows = rows.filter((row) => row.sourceKind === 'box')
+  if (boxRows.length === 0) {
+    return []
+  }
+  const starters = boxRows
+    .filter((row) => Number.parseFloat(String(row.inningsPitched)) >= 3 || row.pitchCount >= 50)
+    .slice(0, 4)
+  const targetRows = starters.length > 0 ? starters : boxRows.slice(0, 4)
+  return [
+    `主な投手成績: ${targetRows.map((row) => {
+      const pitchCount = row.pitchCount > 0 ? `、${row.pitchCount}球` : ''
+      return `${row.team} ${row.pitcherName} ${formatInningsForDisplay(row.inningsPitched)}${pitchCount}、${row.strikeouts}奪三振、失点${row.runs}、自責点${row.earnedRuns}`
+    }).join(' / ')}。`,
+  ]
+}
+
+function describeBattingLines(rows: BattingLineRow[]): string[] {
+  const boxRows = rows.filter((row) => row.sourceKind === 'box')
+  if (boxRows.length === 0) {
+    return []
+  }
+  const notable = boxRows
+    .filter((row) => row.hits > 0 || row.runsBattedIn > 0 || /本|ホームラン|二塁打|三塁打/u.test(row.rawText ?? ''))
+    .sort((a, b) =>
+      b.runsBattedIn - a.runsBattedIn ||
+      b.hits - a.hits ||
+      a.playerName.localeCompare(b.playerName, 'ja'),
+    )
+    .slice(0, 6)
+  if (notable.length === 0) {
+    return []
+  }
+  return [
+    `主な打撃成績: ${notable.map((row) => {
+      const extras = [
+        row.runsBattedIn > 0 ? `${row.runsBattedIn}打点` : undefined,
+        row.runs > 0 ? `${row.runs}得点` : undefined,
+      ].filter(Boolean).join('、')
+      return `${row.team} ${row.playerName} ${row.atBats}打数${row.hits}安打${extras ? `、${extras}` : ''}`
+    }).join(' / ')}。`,
+  ]
 }
 
 function describeEventHighlights(events: EventSummaryRow[]): string[] {
@@ -915,7 +1002,7 @@ function formatBisPitchingEvaluationSummary(row: PitchingLineRow, gameRows: Pitc
   const recentGames = gameRows.slice(0, 5)
   const gameLines = recentGames.map((r) => {
     const gameLeague = r.gameId.startsWith('f') ? '二軍' : '一軍'
-    return `  ${r.gameDate} ${gameLeague} ${r.team} ${r.pitcherName}: ${r.inningsPitched}回 ${r.strikeouts}奪三振 自責${r.earnedRuns}`
+    return `  ${r.gameDate} ${gameLeague} ${r.team} ${r.pitcherName}: ${formatInningsForDisplay(r.inningsPitched)} ${r.strikeouts}奪三振 自責${r.earnedRuns}`
   })
   return [
     `${row.team} ${row.pitcherName}は、${year}年は${league}で${appearances ?? '複数'}試合に登板しています。`,
@@ -1013,6 +1100,11 @@ function displayTeamName(team: string): string {
 function displayVenueName(venue: string): string {
   const aliases: Record<string, string> = {
     'Tokyo Dome': '東京ドーム',
+    Koshien: '甲子園',
+    Yokohama: '横浜',
+    'Vantelin Dome': 'バンテリンドーム',
+    'MetLife Dome': 'メットライフドーム',
+    'MIZUHO PayPay': 'みずほPayPayドーム',
   }
   return aliases[venue] ?? venue
 }

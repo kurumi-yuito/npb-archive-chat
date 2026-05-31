@@ -81,7 +81,11 @@ export function createChatService(
       const rawParsedQuery = normalizeStructuredQuery(await queryParser(message, {
         history: options.history,
       }))
-      const parsedQuery = rewriteStructuredQueryForQuestion(message, rawParsedQuery)
+      const parsedQuery = rewriteFollowUpFromHistory(
+        message,
+        rewriteStructuredQueryForQuestion(message, rawParsedQuery),
+        options.history,
+      )
 
       if (parsedQuery.intent === 'off_topic') {
         return chatResponseCoreSchema.parse({
@@ -353,14 +357,15 @@ export function createChatService(
 
       if (!shouldSkipForPlayerResolution(playerResolution) && structuredQuery.intent === 'game_detail') {
         const gameDate = results.gameDetails[0]?.date
+        const gameId = results.gameDetails[0]?.gameId
         const teamFilter = structuredQuery.filters.team
         const [events, batting, pitching] = await Promise.all([
           searchGameDetailEventsForChat(queryService, results.gameDetails),
-          gameDate
-            ? queryService.searchBattingLines({ game_date: gameDate, team: teamFilter, limit: 30 })
+          gameId || gameDate
+            ? queryService.searchBattingLines({ ...(gameId ? { game_id: gameId } : { game_date: gameDate }), team: teamFilter, limit: 30 })
             : Promise.resolve([]),
-          gameDate
-            ? queryService.searchPitchingLines({ game_date: gameDate, team: teamFilter, limit: 10 })
+          gameId || gameDate
+            ? queryService.searchPitchingLines({ ...(gameId ? { game_id: gameId } : { game_date: gameDate }), team: teamFilter, limit: 10 })
             : Promise.resolve([]),
         ])
         results = { ...results, events, batting, pitching }
@@ -597,6 +602,81 @@ function rewriteStructuredQueryForQuestion(
   const battingRewrite = rewriteToBattingIfNeeded(message, rosterRewrite)
   const gamesRewrite = rewriteToAggregateGamesIfNeeded(message, battingRewrite)
   return gamesRewrite
+}
+
+function rewriteFollowUpFromHistory(
+  message: string,
+  query: ChatStructuredQuery,
+  history: ChatRequest['history'] | undefined,
+): ChatStructuredQuery {
+  const ordinalIndex = extractOrdinalIndex(message)
+  if (ordinalIndex === null || !history?.length) {
+    return query
+  }
+  if (!/試合|ゲーム|詳細|詳しく|について|教えて|それ|これ/u.test(message)) {
+    return query
+  }
+
+  const gameIds = extractRecentAssistantGameIds(history)
+  const gameId = gameIds[ordinalIndex]
+  if (!gameId) {
+    return query
+  }
+
+  return {
+    intent: 'game_detail',
+    filters: {
+      game_id: gameId,
+      limit: 1,
+    },
+  }
+}
+
+function extractOrdinalIndex(message: string): number | null {
+  const normalized = message.replace(/[０-９]/gu, (char) =>
+    String.fromCharCode(char.charCodeAt(0) - 0xFEE0),
+  )
+  const ordinalPatterns: Array<[RegExp, number]> = [
+    [/(?:最初|一つ目|1つ目|一番目|1番目|一件目|1件目|一本目|1本目)/u, 0],
+    [/(?:二つ目|2つ目|二番目|2番目|二件目|2件目|二本目|2本目)/u, 1],
+    [/(?:三つ目|3つ目|三番目|3番目|三件目|3件目|三本目|3本目)/u, 2],
+    [/(?:四つ目|4つ目|四番目|4番目|四件目|4件目|四本目|4本目)/u, 3],
+    [/(?:五つ目|5つ目|五番目|5番目|五件目|5件目|五本目|5本目)/u, 4],
+  ]
+  for (const [pattern, index] of ordinalPatterns) {
+    if (pattern.test(normalized)) {
+      return index
+    }
+  }
+  return null
+}
+
+function extractRecentAssistantGameIds(history: NonNullable<ChatRequest['history']>): string[] {
+  for (const item of [...history].reverse()) {
+    if (item.role !== 'assistant') {
+      continue
+    }
+    const ids = uniqueInOrder(
+      [...item.content.matchAll(/\b[rf]\d{8}[a-z0-9-]+\b/giu)].map((match) => match[0]),
+    )
+    if (ids.length > 0) {
+      return ids
+    }
+  }
+  return []
+}
+
+function uniqueInOrder(values: string[]): string[] {
+  const seen = new Set<string>()
+  const result: string[] = []
+  for (const value of values) {
+    if (seen.has(value)) {
+      continue
+    }
+    seen.add(value)
+    result.push(value)
+  }
+  return result
 }
 
 function rewriteKnownHistoricalPlayers(message: string, query: ChatStructuredQuery): ChatStructuredQuery {

@@ -1014,6 +1014,98 @@ describe('chat-service', () => {
     expect(response.answer.summary).not.toContain('条件に一致するイベントは見つかりません')
   })
 
+  it('resolves ordinal follow-up references to the selected previous game_id', async () => {
+    const seenGameIds: string[] = []
+    const service = createChatService(createFakeQueryService({
+      searchBattingLines: async (filters) => filters.game_id === 'r20210416t-s-04'
+        ? [{
+            gameId: 'r20210416t-s-04',
+            gameDate: '2021-04-16',
+            team: '阪神',
+            playerName: '藤浪',
+            battingOrder: 9,
+            position: '(投)',
+            atBats: 2,
+            runs: 1,
+            hits: 1,
+            runsBattedIn: 2,
+            stolenBases: 0,
+            strikeouts: 1,
+            walks: 0,
+            rawText: '藤浪 レフト2ランホームラン',
+            sourceKind: 'box',
+            sourceUrl: 'https://npb.jp/scores/2021/0416/t-s-04/box.html',
+          }]
+        : [],
+      searchPitchingLines: async (filters) => filters.game_id === 'r20210416t-s-04'
+        ? [{
+            gameId: 'r20210416t-s-04',
+            gameDate: '2021-04-16',
+            team: '阪神',
+            pitcherName: '藤浪',
+            inningsPitched: '5',
+            pitchCount: 0,
+            strikeouts: 6,
+            runs: 0,
+            earnedRuns: 0,
+            sourceKind: 'box',
+            sourceUrl: 'https://npb.jp/scores/2021/0416/t-s-04/box.html',
+          }]
+        : [],
+      searchGameDetails: async (filters) => {
+        seenGameIds.push(filters.game_id ?? '')
+        return filters.game_id === 'r20210416t-s-04'
+          ? [{
+              gameId: 'r20210416t-s-04',
+              date: '2021-04-16',
+              venue: 'Koshien',
+              competition: null,
+              awayTeamName: '東京ヤクルトスワローズ',
+              homeTeamName: '阪神タイガース',
+              matchupText: '東京ヤクルトスワローズ vs 阪神タイガース',
+              linescoreJson: JSON.stringify({
+                away: { team: '東京ヤクルトスワローズ', innings: ['0', '0', '0'], totals: { runs: 0, hits: 5, errors: 1 } },
+                home: { team: '阪神タイガース', innings: ['0', '0', '2'], totals: { runs: 2, hits: 5, errors: 0 } },
+              }),
+            }]
+          : []
+      },
+    }), {
+      parseStructuredQueryFromMessage: async () => ({
+        intent: 'game_detail',
+        filters: { game_date: '2021-04-16', limit: 10 },
+      }),
+    })
+
+    const response = await service.answerQuestion('二つ目の試合についてもっと詳しく教えて', {
+      history: [
+        { role: 'user', content: '藤浪ってホームラン打ったことある？' },
+        {
+          role: 'assistant',
+          content: [
+            '藤浪 晋太郎のホームランは2件です。',
+            '1. 2018-09-16 r20180916db-t-20 3回表',
+            '2. 2021-04-16 r20210416t-s-04 5回裏',
+          ].join('\n'),
+        },
+      ],
+    })
+
+    expect(response.structured_query).toEqual({
+      intent: 'game_detail',
+      filters: { game_id: 'r20210416t-s-04', limit: 1 },
+    })
+    expect(seenGameIds).toEqual(['r20210416t-s-04'])
+    expect(response.answer.result_count).toBe(1)
+    expect(response.results.batting.map((row) => row.gameId)).toEqual(['r20210416t-s-04'])
+    expect(response.results.pitching.map((row) => row.gameId)).toEqual(['r20210416t-s-04'])
+    expect(response.answer.summary).toContain('2021年4月16日')
+    expect(response.answer.summary).toContain('得点経過:')
+    expect(response.answer.summary).toContain('主な投手成績:')
+    expect(response.answer.summary).toContain('主な打撃成績:')
+    expect(response.answer.summary).not.toContain('該当する試合は6件')
+  })
+
 })
 
 function createFakeQueryService(options: {
@@ -1035,6 +1127,8 @@ function createFakeQueryService(options: {
     years: number[]
   }>
   searchEvents?: ChatQueryService['searchEvents']
+  searchBattingLines?: ChatQueryService['searchBattingLines']
+  searchPitchingLines?: ChatQueryService['searchPitchingLines']
   searchGameDetails?: ChatQueryService['searchGameDetails']
   aggregateBattingLines?: ChatQueryService['aggregateBattingLines']
 } = {}): ChatQueryService {
@@ -1059,7 +1153,7 @@ function createFakeQueryService(options: {
           sourceUrl: 'https://npb.jp/scores/2024/0401/g-t-01/playbyplay.html',
         }]),
     searchGames: async () => [],
-    searchBattingLines: async () => emptyResults
+    searchBattingLines: options.searchBattingLines ?? (async () => emptyResults
       ? []
       : [{
           gameId: 'r20240401g-t-01',
@@ -1076,8 +1170,8 @@ function createFakeQueryService(options: {
           strikeouts: 1,
           walks: 0,
           rawText: '山田 左越本 中前安',
-        }],
-    searchPitchingLines: async () => [],
+        }]),
+    searchPitchingLines: options.searchPitchingLines ?? (async () => []),
     searchRosterEntries: async () => [],
     searchPlayerAffiliations: async () => emptyResults
       ? []

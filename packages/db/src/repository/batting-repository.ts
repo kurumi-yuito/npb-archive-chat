@@ -33,7 +33,7 @@ export async function searchBattingLines(
   const limit = normalized.limit ?? 50
   // batting_order / position are box-score-only fields; BIS stats don't have them.
   // Skip BIS entirely when either is specified to avoid returning unfiltered season stats.
-  const skipBis = normalized.game_date || normalized.recent
+  const skipBis = normalized.game_date || normalized.game_id || normalized.recent
     || normalized.batting_order !== undefined || normalized.position !== undefined
   const currentRows = skipBis
     ? []
@@ -48,6 +48,10 @@ export async function searchBattingLines(
   if (normalized.game_date) {
     clauses.push('games.date = ?')
     values.push(normalized.game_date)
+  }
+  if (normalized.game_id) {
+    clauses.push('batting_lines.game_id = ?')
+    values.push(normalized.game_id)
   }
   if (normalized.year) {
     clauses.push('games.year = ?')
