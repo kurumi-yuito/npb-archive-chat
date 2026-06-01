@@ -497,7 +497,7 @@ export function createChatService(
         ),
       )
 
-      const sources = await queryService.listSourceSnapshotsByGameIds(gameIds)
+      const sources = await listSourceSnapshotsByGameIdsBatched(queryService, gameIds)
       const answer = answerFormatter({
         question: message,
         structuredQuery,
@@ -547,6 +547,24 @@ function isChatQueryService(value: QueryDatabase | ChatQueryService): value is C
 
 function shouldSkipForPlayerResolution(resolution: PlayerResolution | null): boolean {
   return resolution?.status === 'ambiguous' || resolution?.status === 'not_found'
+}
+
+async function listSourceSnapshotsByGameIdsBatched(
+  queryService: ChatQueryService,
+  gameIds: string[],
+) {
+  const uniqueGameIds = Array.from(new Set(gameIds))
+  const batchSize = 80
+  const snapshots: Awaited<ReturnType<ChatQueryService['listSourceSnapshotsByGameIds']>> = []
+  for (let i = 0; i < uniqueGameIds.length; i += batchSize) {
+    const batch = uniqueGameIds.slice(i, i + batchSize)
+    if (batch.length === 0) {
+      continue
+    }
+    const batchSnapshots = await queryService.listSourceSnapshotsByGameIds(batch)
+    snapshots.push(...batchSnapshots)
+  }
+  return snapshots
 }
 
 function buildOffTopicResponse(
