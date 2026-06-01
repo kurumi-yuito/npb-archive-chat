@@ -82,11 +82,14 @@ export function createChatService(
       if (!isLikelyNpbTopic(message, options.history)) {
         return buildOffTopicResponse(message, { intent: 'off_topic', filters: {} })
       }
-      const rawParsedQuery = normalizeStructuredQuery(await queryParser(message, {
+      let rawParsedQuery: ChatStructuredQuery
+      let rewrittenForQuestion: ChatStructuredQuery
+      let parsedQuery: ChatStructuredQuery
+      rawParsedQuery = normalizeStructuredQuery(await queryParser(message, {
         history: options.history,
       }))
-      const rewrittenForQuestion = rewriteStructuredQueryForQuestion(message, rawParsedQuery)
-      const parsedQuery = rewriteFollowUpFromHistory(
+      rewrittenForQuestion = rewriteStructuredQueryForQuestion(message, rawParsedQuery)
+      parsedQuery = rewriteFollowUpFromHistory(
         message,
         rewrittenForQuestion,
         options.history,
@@ -216,32 +219,42 @@ export function createChatService(
             : structuredQuery.intent === 'search_games'
               ? { ...emptyResults, games: await queryService.searchGames(structuredQuery.filters) }
               : structuredQuery.intent === 'search_batting'
-                ? { ...emptyResults, batting: await queryService.searchBattingLines(structuredQuery.filters) }
+                ? structuredQuery.filters.recent === true && typeof structuredQuery.filters.player_id === 'string'
+                  ? {
+                      ...emptyResults,
+                      batting: await searchRecentBattingLinesForChat(queryService, structuredQuery.filters),
+                    }
+                  : { ...emptyResults, batting: await queryService.searchBattingLines(structuredQuery.filters) }
                 : structuredQuery.intent === 'search_pitching'
-                  ? { ...emptyResults, pitching: await queryService.searchPitchingLines(structuredQuery.filters) }
-                  : structuredQuery.intent === 'search_roster'
-                    ? { ...emptyResults, roster: await queryService.searchRosterEntries(structuredQuery.filters) }
-                    : structuredQuery.intent === 'player_affiliation'
-                      ? {
-                          ...emptyResults,
-                          affiliations: await searchPlayerAffiliationsForChat(
-                            queryService,
-                            structuredQuery.filters,
-                            playerResolution,
-                          ),
-                        }
-                    : structuredQuery.intent === 'game_detail'
-                        ? { ...emptyResults, gameDetails: await queryService.searchGameDetails(structuredQuery.filters) }
-                        : structuredQuery.intent === 'aggregate_batting'
-                          ? await (async () => {
-                              const aggregates = await queryService.aggregateBattingLines(structuredQuery.filters)
-                              return { ...emptyResults, aggregates }
-                            })()
-                          : structuredQuery.intent === 'aggregate_pitching'
-                            ? { ...emptyResults, aggregates: await queryService.aggregatePitchingLines(structuredQuery.filters) }
-                            : structuredQuery.intent === 'aggregate_events'
-                          ? { ...emptyResults, aggregates: await queryService.aggregateEvents(structuredQuery.filters) }
-                              : { ...emptyResults, aggregates: await queryService.aggregateGameResults(structuredQuery.filters) }
+                  ? structuredQuery.filters.recent === true && typeof structuredQuery.filters.pitcher_player_id === 'string'
+                    ? {
+                        ...emptyResults,
+                        pitching: await searchRecentPitchingLinesForChat(queryService, structuredQuery.filters),
+                      }
+                    : { ...emptyResults, pitching: await queryService.searchPitchingLines(structuredQuery.filters) }
+                : structuredQuery.intent === 'search_roster'
+                  ? { ...emptyResults, roster: await queryService.searchRosterEntries(structuredQuery.filters) }
+                  : structuredQuery.intent === 'player_affiliation'
+                    ? {
+                        ...emptyResults,
+                        affiliations: await searchPlayerAffiliationsForChat(
+                          queryService,
+                          structuredQuery.filters,
+                          playerResolution,
+                        ),
+                      }
+                : structuredQuery.intent === 'game_detail'
+                    ? { ...emptyResults, gameDetails: await queryService.searchGameDetails(structuredQuery.filters) }
+                    : structuredQuery.intent === 'aggregate_batting'
+                      ? await (async () => {
+                          const aggregates = await queryService.aggregateBattingLines(structuredQuery.filters)
+                          return { ...emptyResults, aggregates }
+                        })()
+                      : structuredQuery.intent === 'aggregate_pitching'
+                        ? { ...emptyResults, aggregates: await queryService.aggregatePitchingLines(structuredQuery.filters) }
+                        : structuredQuery.intent === 'aggregate_events'
+                      ? { ...emptyResults, aggregates: await queryService.aggregateEvents(structuredQuery.filters) }
+                          : { ...emptyResults, aggregates: await queryService.aggregateGameResults(structuredQuery.filters) }
       }
 
       // Year-walk fallback for not_found: when player resolution failed (e.g. ambiguous surname
@@ -565,6 +578,59 @@ async function listSourceSnapshotsByGameIdsBatched(
     snapshots.push(...batchSnapshots)
   }
   return snapshots
+}
+
+async function searchRecentPitchingLinesForChat(
+  queryService: ChatQueryService,
+  filters: Record<string, unknown>,
+) {
+  const pitcherPlayerId = typeof filters.pitcher_player_id === 'string' ? filters.pitcher_player_id : null
+  if (!pitcherPlayerId) {
+    return queryService.searchPitchingLines(filters as Parameters<ChatQueryService['searchPitchingLines']>[0])
+  }
+  const baseFilters = {
+    ...(typeof filters.pitcher_name === 'string' ? { pitcher_name: filters.pitcher_name } : {}),
+    ...(typeof filters.team === 'string' ? { team: filters.team } : {}),
+    pitcher_player_id: pitcherPlayerId,
+    recent: true,
+    limit: 20,
+  }
+  if (typeof filters.year === 'number') {
+    return queryService.searchPitchingLines({
+      ...baseFilters,
+      year: filters.year,
+    } as Parameters<ChatQueryService['searchPitchingLines']>[0])
+  }
+  for (const year of [...DEFAULT_CHAT_QUERY_YEARS].reverse()) {
+    const rows = await queryService.searchPitchingLines({
+      ...baseFilters,
+      year,
+    } as Parameters<ChatQueryService['searchPitchingLines']>[0])
+    if (rows.length > 0) {
+      return rows
+    }
+  }
+  return []
+}
+
+async function searchRecentBattingLinesForChat(
+  queryService: ChatQueryService,
+  filters: Record<string, unknown>,
+) {
+  const playerId = typeof filters.player_id === 'string' ? filters.player_id : null
+  if (!playerId) {
+    return queryService.searchBattingLines(filters as Parameters<ChatQueryService['searchBattingLines']>[0])
+  }
+  const tightenedFilters = {
+    ...(typeof filters.player_name === 'string' ? { player_name: filters.player_name } : {}),
+    ...(typeof filters.team === 'string' ? { team: filters.team } : {}),
+    ...(typeof filters.year === 'number' ? { year: filters.year } : {}),
+    ...(typeof filters.year_from === 'number' ? { year_from: filters.year_from } : {}),
+    ...(typeof filters.year_to === 'number' ? { year_to: filters.year_to } : {}),
+    player_id: playerId,
+    limit: 20,
+  }
+  return queryService.searchBattingLines(tightenedFilters as Parameters<ChatQueryService['searchBattingLines']>[0])
 }
 
 function buildOffTopicResponse(
