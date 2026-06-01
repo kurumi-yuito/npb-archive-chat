@@ -6,6 +6,7 @@ const docPath = process.argv[2] ?? 'docs/qa-test-cases.md'
 const args = process.argv.slice(3)
 const delayMs = Number(process.env.QA_DELAY_MS ?? 1200)
 const fetchTimeoutMs = Number(process.env.QA_FETCH_TIMEOUT_MS ?? 60000)
+const fetchRetryDelaysMs = [2000, 5000, 10000]
 
 let startId = null
 let endId = null
@@ -80,37 +81,82 @@ for (const [index, testCase] of cases.entries()) {
   process.stderr.write(`[${index + 1}/${cases.length}] ${testCase.id} ${testCase.question}\n`)
   const controller = new AbortController()
   const timeoutHandle = setTimeout(() => controller.abort(new Error(`fetch timeout after ${fetchTimeoutMs}ms`)), fetchTimeoutMs)
+  const requestUrl = `${baseUrl}/api/chat`
+  const requestHeaders = {
+    'content-type': 'application/json',
+    'x-npb-user-id': userId,
+  }
+  const requestBody = JSON.stringify({ message: testCase.question })
   let response = null
   let body = null
   let json = null
   let status = null
   let outcome = 'success'
   let error = null
+  const retryErrors = []
   try {
-    response = await fetch(`${baseUrl}/api/chat`, {
-      method: 'POST',
-      headers: {
-        'content-type': 'application/json',
-        'x-npb-user-id': userId,
-      },
-      body: JSON.stringify({ message: testCase.question }),
-      signal: controller.signal,
-    })
-    body = await response.text()
-    status = response.status
-    if (!response.ok) {
-      outcome = 'error'
+    let lastError = null
+    for (let attempt = 0; attempt <= fetchRetryDelaysMs.length; attempt += 1) {
+      const attemptNo = attempt + 1
+      const attemptController = new AbortController()
+      const attemptTimeoutHandle = setTimeout(
+        () => attemptController.abort(new Error(`fetch timeout after ${fetchTimeoutMs}ms`)),
+        fetchTimeoutMs,
+      )
+      try {
+        console.error(`[qa-runner] fetch ${requestUrl} attempt=${attemptNo}`)
+        response = await fetch(requestUrl, {
+          method: 'POST',
+          headers: requestHeaders,
+          body: requestBody,
+          signal: attemptController.signal,
+        })
+        body = await response.text()
+        status = response.status
+        if (!response.ok) {
+          outcome = 'error'
+        }
+        try {
+          json = JSON.parse(body)
+        } catch {
+          // Keep the raw body for diagnostics.
+        }
+        lastError = null
+        break
+      } catch (err) {
+        const normalizedError = err instanceof Error ? err : new Error(String(err))
+        lastError = normalizedError
+        const causeCode = normalizedError.cause?.code ?? null
+        retryErrors.push({
+          attempt: attemptNo,
+          name: normalizedError.name,
+          message: normalizedError.message,
+          stack: normalizedError.stack,
+          cause: normalizedError.cause ? {
+            code: normalizedError.cause.code ?? null,
+            message: normalizedError.cause.message ?? String(normalizedError.cause),
+            stack: normalizedError.cause.stack ?? null,
+          } : null,
+        })
+        const canRetry = causeCode === 'EAI_AGAIN' && attempt < fetchRetryDelaysMs.length
+        if (!canRetry) {
+          error = normalizedError
+          outcome = normalizedError?.name === 'AbortError' ? 'timeout' : 'error'
+          body = normalizedError instanceof Error ? `${normalizedError.name}: ${normalizedError.message}` : String(normalizedError)
+          status = outcome === 'timeout' ? 'timeout' : 'error'
+          break
+        }
+        await delay(fetchRetryDelaysMs[attempt])
+      } finally {
+        clearTimeout(attemptTimeoutHandle)
+      }
     }
-    try {
-      json = JSON.parse(body)
-    } catch {
-      // Keep the raw body for diagnostics.
+    if (error === null && body === null && lastError) {
+      error = lastError
+      outcome = lastError?.name === 'AbortError' ? 'timeout' : 'error'
+      body = lastError instanceof Error ? `${lastError.name}: ${lastError.message}` : String(lastError)
+      status = outcome === 'timeout' ? 'timeout' : 'error'
     }
-  } catch (err) {
-    error = err
-    outcome = err?.name === 'AbortError' ? 'timeout' : 'error'
-    body = err instanceof Error ? `${err.name}: ${err.message}` : String(err)
-    status = outcome === 'timeout' ? 'timeout' : 'error'
   } finally {
     clearTimeout(timeoutHandle)
   }
@@ -119,13 +165,28 @@ for (const [index, testCase] of cases.entries()) {
     ...testCase,
     status,
     outcome,
+    request: {
+      url: requestUrl,
+      headers: requestHeaders,
+      body: requestBody,
+    },
     structured_query: json?.structured_query ?? null,
     summary: json?.answer?.summary ?? null,
     result_count: json?.answer?.result_count ?? null,
     resolved_player: json?.answer?.resolved_player ?? null,
     source_urls: json?.answer?.source_urls ?? null,
     raw: json ?? body,
-    error: error ? { name: error.name, message: error.message, stack: error.stack } : null,
+    retries: retryErrors.length > 0 ? retryErrors : null,
+    error: error ? {
+      name: error.name,
+      message: error.message,
+      stack: error.stack,
+      cause: error.cause ? {
+        code: error.cause.code ?? null,
+        message: error.cause.message ?? String(error.cause),
+        stack: error.cause.stack ?? null,
+      } : null,
+    } : null,
     saved_at: new Date().toISOString(),
   }
   results.push(record)
