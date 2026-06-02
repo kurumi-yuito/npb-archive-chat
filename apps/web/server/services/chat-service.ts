@@ -94,6 +94,7 @@ export function createChatService(
         rewrittenForQuestion,
         options.history,
       )
+      parsedQuery = rewriteSeasonalPlayerStatsMisparseIfNeeded(message, parsedQuery)
 
       if (parsedQuery.intent === 'off_topic') {
         return buildOffTopicResponse(message, parsedQuery)
@@ -209,52 +210,91 @@ export function createChatService(
         }
         results = { ...emptyResults, batting }
       } else {
-        results = shouldSkipForPlayerResolution(playerResolution)
-          ? emptyResults
-          : structuredQuery.intent === 'search_events'
-            ? await (async () => {
-                const events = await queryService.searchEvents(structuredQuery.filters)
-                return { ...emptyResults, events }
-              })()
-            : structuredQuery.intent === 'search_games'
-              ? { ...emptyResults, games: await queryService.searchGames(structuredQuery.filters) }
-              : structuredQuery.intent === 'search_batting'
-                ? structuredQuery.filters.recent === true && typeof structuredQuery.filters.player_id === 'string'
-                  ? {
-                      ...emptyResults,
-                      batting: await searchRecentBattingLinesForChat(queryService, structuredQuery.filters),
-                    }
-                  : { ...emptyResults, batting: await queryService.searchBattingLines(structuredQuery.filters) }
-                : structuredQuery.intent === 'search_pitching'
-                  ? structuredQuery.filters.recent === true && typeof structuredQuery.filters.pitcher_player_id === 'string'
-                    ? {
-                        ...emptyResults,
-                        pitching: await searchRecentPitchingLinesForChat(queryService, structuredQuery.filters),
-                      }
-                    : { ...emptyResults, pitching: await queryService.searchPitchingLines(structuredQuery.filters) }
-                : structuredQuery.intent === 'search_roster'
-                  ? { ...emptyResults, roster: await queryService.searchRosterEntries(structuredQuery.filters) }
-                  : structuredQuery.intent === 'player_affiliation'
-                    ? {
-                        ...emptyResults,
-                        affiliations: await searchPlayerAffiliationsForChat(
-                          queryService,
-                          structuredQuery.filters,
-                          playerResolution,
-                        ),
-                      }
-                : structuredQuery.intent === 'game_detail'
-                    ? { ...emptyResults, gameDetails: await queryService.searchGameDetails(structuredQuery.filters) }
-                    : structuredQuery.intent === 'aggregate_batting'
-                      ? await (async () => {
-                          const aggregates = await queryService.aggregateBattingLines(structuredQuery.filters)
-                          return { ...emptyResults, aggregates }
-                        })()
-                      : structuredQuery.intent === 'aggregate_pitching'
-                        ? { ...emptyResults, aggregates: await queryService.aggregatePitchingLines(structuredQuery.filters) }
-                        : structuredQuery.intent === 'aggregate_events'
-                      ? { ...emptyResults, aggregates: await queryService.aggregateEvents(structuredQuery.filters) }
-                          : { ...emptyResults, aggregates: await queryService.aggregateGameResults(structuredQuery.filters) }
+        const pitcherOnlySeasonQuery =
+          structuredQuery.intent === 'search_batting' &&
+          playerResolution !== null &&
+          playerResolution.status === 'resolved' &&
+          isPitcherOnlyResolution(playerResolution) &&
+          /今シーズン|今季|今期|今年/u.test(message) &&
+          /成績/u.test(message) &&
+          !/打率|OPS|IsoP|四球率|BB%|打点|安打|本塁打|ホームラン|HR|出塁率|長打率|打撃/u.test(message)
+
+        if (pitcherOnlySeasonQuery) {
+          const latestChatYear = DEFAULT_CHAT_QUERY_YEARS[DEFAULT_CHAT_QUERY_YEARS.length - 1]
+          const pitcherFilters = {
+            ...(typeof structuredQuery.filters.player_name === 'string'
+              ? { pitcher_name: structuredQuery.filters.player_name }
+              : {}),
+            ...(typeof structuredQuery.filters.player_id === 'string'
+              ? { pitcher_player_id: structuredQuery.filters.player_id }
+              : {}),
+            ...(typeof structuredQuery.filters.team === 'string'
+              ? { team: structuredQuery.filters.team }
+              : {}),
+            year: latestChatYear,
+            recent: true,
+            limit: 20,
+          }
+          const pitching = await searchRecentPitchingLinesForChat(queryService, pitcherFilters)
+          structuredQuery = { intent: 'search_pitching', filters: pitcherFilters }
+          results = { ...emptyResults, pitching }
+        } else {
+          const lightweightAggregateBatting = await searchLightweightAggregateBattingForChat(
+            queryService,
+            message,
+            structuredQuery,
+            playerResolution,
+          )
+          if (lightweightAggregateBatting) {
+            structuredQuery = lightweightAggregateBatting.structuredQuery
+            results = lightweightAggregateBatting.results
+          } else {
+            if (shouldSkipForPlayerResolution(playerResolution)) {
+              results = emptyResults
+            } else if (structuredQuery.intent === 'search_events') {
+              const events = await queryService.searchEvents(structuredQuery.filters)
+              results = { ...emptyResults, events }
+            } else if (structuredQuery.intent === 'search_games') {
+              results = { ...emptyResults, games: await queryService.searchGames(structuredQuery.filters) }
+            } else if (structuredQuery.intent === 'search_batting') {
+              results = structuredQuery.filters.recent === true && typeof structuredQuery.filters.player_id === 'string'
+                ? {
+                    ...emptyResults,
+                    batting: await searchRecentBattingLinesForChat(queryService, structuredQuery.filters),
+                  }
+                : { ...emptyResults, batting: await queryService.searchBattingLines(structuredQuery.filters) }
+            } else if (structuredQuery.intent === 'search_pitching') {
+              results = structuredQuery.filters.recent === true && typeof structuredQuery.filters.pitcher_player_id === 'string'
+                ? {
+                    ...emptyResults,
+                    pitching: await searchRecentPitchingLinesForChat(queryService, structuredQuery.filters),
+                  }
+                : { ...emptyResults, pitching: await queryService.searchPitchingLines(structuredQuery.filters) }
+            } else if (structuredQuery.intent === 'search_roster') {
+              results = { ...emptyResults, roster: await queryService.searchRosterEntries(structuredQuery.filters) }
+            } else if (structuredQuery.intent === 'player_affiliation') {
+              results = {
+                ...emptyResults,
+                affiliations: await searchPlayerAffiliationsForChat(
+                  queryService,
+                  structuredQuery.filters,
+                  playerResolution,
+                ),
+              }
+            } else if (structuredQuery.intent === 'game_detail') {
+              results = { ...emptyResults, gameDetails: await queryService.searchGameDetails(structuredQuery.filters) }
+            } else if (structuredQuery.intent === 'aggregate_batting') {
+              const aggregates = await queryService.aggregateBattingLines(structuredQuery.filters)
+              results = { ...emptyResults, aggregates }
+            } else if (structuredQuery.intent === 'aggregate_pitching') {
+              results = { ...emptyResults, aggregates: await queryService.aggregatePitchingLines(structuredQuery.filters) }
+            } else if (structuredQuery.intent === 'aggregate_events') {
+              results = { ...emptyResults, aggregates: await queryService.aggregateEvents(structuredQuery.filters) }
+            } else {
+              results = { ...emptyResults, aggregates: await queryService.aggregateGameResults(structuredQuery.filters) }
+            }
+          }
+        }
       }
 
       // Year-walk fallback for not_found: when player resolution failed (e.g. ambiguous surname
@@ -562,6 +602,14 @@ function shouldSkipForPlayerResolution(resolution: PlayerResolution | null): boo
   return resolution?.status === 'ambiguous' || resolution?.status === 'not_found'
 }
 
+function isPitcherOnlyResolution(resolution: PlayerResolution | null): boolean {
+  if (resolution?.status !== 'resolved') {
+    return false
+  }
+  const candidateRoles = resolution.candidates.flatMap((candidate) => candidate.roles)
+  return candidateRoles.length > 0 && candidateRoles.some((role) => /pitch/i.test(role))
+}
+
 async function listSourceSnapshotsByGameIdsBatched(
   queryService: ChatQueryService,
   gameIds: string[],
@@ -631,6 +679,102 @@ async function searchRecentBattingLinesForChat(
     limit: 20,
   }
   return queryService.searchBattingLines(tightenedFilters as Parameters<ChatQueryService['searchBattingLines']>[0])
+}
+
+async function searchLightweightAggregateBattingForChat(
+  queryService: ChatQueryService,
+  message: string,
+  structuredQuery: ChatStructuredQuery,
+  playerResolution: PlayerResolution | null,
+): Promise<{ structuredQuery: ChatStructuredQuery; results: ChatResponseCore['results'] } | null> {
+  if (structuredQuery.intent !== 'aggregate_batting') {
+    return null
+  }
+
+  const filters = structuredQuery.filters as Record<string, unknown>
+  if (filters.group_by !== undefined || filters.sort_by !== undefined) {
+    return null
+  }
+  if (/ランキング|トップ|比較|比べ|順位|上位|下位|最も|最多|最少|一番|何位|バランス/u.test(message)) {
+    return null
+  }
+
+  const hasExplicitYearFilter =
+    typeof filters.year === 'number' ||
+    typeof filters.year_from === 'number' ||
+    typeof filters.year_to === 'number'
+  const hasSeasonHint = /今シーズン|今季|今期|今年/u.test(message)
+  if (!hasExplicitYearFilter && !hasSeasonHint) {
+    return null
+  }
+
+  const resolved = playerResolution?.status === 'resolved' ? playerResolution : null
+  const playerName = typeof filters.player_name === 'string' ? filters.player_name : resolved?.name ?? null
+  const playerId = typeof filters.player_id === 'string' ? filters.player_id : resolved?.player_id ?? null
+  const team = typeof filters.team === 'string' ? filters.team : null
+  if (!playerName && !playerId) {
+    return null
+  }
+
+  const candidateRoles = resolved?.candidates.flatMap((candidate) => candidate.roles) ?? []
+  const isPitcherOnlyResolution =
+    candidateRoles.length > 0 &&
+    candidateRoles.some((role) => /pitch/i.test(role))
+
+  const latestChatYear = DEFAULT_CHAT_QUERY_YEARS[DEFAULT_CHAT_QUERY_YEARS.length - 1]
+  const seasonalYear = hasSeasonHint && !hasExplicitYearFilter ? latestChatYear : undefined
+
+  const emptyResults: ChatResponseCore['results'] = {
+    events: [],
+    games: [],
+    pitching: [],
+    batting: [],
+    roster: [],
+    affiliations: [],
+    gameDetails: [],
+    aggregates: [],
+  }
+
+  if (
+    isPitcherOnlyResolution &&
+    !/打率|OPS|IsoP|四球率|BB%|打点|安打|本塁打|ホームラン|HR|出塁率|長打率|打撃/u.test(message)
+  ) {
+    const pitchingFilters = {
+      ...(playerName ? { pitcher_name: playerName } : {}),
+      ...(playerId ? { pitcher_player_id: playerId } : {}),
+      ...(team ? { team } : {}),
+      ...(typeof filters.year === 'number' ? { year: filters.year } : {}),
+      ...(typeof filters.year_from === 'number' ? { year_from: filters.year_from } : {}),
+      ...(typeof filters.year_to === 'number' ? { year_to: filters.year_to } : {}),
+      ...(seasonalYear ? { year: seasonalYear } : {}),
+      limit: 20,
+    }
+    const pitching = await queryService.searchPitchingLines(
+      pitchingFilters as Parameters<ChatQueryService['searchPitchingLines']>[0],
+    )
+    return {
+      structuredQuery: { intent: 'search_pitching', filters: pitchingFilters },
+      results: { ...emptyResults, pitching },
+    }
+  }
+
+  const battingFilters = {
+    ...(playerName ? { player_name: playerName } : {}),
+    ...(playerId ? { player_id: playerId } : {}),
+    ...(team ? { team } : {}),
+    ...(typeof filters.year === 'number' ? { year: filters.year } : {}),
+    ...(typeof filters.year_from === 'number' ? { year_from: filters.year_from } : {}),
+    ...(typeof filters.year_to === 'number' ? { year_to: filters.year_to } : {}),
+    ...(seasonalYear ? { year: seasonalYear } : {}),
+    limit: 20,
+  }
+  const batting = await queryService.searchBattingLines(
+    battingFilters as Parameters<ChatQueryService['searchBattingLines']>[0],
+  )
+  return {
+    structuredQuery: { intent: 'search_batting', filters: battingFilters },
+    results: { ...emptyResults, batting },
+  }
 }
 
 function buildOffTopicResponse(
@@ -974,6 +1118,38 @@ function rewriteKnownHistoricalPlayers(message: string, query: ChatStructuredQue
     } as ChatStructuredQuery
   }
   return query
+}
+
+function rewriteSeasonalPlayerStatsMisparseIfNeeded(
+  message: string,
+  query: ChatStructuredQuery,
+): ChatStructuredQuery {
+  if (!/成績/u.test(message) || !/今シーズン|今季|今期|今年/u.test(message)) {
+    return query
+  }
+  if (query.intent !== 'search_batting' && query.intent !== 'aggregate_batting' && query.intent !== 'search_pitching' && query.intent !== 'aggregate_pitching') {
+    return query
+  }
+  const filters = query.filters as Record<string, unknown>
+  const playerName = typeof filters.player_name === 'string' ? filters.player_name.trim() : ''
+  const team = typeof filters.team === 'string' ? filters.team.trim() : ''
+  if (!playerName || !team) {
+    return query
+  }
+  if (!/^(?:今シーズン|今季|今期|今年|最近|直近|現在|今)$/u.test(playerName)) {
+    return query
+  }
+  if (isKnownTeamName(team)) {
+    return query
+  }
+  return {
+    ...query,
+    filters: {
+      ...query.filters,
+      player_name: team,
+      team: undefined,
+    },
+  } as ChatStructuredQuery
 }
 
 function rewriteSpecialQuestionPatterns(message: string, query: ChatStructuredQuery): ChatStructuredQuery {
@@ -1409,6 +1585,29 @@ function messageMentionsTeam(message: string, team: string): boolean {
 
 function normalizeTeamText(value: string): string {
   return value.replace(/[・･.\-_\s\u3000]/gu, '').toLowerCase()
+}
+
+function isKnownTeamName(value: string): boolean {
+  const normalized = normalizeTeamName(value)
+  if (!normalized) {
+    return false
+  }
+  return new Set([
+    'ヤクルト',
+    'オリックス',
+    '西武',
+    '巨人',
+    'ロッテ',
+    'ソフトバンク',
+    '日本ハム',
+    '楽天',
+    '阪神',
+    '広島',
+    'DeNA',
+    '中日',
+    'パ・リーグ',
+    'セ・リーグ',
+  ]).has(normalized)
 }
 
 function rewriteToAggregateGamesIfNeeded(
