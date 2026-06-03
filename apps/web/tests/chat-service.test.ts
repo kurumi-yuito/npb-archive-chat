@@ -544,6 +544,153 @@ describe('chat-service', () => {
       })
   })
 
+  it('sanitizes invalid player_name for aggregate batting ranking questions', async () => {
+    const cases = [
+      {
+        question: '今シーズンのセ・リーグで打率・出塁率・長打率のバランスが最も優れていると思われる打者を1人挙げて、その根拠を数字で示してください。',
+        parsedPlayerName: 'セ・リーグで',
+        expectedFilters: { year: 2026, team: 'セ・リーグ', sort_by: 'ops', limit: 10 },
+      },
+      {
+        question: '今シーズンのセ・リーグ打点ランキングトップ5',
+        parsedPlayerName: 'セ・リーグ',
+        expectedFilters: { year: 2026, team: 'セ・リーグ', sort_by: 'runsBattedIn', limit: 5 },
+      },
+      {
+        question: '2022年から2024年の3年間で、NPB全体で最も本塁打を多く打った打者トップ3を教えてください。',
+        parsedPlayerName: '2024年の3年間で、NPB全体で最も',
+        expectedFilters: { year_from: 2022, year_to: 2024, sort_by: 'homeRuns', limit: 3 },
+      },
+      {
+        question: '2022年から2024年のパ・リーグで本塁打が最も多い打者トップ3',
+        parsedPlayerName: '2024年のパ・リーグで',
+        expectedFilters: { year_from: 2022, year_to: 2024, team: 'パ・リーグ', sort_by: 'homeRuns', limit: 3 },
+      },
+    ]
+
+    for (const testCase of cases) {
+      const service = createChatService(createFakeQueryService({
+        aggregateBattingLines: async () => [{
+          kind: 'batting',
+          label: '対象選手',
+          total: 1,
+          stats: {
+            team: '対象球団',
+            games: 1,
+            battingAverage: 0.3,
+            homeRuns: 1,
+            runsBattedIn: 1,
+            stolenBases: 0,
+            ops: 0.9,
+            isoP: 0.1,
+            bbRate: 0.1,
+          },
+        }],
+      }), {
+        allowFinalAnswerFallback: false,
+        parseStructuredQueryFromMessage: async () => ({
+          intent: 'aggregate_batting',
+          filters: { player_name: testCase.parsedPlayerName },
+        }),
+      })
+
+      const response = await service.answerQuestion(testCase.question)
+
+      expect(response.structured_query).toEqual({
+        intent: 'aggregate_batting',
+        filters: testCase.expectedFilters,
+      })
+    }
+  })
+
+  it('sanitizes invalid pitcher_name for aggregate pitching ranking questions', async () => {
+    const cases = [
+      {
+        question: '2026年の先発防御率ランキングトップ5',
+        parsedPitcherName: '2026年の先発',
+        expectedFilters: { year: 2026, sort_by: 'era', limit: 5 },
+      },
+      {
+        question: '2026年セ・リーグの先発防御率ランキングを教えてください',
+        parsedPitcherName: 'セ・リーグの先発',
+        expectedFilters: { year: 2026, team: 'セ・リーグ', sort_by: 'era', limit: 10 },
+      },
+    ]
+
+    for (const testCase of cases) {
+      const service = createChatService(createFakeQueryService({
+        aggregatePitchingLines: async () => [{
+          kind: 'pitching',
+          label: '対象投手',
+          total: 1,
+          stats: {
+            team: '対象球団',
+            games: 1,
+            inningsPitched: 6,
+            earnedRuns: 1,
+            hitsAllowed: 3,
+            walks: 1,
+            strikeouts: 5,
+            wins: 1,
+          },
+        }],
+      }), {
+        allowFinalAnswerFallback: false,
+        parseStructuredQueryFromMessage: async () => ({
+          intent: 'aggregate_pitching',
+          filters: { pitcher_name: testCase.parsedPitcherName },
+        }),
+      })
+
+      const response = await service.answerQuestion(testCase.question)
+
+      expect(response.structured_query).toEqual({
+        intent: 'aggregate_pitching',
+        filters: testCase.expectedFilters,
+      })
+    }
+  })
+
+  it('sanitizes invalid player_name for WHIP aggregate pitching ranking questions', async () => {
+    const service = createChatService(createFakeQueryService({
+      aggregatePitchingLines: async () => [{
+        kind: 'pitching',
+        label: '対象投手',
+        total: 1,
+        stats: {
+          team: '対象球団',
+          games: 3,
+          inningsPitched: 18,
+          earnedRuns: 2,
+          hitsAllowed: 10,
+          walks: 2,
+          strikeouts: 15,
+          wins: 1,
+        },
+      }],
+    }), {
+      allowFinalAnswerFallback: false,
+      parseStructuredQueryFromMessage: async () => ({
+        intent: 'search_pitching',
+        filters: {
+          pitcher_name: '（2026年）の先発陣で、WHIP',
+        },
+      }),
+    })
+
+    const response = await service.answerQuestion('今シーズン（2026年）の先発陣で、WHIPが最も低い投手を教えてください。WHIPは（被安打＋与四球）÷投球回で計算してください。')
+
+    expect(response.structured_query).toEqual({
+      intent: 'aggregate_pitching',
+      filters: {
+        year: 2026,
+        sort_by: 'whip',
+        limit: 10,
+      },
+    })
+    expect(response.structured_query.filters).not.toHaveProperty('pitcher_name')
+  })
+
   it('normalizes team and player fields before DB search', async () => {
     const database = openDatabase()
 
@@ -1281,6 +1428,7 @@ function createFakeQueryService(options: {
   searchPitchingLines?: ChatQueryService['searchPitchingLines']
   searchGameDetails?: ChatQueryService['searchGameDetails']
   aggregateBattingLines?: ChatQueryService['aggregateBattingLines']
+  aggregatePitchingLines?: ChatQueryService['aggregatePitchingLines']
 } = {}): ChatQueryService {
   const emptyResults = options.empty === true
   return {
@@ -1337,7 +1485,7 @@ function createFakeQueryService(options: {
         }],
     searchGameDetails: options.searchGameDetails ?? (async () => []),
     aggregateBattingLines: options.aggregateBattingLines ?? (async () => []),
-    aggregatePitchingLines: async () => [],
+    aggregatePitchingLines: options.aggregatePitchingLines ?? (async () => []),
     aggregateEvents: async () => [],
     aggregateGameResults: async () => [],
     searchPlayerCandidates: async (filters) => options.playerCandidatesForFilters?.(filters) ?? options.playerCandidates ?? (
