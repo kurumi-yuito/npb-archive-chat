@@ -81,7 +81,8 @@ export function createChatQueryLlm(
         ? rawContent.map((part) => part.text ?? '').join('\n').trim()
         : rawContent.trim()
 
-      return chatStructuredQuerySchema.parse(JSON.parse(extractJsonObject(text)))
+      const parsed = JSON.parse(extractJsonObject(text))
+      return chatStructuredQuerySchema.parse(normalizeStructuredQueryFromLlmMessage(message, parsed))
     },
   }
 }
@@ -107,4 +108,36 @@ function extractJsonObject(content: string): string {
   }
 
   return content.slice(start, end + 1)
+}
+
+function normalizeStructuredQueryFromLlmMessage(message: string, value: unknown): unknown {
+  if (!value || typeof value !== 'object') {
+    return value
+  }
+
+  const query = value as {
+    intent?: unknown
+    filters?: unknown
+  }
+
+  if (query.intent !== 'aggregate_pitching' || !query.filters || typeof query.filters !== 'object') {
+    return value
+  }
+
+  const filters = query.filters as Record<string, unknown>
+  if (filters.sort_by !== 'pitchCount') {
+    return value
+  }
+
+  return {
+    intent: 'search_pitching',
+    filters: {
+      ...filters,
+      limit: typeof filters.limit === 'number'
+        ? filters.limit
+        : /最も|最多|一番|トップ|最大/u.test(message)
+          ? 1
+          : 10,
+    },
+  }
 }

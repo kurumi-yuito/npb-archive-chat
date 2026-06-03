@@ -691,6 +691,43 @@ describe('chat-service', () => {
     expect(response.structured_query.filters).not.toHaveProperty('pitcher_name')
   })
 
+  it('keeps top pitch count appearance questions on search_pitching', async () => {
+    const service = createChatService(createFakeQueryService({
+      searchPitchingLines: async () => [{
+        gameId: 'r20260418g-h-02',
+        gameDate: '2026-04-18',
+        team: 'ソフトバンク',
+        pitcherName: '上沢',
+        inningsPitched: '8.1',
+        pitchCount: 134,
+        strikeouts: 9,
+        runs: 0,
+        earnedRuns: 0,
+        sourceKind: 'box',
+        sourceUrl: 'https://npb.jp/scores/2026/0418/g-h-02/box.html',
+      }],
+    }), {
+      allowFinalAnswerFallback: false,
+      parseStructuredQueryFromMessage: async () => ({
+        intent: 'search_pitching',
+        filters: { year: 2026, sort_by: 'pitchCount' },
+      }),
+    })
+
+    const response = await service.answerQuestion('今シーズン最も球数が多かった登板を教えてください')
+
+    expect(response.structured_query).toEqual({
+      intent: 'search_pitching',
+      filters: {
+        year: 2026,
+        sort_by: 'pitchCount',
+        limit: 1,
+      },
+    })
+    expect(response.answer.summary).toContain('条件期間で最も球数が多かった登板は')
+    expect(response.answer.summary).toContain('134球')
+  })
+
   it('normalizes team and player fields before DB search', async () => {
     const database = openDatabase()
 

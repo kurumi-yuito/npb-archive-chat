@@ -251,7 +251,12 @@ function buildPitchingFilters(
       explicit.team ??
       matchValue(message, /(?:team|チーム)(?:は|=|:)\s*([^\s、。]+)/u),
     recent: /評価|調子|状態|最近どう|どう思/u.test(message) ? true : undefined,
-    limit: toInt(explicit.limit),
+    sort_by: /今シーズン最も球数が多かった登板|球数が最も多かった登板/u.test(message)
+      ? 'pitchCount'
+      : undefined,
+    limit: /今シーズン最も球数が多かった登板|球数が最も多かった登板/u.test(message)
+      ? 1
+      : toInt(explicit.limit),
   }
 }
 
@@ -544,7 +549,7 @@ function matchYearRange(
   if (year?.[1] && !matchDate(message)) {
     return { year: Number(year[1]) }
   }
-  if (/(?:今年|今季)/u.test(message) && !matchDate(message)) {
+  if (/(?:今年|今季|今シーズン)/u.test(message) && !matchDate(message)) {
     return { year: currentJstYear() }
   }
   return {}

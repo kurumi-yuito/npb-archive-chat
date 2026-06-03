@@ -78,4 +78,43 @@ describe('chat-query-llm', () => {
       llm.generateStructuredQuery('8回裏のイベントを教えて'),
     ).rejects.toThrow()
   })
+
+  it('normalizes pitchCount ranking outputs into search_pitching', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          choices: [
+            {
+              message: {
+                content: JSON.stringify({
+                  intent: 'aggregate_pitching',
+                  filters: {
+                    year: 2026,
+                    sort_by: 'pitchCount',
+                  },
+                }),
+              },
+            },
+          ],
+        }),
+        { status: 200, headers: { 'content-type': 'application/json' } },
+      ),
+    )
+
+    const llm = createChatQueryLlm(
+      { baseUrl: 'https://example.test/v1', apiKey: 'secret', model: 'test-model' },
+      { fetch: fetchMock },
+    )
+
+    await expect(
+      llm.generateStructuredQuery('今シーズン最も球数が多かった登板を教えて'),
+    ).resolves.toEqual({
+      intent: 'search_pitching',
+      filters: {
+        year: 2026,
+        sort_by: 'pitchCount',
+        limit: 1,
+      },
+    })
+  })
 })

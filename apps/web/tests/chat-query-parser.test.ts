@@ -222,6 +222,19 @@ describe('chat-query-parser', () => {
     })
   })
 
+  it('parses top pitch count appearance questions as search_pitching with pitchCount sort', () => {
+    expect(
+      parseStructuredQueryFromMessageStub('今シーズン最も球数が多かった登板を教えて'),
+    ).toEqual({
+      intent: 'search_pitching',
+      filters: {
+        year: currentJstYear(),
+        sort_by: 'pitchCount',
+        limit: 1,
+      },
+    })
+  })
+
   it('stops explicit assignments before trailing explanation text and joins spaced names', () => {
     expect(
       parseStructuredQueryFromMessageStub(

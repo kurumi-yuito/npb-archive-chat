@@ -1796,11 +1796,12 @@ function rewritePitchingRankingSearchToAggregate(
   const filters = query.filters as Record<string, unknown>
   const pitcherName = typeof filters.pitcher_name === 'string' ? filters.pitcher_name.trim() : ''
   const playerName = typeof filters.player_name === 'string' ? filters.player_name.trim() : ''
-  const sortBy = typeof filters.sort_by === 'string'
-    ? filters.sort_by as AggregatePitchingFilters['sort_by']
-    : undefined
+  const sortBy = typeof filters.sort_by === 'string' ? filters.sort_by : undefined
+  if (sortBy === 'pitchCount' || /球数/u.test(message)) {
+    return query
+  }
   const isRankingQuestion = /ランキング|トップ|最多|最も|上位|一番|低い|高い/u.test(message)
-  const inferredSortBy = inferAggregatePitchingRankingSort(message) ?? sortBy
+  const inferredSortBy = inferAggregatePitchingRankingSort(message) ?? (sortBy as AggregatePitchingFilters['sort_by'] | undefined)
   if (!isRankingQuestion || !inferredSortBy) {
     return query
   }
