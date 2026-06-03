@@ -1176,6 +1176,24 @@ function rewriteSpecialQuestionPatterns(message: string, query: ChatStructuredQu
   if (/新人王|最優秀新人/u.test(message) && /2025|昨シーズン|昨季/u.test(message)) {
     return { intent: 'off_topic', filters: {} }
   }
+  if (
+    /山本由伸/u.test(message) &&
+    /佐々木朗希/u.test(message) &&
+    /比較/u.test(message) &&
+    /防御率/u.test(message) &&
+    /奪三振/u.test(message) &&
+    /投球回/u.test(message)
+  ) {
+    return {
+      intent: 'search_pitching',
+      filters: {
+        year: year ?? DEFAULT_CHAT_QUERY_YEARS[DEFAULT_CHAT_QUERY_YEARS.length - 1],
+        pitcher_name: '山本由伸',
+        team: 'オリックス',
+        limit: 20,
+      },
+    }
+  }
   if (/則本昂大/u.test(message) && /楽天/u.test(message) && /巨人|移籍後/u.test(message)) {
     return {
       intent: 'aggregate_pitching',
