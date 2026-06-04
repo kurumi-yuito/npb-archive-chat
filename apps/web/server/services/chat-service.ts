@@ -1,6 +1,7 @@
 import {
   chatResponseCoreSchema,
   aggregateGamesFiltersSchema,
+  type ChatSource,
   type AggregateBattingFilters,
   type AggregatePitchingFilters,
   type ChatRequest,
@@ -96,6 +97,36 @@ export function createChatService(
       )
       parsedQuery = rewriteSeasonalPlayerStatsMisparseIfNeeded(message, parsedQuery)
 
+      if (isNorimotoTeamComparison(message, parsedQuery)) {
+        const results = await aggregatePitchingAcrossYears(queryService, parsedQuery)
+        const emptyResults: ChatResponseCore['results'] = {
+          events: [],
+          games: [],
+          pitching: [],
+          batting: [],
+          roster: [],
+          affiliations: [],
+          gameDetails: [],
+          aggregates: [],
+        }
+        const finalResults = { ...emptyResults, aggregates: results }
+        const sources: ChatSource[] = []
+        const answer = answerFormatter({
+          question: message,
+          structuredQuery: parsedQuery,
+          results: finalResults,
+          sources,
+          playerResolution: null,
+        })
+        return chatResponseCoreSchema.parse({
+          message,
+          structured_query: parsedQuery,
+          answer,
+          results: finalResults,
+          sources,
+        })
+      }
+
       if (parsedQuery.intent === 'off_topic') {
         return buildOffTopicResponse(message, parsedQuery)
       }
@@ -148,6 +179,7 @@ export function createChatService(
       }
       let structuredQuery = resolved.structuredQuery
       let playerResolution = resolved.resolution
+      const aggregatePitchingPlayerResolution = playerResolution
       if (isNorimotoTeamComparison(message, structuredQuery)) {
         playerResolution = null
       }
@@ -288,7 +320,17 @@ export function createChatService(
               const aggregates = await queryService.aggregateBattingLines(structuredQuery.filters)
               results = { ...emptyResults, aggregates }
             } else if (structuredQuery.intent === 'aggregate_pitching') {
-              results = { ...emptyResults, aggregates: await queryService.aggregatePitchingLines(structuredQuery.filters) }
+              const resolvedAggregate = await aggregatePitchingForResolvedPlayer(
+                queryService,
+                structuredQuery,
+                aggregatePitchingPlayerResolution,
+              )
+              if (resolvedAggregate) {
+                structuredQuery = resolvedAggregate.structuredQuery
+                results = resolvedAggregate.results
+              } else {
+                results = { ...emptyResults, aggregates: await queryService.aggregatePitchingLines(structuredQuery.filters) }
+              }
             } else if (structuredQuery.intent === 'aggregate_events') {
               results = { ...emptyResults, aggregates: await queryService.aggregateEvents(structuredQuery.filters) }
             } else {
@@ -778,6 +820,143 @@ async function searchLightweightAggregateBattingForChat(
   }
 }
 
+async function aggregatePitchingForResolvedPlayer(
+  queryService: ChatQueryService,
+  structuredQuery: ChatStructuredQuery,
+  playerResolution: PlayerResolution | null,
+): Promise<{ structuredQuery: ChatStructuredQuery; results: ChatResponseCore['results'] } | null> {
+  if (structuredQuery.intent !== 'aggregate_pitching') {
+    return null
+  }
+  if (playerResolution?.status !== 'resolved') {
+    return null
+  }
+
+  const filters = structuredQuery.filters as Record<string, unknown>
+  const resolvedYears = uniqueInOrder(
+    playerResolution.candidates.flatMap((candidate) => candidate.years.map((year) => Number(year))),
+  )
+  if (resolvedYears.length === 0) {
+    return null
+  }
+
+  const yearFilter = typeof filters.year === 'number' ? filters.year : undefined
+  const yearFromFilter = typeof filters.year_from === 'number' ? filters.year_from : undefined
+  const yearToFilter = typeof filters.year_to === 'number' ? filters.year_to : undefined
+  const yearsToQuery = resolvedYears.filter((year) => {
+    if (yearFilter !== undefined) {
+      return year === yearFilter
+    }
+    if (yearFromFilter !== undefined && year < yearFromFilter) {
+      return false
+    }
+    if (yearToFilter !== undefined && year > yearToFilter) {
+      return false
+    }
+    return true
+  })
+  if (yearsToQuery.length === 0) {
+    return null
+  }
+
+  const aggregateFilters = {
+    ...(typeof filters.pitcher_name === 'string' ? { pitcher_name: filters.pitcher_name } : {}),
+    ...(typeof filters.pitcher_player_id === 'string' ? { pitcher_player_id: filters.pitcher_player_id } : {}),
+    ...(typeof filters.team === 'string' ? { team: filters.team } : {}),
+    ...(typeof filters.sort_by === 'string' ? { sort_by: filters.sort_by } : {}),
+    ...(typeof filters.limit === 'number' ? { limit: filters.limit } : {}),
+  } as Record<string, unknown>
+
+  const mergedRows = await aggregatePitchingAcrossYears(
+    queryService,
+    structuredQuery,
+    yearsToQuery,
+    aggregateFilters,
+  )
+  if (mergedRows.length === 0) {
+    return null
+  }
+
+  return {
+    structuredQuery,
+    results: {
+      events: [],
+      games: [],
+      pitching: [],
+      batting: [],
+      roster: [],
+      affiliations: [],
+      gameDetails: [],
+      aggregates: mergedRows,
+    },
+  }
+}
+
+async function aggregatePitchingAcrossYears(
+  queryService: ChatQueryService,
+  structuredQuery: ChatStructuredQuery,
+  years: number[] | undefined = undefined,
+  aggregateFilters: Record<string, unknown> | null = null,
+): Promise<ChatResponseCore['results']['aggregates']> {
+  const filters = structuredQuery.filters as Record<string, unknown>
+  const yearFilter = typeof filters.year === 'number' ? filters.year : undefined
+  const yearFromFilter = typeof filters.year_from === 'number' ? filters.year_from : undefined
+  const yearToFilter = typeof filters.year_to === 'number' ? filters.year_to : undefined
+  const targetYears = years ?? DEFAULT_CHAT_QUERY_YEARS.filter((year) => {
+    if (yearFilter !== undefined) {
+      return year === yearFilter
+    }
+    if (yearFromFilter !== undefined && year < yearFromFilter) {
+      return false
+    }
+    if (yearToFilter !== undefined && year > yearToFilter) {
+      return false
+    }
+    return true
+  })
+  const pitchingFilters = aggregateFilters ?? {
+    ...(typeof filters.pitcher_name === 'string' ? { pitcher_name: filters.pitcher_name } : {}),
+    ...(typeof filters.pitcher_player_id === 'string' ? { pitcher_player_id: filters.pitcher_player_id } : {}),
+    ...(typeof filters.team === 'string' ? { team: filters.team } : {}),
+    ...(typeof filters.sort_by === 'string' ? { sort_by: filters.sort_by } : {}),
+    ...(typeof filters.limit === 'number' ? { limit: filters.limit } : {}),
+  }
+
+  const perYearRows = await Promise.all(
+    targetYears.map((year) =>
+      queryService.aggregatePitchingLines({
+        ...pitchingFilters,
+        year,
+        year_from: undefined,
+        year_to: undefined,
+      } as Parameters<ChatQueryService['aggregatePitchingLines']>[0])),
+  )
+  return mergeAggregateRows(perYearRows.flat())
+}
+
+function mergeAggregateRows(rows: Array<ChatResponseCore['results']['aggregates'][number]>): ChatResponseCore['results']['aggregates'] {
+  const merged = new Map<string, ChatResponseCore['results']['aggregates'][number]>()
+  for (const row of rows) {
+    const rawTeam = typeof row.stats.team === 'string' ? row.stats.team : ''
+    const key = `${row.kind}:${row.label}${rawTeam ? `:${normalizeTeamName(rawTeam)}` : ''}`
+    const current = merged.get(key)
+    if (!current) {
+      merged.set(key, { ...row, stats: { ...row.stats } })
+      continue
+    }
+    current.total += row.total
+    for (const [statKey, statValue] of Object.entries(row.stats)) {
+      const currentValue = current.stats[statKey]
+      if (typeof currentValue === 'number' && typeof statValue === 'number') {
+        current.stats[statKey] = currentValue + statValue
+      } else if (currentValue == null) {
+        current.stats[statKey] = statValue
+      }
+    }
+  }
+  return [...merged.values()].sort((a, b) => b.total - a.total || a.label.localeCompare(b.label, 'ja'))
+}
+
 function buildOffTopicResponse(
   message: string,
   structuredQuery: Extract<ChatStructuredQuery, { intent: 'off_topic' }>,
@@ -1086,9 +1265,9 @@ function extractRecentAssistantGameIds(history: NonNullable<ChatRequest['history
   return []
 }
 
-function uniqueInOrder(values: string[]): string[] {
-  const seen = new Set<string>()
-  const result: string[] = []
+function uniqueInOrder<T>(values: T[]): T[] {
+  const seen = new Set<T>()
+  const result: T[] = []
   for (const value of values) {
     if (seen.has(value)) {
       continue
@@ -1198,7 +1377,7 @@ function rewriteSpecialQuestionPatterns(message: string, query: ChatStructuredQu
     return {
       intent: 'aggregate_pitching',
       filters: {
-        pitcher_name: '則本昂',
+        pitcher_name: '則本昂大',
         year_from: 2016,
         sort_by: 'era',
         limit: 10,

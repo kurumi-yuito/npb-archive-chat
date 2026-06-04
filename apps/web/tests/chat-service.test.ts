@@ -691,6 +691,69 @@ describe('chat-service', () => {
     expect(response.structured_query.filters).not.toHaveProperty('pitcher_name')
   })
 
+  it('routes Norimoto career comparison questions through aggregate_pitching without player resolution', async () => {
+    const aggregateYears: number[] = []
+    const service = createChatService(createFakeQueryService({
+      aggregatePitchingLines: async (filters) => {
+        aggregateYears.push(Number(filters.year ?? 0))
+        if (filters.year === 2016) {
+          return [{
+            kind: 'pitching',
+            label: '則本昂大',
+            total: 1,
+            stats: {
+              team: '東北楽天ゴールデンイーグルス',
+              games: 1,
+              inningsPitched: 6,
+              earnedRuns: 1,
+              hitsAllowed: 4,
+              walks: 1,
+              strikeouts: 5,
+              wins: 1,
+            },
+          }]
+        }
+        if (filters.year === 2023) {
+          return [{
+            kind: 'pitching',
+            label: '則本昂大',
+            total: 1,
+            stats: {
+              team: '読売ジャイアンツ',
+              games: 1,
+              inningsPitched: 6,
+              earnedRuns: 1,
+              hitsAllowed: 4,
+              walks: 0,
+              strikeouts: 5,
+              wins: 0,
+            },
+          }]
+        }
+        return []
+      },
+    }), {
+      allowFinalAnswerFallback: false,
+      parseStructuredQueryFromMessage: async () => ({
+        intent: 'search_events',
+        filters: { player_name: '誤分類' },
+      }),
+    })
+
+    const response = await service.answerQuestion('則本昂大は楽天時代と巨人移籍後で防御率はどう変わりましたか？')
+
+    expect(response.structured_query).toEqual({
+      intent: 'aggregate_pitching',
+      filters: {
+        pitcher_name: '則本昂大',
+        year_from: 2016,
+        sort_by: 'era',
+        limit: 10,
+      },
+    })
+    expect(aggregateYears).toEqual([2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024, 2025, 2026])
+  })
+
   it('keeps top pitch count appearance questions on search_pitching', async () => {
     const service = createChatService(createFakeQueryService({
       searchPitchingLines: async () => [{
