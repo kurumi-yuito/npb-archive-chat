@@ -21,6 +21,16 @@ const DEFAULT_USER_AGENT = 'npb-archive-chat/0.1 (+https://npb.jp/)'
 const BIS_FETCH_ATTEMPTS = 3
 const BIS_FETCH_RETRY_DELAY_MS = 750
 
+export class BisFetchHttpError extends Error {
+  constructor(
+    readonly status: number,
+    readonly url: string,
+  ) {
+    super(`BIS fetch failed: ${url} (HTTP ${status})`)
+    this.name = 'BisFetchHttpError'
+  }
+}
+
 export const BIS_TEAMS: BisTeamInfo[] = [
   { teamId: 'g', teamName: '読売ジャイアンツ' },
   { teamId: 's', teamName: '東京ヤクルトスワローズ' },
@@ -239,7 +249,7 @@ async function loadTeamBisPages(
     try {
       html = await fetchOrReadRaw(page.url, `raw/bis/${input.year}/${page.key}.html`, input.storage, input.userAgent)
     } catch (error) {
-      if (page.sourceType === 'team_monthly_results' && error instanceof Error && error.message.includes(' 404 ')) {
+      if (page.sourceType === 'team_monthly_results' && error instanceof BisFetchHttpError && error.status === 404) {
         continue
       }
       throw error
@@ -308,7 +318,7 @@ async function fetchOrReadRaw(url: string, key: string, storage: ObjectStorage, 
         await storage.putText(key, html, 'text/html; charset=utf-8')
         return html
       }
-      lastError = new Error(`HTTP ${response.status}`)
+      lastError = new BisFetchHttpError(response.status, url)
       if (!isRetryableBisFetchStatus(response.status) || attempt === BIS_FETCH_ATTEMPTS) {
         break
       }
@@ -321,6 +331,9 @@ async function fetchOrReadRaw(url: string, key: string, storage: ObjectStorage, 
     await sleep(BIS_FETCH_RETRY_DELAY_MS * attempt)
   }
 
+  if (lastError instanceof BisFetchHttpError) {
+    throw lastError
+  }
   throw new Error(`BIS fetch failed after ${BIS_FETCH_ATTEMPTS} attempts: ${url} (${formatBisFetchError(lastError)})`)
 }
 

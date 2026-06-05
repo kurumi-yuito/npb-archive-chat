@@ -253,7 +253,7 @@ export async function runDailyUpdate(options: UpdateDailyArgs): Promise<UpdateDa
         dateFrom: yearRange.from,
         dateTo: yearRange.to,
         workspaceRoot,
-        source: 'calendar-live',
+        source: 'verified-candidates',
         league: 'regular',
         userAgent: options.userAgent,
       })

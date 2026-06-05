@@ -89,6 +89,7 @@ jobs:
           done
 
       - name: Run update:daily
+        id: update_daily
         shell: bash
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.CLOUDFLARE_R2_ACCESS_KEY_ID }}
@@ -117,15 +118,28 @@ jobs:
           pnpm --filter @npb/db run update:daily -- "${args[@]}" --include-bis-current | tee data/logs/update-daily-action.log
 
       - name: Enrich farm game box scores
+        id: enrich_farm
         if: ${{ env.IS_DRY_RUN != 'true' }}
         shell: bash
         run: |
           set -euo pipefail
           current_year=$(TZ=Asia/Tokyo date +%Y)
+          args=()
+          if [ -n "${{ inputs.date }}" ]; then
+            args+=(--from "${{ inputs.date }}" --to "${{ inputs.date }}")
+          elif [ -n "${{ inputs.from }}" ] || [ -n "${{ inputs.to }}" ]; then
+            args+=(--from "${{ inputs.from }}" --to "${{ inputs.to }}")
+          else
+            target_days="${{ inputs.days || '3' }}"
+            date_to=$(TZ=Asia/Tokyo date -d 'yesterday' +%F)
+            date_from=$(TZ=Asia/Tokyo date -d "$date_to -$((target_days - 1)) days" +%F)
+            args+=(--from "$date_from" --to "$date_to")
+          fi
           pnpm --filter @npb/db run enrich:bis-farm-boxes -- \
             --year "$current_year" \
             --sqlite-path "data/npb-${current_year}.sqlite" \
             --delay-ms 300 \
+            "${args[@]}" \
             | tee data/logs/enrich-bis-farm-boxes-action.log
 
       - name: Sync updated SQLite data to D1
@@ -150,7 +164,7 @@ jobs:
           test -f data/logs/d1-sync/summary.json
 
       - name: Save SQLite backups to R2
-        if: ${{ env.IS_DRY_RUN != 'true' }}
+        if: ${{ always() && env.IS_DRY_RUN != 'true' && steps.update_daily.outcome == 'success' && steps.enrich_farm.outcome == 'success' }}
         shell: bash
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.CLOUDFLARE_R2_ACCESS_KEY_ID }}

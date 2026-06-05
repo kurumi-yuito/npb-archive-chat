@@ -19,6 +19,7 @@ const LATEST_SNAPSHOT_TABLES = new Set<ImportTable>([
   'player_fielding_stats',
   'team_monthly_results',
 ])
+const MERGED_GLOBAL_TABLES = new Set<ImportTable>(['player_profiles'])
 const IMPORT_TABLES = [
   'games',
   'source_snapshots',
@@ -376,13 +377,7 @@ async function verifyD1Import(
     actualTableCounts[table] = actual
   }
 
-  const mismatches = IMPORT_TABLES
-    .filter((table) => actualTableCounts[table] !== expectedTableCounts[table])
-    .map((table) => ({
-      table,
-      expected: expectedTableCounts[table],
-      actual: actualTableCounts[table],
-    }))
+  const mismatches = findD1CountMismatches(expectedTableCounts, actualTableCounts)
 
   return {
     expectedTableCounts,
@@ -465,7 +460,7 @@ function extractCountFromJson(value: unknown): number | null {
   return null
 }
 
-function aggregateExpectedTableCounts(
+export function aggregateExpectedTableCounts(
   years: SyncD1YearResult[],
 ): Record<ImportTable, number> {
   const counts = Object.fromEntries(
@@ -477,10 +472,29 @@ function aggregateExpectedTableCounts(
         counts[table] = year.rowCounts[table]
         continue
       }
+      if (MERGED_GLOBAL_TABLES.has(table)) {
+        counts[table] = Math.max(counts[table], year.rowCounts[table])
+        continue
+      }
       counts[table] += year.rowCounts[table]
     }
   }
   return counts
+}
+
+export function findD1CountMismatches(
+  expectedTableCounts: Record<ImportTable, number>,
+  actualTableCounts: Record<ImportTable, number>,
+): SyncD1VerificationResult['mismatches'] {
+  return IMPORT_TABLES
+    .filter((table) => MERGED_GLOBAL_TABLES.has(table)
+      ? actualTableCounts[table] < expectedTableCounts[table]
+      : actualTableCounts[table] !== expectedTableCounts[table])
+    .map((table) => ({
+      table,
+      expected: expectedTableCounts[table],
+      actual: actualTableCounts[table],
+    }))
 }
 
 function formatVerificationFailure(

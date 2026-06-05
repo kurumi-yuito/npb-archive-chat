@@ -3,7 +3,12 @@ import os from 'node:os'
 import path from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { migrateDatabase, openDatabase } from './index.js'
-import { runD1Sync } from './d1-sync'
+import {
+  aggregateExpectedTableCounts,
+  findD1CountMismatches,
+  runD1Sync,
+  type SyncD1YearResult,
+} from './d1-sync'
 
 async function createTempDir() {
   return mkdtemp(path.join(os.tmpdir(), 'npb-db-sync-'))
@@ -73,5 +78,53 @@ describe('runD1Sync', () => {
 
     const eventsSql = await readFile(sqlPaths.find((p) => p.endsWith('_events.sql'))!, 'utf8')
     expect(eventsSql).toContain('DELETE FROM "events" WHERE game_id LIKE \'r2025%\';')
+  })
+
+  it('verifies merged player profiles without requiring removal of existing D1 rows', () => {
+    const rowCounts = {
+      games: 0,
+      source_snapshots: 0,
+      events: 0,
+      batting_lines: 0,
+      pitching_lines: 0,
+      roster_entries: 0,
+      bis_source_snapshots: 0,
+      current_team_roster: 0,
+      team_index: 0,
+      team_yearly_stats: 0,
+      player_batting_stats: 0,
+      player_pitching_stats: 0,
+      player_fielding_stats: 0,
+      team_monthly_results: 0,
+      player_profiles: 0,
+    }
+    const years = [
+      { year: 2025, rowCounts: { ...rowCounts, player_profiles: 900 } },
+      { year: 2026, rowCounts: { ...rowCounts, player_profiles: 1060 } },
+    ] as SyncD1YearResult[]
+    const expected = aggregateExpectedTableCounts(years)
+
+    expect(expected.player_profiles).toBe(1060)
+    expect(findD1CountMismatches(expected, {
+      ...expected,
+      player_profiles: 1061,
+    })).toEqual([])
+    expect(findD1CountMismatches({
+      ...expected,
+      player_profiles: 0,
+    }, {
+      ...expected,
+      player_profiles: 1061,
+    })).toEqual([])
+    expect(findD1CountMismatches(expected, {
+      ...expected,
+      player_profiles: 1059,
+    })).toEqual([
+      {
+        table: 'player_profiles',
+        expected: 1060,
+        actual: 1059,
+      },
+    ])
   })
 })
