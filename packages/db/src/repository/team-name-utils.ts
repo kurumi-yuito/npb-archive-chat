@@ -77,6 +77,9 @@ export function toJapaneseTeamAliases(team: string): string[] {
 
 const aliasToCanonical: Record<string, string> = {}
 for (const [canonical, aliases] of Object.entries(japaneseTeamAliasMap)) {
+  if (canonical === 'セ・リーグ' || canonical === 'パ・リーグ') {
+    continue
+  }
   for (const alias of aliases) {
     aliasToCanonical[alias] = canonical
   }

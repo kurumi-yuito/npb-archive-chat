@@ -9,7 +9,7 @@ import {
   type AggregatePitchingFilters,
 } from '@npb/schemas'
 import type { QueryDatabase } from '../query-driver'
-import { toJapaneseTeamAliases, toEnglishLeagueTeams, toGameTeamAliases } from './team-name-utils'
+import { canonicalTeamName, toJapaneseTeamAliases, toEnglishLeagueTeams, toGameTeamAliases } from './team-name-utils'
 import { venueSearchValues } from './venue-aliases'
 
 export type AggregateRow = {
@@ -466,13 +466,13 @@ function scoreSql(side: 'home' | 'away'): string {
 
 function teamSideWinSql(side: 'home' | 'away', teamNames: string[]): string {
   const other = side === 'home' ? 'away' : 'home'
-  const teamPredicate = teamNames.length > 0 ? `games.${side}_team_name IN (${teamNames.map(() => '?').join(', ')})` : '1 = 1'
+  const teamPredicate = teamNames.length > 0 ? `games.${side}_team_name IN (${sqlStringList(teamNames)})` : '1 = 1'
   return `(${teamPredicate} AND ${scoreSql(side)} > ${scoreSql(other)})`
 }
 
 function teamSideLossSql(side: 'home' | 'away', teamNames: string[]): string {
   const other = side === 'home' ? 'away' : 'home'
-  const teamPredicate = teamNames.length > 0 ? `games.${side}_team_name IN (${teamNames.map(() => '?').join(', ')})` : '1 = 1'
+  const teamPredicate = teamNames.length > 0 ? `games.${side}_team_name IN (${sqlStringList(teamNames)})` : '1 = 1'
   return `(${teamPredicate} AND ${scoreSql(side)} < ${scoreSql(other)})`
 }
 
@@ -507,9 +507,12 @@ export async function aggregateGameResults(
   const leagueTeams = leagueTeamList(normalized.team)
   if (leagueTeams) {
     const rows = (await Promise.all(
-      leagueTeams.map((team) => aggregateGameResults(database, { ...normalized, team, limit: 1 })),
+      leagueTeams.map(async (team) => {
+        const [row] = await aggregateGameResults(database, { ...normalized, team, limit: 1 })
+        return row ? { ...row, label: team } : undefined
+      }),
     )).flat()
-    return rows.sort((a, b) =>
+    return rows.filter((row): row is AggregateRow => Boolean(row)).sort((a, b) =>
       Number(b.stats.wins ?? 0) - Number(a.stats.wins ?? 0) ||
       Number(a.stats.losses ?? 0) - Number(b.stats.losses ?? 0) ||
       a.label.localeCompare(b.label, 'ja'),
@@ -521,11 +524,12 @@ export async function aggregateGameResults(
   const values: Array<string | number> = []
 
   if (teamNames.length > 0 && opponentNames.length > 0) {
-    clauses.push(`((games.home_team_name IN (${teamNames.map(() => '?').join(', ')}) AND games.away_team_name IN (${opponentNames.map(() => '?').join(', ')})) OR (games.home_team_name IN (${opponentNames.map(() => '?').join(', ')}) AND games.away_team_name IN (${teamNames.map(() => '?').join(', ')})))`)
-    values.push(...teamNames, ...opponentNames, ...opponentNames, ...teamNames)
+    const teamList = sqlStringList(teamNames)
+    const opponentList = sqlStringList(opponentNames)
+    clauses.push(`((games.home_team_name IN (${teamList}) AND games.away_team_name IN (${opponentList})) OR (games.home_team_name IN (${opponentList}) AND games.away_team_name IN (${teamList})))`)
   } else if (teamNames.length > 0) {
-    clauses.push(`(games.home_team_name IN (${teamNames.map(() => '?').join(', ')}) OR games.away_team_name IN (${teamNames.map(() => '?').join(', ')}))`)
-    values.push(...teamNames, ...teamNames)
+    const teamList = sqlStringList(teamNames)
+    clauses.push(`(games.home_team_name IN (${teamList}) OR games.away_team_name IN (${teamList}))`)
   }
 
   if (normalized.year) {
@@ -551,8 +555,8 @@ export async function aggregateGameResults(
   }
 
   const whereClause = `WHERE ${clauses.join(' AND ')}`
-  const teamSelect = teamNames.length > 0
-    ? '?'
+  const teamSelect = teamNames.length > 0 && normalized.team
+    ? sqlStringLiteral(canonicalTeamName(normalized.team))
     : `CASE
         WHEN games.home_team_name IS NOT NULL AND games.home_team_name <> '' THEN games.home_team_name
         ELSE games.away_team_name
@@ -582,9 +586,6 @@ export async function aggregateGameResults(
       LIMIT ?`,
     )
     .all(
-      ...(teamNames.length > 0
-        ? [teamNames[0], ...teamNames, ...teamNames, ...teamNames, ...teamNames]
-        : []),
       ...values,
       limit,
     )
@@ -600,6 +601,14 @@ export async function aggregateGameResults(
       total_games: Number(row.total_games ?? 0),
     },
   }))
+}
+
+function sqlStringLiteral(value: string): string {
+  return `'${value.replaceAll("'", "''")}'`
+}
+
+function sqlStringList(values: string[]): string {
+  return values.map(sqlStringLiteral).join(', ')
 }
 
 function leagueTeamList(team: string | undefined): string[] | null {

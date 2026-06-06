@@ -150,7 +150,10 @@ async function searchCurrentBattingStats(
     clauses.push(`player_batting_stats.team_name IN (${teams.map(() => '?').join(', ')})`)
     values.push(...teams)
   }
-  if (filters.player_id) {
+  if (filters.player_id && filters.player_name) {
+    clauses.push('player_batting_stats.player_id = ?')
+    values.push(filters.player_id)
+  } else if (filters.player_id) {
     clauses.push(`(
       player_batting_stats.player_id = ?
       OR EXISTS (

@@ -118,7 +118,7 @@ function buildSummary(
       notFoundMsg = '条件に一致するイベントは見つかりませんでした。'
     }
     if (/代打/u.test(question) && /本塁打|ホームラン|HR/iu.test(question)) {
-      notFoundMsg = '条件期間の一軍公式戦では、代打本塁打は0件です。eventsの打席結果に本塁打表記があり、かつ代打として出場した打席を対象に確認しています。'
+      notFoundMsg = '条件期間の一軍公式戦では、代打本塁打は0件です。'
     }
     return `${yearShiftPrefix}${notFoundMsg}`
   }
@@ -212,7 +212,6 @@ function buildSummary(
         const noResultText = noResult > 0 ? `（スコア未確定${noResult}試合除く）` : ''
         return `${row.label}: ${wins}勝${losses}敗${drawText}、対象${total}試合${noResultText}`
       }),
-      '勝敗は収録済みの試合結果から集計しています。',
     ].join('\n')
   }
 
@@ -249,7 +248,6 @@ function formatRosterSummary(rows: RosterEntryRow[], filters: Record<string, unk
     `${year}の${condition || 'ロスター'}で最も多いのは${top?.row.team ?? ''}の${top?.row.playerName ?? '該当者'}で、${top?.count ?? 0}試合です。`,
     latestDate ? `直近の該当日は${latestDate}です。` : undefined,
     ...ranked.slice(0, 5).map((entry, index) => `${index + 1}位: ${entry.row.playerName}（${entry.row.team}）${entry.count}試合`),
-    'スタメン・守備位置・打順の記録から集計しています。',
   ].filter(Boolean).join('\n')
 }
 
@@ -265,12 +263,11 @@ function formatGameSearchSummary(question: string, rows: GameSummaryRow[], resul
     : rows
   if (/サヨナラ勝ち|サヨナラ勝/u.test(question)) {
     if (targetRows.length === 0) {
-      return '条件期間の一軍公式戦では、該当チームのサヨナラ勝ちは0試合です。判定はgamesのスコア表で、ホームチームが勝利し、最終得点欄が1xのように得点付きで記録された試合を対象にしています。'
+      return '条件期間の一軍公式戦では、該当チームのサヨナラ勝ちは0試合です。'
     }
     return [
       `条件期間のサヨナラ勝ちは${targetRows.length}試合です。`,
       ...targetRows.slice(0, 20).map((row) => formatGameSummaryLine(row)),
-      '判定はgamesのスコア表で、ホームチームが勝利し、最終得点欄が1xのように得点付きで記録された試合を対象にしています。',
     ].join('\n')
   }
   return [
@@ -308,13 +305,12 @@ function formatYearlyHomeRunSummary(rows: BattingLineRow[]): string {
     grouped.set(year, current)
   }
   const lines = [...grouped.entries()].sort(([a], [b]) => Number(a) - Number(b)).map(([year, value]) =>
-    `${year}年: ${value.homeRuns}本（${value.team}、対象${value.games}試合の打席結果から集計）`,
+    `${year}年: ${value.homeRuns}本（${value.team}、対象${value.games}試合）`,
   )
   const first = rows[0]
   return [
     `${first?.playerName ?? '対象選手'}の年別本塁打数です。`,
     ...lines,
-    '本塁打数はbatting_lines.raw_text内の本塁打表記を年別に集計しています。',
   ].join('\n')
 }
 
@@ -348,8 +344,7 @@ function formatAggregateSummary(
         : String(rows[0]?.stats.playerName ?? '対象選手')
       return [
         `${playerName}の年別本塁打数です。`,
-        ...rows.map((row) => `${row.label}年: ${row.stats.homeRuns ?? 0}本（${row.stats.team ?? ''}、対象${row.stats.games ?? row.total}試合の打撃成績から集計）`),
-        '本塁打数は打撃記録と本塁打イベントを年別に集計しています。',
+        ...rows.map((row) => `${row.label}年: ${row.stats.homeRuns ?? 0}本（${row.stats.team ?? ''}、対象${row.stats.games ?? row.total}試合）`),
       ].join('\n')
     }
     return [
@@ -358,7 +353,6 @@ function formatAggregateSummary(
         const s = row.stats
         return `${index + 1}位: ${row.label}（${s.team ?? ''}） 試合${s.games ?? row.total}、打率${formatMaybeRate(s.battingAverage)}、本塁打${s.homeRuns ?? 0}、打点${s.runsBattedIn ?? 0}、盗塁${s.stolenBases ?? 0}、OPS${formatMaybeRate(s.ops)}、IsoP${formatMaybeRate(s.isoP)}、BB%${formatMaybePercent(s.bbRate)}`
       }),
-      '打率=安打÷打数、OPS=出塁率+長打率、IsoP=長打率-打率、BB%=四球÷打席で計算しています。',
     ].join('\n')
   }
   if (structuredQuery.intent === 'aggregate_pitching') {
@@ -372,13 +366,11 @@ function formatAggregateSummary(
         const saveText = s.saves != null ? `、セーブ${s.saves}` : ''
         return `${index + 1}位: ${row.label}（${s.team ?? ''}） 登板${s.games ?? row.total}${saveText}、投球回${formatDecimalStat(ip)}、奪三振${s.strikeouts ?? 0}、自責点${s.earnedRuns ?? 0}、防御率${formatMaybeDecimal(era)}、WHIP${formatMaybeDecimal(whip)}、球数${s.pitches ?? 0}`
       }),
-      '防御率=自責点÷投球回×9、WHIP=(被安打+与四球)÷投球回で計算しています。',
     ].join('\n')
   }
   return [
     `イベント集計結果は${rows.length}件です。`,
     ...rows.slice(0, 10).map((row, index) => `${index + 1}位: ${row.label} ${row.total}件`),
-    '数値は条件に一致するプレー記録から集計しています。',
   ].join('\n')
 }
 
@@ -406,19 +398,15 @@ function formatPlayerHomeRunAggregate(
     ? `${playerName}は、${yearLabel}のNPB公式戦で本塁打を${totalHomeRuns}本打っています。`
     : `${playerName}は、${yearLabel}のNPB公式戦で本塁打0本です。`
   const detailLine = totalGames > 0
-    ? `対象は${teamText}${totalGames}試合分の打撃記録です。`
+    ? `対象は${teamText}${totalGames}試合です。`
     : undefined
   const breakdown = rows.length > 1
     ? rows.map((row) => `${displayTeamName(String(row.stats.team ?? row.label))}: ${Number(row.stats.homeRuns ?? 0)}本`).join('、')
     : undefined
-  const method = /打ったこと|ある/u.test(question)
-    ? '本塁打の有無は、同じ選手の打撃記録と本塁打イベントを突き合わせて確認しています。'
-    : '本塁打数は、同じ選手の打撃記録と本塁打イベントから集計しています。'
   return [
     firstLine,
     detailLine,
     breakdown ? `内訳: ${breakdown}` : undefined,
-    method,
   ].filter(Boolean).join('\n')
 }
 
