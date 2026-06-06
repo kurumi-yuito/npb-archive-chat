@@ -10,6 +10,11 @@ export type PlayerResolution = {
   status: 'resolved' | 'ambiguous' | 'not_found'
   candidates: PlayerCandidate[]
   yearShiftNote?: string
+  teamCorrectionNote?: string
+}
+
+type InternalPlayerCandidate = PlayerCandidate & {
+  match_kind?: 'profile'
 }
 
 type ResolutionTarget = {
@@ -56,6 +61,7 @@ export async function resolveStructuredQueryPlayer(
     ...yearFilters(structuredQuery),
     name: input,
     aliases,
+    includeEvents: target.field === 'runner_name' || structuredQuery.intent === 'search_events' || structuredQuery.intent === 'aggregate_events',
     latestOnly: structuredQuery.intent === 'player_affiliation' && !hasExplicitYearFilter(structuredQuery),
     limit: 50,
   }
@@ -70,6 +76,22 @@ export async function resolveStructuredQueryPlayer(
     const fallbackCandidates = await queryService.searchPlayerCandidates({
       name: candidateFilters.name,
       aliases,
+      includeEvents: candidateFilters.includeEvents,
+      limit: 50,
+    })
+    candidates = selectCandidatesForInput(
+      input,
+      collapseSameEntityFallbacks(
+        filterCandidates(fallbackCandidates, teamQualifier(structuredQuery)),
+      ),
+    )
+  }
+
+  if (candidates.length === 0 && candidateFilters.latestOnly && teamQualifier(structuredQuery).length > 0) {
+    const fallbackCandidates = await queryService.searchPlayerCandidates({
+      name: candidateFilters.name,
+      aliases,
+      includeEvents: candidateFilters.includeEvents,
       limit: 50,
     })
     candidates = selectCandidatesForInput(
@@ -87,19 +109,14 @@ export async function resolveStructuredQueryPlayer(
     }
   }
 
-  // For short surname inputs (≤2 chars), a year-filtered search may narrow down to a single
-  // candidate even when multiple players share the surname. Do a broader search without year
-  // filter to detect the ambiguity.
   const inputKey = normalizeLookupKey(normalizeFreeText(input) ?? input)
-  if (inputKey.length <= 2 && candidates.length === 1) {
+  if (candidates.length === 1 && (!hasExplicitYearFilter(structuredQuery) || compactPlayerInput(input).length < 4)) {
     const broadCandidates = await queryService.searchPlayerCandidates({
       name: candidateFilters.name,
       aliases,
+      includeEvents: candidateFilters.includeEvents,
       limit: 50,
     })
-    // Count all distinct player_id entities in the broad search — not just exact name matches.
-    // "村上 頌樹" and "村上宗隆" share the surname "村上" but have different stored names; exact
-    // matching would miss one of them.
     const broadCollapsed = collapseSameEntityFallbacks(
       filterCandidates(broadCandidates, teamQualifier(structuredQuery)),
     )
@@ -113,25 +130,6 @@ export async function resolveStructuredQueryPlayer(
   }
 
   if (candidates.length > 1) {
-    // Short surname inputs (≤2 Japanese chars) must never be auto-resolved by recency:
-    // multiple active players can share a surname and the ambiguity cannot be resolved without more context.
-    const isFullNameInput = inputKey.length > 2
-    if (isFullNameInput && !hasExplicitYearFilter(structuredQuery)) {
-      const mostRecent = pickMostRecentCandidate(candidates)
-      if (mostRecent) {
-        return {
-          structuredQuery: replacePlayerFilter(structuredQuery, target.field, mostRecent),
-          resolution: {
-            input,
-            player_id: mostRecent.player_id,
-            name: mostRecent.name,
-            primary_team: mostRecent.primary_team,
-            status: 'resolved',
-            candidates: [mostRecent],
-          },
-        }
-      }
-    }
     return {
       structuredQuery,
       resolution: { input, player_id: null, name: null, primary_team: null, status: 'ambiguous', candidates },
@@ -155,6 +153,10 @@ export async function resolveStructuredQueryPlayer(
   }
 }
 
+function compactPlayerInput(value: string): string {
+  return value.replace(/[ \u3000・･.\-_/の]/gu, '')
+}
+
 function detectYearShift(
   structuredQuery: ChatStructuredQuery,
   candidate: PlayerCandidate,
@@ -173,7 +175,7 @@ function detectYearShift(
   // player only appears in older years, treat it as a non-roster year and shift.
   const note = yearGap >= 1
     ? `${requestedYear}年はNPBに在籍していないため、代わりに最終在籍年（${latestYear}年）のデータを表示します。`
-    : `${requestedYear}年のデータはデータベースに未登録のため、代わりに最終確認年（${latestYear}年）のデータを表示します。`
+    : `${requestedYear}年の記録は確認できないため、代わりに最終確認年（${latestYear}年）のデータを表示します。`
   return { targetYear: latestYear, note }
 }
 
@@ -211,7 +213,10 @@ function replacePlayerFilter(
   // their career. For multi-team careers (transfers, MLB stints), injecting the historical primary
   // would exclude records from other teams — the player name alone is the correct search key.
   const distinctTeamKeys = new Set(candidate.teams.map(teamAliasKey))
-  const injectTeam = candidate.primary_team && !existingTeam && distinctTeamKeys.size <= 1
+  const injectTeam = structuredQuery.intent !== 'player_affiliation' &&
+    candidate.primary_team &&
+    !existingTeam &&
+    distinctTeamKeys.size <= 1
     ? { team: candidate.primary_team }
     : {}
   return {
@@ -303,10 +308,12 @@ function filterCandidates(
 ): PlayerCandidate[] {
   if (teamAliases.length === 0) return candidates
   return candidates.filter((candidate) => {
-    if (candidate.primary_team && teamAliases.includes(candidate.primary_team)) {
+    if (candidate.primary_team && teamAliases.some((team) => sameTeamAlias(team, candidate.primary_team!))) {
       return true
     }
-    return candidate.teams.some((team) => teamAliases.includes(team))
+    return candidate.teams.some((candidateTeam) =>
+      teamAliases.some((team) => sameTeamAlias(team, candidateTeam)),
+    )
   })
 }
 
@@ -331,23 +338,14 @@ function selectCandidatesForInput(
   })
   if (surnameMatches.length > 0) {
     const collapsed = collapseSameEntityFallbacks(surnameMatches)
-    // Full-name input (3+ chars) that matches multiple surname-only candidates is ambiguous
-    // — events tables often store just the surname (e.g. "村上" for both 村上頌樹 and 村上宗隆).
-    if (inputKey.length > 2 && collapsed.length > 1) {
-      return []
+    const profileMatches = collapsed.filter((candidate) => (candidate as InternalPlayerCandidate).match_kind === 'profile')
+    if (profileMatches.length > 0) {
+      return collapseSameEntityFallbacks(profileMatches)
     }
-    // A full-name input (3+ chars) that falls back to a single surname-only no-player_id
-    // candidate with no team info is too ambiguous — it likely comes from pitcher events
-    // where offense_team is null and could belong to any player sharing the surname.
-    // Return [] so the fallback year-agnostic search can find the actual entity.
-    if (inputKey.length > 2 && collapsed.length === 1 && !collapsed[0]!.player_id && collapsed[0]!.teams.length === 0) {
-      return []
+    const entityIds = [...new Set(collapsed.map((candidate) => candidate.player_id).filter(Boolean))]
+    if (entityIds.length === 1 && collapsed.every((candidate) => candidate.player_id === entityIds[0])) {
+      return collapsed
     }
-    return collapsed
-  }
-
-  // Input is 3+ chars (full name) but no candidate matched — don't resolve to an unrelated candidate.
-  if (inputKey.length > 2) {
     return []
   }
 
@@ -426,14 +424,4 @@ function normalizeLookupKey(value: string): string {
     .normalize('NFKC')
     .replace(/[・･.\-_\s\u3000]/gu, '')
     .toLowerCase()
-}
-
-function pickMostRecentCandidate(candidates: PlayerCandidate[]): PlayerCandidate | null {
-  const withMaxYear = candidates.map((c) => ({
-    candidate: c,
-    maxYear: c.years.length > 0 ? Math.max(...c.years) : 0,
-  }))
-  const topYear = Math.max(...withMaxYear.map((x) => x.maxYear))
-  const topCandidates = withMaxYear.filter((x) => x.maxYear === topYear)
-  return topCandidates.length === 1 ? topCandidates[0]!.candidate : null
 }

@@ -115,8 +115,8 @@ async function queryAffiliationRows(
   const values: Array<string | number> = []
   const clauses = [`${source.gameIdColumn} NOT LIKE 'f%'`, `${source.nameColumn} IS NOT NULL`, `${source.nameColumn} <> ''`]
   if (filters.player_id) {
-    clauses.push(`${source.playerIdExpression} = ?`)
-    values.push(filters.player_id)
+    clauses.push(`(${source.playerIdExpression} = ? OR (${source.playerIdExpression} IS NULL AND ${source.nameColumn} = ?))`)
+    values.push(filters.player_id, filters.player_name)
   } else {
     clauses.push(`${source.nameColumn} = ?`)
     values.push(filters.player_name)

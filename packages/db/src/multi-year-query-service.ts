@@ -85,18 +85,21 @@ export function createSingleDatabaseQueryService(database: QueryDatabase): ChatQ
     searchBattingLines: (filters) => searchBattingLines(database, filters),
     searchPitchingLines: async (filters) => {
       const gameRows = await searchPitchingLines(database, filters)
-      const needsBis = filters.pitcher_name && !filters.game_date && !filters.year && !filters.year_from && !filters.year_to
+      const needsBis = filters.pitcher_name && !filters.game_date && !filters.game_id && filters.sort_by !== 'pitchCount'
       if (!needsBis) return gameRows
       const bisRows = await searchCurrentPitchingStats(database, filters, 15)
-      if (bisRows.length === 0) return gameRows
+      const nonBisGameRows = gameRows.filter(
+        (r) => r.sourceKind !== 'bis_pitching' && r.sourceKind !== 'bis_pitching_farm',
+      )
+      if (bisRows.length === 0) return nonBisGameRows
       if (filters.recent) {
         const bisYear = Math.max(...bisRows.map((r) => Number(r.gameDate.slice(0, 4))))
-        const recentGameRows = gameRows.filter(
+        const recentGameRows = nonBisGameRows.filter(
           (r) => r.sourceKind !== 'bis_pitching' && r.sourceKind !== 'bis_pitching_farm' && Number(r.gameDate.slice(0, 4)) >= bisYear - 1,
         )
         return [...bisRows, ...recentGameRows]
       }
-      return [...bisRows, ...gameRows]
+      return [...bisRows, ...nonBisGameRows]
     },
     searchRosterEntries: (filters) => searchRosterEntries(database, filters),
     searchPlayerAffiliations: (filters) => searchPlayerAffiliations(database, filters),

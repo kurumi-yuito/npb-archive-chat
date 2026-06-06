@@ -145,7 +145,7 @@ describe('chat-answer-formatter', () => {
       sources: [],
     })
 
-    expect(answer.summary).toContain('ヤクルト 村上の直近2試合の打撃内容です。')
+    expect(answer.summary).toContain('ヤクルト 村上の確認できる最新2出場の打撃内容です。')
     expect(answer.summary).toContain('2試合で3安打')
     expect(answer.summary).toContain('打点')
     expect(answer.summary).toContain('打率.429')
@@ -167,7 +167,7 @@ describe('chat-answer-formatter', () => {
     })
 
     expect(answer.result_count).toBe(1)
-    expect(answer.summary).toContain('2026年は二軍で4試合に登板')
+    expect(answer.summary).toContain('2026年二軍で4試合に登板')
     expect(answer.summary).toContain('藤浪 晋太郎')
     expect(answer.summary).toContain('4試合に登板')
     expect(answer.summary).toContain('防御率2.00')
@@ -200,21 +200,19 @@ describe('chat-answer-formatter', () => {
     })
 
     expect(answer.result_count).toBe(6)
-    // BIS統計は二軍シーズン成績として表示
-    expect(answer.summary).toContain('2026年は二軍で5試合に登板')
-    expect(answer.summary).toContain('藤浪 晋太郎')
-    expect(answer.summary).toContain('5試合に登板')
-    expect(answer.summary).toContain('防御率1.93')
+    // recent はBISシーズン行ではなく、試合単位の最新登板を優先する
+    expect(answer.summary).toContain('横浜DeNAベイスターズ 藤浪 晋太郎の確認できる最新5試合の投球内容です。')
+    expect(answer.summary).toContain('2026年二軍での対象試合です。')
+    expect(answer.summary).not.toContain('シーズン成績')
 
-    // 個別試合は全て「二軍」として表示（「一軍」は一切出ない）
-    expect(answer.summary).toContain('個別試合記録')
-    expect(answer.summary).toContain('2026-05-22 二軍')
-    expect(answer.summary).toContain('2026-05-13 二軍')
-    expect(answer.summary).toContain('8奪三振')
+    // 個別試合は全て「二軍」として扱う（「一軍」は一切出ない）
+    expect(answer.summary).toContain('2026年5月22日')
+    expect(answer.summary).toContain('2026年5月13日')
+    expect(answer.summary).toContain('5試合で19奪三振')
     expect(answer.summary).not.toContain('一軍')
 
     // 5W1H: いつ・どこで（チーム）・誰が・何回・何奪三振・自責
-    expect(answer.summary).toContain('2026-05-22')
+    expect(answer.summary).toContain('2026年5月22日')
     expect(answer.summary).toContain('横浜DeNAベイスターズ')
     expect(answer.summary).toContain('5回')
   })
@@ -238,15 +236,14 @@ describe('chat-answer-formatter', () => {
       sources: [],
     })
 
-    // BIS統計は一軍シーズン成績
-    expect(answer.summary).toContain('2025年は一軍で20試合に登板')
+    // recent はBISシーズン行ではなく、試合単位の最新登板を優先する
+    expect(answer.summary).toContain('阪神タイガース 青柳 晃洋の確認できる最新2試合の投球内容です。')
+    expect(answer.summary).toContain('2025年一軍での対象試合です。')
     expect(answer.summary).toContain('青柳 晃洋')
-    expect(answer.summary).toContain('20試合に登板')
 
     // 個別試合は「一軍」として表示（「二軍」は出ない）
-    expect(answer.summary).toContain('個別試合記録')
-    expect(answer.summary).toContain('2025-09-20 一軍')
-    expect(answer.summary).toContain('2025-09-14 一軍')
+    expect(answer.summary).toContain('2025年9月20日')
+    expect(answer.summary).toContain('2025年9月14日')
     expect(answer.summary).not.toContain('二軍')
   })
 
@@ -323,8 +320,9 @@ describe('chat-answer-formatter', () => {
     expect(answer.summary).toContain('打率.357')
     // サブメトリクス（OPS）も含む
     expect(answer.summary).toContain('OPS')
-    // ソース参照が含まれる
-    expect(answer.summary).toContain('source:')
+    // ソース参照は本文ではなく source_urls に含める
+    expect(answer.summary).not.toContain('source:')
+    expect(answer.source_urls).toContain('https://npb.jp/bis/2026/stats/idb1_g.html')
   })
 
   it('batting evaluation with recent box scores shows dates and totals', () => {

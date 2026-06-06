@@ -1158,6 +1158,52 @@ describe('chat-service', () => {
     expect(response.answer.result_count).toBe(0)
   })
 
+  it('uses a team-qualified mention as a resolution hint but searches current team for non-era recent questions', async () => {
+    let pitchingFilters: unknown = null
+    const service = createChatService(createFakeQueryService({
+      playerCandidates: [
+        {
+          player_id: '41445139',
+          name: '藤浪',
+          primary_team: '横浜DeNAベイスターズ',
+          roles: ['pitcher'],
+          teams: ['阪神', '横浜DeNAベイスターズ'],
+          years: [2023, 2025, 2026],
+        },
+      ],
+      searchPitchingLines: async (filters) => {
+        pitchingFilters = filters
+        return [{
+          gameId: 'f20260522db-e-01',
+          gameDate: '2026-05-22',
+          team: '横浜DeNAベイスターズ',
+          pitcherName: '藤浪',
+          inningsPitched: '5',
+          pitchCount: 80,
+          strikeouts: 8,
+          runs: 1,
+          earnedRuns: 1,
+          sourceKind: 'box',
+        }]
+      },
+    }), {
+      parseStructuredQueryFromMessage: async () => ({
+        intent: 'search_pitching',
+        filters: { team: '阪神', pitcher_name: '藤浪', recent: true },
+      }),
+    })
+
+    const response = await service.answerQuestion('阪神の藤浪の最近の成績は？')
+
+    expect(pitchingFilters).toMatchObject({
+      pitcher_name: '藤浪',
+      pitcher_player_id: '41445139',
+      recent: true,
+    })
+    expect(pitchingFilters).not.toMatchObject({ team: '阪神' })
+    expect(response.answer.summary).toContain('現在のNPB所属は横浜DeNAベイスターズです')
+  })
+
   it('resolves a surname through player_id-bearing roster rows before treating transfer history as ambiguous', async () => {
     const database = openDatabase()
 

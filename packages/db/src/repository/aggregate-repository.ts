@@ -405,15 +405,12 @@ function addBattingLinePlayerIdFilter(
         FROM events player_id_events
         WHERE player_id_events.game_id = batting_lines.game_id
           AND player_id_events.batter_name = batting_lines.player_name
-          AND (
-            player_id_events.batter_url LIKE ?
-            OR player_id_events.event_attributes_json LIKE ?
-          )
+          AND player_id_events.batter_url LIKE ?
       )
       ${nameFallback}
     )`,
   )
-  values.push(pattern, pattern, pattern)
+  values.push(pattern, pattern)
   if (playerName) {
     values.push(playerName)
   }
@@ -437,15 +434,12 @@ function addPitchingLinePlayerIdFilter(
         FROM events player_id_events
         WHERE player_id_events.game_id = pitching_lines.game_id
           AND player_id_events.pitcher_name = pitching_lines.pitcher_name
-          AND (
-            player_id_events.pitcher_url LIKE ?
-            OR player_id_events.event_attributes_json LIKE ?
-          )
+          AND player_id_events.pitcher_url LIKE ?
       )
       ${nameFallback}
     )`,
   )
-  values.push(pattern, pattern, pattern)
+  values.push(pattern, pattern)
   if (pitcherName) {
     values.push(pitcherName)
   }

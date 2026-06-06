@@ -67,6 +67,7 @@ const runId = `qa-prod-${Date.now()}`
 const results = []
 const runDir = `data/logs/qa-prod-run/${runId}`
 await mkdir(runDir, { recursive: true })
+const completedAnswers = new Map()
 
 const writeJson = async (path, value) => {
   await writeFile(path, `${JSON.stringify(value, null, 2)}\n`)
@@ -86,7 +87,12 @@ for (const [index, testCase] of cases.entries()) {
     'content-type': 'application/json',
     'x-npb-user-id': userId,
   }
-  const requestBody = JSON.stringify({ message: testCase.question })
+  const history = buildHistoryForCase(testCase, completedAnswers)
+  const message = normalizeQuestionForHistoryCase(testCase.question)
+  const requestBody = JSON.stringify({
+    message,
+    ...(history.length > 0 ? { history } : {}),
+  })
   let response = null
   let body = null
   let json = null
@@ -190,6 +196,12 @@ for (const [index, testCase] of cases.entries()) {
     saved_at: new Date().toISOString(),
   }
   results.push(record)
+  if (record.summary) {
+    completedAnswers.set(record.id, {
+      question: message,
+      summary: record.summary,
+    })
+  }
   await writeJson(`${runDir}/${testCase.id}.json`, record)
   await saveState({
     runId,
@@ -219,4 +231,23 @@ await saveState({
   complete: true,
   summaryPath: outPath,
 })
+
+function buildHistoryForCase(testCase, completedAnswers) {
+  const match = testCase.question.match(/直前に(Q-\d+)の回答がある状態/u)
+  if (!match) {
+    return []
+  }
+  const previous = completedAnswers.get(match[1])
+  if (!previous) {
+    return []
+  }
+  return [
+    { role: 'user', content: previous.question },
+    { role: 'assistant', content: previous.summary },
+  ]
+}
+
+function normalizeQuestionForHistoryCase(question) {
+  return question.replace(/^（直前にQ-\d+の回答がある状態で）/u, '').trim()
+}
 console.log(outPath)

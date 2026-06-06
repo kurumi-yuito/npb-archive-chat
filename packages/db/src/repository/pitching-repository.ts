@@ -131,8 +131,19 @@ export async function searchCurrentPitchingStats(
     values.push(...teams)
   }
   if (filters.pitcher_player_id) {
-    clauses.push('player_pitching_stats.player_id = ?')
-    values.push(filters.pitcher_player_id)
+    if (filters.pitcher_name) {
+      clauses.push(`(
+        player_pitching_stats.player_id = ?
+        OR (
+          (player_pitching_stats.player_id IS NULL OR player_pitching_stats.player_id = '')
+          AND ${compactNameSql('?')} LIKE ${compactNameSql('player_pitching_stats.player_name')} || '%'
+        )
+      )`)
+      values.push(filters.pitcher_player_id, filters.pitcher_name)
+    } else {
+      clauses.push('player_pitching_stats.player_id = ?')
+      values.push(filters.pitcher_player_id)
+    }
   } else if (filters.pitcher_name) {
     clauses.push(`${compactNameSql('player_pitching_stats.player_name')} LIKE ?`)
     values.push(`%${compactName(filters.pitcher_name)}%`)
@@ -180,25 +191,15 @@ function addPitchingLinePlayerIdFilter(
 ): void {
   const pattern = playerIdPattern(playerId)
   const nameFallback = pitcherName
-    ? `OR (pitching_lines.pitcher_url IS NULL AND ${compactNameSql('?')} LIKE ${compactNameSql('pitching_lines.pitcher_name')} || '%')`
+    ? `OR ${compactNameSql('?')} LIKE ${compactNameSql('pitching_lines.pitcher_name')} || '%'`
     : ''
   clauses.push(
     `(
       pitching_lines.pitcher_url LIKE ?
-      OR EXISTS (
-        SELECT 1
-        FROM events player_id_events
-        WHERE player_id_events.game_id = pitching_lines.game_id
-          AND player_id_events.pitcher_name = pitching_lines.pitcher_name
-          AND (
-            player_id_events.pitcher_url LIKE ?
-            OR player_id_events.event_attributes_json LIKE ?
-          )
-      )
       ${nameFallback}
     )`,
   )
-  values.push(pattern, pattern, pattern)
+  values.push(pattern)
   if (pitcherName) {
     values.push(pitcherName)
   }

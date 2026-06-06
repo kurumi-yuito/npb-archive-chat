@@ -56,8 +56,9 @@ export function toEnglishTeamName(team: string): string | undefined {
 
 /** games テーブル用: NPB.jp score data can contain English short names and occasional Japanese names. */
 export function toGameTeamAliases(team: string): string[] {
-  const japaneseAliases = japaneseTeamAliasMap[team] ?? [team]
-  const english = toEnglishTeamName(team)
+  const canonical = canonicalTeamName(team)
+  const japaneseAliases = japaneseTeamAliasMap[canonical] ?? japaneseTeamAliasMap[team] ?? [team]
+  const english = toEnglishTeamName(canonical) ?? toEnglishTeamName(team)
   return [...new Set([
     ...japaneseAliases,
     ...(english ? [english] : []),

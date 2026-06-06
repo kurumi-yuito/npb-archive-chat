@@ -205,7 +205,7 @@ describe('chat eval: db-backed query plan, result, formatter regression', () => 
       },
     })
     expect(response.results.aggregates[0]).toMatchObject({ total: 12 })
-    expect(response.answer.summary).toContain('DB集計結果')
+    expect(response.answer.summary).toContain('イベント集計結果')
   })
 
   it('10 no matching grand slams: returns 0 DB-backed results without guessing', async () => {
@@ -245,10 +245,11 @@ describe('chat eval: db-backed query plan, result, formatter regression', () => 
     })
     expect(calls.some((call) => call.method === 'searchEvents')).toBe(false)
     expect(response.answer.result_count).toBeGreaterThan(0)
-    expect(response.answer.summary).toContain('DB上の最新確認年（2026年）では、藤浪晋太郎は横浜DeNAベイスターズに所属しています。')
+    expect(response.answer.summary).toContain('確認できる最新年（2026年）では、藤浪晋太郎は横浜DeNAベイスターズに所属しています。')
     expect(response.answer.summary).not.toContain('根拠:')
     expect(response.answer.summary).not.toContain('current_team_roster')
-    expect(response.answer.summary).toContain('source: https://npb.jp/bis/teams/rst_db.html')
+    expect(response.answer.summary).not.toContain('source:')
+    expect(response.answer.source_urls).toContain('https://npb.jp/bis/teams/rst_db.html')
     expect(response.results.affiliations[0]).toMatchObject({
       year: 2026,
       team: '横浜DeNAベイスターズ',
@@ -302,7 +303,7 @@ describe('chat eval: db-backed query plan, result, formatter regression', () => 
         player_id: '91895133',
       },
     })
-    expect(response.answer.summary).toContain('DB上の最新確認年（2025年）では、山田はヤクルトに所属しています。')
+    expect(response.answer.summary).toContain('確認できる最新年（2025年）では、山田はヤクルトに所属しています。')
   })
 
   it('15 player affiliation nonexistent player: returns not_found without guessing', async () => {
@@ -419,7 +420,8 @@ describe('chat eval: db-backed query plan, result, formatter regression', () => 
     })
     expect(response.answer.summary).toContain('2026年の東京ヤクルトスワローズ 村上 宗隆の打撃成績です。')
     expect(response.answer.summary).toContain('本塁打12')
-    expect(response.answer.summary).toContain('source: https://npb.jp/bis/2026/stats/idb1_s.html')
+    expect(response.answer.summary).not.toContain('source:')
+    expect(response.answer.source_urls).toContain('https://npb.jp/bis/2026/stats/idb1_s.html')
     expect(response.answer.summary).not.toContain('イベントは')
     expect(response.answer.summary).not.toContain('playbyplay-not-downloaded')
   })

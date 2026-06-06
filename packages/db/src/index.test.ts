@@ -17,7 +17,7 @@ import {
   sqliteDatabaseToQuery,
   upstreamParserPackage,
 } from './index.js'
-import { createMultiYearQueryService } from './multi-year-query-service.js'
+import { createMultiYearQueryService, createSingleDatabaseQueryService } from './multi-year-query-service.js'
 import { loadRichGame } from './loader'
 
 const packageRoot = path.resolve(fileURLToPath(new URL('..', import.meta.url)))
@@ -371,7 +371,7 @@ describe('@npb/db', () => {
     db2026.prepare(
       `INSERT INTO player_pitching_stats
         (year, team_id, team_name, player_key, player_id, player_name, row_index, values_json, source_url)
-       VALUES (2026, 'db', '横浜DeNAベイスターズ', 'name:藤浪 晋太郎', null, '藤浪 晋太郎', 1, ?, ?)`,
+       VALUES (2026, 'db', '横浜DeNAベイスターズ', 'name:藤浪 晋太郎', '', '藤浪 晋太郎', 1, ?, ?)`,
     ).run(JSON.stringify({ 登板: '4', 三振: '11', 防御率: '2.00' }), 'https://npb.jp/bis/2026/stats/idp2_db.html')
     db2026.close()
 
@@ -415,6 +415,39 @@ describe('@npb/db', () => {
     } finally {
       service.close()
       rmSync(sqliteDir, { recursive: true, force: true })
+    }
+  })
+
+  it('single database searchPitchingLines returns BIS rows for year-filtered player_id recent lookups', async () => {
+    const db = openDatabase(':memory:')
+    migrateDatabase(db)
+    db.prepare(
+      `INSERT INTO player_pitching_stats
+        (year, team_id, team_name, player_key, player_id, player_name, row_index, values_json, source_url)
+       VALUES (2026, 'db', '横浜DeNAベイスターズ', 'name:藤浪 晋太郎', null, '藤浪 晋太郎', 1, ?, ?)`,
+    ).run(
+      JSON.stringify({ 選手: '藤浪 晋太郎', 登板: '5', 三振: '19', 投球回: '14', 自責点: '3', 防御率: '1.93' }),
+      'https://npb.jp/bis/2026/stats/idp2_db.html',
+    )
+
+    const service = createSingleDatabaseQueryService(sqliteDatabaseToQuery(db))
+    try {
+      const rows = await service.searchPitchingLines({
+        year: 2026,
+        pitcher_name: '藤浪 晋太郎',
+        pitcher_player_id: '41045137',
+        team: '横浜DeNAベイスターズ',
+        recent: false,
+        limit: 20,
+      })
+
+      expect(rows).toHaveLength(1)
+      expect(rows[0].sourceKind).toBe('bis_pitching_farm')
+      expect(rows[0].gameDate.slice(0, 4)).toBe('2026')
+      expect(rows[0].pitcherName).toBe('藤浪 晋太郎')
+      expect(rows[0].strikeouts).toBe(19)
+    } finally {
+      service.close()
     }
   })
 })

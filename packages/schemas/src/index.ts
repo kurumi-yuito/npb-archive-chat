@@ -153,6 +153,7 @@ export const searchGamesFiltersSchema = z.object({
   opponent: coercedText.optional(),
   venue: z.string().min(1).optional(),
   competition: z.string().min(1).optional(),
+  include_farm: z.boolean().optional(),
   limit: z.number().int().positive().max(500).optional(),
 })
 

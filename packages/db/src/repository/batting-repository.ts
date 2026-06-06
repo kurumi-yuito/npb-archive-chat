@@ -222,25 +222,15 @@ function addBattingLinePlayerIdFilter(
 ): void {
   const pattern = playerIdPattern(playerId)
   const nameFallback = playerName
-    ? `OR (batting_lines.player_url IS NULL AND ${compactNameSql('?')} LIKE ${compactNameSql('batting_lines.player_name')} || '%')`
+    ? `OR ${compactNameSql('?')} LIKE ${compactNameSql('batting_lines.player_name')} || '%'`
     : ''
   clauses.push(
     `(
       batting_lines.player_url LIKE ?
-      OR EXISTS (
-        SELECT 1
-        FROM events player_id_events
-        WHERE player_id_events.game_id = batting_lines.game_id
-          AND player_id_events.batter_name = batting_lines.player_name
-          AND (
-            player_id_events.batter_url LIKE ?
-            OR player_id_events.event_attributes_json LIKE ?
-          )
-      )
       ${nameFallback}
     )`,
   )
-  values.push(pattern, pattern, pattern)
+  values.push(pattern)
   if (playerName) {
     values.push(playerName)
   }

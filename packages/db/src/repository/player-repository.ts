@@ -10,6 +10,7 @@ export type SearchPlayerCandidatesFilters = {
   year_from?: number
   year_to?: number
   latestOnly?: boolean
+  includeEvents?: boolean
   limit?: number
 }
 
@@ -29,7 +30,13 @@ async function fetchProfileNamesForIds(
   }
 }
 
-type ProfileMatch = { player_id: string; knownTeams: string[]; currentTeam: string | null }
+type ProfileMatch = {
+  player_id: string
+  fullName: string | null
+  knownTeams: string[]
+  years: number[]
+  currentTeam: string | null
+}
 
 async function resolvePlayerIdsFromProfiles(
   database: QueryDatabase,
@@ -48,8 +55,8 @@ async function resolvePlayerIdsFromProfiles(
   }
   try {
     const profileRows = await database
-      .prepare(`SELECT player_id, team_name, year_teams_json FROM player_profiles WHERE ${clauses.join(' OR ')} LIMIT 30`)
-      .all(...values) as Array<{ player_id: string; team_name: string | null; year_teams_json: string | null }>
+      .prepare(`SELECT player_id, full_name, team_name, year_teams_json FROM player_profiles WHERE ${clauses.join(' OR ')} LIMIT 30`)
+      .all(...values) as Array<{ player_id: string; full_name: string | null; team_name: string | null; year_teams_json: string | null }>
     const rows = profileRows.length > 0
       ? profileRows
       : await resolvePlayerRowsFromIdSources(database, aliases)
@@ -59,9 +66,11 @@ async function resolvePlayerIdsFromProfiles(
     if (ids.length !== 1) return []
     const row = rows.find((r) => r.player_id === ids[0])!
     let knownTeams: string[] = []
+    let years: number[] = []
     try {
       const yearTeams = JSON.parse(row.year_teams_json ?? '{}') as Record<string, string>
       knownTeams = Object.values(yearTeams).filter(Boolean)
+      years = Object.keys(yearTeams).map(Number).filter(Number.isFinite)
     } catch {
       // ignore parse errors
     }
@@ -69,7 +78,14 @@ async function resolvePlayerIdsFromProfiles(
       ...knownTeams,
       ...rows.filter((r) => r.player_id === ids[0]).map((r) => r.team_name).filter(Boolean) as string[],
     ])]
-    return [{ player_id: ids[0]!, knownTeams, currentTeam: row.team_name ?? null }]
+    const profileNames = row.full_name ? new Map<string, string>() : await fetchProfileNamesForIds(database, [ids[0]!])
+    return [{
+      player_id: ids[0]!,
+      fullName: row.full_name ?? profileNames.get(ids[0]!) ?? null,
+      knownTeams,
+      years: [...new Set(years)].sort((a, b) => a - b),
+      currentTeam: row.team_name ?? null,
+    }]
   } catch {
     return []
   }
@@ -78,7 +94,7 @@ async function resolvePlayerIdsFromProfiles(
 async function resolvePlayerRowsFromIdSources(
   database: QueryDatabase,
   aliases: string[],
-): Promise<Array<{ player_id: string; team_name: string | null; year_teams_json: string | null }>> {
+): Promise<Array<{ player_id: string; full_name: string | null; team_name: string | null; year_teams_json: string | null }>> {
   const values: string[] = []
   const clauses = aliases.map((alias) => {
     const compact = alias.replace(/[ 　]/gu, '')
@@ -92,10 +108,12 @@ async function resolvePlayerRowsFromIdSources(
     .prepare(
       `SELECT
         player_id,
+        full_name,
         team_name,
         NULL AS year_teams_json
       FROM (
         SELECT current_team_roster.player_id AS player_id,
+               current_team_roster.player_name AS full_name,
                current_team_roster.team_name AS team_name,
                REPLACE(REPLACE(current_team_roster.player_name,' ',''),char(12288),'') AS compact_name,
                current_team_roster.year AS year
@@ -103,6 +121,7 @@ async function resolvePlayerRowsFromIdSources(
          WHERE current_team_roster.player_id IS NOT NULL AND current_team_roster.player_id <> ''
         UNION ALL
         SELECT player_batting_stats.player_id AS player_id,
+               player_batting_stats.player_name AS full_name,
                player_batting_stats.team_name AS team_name,
                REPLACE(REPLACE(player_batting_stats.player_name,' ',''),char(12288),'') AS compact_name,
                player_batting_stats.year AS year
@@ -110,6 +129,7 @@ async function resolvePlayerRowsFromIdSources(
          WHERE player_batting_stats.player_id IS NOT NULL AND player_batting_stats.player_id <> ''
         UNION ALL
         SELECT player_pitching_stats.player_id AS player_id,
+               player_pitching_stats.player_name AS full_name,
                player_pitching_stats.team_name AS team_name,
                REPLACE(REPLACE(player_pitching_stats.player_name,' ',''),char(12288),'') AS compact_name,
                player_pitching_stats.year AS year
@@ -117,6 +137,7 @@ async function resolvePlayerRowsFromIdSources(
          WHERE player_pitching_stats.player_id IS NOT NULL AND player_pitching_stats.player_id <> ''
         UNION ALL
         SELECT player_fielding_stats.player_id AS player_id,
+               player_fielding_stats.player_name AS full_name,
                player_fielding_stats.team_name AS team_name,
                REPLACE(REPLACE(player_fielding_stats.player_name,' ',''),char(12288),'') AS compact_name,
                player_fielding_stats.year AS year
@@ -127,7 +148,7 @@ async function resolvePlayerRowsFromIdSources(
       ORDER BY year DESC
       LIMIT 30`,
     )
-    .all(...values) as Array<{ player_id: string; team_name: string | null; year_teams_json: string | null }>
+    .all(...values) as Array<{ player_id: string; full_name: string | null; team_name: string | null; year_teams_json: string | null }>
 }
 
 export async function searchPlayerCandidates(
@@ -141,6 +162,18 @@ export async function searchPlayerCandidates(
 
   const profileMatches = await resolvePlayerIdsFromProfiles(database, [filters.name])
   const profilePlayerIds = profileMatches.map((m) => m.player_id)
+  if (profileMatches.length === 1 && !filters.latestOnly) {
+    const profile = profileMatches[0]!
+    return [{
+      player_id: profile.player_id,
+      name: profile.fullName ?? filters.name,
+      primary_team: profile.currentTeam,
+      roles: ['profile'],
+      teams: [...new Set([...profile.knownTeams, profile.currentTeam].filter(Boolean) as string[])],
+      years: profile.years,
+      match_kind: 'profile',
+    } as PlayerCandidate & { match_kind: 'profile' }]
+  }
 
   const rows: RawPlayerMention[] = []
   rows.push(...await queryRawPlayerMentions(database, aliases, filters, {
@@ -162,24 +195,26 @@ export async function searchPlayerCandidates(
     yearColumn: 'player_pitching_stats.year',
   })
   rows.push(...bisRows)
-  rows.push(...await queryRawPlayerMentions(database, aliases, filters, {
-    sql: `SELECT events.batter_name AS name, COALESCE(NULLIF(events.batter_url, ''), CASE WHEN json_valid(events.event_attributes_json) THEN json_extract(events.event_attributes_json, '$.batter_links[0].url') ELSE NULL END) AS player_url, ? AS role, events.offense_team AS team, games.year AS year FROM events INNER JOIN games ON games.game_id = events.game_id`,
-    role: 'batter',
-    nameColumn: 'events.batter_name',
-    yearColumn: 'games.year',
-  }))
-  rows.push(...await queryRawPlayerMentions(database, aliases, filters, {
-    sql: 'SELECT events.pitcher_name AS name, NULLIF(events.pitcher_url, \'\') AS player_url, ? AS role, NULL AS team, games.year AS year FROM events INNER JOIN games ON games.game_id = events.game_id',
-    role: 'pitcher',
-    nameColumn: 'events.pitcher_name',
-    yearColumn: 'games.year',
-  }))
-  rows.push(...await queryRawPlayerMentions(database, aliases, filters, {
-    sql: 'SELECT events.runner_name AS name, NULLIF(events.runner_url, \'\') AS player_url, ? AS role, events.offense_team AS team, games.year AS year FROM events INNER JOIN games ON games.game_id = events.game_id',
-    role: 'runner',
-    nameColumn: 'events.runner_name',
-    yearColumn: 'games.year',
-  }))
+  if (filters.includeEvents !== false) {
+    rows.push(...await queryRawPlayerMentions(database, aliases, filters, {
+      sql: `SELECT events.batter_name AS name, COALESCE(NULLIF(events.batter_url, ''), CASE WHEN json_valid(events.event_attributes_json) THEN json_extract(events.event_attributes_json, '$.batter_links[0].url') ELSE NULL END) AS player_url, ? AS role, events.offense_team AS team, games.year AS year FROM events INNER JOIN games ON games.game_id = events.game_id`,
+      role: 'batter',
+      nameColumn: 'events.batter_name',
+      yearColumn: 'games.year',
+    }))
+    rows.push(...await queryRawPlayerMentions(database, aliases, filters, {
+      sql: 'SELECT events.pitcher_name AS name, NULLIF(events.pitcher_url, \'\') AS player_url, ? AS role, NULL AS team, games.year AS year FROM events INNER JOIN games ON games.game_id = events.game_id',
+      role: 'pitcher',
+      nameColumn: 'events.pitcher_name',
+      yearColumn: 'games.year',
+    }))
+    rows.push(...await queryRawPlayerMentions(database, aliases, filters, {
+      sql: 'SELECT events.runner_name AS name, NULLIF(events.runner_url, \'\') AS player_url, ? AS role, events.offense_team AS team, games.year AS year FROM events INNER JOIN games ON games.game_id = events.game_id',
+      role: 'runner',
+      nameColumn: 'events.runner_name',
+      yearColumn: 'games.year',
+    }))
+  }
   rows.push(...await queryRawPlayerMentions(database, aliases, filters, {
     sql: 'SELECT batting_lines.player_name AS name, NULLIF(batting_lines.player_url, \'\') AS player_url, ? AS role, batting_lines.team AS team, games.year AS year FROM batting_lines INNER JOIN games ON games.game_id = batting_lines.game_id',
     role: 'batter',
@@ -205,7 +240,9 @@ export async function searchPlayerCandidates(
   if (profilePlayerIds.length > 0) {
     // When we know exactly which player the input refers to (unique profile match),
     // only keep candidates that are that player.
-    const idFiltered = candidates.filter((c) => c.player_id && profilePlayerIds.includes(c.player_id))
+    const idFiltered = candidates
+      .filter((c) => c.player_id && profilePlayerIds.includes(c.player_id))
+      .map((c) => ({ ...c, match_kind: 'profile' }))
     if (idFiltered.length > 0) {
       candidates = idFiltered
     } else if (profilePlayerIds.length === 1) {
@@ -230,6 +267,7 @@ export async function searchPlayerCandidates(
           ...c,
           player_id: knownPlayerId,
           teams: [...new Set([...c.teams, ...canonicalTeams])],
+          match_kind: 'profile',
         }))
     } else {
       candidates = idFiltered
@@ -245,7 +283,7 @@ export async function searchPlayerCandidates(
         c.player_id === profilePlayerIds[0] ? { ...c, primary_team: profileCurrentTeam } : c,
       )
     }
-  } else if (filters.name.replace(/[ 　]/gu, '').length > 2) {
+  } else {
     // No profile found for the input (player not in current NPB registry).
     // For full-name inputs (>2 compact chars), filter out all player_id candidates whose
     // profile name is incompatible with the input. This prevents "村上宗隆" from resolving

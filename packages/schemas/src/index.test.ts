@@ -212,12 +212,14 @@ describe('@npb/schemas', () => {
         game_date: '2025-08-15',
         game_id: 'b-l-17',
         venue: '東京ドーム',
+        include_farm: true,
         limit: 50,
       }),
     ).toEqual({
       game_date: '2025-08-15',
       game_id: 'b-l-17',
       venue: '東京ドーム',
+      include_farm: true,
       limit: 50,
     })
   })
