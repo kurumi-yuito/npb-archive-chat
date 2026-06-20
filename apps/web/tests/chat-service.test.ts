@@ -8,6 +8,7 @@ import {
 import { richGameSchema } from '@npb/schemas'
 import { loadRichGame } from '../../../packages/db/src/loader'
 import { createChatService } from '../server/services/chat-service'
+import { ChatFinalAnswerLlmHttpError } from '../server/services/chat-final-answer-llm'
 
 function buildFixtureRichGame() {
   return richGameSchema.parse({
@@ -403,6 +404,31 @@ describe('chat-service', () => {
     }
   })
 
+  it('returns award_winners responses with schema-compliant execution metadata', async () => {
+    const service = createChatService(createFakeQueryService(), {
+      parseStructuredQueryFromMessage: async () => ({
+        intent: 'award_winners',
+        filters: {
+          year: 2025,
+          award_type: 'rookie_of_the_year',
+        },
+      }),
+    })
+
+    const response = await service.answerQuestion('昨シーズン（2025年）の新人王は誰ですか？')
+
+    expect(response.structured_query.intent).toBe('award_winners')
+    expect(response.answer.summary).toBe(
+      '2025年度の最優秀新人賞（新人王）は、セ・リーグが荘司宏太（東京ヤクルト）、パ・リーグが西川史礁（千葉ロッテ）です。',
+    )
+    expect(response.answer.execution_metadata).toEqual({
+      data_requirements: ['award_winners', 'source_snapshots'],
+      repositories: ['fetchAwardWinners', 'listSourceSnapshotsByGameIds'],
+      player_id_required: false,
+      player_id_satisfied: true,
+    })
+  })
+
   it('uses an injected async structured query parser result for DB search', async () => {
     const database = openDatabase()
 
@@ -538,7 +564,7 @@ describe('chat-service', () => {
     await expect(service.answerQuestion('ヤクルト村上の今年の成績'))
       .resolves.toMatchObject({
         structured_query: {
-          intent: 'search_batting',
+          intent: 'aggregate_batting',
           filters: { team: 'ヤクルト', player_name: '村上' },
         },
       })
@@ -603,6 +629,61 @@ describe('chat-service', () => {
     }
   })
 
+  it('includes batting runs in BIS batting season summaries', async () => {
+    const service = createChatService(createFakeQueryService({
+      searchBattingLines: async () => [{
+        gameId: 'bis:2026:db:idb1',
+        gameDate: '2026-01-01',
+        team: '横浜DeNAベイスターズ',
+        playerName: '牧秀悟',
+        battingOrder: null,
+        position: null,
+        atBats: 78,
+        runs: 14,
+        hits: 26,
+        runsBattedIn: 10,
+        stolenBases: 1,
+        strikeouts: 13,
+        walks: 11,
+        rawText: JSON.stringify({
+          試合: 21,
+          打数: 78,
+          安打: 26,
+          本塁打: 2,
+          打点: 10,
+          得点: 14,
+          盗塁: 1,
+          打率: '.333',
+          出塁率: '.400',
+          長打率: '.551',
+        }),
+        sourceKind: 'bis_batting',
+        statsJson: JSON.stringify({
+          試合: 21,
+          打数: 78,
+          安打: 26,
+          本塁打: 2,
+          打点: 10,
+          得点: 14,
+          盗塁: 1,
+          打率: '.333',
+          出塁率: '.400',
+          長打率: '.551',
+        }),
+      }],
+    }), {
+      allowFinalAnswerFallback: false,
+      parseStructuredQueryFromMessage: async () => ({
+        intent: 'search_batting',
+        filters: { year: 2026, player_name: '牧秀悟' },
+      }),
+    })
+
+    const response = await service.answerQuestion('牧秀悟の2026年の成績を教えて')
+
+    expect(response.answer.summary).toContain('14得点')
+  })
+
   it('sanitizes invalid pitcher_name for aggregate pitching ranking questions', async () => {
     const cases = [
       {
@@ -649,6 +730,46 @@ describe('chat-service', () => {
         filters: testCase.expectedFilters,
       })
     }
+  })
+
+  it('includes hits and walks in BIS pitching season summaries', async () => {
+    const service = createChatService(createFakeQueryService({
+      searchPitchingLines: async () => [{
+        gameId: 'bis:2026:db:idp2',
+        gameDate: '2026-01-01',
+        team: '横浜DeNAベイスターズ',
+        pitcherName: '藤浪晋太郎',
+        inningsPitched: '14',
+        pitchCount: 0,
+        strikeouts: 19,
+        runs: 5,
+        earnedRuns: 3,
+        sourceKind: 'bis_pitching_farm',
+        statsJson: JSON.stringify({
+          登板: 5,
+          勝利: 1,
+          敗北: 1,
+          投球回: '14',
+          被安打: 11,
+          与四球: 7,
+          三振: 19,
+          失点: 5,
+          自責点: 3,
+          防御率: '1.93',
+        }),
+      }],
+    }), {
+      allowFinalAnswerFallback: false,
+      parseStructuredQueryFromMessage: async () => ({
+        intent: 'search_pitching',
+        filters: { year: 2026, pitcher_name: '藤浪晋太郎' },
+      }),
+    })
+
+    const response = await service.answerQuestion('藤浪は2026年のここまでの二軍での成績はどうですか？')
+
+    expect(response.answer.summary).toContain('被安打11')
+    expect(response.answer.summary).toContain('与四球7')
   })
 
   it('sanitizes invalid player_name for WHIP aggregate pitching ranking questions', async () => {
@@ -1131,7 +1252,7 @@ describe('chat-service', () => {
     expect(response.answer.summary).not.toContain('選手を特定できない')
   })
 
-  it('returns ambiguous when year-filtered search yields one candidate but broad search finds multiple (surname ambiguity)', async () => {
+  it('resolves a surname through player_id-bearing roster rows when the year is explicit', async () => {
     // Simulates "村上宗隆 vs 村上頌樹": year-filtered search only sees 村上頌樹 (stored as "村上 頌樹")
     // but broad search reveals both. The old code used selectCandidatesForInput on the broad
     // results which only counted exact name "村上" matches (村上宗隆), missing 村上頌樹 (name "村上 頌樹").
@@ -1153,9 +1274,9 @@ describe('chat-service', () => {
 
     expect(response.answer.resolved_player).toMatchObject({
       input: '村上',
-      status: 'ambiguous',
+      status: 'resolved',
+      player_id: '13315153',
     })
-    expect(response.answer.result_count).toBe(0)
   })
 
   it('uses a team-qualified mention as a resolution hint but searches current team for non-era recent questions', async () => {
@@ -1202,6 +1323,74 @@ describe('chat-service', () => {
     })
     expect(pitchingFilters).not.toMatchObject({ team: '阪神' })
     expect(response.answer.summary).toContain('現在のNPB所属は横浜DeNAベイスターズです')
+  })
+
+  it('routes 最近の打席内容 to batting instead of events', async () => {
+    const service = createChatService(createFakeQueryService({
+      searchBattingLines: async () => [{
+        gameId: 'r20260605c-h-01',
+        gameDate: '2026-06-05',
+        team: '広島東洋カープ',
+        playerName: '坂倉',
+        battingOrder: 4,
+        position: '(捕)',
+        atBats: 4,
+        runs: 1,
+        hits: 2,
+        runsBattedIn: 1,
+        stolenBases: 0,
+        strikeouts: 0,
+        walks: 1,
+        rawText: '坂倉 右安 四球',
+      }],
+    }))
+
+    const response = await service.answerQuestion('坂倉将吾の最近の打席内容を教えてください')
+
+    expect(response.structured_query.intent).toBe('search_batting')
+    expect(response.answer.summary).toContain('打撃内容')
+    expect(response.answer.summary).toContain('坂倉')
+  })
+
+  it('treats 直近 pitching questions as recent and returns the newest appearance', async () => {
+    const service = createChatService(createFakeQueryService({
+      searchPitchingLines: async () => [
+        {
+          gameId: 'f20260610db-e-01',
+          gameDate: '2026-06-10',
+          team: '横浜DeNAベイスターズ',
+          pitcherName: '藤浪',
+          inningsPitched: '6',
+          pitchCount: 91,
+          strikeouts: 7,
+          runs: 0,
+          earnedRuns: 0,
+          sourceKind: 'box',
+        },
+        {
+          gameId: 'f20260522db-e-01',
+          gameDate: '2026-05-22',
+          team: '横浜DeNAベイスターズ',
+          pitcherName: '藤浪',
+          inningsPitched: '5',
+          pitchCount: 80,
+          strikeouts: 8,
+          runs: 1,
+          earnedRuns: 1,
+          sourceKind: 'box',
+        },
+      ],
+    }), {
+      parseStructuredQueryFromMessage: async () => ({
+        intent: 'search_pitching',
+        filters: { pitcher_name: '藤浪', recent: true },
+      }),
+    })
+
+    const response = await service.answerQuestion('藤浪の直近の試合ではどんな投球だった？')
+
+    expect(response.answer.summary).toContain('2026年6月10日')
+    expect(response.answer.summary).toContain('確認できる最新の出場記録は2026年6月10日')
   })
 
   it('resolves a surname through player_id-bearing roster rows before treating transfer history as ambiguous', async () => {
@@ -1402,6 +1591,23 @@ describe('chat-service', () => {
     expect(response.answer.result_count).toBeGreaterThan(0)
     expect(typeof response.answer.summary).toBe('string')
     expect(response.answer.summary.length).toBeGreaterThan(0)
+  })
+
+  it('falls back to deterministic summary when final answer LLM is rate limited', async () => {
+    const service = createChatService(createFakeQueryService(), {
+      parseStructuredQueryFromMessage: async () => ({
+        intent: 'player_affiliation',
+        filters: { player_name: '山田' },
+      }),
+      generateFinalAnswer: async () => {
+        throw new ChatFinalAnswerLlmHttpError('rate limited', 429)
+      },
+    })
+
+    const response = await service.answerQuestion('山田は今どこの球団ですか？')
+
+    expect(response.answer.result_count).toBeGreaterThan(0)
+    expect(response.answer.summary).toContain('山田')
   })
 
   it('falls back from empty event highlight search to game detail evidence', async () => {

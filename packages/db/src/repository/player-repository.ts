@@ -46,8 +46,8 @@ async function resolvePlayerIdsFromProfiles(
   const values: string[] = []
   const clauses: string[] = []
   for (const alias of aliases) {
-    const compact = alias.replace(/[ 　]/gu, '')
-    const normalized = alias.replace(/[　]/gu, ' ').trim()
+    const compact = alias.replace(/[ \u3000]/gu, '')
+    const normalized = alias.replace(/[\u3000]/gu, ' ').trim()
     values.push(compact, `${normalized} %`)
     clauses.push(
       `(REPLACE(REPLACE(player_profiles.full_name,' ',''),char(12288),'') = ? OR player_profiles.full_name LIKE ?)`,
@@ -97,7 +97,7 @@ async function resolvePlayerRowsFromIdSources(
 ): Promise<Array<{ player_id: string; full_name: string | null; team_name: string | null; year_teams_json: string | null }>> {
   const values: string[] = []
   const clauses = aliases.map((alias) => {
-    const compact = alias.replace(/[ 　]/gu, '')
+    const compact = alias.replace(/[ \u3000]/gu, '')
     values.push(compact, `${compact}%`)
     return `(compact_name = ? OR compact_name LIKE ?)`
   })
@@ -164,11 +164,12 @@ export async function searchPlayerCandidates(
   const profilePlayerIds = profileMatches.map((m) => m.player_id)
   if (profileMatches.length === 1 && !filters.latestOnly) {
     const profile = profileMatches[0]!
+    const inferredRoles = await inferPlayerRoles(database, profile.player_id)
     return [{
       player_id: profile.player_id,
       name: profile.fullName ?? filters.name,
       primary_team: profile.currentTeam,
-      roles: ['profile'],
+      roles: ['profile', ...inferredRoles],
       teams: [...new Set([...profile.knownTeams, profile.currentTeam].filter(Boolean) as string[])],
       years: profile.years,
       match_kind: 'profile',
@@ -292,13 +293,13 @@ export async function searchPlayerCandidates(
       candidates.filter((c) => c.player_id).map((c) => c.player_id as string),
     )]
     if (playerIdsToCheck.length > 0) {
-      const inputCompact = filters.name.replace(/[ 　]/gu, '')
+      const inputCompact = filters.name.replace(/[ \u3000]/gu, '')
       const profileNames = await fetchProfileNamesForIds(database, playerIdsToCheck)
       candidates = candidates.filter((c) => {
         if (!c.player_id) return true
         const profileFullName = profileNames.get(c.player_id)
         if (!profileFullName) return true
-        const profileCompact = profileFullName.replace(/[ 　]/gu, '')
+        const profileCompact = profileFullName.replace(/[ \u3000]/gu, '')
         return inputCompact.startsWith(profileCompact) || profileCompact.startsWith(inputCompact)
       })
     }
@@ -330,7 +331,7 @@ async function queryRawPlayerMentions(
   const clauses = [`${source.nameColumn} IS NOT NULL`, `${source.nameColumn} <> ''`]
   clauses.push(`(${
     aliases.map((alias) => {
-      const compact = alias.replace(/[ 　]/gu, '')
+      const compact = alias.replace(/[ \u3000]/gu, '')
       values.push(compact, `%${compact}%`, compact)
       return `(${compactNameCol(source.nameColumn)} = ? OR ${compactNameCol(source.nameColumn)} LIKE ? OR (? LIKE ${compactNameCol(source.nameColumn)} || '%' AND LENGTH(${compactNameCol(source.nameColumn)}) >= 2))`
     }).join(' OR ')
@@ -401,7 +402,7 @@ function groupPlayerMentions(rows: RawPlayerMention[], aliases: string[]): Playe
       years: unique(group.years).sort((a, b) => a - b),
     }))
     .sort((left, right) => {
-      const compactName = (s: string) => s.replace(/[ 　]/gu, '')
+      const compactName = (s: string) => s.replace(/[ \u3000]/gu, '')
       const leftExact = aliases.some((a) => compactName(a) === compactName(left.name)) ? 0 : 1
       const rightExact = aliases.some((a) => compactName(a) === compactName(right.name)) ? 0 : 1
       if (leftExact !== rightExact) return leftExact - rightExact
@@ -498,6 +499,21 @@ function unique<T>(values: T[]): T[] {
   return [...new Set(values)]
 }
 
+async function inferPlayerRoles(database: QueryDatabase, playerId: string): Promise<Array<'batter' | 'pitcher'>> {
+  const [battingRows, pitchingRows] = await Promise.all([
+    database.prepare('SELECT COUNT(*) AS count FROM player_batting_stats WHERE player_id = ?').get(playerId) as Promise<{ count?: number } | undefined>,
+    database.prepare('SELECT COUNT(*) AS count FROM player_pitching_stats WHERE player_id = ?').get(playerId) as Promise<{ count?: number } | undefined>,
+  ])
+  const roles: Array<'batter' | 'pitcher'> = []
+  if (Number(battingRows?.count ?? 0) > 0) {
+    roles.push('batter')
+  }
+  if (Number(pitchingRows?.count ?? 0) > 0) {
+    roles.push('pitcher')
+  }
+  return roles
+}
+
 function compactNameCol(col: string): string {
   return `REPLACE(REPLACE(${col}, ' ', ''), char(12288), '')`
 }
@@ -505,7 +521,7 @@ function compactNameCol(col: string): string {
 function samePlayerName(a: string, b: string): boolean {
   if (a === b) return true
   // Strip BIS annotation prefixes (*, ＊, +, ＋) and whitespace before comparing
-  const normalize = (s: string) => s.replace(/^[*＊+＋\s　]+/u, '').replace(/[\s　]/gu, '')
+  const normalize = (s: string) => s.replace(/^[*＊+＋\s\u3000]+/u, '').replace(/[\s\u3000]/gu, '')
   const na = normalize(a)
   const nb = normalize(b)
   return na === nb

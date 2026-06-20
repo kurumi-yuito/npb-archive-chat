@@ -238,7 +238,7 @@ export type BisPlayerProfile = {
 export function parseBisPlayerProfileHtml(html: string, playerId: string, sourceUrl: string): BisPlayerProfile | null {
   const titleMatch = html.match(/<title>([^<]+)<\/title>/i)
   if (!titleMatch) return null
-  // Title: "牧　秀悟（横浜DeNAベイスターズ） | 個人年度別成績 | NPB.jp 日本野球機構"
+  // Title example includes an ideographic space between surname and given name.
   // cleanText converts U+3000 (全角スペース) to regular space
   const titleText = cleanText(titleMatch[1])
   const nameTeamMatch = titleText.match(/^([^（(|]+?)(?:（([^）)]+)）)?\s*(?:\|.*)?$/)

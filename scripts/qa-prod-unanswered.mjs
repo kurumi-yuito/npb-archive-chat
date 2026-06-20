@@ -4,9 +4,10 @@ import { setTimeout as delay } from 'node:timers/promises'
 const baseUrl = process.env.QA_BASE_URL ?? 'https://npb-chat.dom9th-works.com'
 const docPath = process.argv[2] ?? 'docs/qa-test-cases.md'
 const args = process.argv.slice(3)
-const delayMs = Number(process.env.QA_DELAY_MS ?? 1200)
+const delayMs = Number(process.env.QA_DELAY_MS ?? 7000)
 const fetchTimeoutMs = Number(process.env.QA_FETCH_TIMEOUT_MS ?? 60000)
 const fetchRetryDelaysMs = [2000, 5000, 10000]
+const httpRetryDelaysMs = [5000, 15000, 30000, 60000]
 
 let startId = null
 let endId = null
@@ -127,6 +128,22 @@ for (const [index, testCase] of cases.entries()) {
         } catch {
           // Keep the raw body for diagnostics.
         }
+        const canRetryHttp =
+          attempt < httpRetryDelaysMs.length &&
+          (response.status === 429 ||
+            response.status === 503 ||
+            json?.data?.code === 'chat_llm_unavailable')
+        if (canRetryHttp) {
+          retryErrors.push({
+            attempt: attemptNo,
+            name: 'HttpRetry',
+            message: `HTTP ${response.status}: ${json?.message ?? response.statusText}`,
+            stack: null,
+            cause: null,
+          })
+          await delay(retryDelayMs(response, httpRetryDelaysMs[attempt]))
+          continue
+        }
         lastError = null
         break
       } catch (err) {
@@ -177,6 +194,12 @@ for (const [index, testCase] of cases.entries()) {
       body: requestBody,
     },
     structured_query: json?.structured_query ?? null,
+    intent: json?.structured_query?.intent ?? null,
+    entities: extractEntities(json?.structured_query ?? null),
+    player_id: extractPlayerId(json ?? null),
+    target_period: extractTargetPeriod(json?.structured_query ?? null),
+    data_requirements: json?.answer?.execution_metadata?.data_requirements ?? null,
+    repositories: json?.answer?.execution_metadata?.repositories ?? null,
     summary: json?.answer?.summary ?? null,
     result_count: json?.answer?.result_count ?? null,
     resolved_player: json?.answer?.resolved_player ?? null,
@@ -214,6 +237,68 @@ for (const [index, testCase] of cases.entries()) {
   })
   if (index + 1 < cases.length) {
     await delay(delayMs)
+  }
+}
+
+function retryDelayMs(response, fallbackMs) {
+  const retryAfter = response.headers.get('retry-after')
+  if (!retryAfter) {
+    return fallbackMs
+  }
+  const seconds = Number(retryAfter)
+  if (Number.isFinite(seconds) && seconds >= 0) {
+    return Math.max(fallbackMs, seconds * 1000)
+  }
+  const dateMs = Date.parse(retryAfter)
+  if (Number.isFinite(dateMs)) {
+    return Math.max(fallbackMs, dateMs - Date.now())
+  }
+  return fallbackMs
+}
+
+function extractEntities(structuredQuery) {
+  const filters = structuredQuery?.filters
+  if (!filters || typeof filters !== 'object') {
+    return null
+  }
+  return {
+    player: filters.player_name ?? null,
+    pitcher: filters.pitcher_name ?? null,
+    batter: filters.batter_name ?? null,
+    runner: filters.runner_name ?? null,
+    team: filters.team ?? null,
+    opponent: filters.opponent ?? null,
+    game_id: filters.game_id ?? null,
+  }
+}
+
+function extractPlayerId(payload) {
+  const resolved = payload?.answer?.resolved_player
+  if (resolved?.player_id) {
+    return resolved.player_id
+  }
+  const filters = payload?.structured_query?.filters
+  if (!filters || typeof filters !== 'object') {
+    return null
+  }
+  return filters.player_id ??
+    filters.pitcher_player_id ??
+    filters.batter_player_id ??
+    filters.runner_player_id ??
+    null
+}
+
+function extractTargetPeriod(structuredQuery) {
+  const filters = structuredQuery?.filters
+  if (!filters || typeof filters !== 'object') {
+    return null
+  }
+  return {
+    game_date: filters.game_date ?? null,
+    year: filters.year ?? null,
+    year_from: filters.year_from ?? null,
+    year_to: filters.year_to ?? null,
+    recent: filters.recent ?? null,
   }
 }
 

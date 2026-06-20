@@ -159,6 +159,97 @@ describe('chat-query-parser', () => {
     )
   })
 
+  it('does not use the stub parser on LLM rate limits when fallback is disabled', async () => {
+    const parser = createChatQueryParser(
+      { baseUrl: 'https://example.test/v1', apiKey: 'secret', model: 'test-model' },
+      {
+        allowFallback: false,
+        llmGenerator: {
+          generateStructuredQuery: vi.fn().mockRejectedValue(new Error('rate limited')),
+        },
+        logger: { warn: vi.fn() },
+      },
+    )
+
+    await expect(
+      parser('2025/08/15の投手成績で team=ロッテ pitcher_name=益田 を見せて'),
+    ).rejects.toBeInstanceOf(ChatQueryParserUnavailableError)
+  })
+
+  it('parses QA season batting questions with player names in fallback logic', () => {
+    expect(parseStructuredQueryFromMessageStub('牧秀悟の今シーズンの通算打率は？')).toEqual({
+      intent: 'aggregate_batting',
+      filters: {
+        year: currentJstYear(),
+        player_name: '牧秀悟',
+      },
+    })
+  })
+
+  it('parses QA shorthand season batting questions in fallback logic', () => {
+    expect(parseStructuredQueryFromMessageStub('牧の2026年の成績を教えて')).toEqual({
+      intent: 'search_batting',
+      filters: {
+        year: 2026,
+        player_name: '牧',
+      },
+    })
+  })
+
+  it('parses QA pitching season questions with player and team in fallback logic', () => {
+    expect(
+      parseStructuredQueryFromMessageStub('オリックスの山本由伸の2026年の一軍での投球成績、登板数と防御率を教えてください'),
+    ).toEqual({
+      intent: 'search_pitching',
+      filters: {
+        year: 2026,
+        pitcher_name: '山本由伸',
+        team: 'オリックス',
+      },
+    })
+  })
+
+  it('does not truncate pitcher names to generic fragments in fallback logic', () => {
+    expect(
+      parseStructuredQueryFromMessageStub('藤浪は2026年のここまでの二軍での成績はどうですか？防御率や登板数など詳しく教えてください'),
+    ).toEqual({
+      intent: 'search_pitching',
+      filters: {
+        year: 2026,
+        pitcher_name: '藤浪',
+      },
+    })
+  })
+
+  it('parses scoreless long-start ranking questions in fallback logic', () => {
+    expect(
+      parseStructuredQueryFromMessageStub('今シーズン（2026年）の先発登板で、7回以上投げてかつ自責点0だった試合が一番多い投手は誰ですか？その投手の名前と該当試合数を教えてください。'),
+    ).toEqual({
+      intent: 'aggregate_pitching',
+      filters: {
+        year: 2026,
+        sort_by: 'games',
+        limit: 20,
+        min_innings_per_start: 7,
+        max_earned_runs_per_start: 0,
+      },
+    })
+  })
+
+  it('parses longest start questions in fallback logic', () => {
+    expect(
+      parseStructuredQueryFromMessageStub('今シーズン広島の先発投手で最も長く投げた登板は？'),
+    ).toEqual({
+      intent: 'aggregate_pitching',
+      filters: {
+        year: currentJstYear(),
+        team: '広島',
+        sort_by: 'inningsPitched',
+        limit: 20,
+      },
+    })
+  })
+
   it('keeps the stub parser behavior available as fallback logic', () => {
     expect(
       parseStructuredQueryFromMessageStub(
@@ -363,6 +454,13 @@ describe('chat-query-parser', () => {
       },
     })
 
+    expect(parseStructuredQueryFromMessageStub('坂倉将吾の最近の打席内容を教えてください')).toEqual({
+      intent: 'search_batting',
+      filters: {
+        player_name: '坂倉将吾',
+      },
+    })
+
     expect(parseStructuredQueryFromMessageStub('益田投手の最近の調子はどう')).toEqual({
       intent: 'search_pitching',
       filters: {
@@ -377,6 +475,28 @@ describe('chat-query-parser', () => {
         year: 2018,
         game_id: 'r20180524e-b-12',
         starter: true,
+      },
+    })
+
+    expect(parseStructuredQueryFromMessageStub('今シーズンのヤクルトで最も多く4番に起用されている選手は誰ですか？')).toEqual({
+      intent: 'aggregate_batting',
+      filters: {
+        year: currentJstYear(),
+        team: 'ヤクルト',
+        batting_order: 4,
+        sort_by: 'games',
+        limit: 1,
+      },
+    })
+
+    expect(parseStructuredQueryFromMessageStub('今シーズンDeNAで捕手（スタメン）として最も多く出場しているのは誰？')).toEqual({
+      intent: 'aggregate_batting',
+      filters: {
+        year: currentJstYear(),
+        team: 'DeNA',
+        position: '捕',
+        sort_by: 'games',
+        limit: 3,
       },
     })
 

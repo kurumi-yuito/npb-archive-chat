@@ -99,11 +99,6 @@ const teamAliasEntries = [
   ['hawks', 'ソフトバンク'],
 ] as const
 
-const playerAliasEntries = [
-  ['髙松', '髙松'],
-  ['高松', '髙松'],
-] as const
-
 const positionAliasEntries = [
   ['ショート', '遊'], ['遊撃', '遊'], ['遊撃手', '遊'], ['ss', '遊'],
   ['セカンド', '二'], ['二塁', '二'], ['二塁手', '二'], ['2b', '二'],
@@ -121,12 +116,12 @@ const positionAliasMap = new Map(
   positionAliasEntries.map(([alias, canonical]) => [normalizeLookupKey(alias), canonical]),
 )
 
+const playerAliasMap = new Map([
+  ['高松', '髙松'],
+].map(([alias, canonical]) => [normalizeLookupKey(alias), canonical]))
+
 const teamAliasMap = new Map(
   teamAliasEntries.map(([alias, canonical]) => [normalizeLookupKey(alias), canonical]),
-)
-
-const playerAliasMap = new Map(
-  playerAliasEntries.map(([alias, canonical]) => [normalizeLookupKey(alias), canonical]),
 )
 
 export function normalizeChatStructuredQuery(
@@ -251,6 +246,15 @@ export function normalizeChatStructuredQuery(
     })
   }
 
+  if (structuredQuery.intent === 'award_winners') {
+    return chatStructuredQuerySchema.parse({
+      intent: 'award_winners',
+      filters: {
+        ...structuredQuery.filters,
+      },
+    })
+  }
+
   return chatStructuredQuerySchema.parse({
     intent: 'search_events',
     filters: {
@@ -327,7 +331,7 @@ export function normalizeFreeText(value: string | undefined): string | undefined
 function normalizeLookupKey(value: string): string {
   return value
     .normalize('NFKC')
-    .replace(/^[*＊+＋\s　]+/u, '')
+    .replace(/^[*＊+＋\s\u3000]+/u, '')
     .replace(/[・･]/gu, '')
     .replace(/[‐‑‒–—―ーｰ−]/gu, 'ー')
     .replace(/[ \u3000\t\r\n]+/gu, '')

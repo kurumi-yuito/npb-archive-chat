@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import {
   classifyBisCurrentIssue,
+  classifyIncrementalUpdateIssues,
   parseUpdateDailyArgs,
   resolveDailyDateRange,
   type UpdateDailyIssue,
 } from './update-daily'
+import type { IncrementalUpdateResult } from './update-job'
 
 describe('update-daily', () => {
   it('parses update:daily CLI args', () => {
@@ -98,5 +100,71 @@ describe('update-daily', () => {
         reason: 'fetch failed',
       },
     ])
+  })
+
+  it('treats missing scores detail HTML as a non-strict warning', () => {
+    const warnings: UpdateDailyIssue[] = []
+    const errors: UpdateDailyIssue[] = []
+    const result = {
+      year: 2026,
+      discoveryPath: 'data/discovery/2026.json',
+      discoveredGames: 1,
+      existingGames: 0,
+      pendingGames: 1,
+      loadedGames: 0,
+      skippedExistingGames: 0,
+      failedGames: 1,
+      games: [],
+      failures: [
+        {
+          gameId: 'r20260612f-d-01',
+          date: '2026-06-12',
+          stage: 'parse',
+          message: 'Missing raw HTML: expected playbyplay.html, box.html, and roster.html next to index.html (scores サイト用)。',
+        },
+      ],
+    } satisfies IncrementalUpdateResult
+
+    classifyIncrementalUpdateIssues(result, false, warnings, errors)
+
+    expect(errors).toEqual([])
+    expect(warnings).toEqual([
+      {
+        year: 2026,
+        stage: 'update-year',
+        date: '2026-06-12',
+        gameId: 'r20260612f-d-01',
+        reason: 'parse: Missing raw HTML: expected playbyplay.html, box.html, and roster.html next to index.html (scores サイト用)。',
+      },
+    ])
+  })
+
+  it('keeps missing scores detail HTML as a strict error', () => {
+    const warnings: UpdateDailyIssue[] = []
+    const errors: UpdateDailyIssue[] = []
+    const result = {
+      year: 2026,
+      discoveryPath: 'data/discovery/2026.json',
+      discoveredGames: 1,
+      existingGames: 0,
+      pendingGames: 1,
+      loadedGames: 0,
+      skippedExistingGames: 0,
+      failedGames: 1,
+      games: [],
+      failures: [
+        {
+          gameId: 'r20260612f-d-01',
+          date: '2026-06-12',
+          stage: 'parse',
+          message: 'Missing raw HTML: expected playbyplay.html, box.html, and roster.html next to index.html (scores サイト用)。',
+        },
+      ],
+    } satisfies IncrementalUpdateResult
+
+    classifyIncrementalUpdateIssues(result, true, warnings, errors)
+
+    expect(warnings).toEqual([])
+    expect(errors).toHaveLength(1)
   })
 })

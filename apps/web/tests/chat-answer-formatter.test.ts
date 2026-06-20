@@ -579,31 +579,6 @@ function eventRow(index: number): EventRow {
   }
 }
 
-function pitchingBoxRow(
-  gameDate: string,
-  team: string,
-  pitcherName: string,
-  inningsPitched: string,
-  strikeouts: number,
-  earnedRuns: number,
-) {
-  const d = gameDate.replaceAll('-', '')
-  return {
-    gameId: `r${d}box-01`,
-    gameDate,
-    team,
-    pitcherName,
-    inningsPitched,
-    pitchCount: 80,
-    strikeouts,
-    runs: earnedRuns,
-    earnedRuns,
-    sourceKind: 'box' as const,
-    sourceUrl: null,
-    statsJson: null,
-  }
-}
-
 function farmBoxRow(
   gameDate: string,
   gameId: string,

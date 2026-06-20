@@ -61,7 +61,7 @@ export async function searchPitchingLines(
   }
 
   if (normalized.pitcher_player_id) {
-    addPitchingLinePlayerIdFilter(clauses, values, normalized.pitcher_player_id, normalized.pitcher_name)
+    addPitchingLinePlayerIdFilter(clauses, values, normalized.pitcher_player_id)
   } else if (normalized.pitcher_name) {
     clauses.push(`${compactNameSql('?')} LIKE ${compactNameSql('pitching_lines.pitcher_name')} || '%'`)
     values.push(normalized.pitcher_name)
@@ -102,6 +102,12 @@ export async function searchPitchingLines(
     )
     .all(...values, limit)
   const gameRows = rows as PitchingLineRow[]
+  if (gameRows.length === 0 && normalized.pitcher_player_id && normalized.pitcher_name) {
+    return searchPitchingLines(database, {
+      ...normalized,
+      pitcher_player_id: undefined,
+    })
+  }
   return gameRows
 }
 
@@ -131,19 +137,8 @@ export async function searchCurrentPitchingStats(
     values.push(...teams)
   }
   if (filters.pitcher_player_id) {
-    if (filters.pitcher_name) {
-      clauses.push(`(
-        player_pitching_stats.player_id = ?
-        OR (
-          (player_pitching_stats.player_id IS NULL OR player_pitching_stats.player_id = '')
-          AND ${compactNameSql('?')} LIKE ${compactNameSql('player_pitching_stats.player_name')} || '%'
-        )
-      )`)
-      values.push(filters.pitcher_player_id, filters.pitcher_name)
-    } else {
-      clauses.push('player_pitching_stats.player_id = ?')
-      values.push(filters.pitcher_player_id)
-    }
+    clauses.push('player_pitching_stats.player_id = ?')
+    values.push(filters.pitcher_player_id)
   } else if (filters.pitcher_name) {
     clauses.push(`${compactNameSql('player_pitching_stats.player_name')} LIKE ?`)
     values.push(`%${compactName(filters.pitcher_name)}%`)
@@ -187,22 +182,14 @@ function addPitchingLinePlayerIdFilter(
   clauses: string[],
   values: Array<string | number>,
   playerId: string,
-  pitcherName?: string,
 ): void {
   const pattern = playerIdPattern(playerId)
-  const nameFallback = pitcherName
-    ? `OR ${compactNameSql('?')} LIKE ${compactNameSql('pitching_lines.pitcher_name')} || '%'`
-    : ''
   clauses.push(
     `(
       pitching_lines.pitcher_url LIKE ?
-      ${nameFallback}
     )`,
   )
   values.push(pattern)
-  if (pitcherName) {
-    values.push(pitcherName)
-  }
 }
 
 function playerIdPattern(playerId: string): string {

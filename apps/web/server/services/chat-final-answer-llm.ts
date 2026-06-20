@@ -12,6 +12,16 @@ export type ChatFinalAnswerInput = ChatResponseCore & {
 
 export type ChatFinalAnswerGenerator = (input: ChatFinalAnswerInput) => Promise<string>
 
+export class ChatFinalAnswerLlmHttpError extends Error {
+  constructor(
+    message: string,
+    public readonly status: number,
+  ) {
+    super(message)
+    this.name = 'ChatFinalAnswerLlmHttpError'
+  }
+}
+
 export function hasChatFinalAnswerLlmConfig(config: ChatFinalAnswerLlmConfig): boolean {
   return Boolean(config.apiKey?.trim() && config.model?.trim())
 }
@@ -153,16 +163,20 @@ export function createChatFinalAnswerLlm(config: ChatFinalAnswerLlmConfig): Chat
       ],
     })
 
-    const delays = [1000, 2000]
+    const delays = [1000, 3000, 7000, 15000]
     let response: Response | undefined
     for (let attempt = 0; attempt <= delays.length; attempt++) {
       response = await fetch(url, { method: 'POST', headers, body: reqBody })
       if (response.status !== 429 || attempt === delays.length) break
-      await new Promise((resolve) => setTimeout(resolve, delays[attempt]))
+      await new Promise((resolve) => setTimeout(resolve, retryDelayMs(response!, delays[attempt])))
     }
 
     if (!response!.ok) {
-      throw new Error(`Final answer LLM failed with HTTP ${response!.status}`)
+      const errorText = await response!.text().catch(() => '')
+      throw new ChatFinalAnswerLlmHttpError(
+        `Final answer LLM failed with HTTP ${response!.status}${errorText ? `: ${truncateErrorText(errorText)}` : ''}`,
+        response!.status,
+      )
     }
 
     const resBody = (await response!.json()) as {
@@ -174,6 +188,26 @@ export function createChatFinalAnswerLlm(config: ChatFinalAnswerLlmConfig): Chat
     }
     return content
   }
+}
+
+function retryDelayMs(response: Response, fallbackMs: number): number {
+  const retryAfter = response.headers.get('retry-after')
+  if (!retryAfter) {
+    return fallbackMs
+  }
+  const seconds = Number(retryAfter)
+  if (Number.isFinite(seconds) && seconds >= 0) {
+    return Math.max(fallbackMs, seconds * 1000)
+  }
+  const dateMs = Date.parse(retryAfter)
+  if (Number.isFinite(dateMs)) {
+    return Math.max(fallbackMs, dateMs - Date.now())
+  }
+  return fallbackMs
+}
+
+function truncateErrorText(value: string): string {
+  return value.replace(/\s+/gu, ' ').trim().slice(0, 500)
 }
 
 function currentJstDate(): string {

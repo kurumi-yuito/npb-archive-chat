@@ -106,7 +106,7 @@ export async function runBisFarmBoxEnrichment(
 
     for (let i = 0; i < games.length; i++) {
       const game = games[i]!
-      const bisUrl = deriveBisFarmJapaneseUrl(game.canonicalUrl, game.gameId, game.year, game.mmdd)
+      const bisUrl = deriveBisFarmJapaneseUrl(game.canonicalUrl)
       if (!bisUrl) {
         failures.push({ gameId: game.gameId, date: game.date, reason: 'cannot_derive_bis_url' })
         logger.error(`[bis-farm-boxes:skip] game_id=${game.gameId} reason=cannot_derive_bis_url`)
@@ -202,9 +202,6 @@ async function listFarmGamesNeedingBoxes(
 
 function deriveBisFarmJapaneseUrl(
   canonicalUrl: string | null,
-  gameId: string,
-  year: number,
-  mmdd: string,
 ): string | null {
   if (canonicalUrl) {
     // Remove /eng/ from canonical URL: bis/eng/YYYY/games/fsXXX.html → bis/YYYY/games/fsXXX.html
@@ -267,12 +264,12 @@ export function parseBisFarmBoxHtml(html: string, sourceUrl: string): BisFarmBox
   const team1 = extractTeamName(headerTable1!)
 
   const pitchingLines: BisFarmPitchingLine[] = [
-    ...parsePitchingTable(pitchingTable0!, team0, sourceUrl),
-    ...parsePitchingTable(pitchingTable1!, team1, sourceUrl),
+    ...parsePitchingTable(pitchingTable0!, team0),
+    ...parsePitchingTable(pitchingTable1!, team1),
   ]
   const battingLines: BisFarmBattingLine[] = [
-    ...parseBattingTable(battingTable0!, team0, sourceUrl),
-    ...parseBattingTable(battingTable1!, team1, sourceUrl),
+    ...parseBattingTable(battingTable0!, team0),
+    ...parseBattingTable(battingTable1!, team1),
   ]
 
   return { pitchingLines, battingLines, sourceUrl }
@@ -283,7 +280,7 @@ function extractTeamName(tableHtml: string): string {
   return match ? cellText(match[1]) : '—'
 }
 
-function parsePitchingTable(tableHtml: string, team: string, _sourceUrl: string): BisFarmPitchingLine[] {
+function parsePitchingTable(tableHtml: string, team: string): BisFarmPitchingLine[] {
   const rows = extractGmStatDataRows(tableHtml)
   const lines: BisFarmPitchingLine[] = []
   let seq = 0
@@ -317,7 +314,7 @@ function parsePitchingTable(tableHtml: string, team: string, _sourceUrl: string)
   return lines
 }
 
-function parseBattingTable(tableHtml: string, team: string, _sourceUrl: string): BisFarmBattingLine[] {
+function parseBattingTable(tableHtml: string, team: string): BisFarmBattingLine[] {
   const rows = extractGmStatDataRows(tableHtml)
   const lines: BisFarmBattingLine[] = []
   let seq = 0

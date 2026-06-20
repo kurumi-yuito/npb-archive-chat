@@ -29,6 +29,16 @@ export type ChatQueryLlmConfig = {
   model: string
 }
 
+export class ChatQueryLlmHttpError extends Error {
+  constructor(
+    message: string,
+    public readonly status: number,
+  ) {
+    super(message)
+    this.name = 'ChatQueryLlmHttpError'
+  }
+}
+
 type ChatQueryLlmDependencies = {
   fetch?: typeof fetch
 }
@@ -63,16 +73,20 @@ export function createChatQueryLlm(
       }
       const url = buildChatCompletionsUrl(config.baseUrl)
 
-      const delays = [1000, 2000]
+      const delays = [1000, 3000, 7000, 15000]
       let response: Response | undefined
       for (let attempt = 0; attempt <= delays.length; attempt++) {
         response = await fetchFn(url, { method: 'POST', headers, body })
         if (response.status !== 429 || attempt === delays.length) break
-        await sleep(delays[attempt])
+        await sleep(retryDelayMs(response, delays[attempt]))
       }
 
       if (!response!.ok) {
-        throw new Error(`LLM query generation failed with status ${response!.status}`)
+        const errorText = await response!.text().catch(() => '')
+        throw new ChatQueryLlmHttpError(
+          `LLM query generation failed with status ${response!.status}${errorText ? `: ${truncateErrorText(errorText)}` : ''}`,
+          response!.status,
+        )
       }
 
       const payload = openAiCompatibleChatCompletionSchema.parse(await response!.json())
@@ -93,6 +107,26 @@ function buildChatCompletionsUrl(baseUrl: string): string {
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
+function retryDelayMs(response: Response, fallbackMs: number): number {
+  const retryAfter = response.headers.get('retry-after')
+  if (!retryAfter) {
+    return fallbackMs
+  }
+  const seconds = Number(retryAfter)
+  if (Number.isFinite(seconds) && seconds >= 0) {
+    return Math.max(fallbackMs, seconds * 1000)
+  }
+  const dateMs = Date.parse(retryAfter)
+  if (Number.isFinite(dateMs)) {
+    return Math.max(fallbackMs, dateMs - Date.now())
+  }
+  return fallbackMs
+}
+
+function truncateErrorText(value: string): string {
+  return value.replace(/\s+/gu, ' ').trim().slice(0, 500)
 }
 
 function extractJsonObject(content: string): string {

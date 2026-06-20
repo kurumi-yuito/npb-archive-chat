@@ -261,6 +261,11 @@ export const aggregateGamesFiltersSchema = z.object({
   limit: z.number().int().positive().max(30).optional(),
 })
 
+export const awardWinnersFiltersSchema = z.object({
+  year: z.number().int().min(1936).max(2099).optional(),
+  award_type: z.enum(['rookie_of_the_year']).optional(),
+})
+
 export const chatIntentSchema = z.enum([
   'search_events',
   'search_games',
@@ -273,6 +278,7 @@ export const chatIntentSchema = z.enum([
   'aggregate_pitching',
   'aggregate_events',
   'aggregate_games',
+  'award_winners',
 ])
 
 export const chatHistoryMessageSchema = z.object({
@@ -398,6 +404,10 @@ export const chatStructuredQuerySchema = z.discriminatedUnion('intent', [
     filters: aggregateGamesFiltersSchema,
   }),
   z.object({
+    intent: z.literal('award_winners'),
+    filters: awardWinnersFiltersSchema,
+  }),
+  z.object({
     intent: z.literal('off_topic'),
     filters: z.object({}),
   }),
@@ -426,6 +436,12 @@ export const chatResponseSchema = z.object({
       candidates: z.array(playerCandidateSchema),
     }).nullable().optional(),
     applied_filters: z.record(z.unknown()).optional(),
+    execution_metadata: z.object({
+      data_requirements: z.array(z.string().min(1)),
+      repositories: z.array(z.string().min(1)),
+      player_id_required: z.boolean(),
+      player_id_satisfied: z.boolean(),
+    }).optional(),
   }),
   usage: chatUsageInfoSchema,
   results: z.object({
@@ -816,6 +832,7 @@ export type AggregateBattingFilters = z.infer<typeof aggregateBattingFiltersSche
 export type AggregatePitchingFilters = z.infer<typeof aggregatePitchingFiltersSchema>
 export type AggregateEventsFilters = z.infer<typeof aggregateEventsFiltersSchema>
 export type AggregateGamesFilters = z.infer<typeof aggregateGamesFiltersSchema>
+export type AwardWinnersFilters = z.infer<typeof awardWinnersFiltersSchema>
 export type ChatIntent = z.infer<typeof chatIntentSchema>
 export type ChatRequest = z.infer<typeof chatRequestSchema>
 export type ChatPlan = z.infer<typeof chatPlanSchema>

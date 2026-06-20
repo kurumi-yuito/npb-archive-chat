@@ -109,26 +109,6 @@ export async function resolveStructuredQueryPlayer(
     }
   }
 
-  const inputKey = normalizeLookupKey(normalizeFreeText(input) ?? input)
-  if (candidates.length === 1 && (!hasExplicitYearFilter(structuredQuery) || compactPlayerInput(input).length < 4)) {
-    const broadCandidates = await queryService.searchPlayerCandidates({
-      name: candidateFilters.name,
-      aliases,
-      includeEvents: candidateFilters.includeEvents,
-      limit: 50,
-    })
-    const broadCollapsed = collapseSameEntityFallbacks(
-      filterCandidates(broadCandidates, teamQualifier(structuredQuery)),
-    )
-    const broadEntityCount = broadCollapsed.filter((c) => c.player_id).length
-    if (broadEntityCount > 1) {
-      return {
-        structuredQuery,
-        resolution: { input, player_id: null, name: null, primary_team: null, status: 'ambiguous', candidates: broadCollapsed },
-      }
-    }
-  }
-
   if (candidates.length > 1) {
     return {
       structuredQuery,
@@ -151,10 +131,6 @@ export async function resolveStructuredQueryPlayer(
       ...(yearShift ? { yearShiftNote: yearShift.note } : {}),
     },
   }
-}
-
-function compactPlayerInput(value: string): string {
-  return value.replace(/[ \u3000・･.\-_/の]/gu, '')
 }
 
 function detectYearShift(
@@ -319,7 +295,7 @@ function filterCandidates(
 
 function normalizeCandidateName(name: string): string {
   // Strip BIS annotation prefixes (* ＊ + ＋) before lookup-key normalization.
-  return normalizeLookupKey(name.replace(/^[*＊+＋\s　]+/u, ''))
+  return normalizeLookupKey(name.replace(/^[*＊+＋\s\u3000]+/u, ''))
 }
 
 function selectCandidatesForInput(

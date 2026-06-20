@@ -370,7 +370,7 @@ export function resolveDailyDateRange(
   }
 }
 
-function classifyIncrementalUpdateIssues(
+export function classifyIncrementalUpdateIssues(
   result: IncrementalUpdateResult,
   strict: boolean,
   warnings: UpdateDailyIssue[],
@@ -384,12 +384,17 @@ function classifyIncrementalUpdateIssues(
       gameId: failure.gameId,
       reason: `${failure.stage}: ${failure.message}`,
     }
-    if (failure.stage === 'download' && isNotFoundReason(failure.message) && !strict) {
+    if (!strict && isNormalIncrementalUpdateWarning(failure)) {
       warnings.push(issue)
     } else {
       errors.push(issue)
     }
   }
+}
+
+function isNormalIncrementalUpdateWarning(failure: IncrementalUpdateResult['failures'][number]): boolean {
+  return (failure.stage === 'download' && isNotFoundReason(failure.message)) ||
+    (failure.stage === 'parse' && isMissingScoresDetailHtmlReason(failure.message))
 }
 
 function classifyBackfillIssues(
@@ -472,6 +477,10 @@ function isNormalEnrichmentSkip(reason: string): boolean {
 
 function isNotFoundReason(reason: string): boolean {
   return /(^|[^0-9])404([^0-9]|$)|status_404/i.test(reason)
+}
+
+function isMissingScoresDetailHtmlReason(reason: string): boolean {
+  return reason.includes('Missing raw HTML: expected playbyplay.html, box.html, and roster.html')
 }
 
 function createIssue(year: number, stage: UpdateDailyStage, error: unknown): UpdateDailyIssue {

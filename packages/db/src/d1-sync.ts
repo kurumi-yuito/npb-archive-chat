@@ -182,7 +182,7 @@ export async function runD1Sync(options: SyncD1Args): Promise<SyncD1Result> {
   if (!options.dryRun) {
     for (const yearResult of years) {
       for (const chunkPath of yearResult.sqlPaths) {
-        const executed = executeD1Import(d1Database, chunkPath, workspaceRoot)
+        const executed = await executeD1Import(d1Database, chunkPath, workspaceRoot)
         if (!executed) {
           throw new Error(`D1 import failed for year ${yearResult.year} (${path.basename(chunkPath)})`)
         }
@@ -350,17 +350,33 @@ function escapeIdentifier(identifier: string): string {
   return identifier.replaceAll('"', '""')
 }
 
-function executeD1Import(databaseName: string, sqlPath: string, workspaceRoot: string): boolean {
-  const result = spawnSync(
-    'wrangler',
-    ['d1', 'execute', databaseName, '--remote', '--yes', '--file', sqlPath],
-    {
-      cwd: workspaceRoot,
-      stdio: 'inherit',
-      env: process.env,
-    },
-  )
-  return (result.status ?? 1) === 0
+async function executeD1Import(databaseName: string, sqlPath: string, workspaceRoot: string): Promise<boolean> {
+  const maxAttempts = 3
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    const result = spawnSync(
+      'wrangler',
+      ['d1', 'execute', databaseName, '--remote', '--yes', '--file', sqlPath],
+      {
+        cwd: workspaceRoot,
+        stdio: 'inherit',
+        env: process.env,
+      },
+    )
+    if ((result.status ?? 1) === 0) {
+      return true
+    }
+    if (attempt < maxAttempts) {
+      console.warn(
+        `[sync:d1] wrangler import failed for ${path.basename(sqlPath)}; retrying (${attempt + 1}/${maxAttempts})`,
+      )
+      await sleep(5000 * attempt)
+    }
+  }
+  return false
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
 async function verifyD1Import(

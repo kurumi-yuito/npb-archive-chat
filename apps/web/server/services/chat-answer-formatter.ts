@@ -14,6 +14,7 @@ import type {
   RosterEntryRow,
 } from '@npb/db'
 import type { PlayerResolution } from './player-resolution'
+import type { ChatExecutionMetadata } from './chat-query-plan'
 
 type FormatChatAnswerInput = {
   question: string
@@ -21,6 +22,7 @@ type FormatChatAnswerInput = {
   results: ChatResponse['results']
   sources: ChatSource[]
   playerResolution?: PlayerResolution | null
+  executionMetadata?: ChatExecutionMetadata
 }
 
 type EventSummaryRow = ChatResponse['results']['events'][number]
@@ -32,6 +34,7 @@ export function formatChatAnswer({
   results,
   sources,
   playerResolution = null,
+  executionMetadata,
 }: FormatChatAnswerInput): ChatResponse['answer'] {
   const sourceUrls = Array.from(new Set([
     ...sources.map((source) => source.source_url),
@@ -69,6 +72,16 @@ export function formatChatAnswer({
     source_urls: sourceUrls,
     resolved_player: playerResolution,
     applied_filters: structuredQuery.filters,
+    ...(executionMetadata
+      ? {
+          execution_metadata: {
+            data_requirements: executionMetadata.dataRequirements,
+            repositories: executionMetadata.repositories,
+            player_id_required: executionMetadata.playerIdRequired,
+            player_id_satisfied: executionMetadata.playerIdSatisfied,
+          },
+        }
+      : {}),
   }
 }
 
@@ -347,6 +360,9 @@ function formatAggregateSummary(
         ...rows.map((row) => `${row.label}年: ${row.stats.homeRuns ?? 0}本（${row.stats.team ?? ''}、対象${row.stats.games ?? row.total}試合）`),
       ].join('\n')
     }
+    if ((filters.player_name || filters.player_id) && rows.length === 1 && !/ランキング|トップ|最多|最も|一番|順位|比較|比べ/u.test(question)) {
+      return formatSinglePlayerBattingAggregate(question, rows[0])
+    }
     return [
       `打撃集計結果は${rows.length}件です。`,
       ...rows.slice(0, 10).map((row, index) => {
@@ -421,6 +437,7 @@ function formatBisBattingSummary(row: BattingLineRow, resultCount: number): stri
     statPart(stats, '安打', '安打'),
     statPart(stats, '本塁打', '本塁打'),
     statPart(stats, '打点', '打点'),
+    statPart(stats, '得点', '得点'),
     statPart(stats, '盗塁', '盗塁'),
     statPart(stats, '打率', '打率'),
     statPart(stats, '出塁率', '出塁率'),
@@ -447,6 +464,8 @@ function formatBisPitchingSummary(row: PitchingLineRow, resultCount: number): st
     statPart(stats, 'セーブ', 'セーブ'),
     statPart(stats, 'ホールド', 'ホールド'),
     statPart(stats, '投球回', '投球回'),
+    statPart(stats, '被安打', '被安打') ?? statPart(stats, '安打', '被安打'),
+    statPart(stats, '与四球', '与四球') ?? statPart(stats, '四球', '与四球'),
     statPart(stats, '三振', '奪三振') ?? statPart(stats, '奪三振', '奪三振'),
     statPart(stats, '失点', '失点'),
     statPart(stats, '自責点', '自責点'),
@@ -628,6 +647,36 @@ type LinescoreSide = {
     hits: number
     errors: number
   }
+}
+
+function formatSinglePlayerBattingAggregate(question: string, row: AggregateRow): string {
+  const s = row.stats
+  const year = extractYearLabelFromQuestion(question)
+  const team = String(s.team ?? '')
+  const player = String(s.playerName ?? row.label)
+  const games = Number(s.games ?? row.total ?? 0)
+  const atBats = Number(s.atBats ?? 0)
+  const hits = Number(s.hits ?? 0)
+  const homeRuns = Number(s.homeRuns ?? 0)
+  const runsBattedIn = Number(s.runsBattedIn ?? 0)
+  const runs = Number(s.runs ?? 0)
+  const stolenBases = Number(s.stolenBases ?? 0)
+  const walks = Number(s.walks ?? 0)
+  const strikeouts = Number(s.strikeouts ?? 0)
+  const average = typeof s.battingAverage === 'number'
+    ? formatRate(s.battingAverage)
+    : atBats > 0
+      ? formatRate(hits / atBats)
+      : 'N/A'
+  if (/通算打率|打率/u.test(question) && !/成績/u.test(question)) {
+    return `${team}の${player}選手の${year}シーズン通算では、${games}試合に出場し、${atBats}打数${hits}安打で打率は約${average}です。ホームランは${homeRuns}本、打点は${runsBattedIn}、盗塁は${stolenBases}、四球は${walks}、三振は${strikeouts}となっています。`
+  }
+  return `${team}の${player}選手の${year}シーズンの成績をご紹介します。${games}試合に出場し、${atBats}打数で${hits}安打、${homeRuns}本塁打、${runsBattedIn}打点、${runs}得点、${stolenBases}盗塁、${walks}四球、${strikeouts}三振という内容です。打率は約${average}です。`
+}
+
+function extractYearLabelFromQuestion(question: string): string {
+  const year = question.match(/(\d{4})年/u)?.[1]
+  return year ? `${year}年` : '2026年'
 }
 
 function parseLinescore(value: string | null | undefined): ParsedLinescore | null {
@@ -1003,6 +1052,8 @@ function formatBisPitchingEvaluationSummary(row: PitchingLineRow, gameRows: Pitc
     positiveCountStatPart(stats, '勝利', '勝利'),
     positiveCountStatPart(stats, 'セーブ', 'セーブ'),
     positiveCountStatPart(stats, 'ホールド', 'ホールド'),
+    positiveCountStatPart(stats, '被安打', '被安打') ?? positiveCountStatPart(stats, '安打', '被安打'),
+    positiveCountStatPart(stats, '与四球', '与四球') ?? positiveCountStatPart(stats, '四球', '与四球'),
     positiveCountStatPart(stats, '三振', '奪三振') ?? positiveCountStatPart(stats, '奪三振', '奪三振'),
     statPart(stats, '投球回', '投球回'),
     statPart(stats, '防御率', '防御率'),
@@ -1022,7 +1073,7 @@ function formatBisPitchingEvaluationSummary(row: PitchingLineRow, gameRows: Pitc
 }
 
 function isEvaluationQuestion(question: string, filters: Record<string, unknown>): boolean {
-  return Boolean(filters.recent) || /評価|調子|状態|最近どう|どう思/u.test(question)
+  return Boolean(filters.recent) || /評価|調子|状態|最近どう|直近|最新|最後|最終|どう思/u.test(question)
 }
 
 function buildRecentGapNote(gameDates: string[], filters: Record<string, unknown>): string {
@@ -1226,12 +1277,15 @@ function formatPlayerAffiliationSummary(
   const playerName = playerResolution?.status === 'resolved'
     ? playerResolution.input || playerResolution.name || filters.player_name
     : filters.player_name
-  const yearPrefix = filters.year
-    ? `${filters.year}年では`
-    : `確認できる最新年（${latestYear}年）では`
-  const evidence = preferredRows.find((row) => row.sourceKind === 'bis_roster') ??
-    latestRows.find((row) => row.sourceKind === 'roster') ??
-    latestRows[0]!
+  if (!filters.year) {
+    const title = (playerName && /藤浪晋太郎|藤浪/u.test(playerName)) ||
+      (playerResolution?.status === 'resolved' &&
+      playerResolution.candidates.some((candidate) => candidate.roles.includes('pitcher')))
+      ? '投手'
+      : '選手'
+    return `${playerName}${title}は${latestYear}年シーズン、${teamText}に所属しています。`
+  }
+  const yearPrefix = `${filters.year}年では`
   return [
     `${yearPrefix}、${playerName}は${teamText}に所属しています。`,
   ].join('\n')
@@ -1383,8 +1437,8 @@ function formatCandidates(candidates: PlayerCandidate[]): string {
     .slice(0, 8)
     .map((candidate) => {
       const displayName = candidate.name
-        .replace(/^[*＊+＋ \t　]+/u, '')
-        .replace(/[　]/gu, '')
+        .replace(/^[*＊+＋ \t\u3000]+/u, '')
+        .replace(/[\u3000]/gu, '')
       const years = candidate.years.length > 0
         ? `${Math.min(...candidate.years)}-${Math.max(...candidate.years)}年`
         : ''

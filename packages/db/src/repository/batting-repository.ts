@@ -66,7 +66,7 @@ export async function searchBattingLines(
     values.push(normalized.year_to)
   }
   if (normalized.player_id) {
-    addBattingLinePlayerIdFilter(clauses, values, normalized.player_id, normalized.player_name)
+    addBattingLinePlayerIdFilter(clauses, values, normalized.player_id)
   } else if (normalized.player_name) {
     clauses.push(`${compactNameSql('?')} LIKE ${compactNameSql('batting_lines.player_name')} || '%'`)
     values.push(normalized.player_name)
@@ -122,7 +122,14 @@ export async function searchBattingLines(
       LIMIT ?`,
     )
     .all(...values, limit)
-  return rows as BattingLineRow[]
+  const gameRows = rows as BattingLineRow[]
+  if (gameRows.length === 0 && normalized.player_id && normalized.player_name) {
+    return searchBattingLines(database, {
+      ...normalized,
+      player_id: undefined,
+    })
+  }
+  return gameRows
 }
 
 async function searchCurrentBattingStats(
@@ -221,22 +228,14 @@ function addBattingLinePlayerIdFilter(
   clauses: string[],
   values: Array<string | number>,
   playerId: string,
-  playerName?: string,
 ): void {
   const pattern = playerIdPattern(playerId)
-  const nameFallback = playerName
-    ? `OR ${compactNameSql('?')} LIKE ${compactNameSql('batting_lines.player_name')} || '%'`
-    : ''
   clauses.push(
     `(
       batting_lines.player_url LIKE ?
-      ${nameFallback}
     )`,
   )
   values.push(pattern)
-  if (playerName) {
-    values.push(playerName)
-  }
 }
 
 function teamAliases(team: string): string[] {
