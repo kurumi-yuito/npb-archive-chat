@@ -13,6 +13,7 @@ import type {
   PitchingLineRow,
   RosterEntryRow,
 } from '@npb/db'
+import { normalizeTeamName } from './chat-query-normalizer'
 import type { PlayerResolution } from './player-resolution'
 import type { ChatExecutionMetadata } from './chat-query-plan'
 
@@ -372,6 +373,10 @@ function formatAggregateSummary(
     ].join('\n')
   }
   if (structuredQuery.intent === 'aggregate_pitching') {
+    const comparisonSummary = formatPitchingComparisonSummary(question, structuredQuery, rows, playerResolution)
+    if (comparisonSummary) {
+      return comparisonSummary
+    }
     return [
       `投手集計結果は${rows.length}件です。`,
       ...rows.slice(0, 10).map((row, index) => {
@@ -388,6 +393,87 @@ function formatAggregateSummary(
     `イベント集計結果は${rows.length}件です。`,
     ...rows.slice(0, 10).map((row, index) => `${index + 1}位: ${row.label} ${row.total}件`),
   ].join('\n')
+}
+
+function formatPitchingComparisonSummary(
+  question: string,
+  structuredQuery: ChatStructuredQuery,
+  rows: AggregateRow[],
+  playerResolution: PlayerResolution | null,
+): string | null {
+  const filters = structuredQuery.filters as Record<string, unknown>
+  if (!(filters.player_name || filters.pitcher_name || filters.player_id || filters.pitcher_player_id)) {
+    return null
+  }
+  if (!/比較|比べ|変化|どう変わ|変わり|移籍後|時代/u.test(question)) {
+    return null
+  }
+
+  const grouped = new Map<string, AggregateRow>()
+  for (const row of rows) {
+    const teamKey = normalizeTeamName(String(row.stats.team ?? row.label ?? '')) ?? String(row.stats.team ?? row.label ?? '')
+    const current = grouped.get(teamKey)
+    if (!current) {
+      grouped.set(teamKey, {
+        ...row,
+        label: row.label || teamKey,
+        stats: { ...row.stats, team: teamKey },
+      })
+      continue
+    }
+    current.total += row.total
+    for (const [statKey, statValue] of Object.entries(row.stats)) {
+      const currentValue = current.stats[statKey]
+      if (typeof currentValue === 'number' && typeof statValue === 'number') {
+        current.stats[statKey] = currentValue + statValue
+      } else if (currentValue == null) {
+        current.stats[statKey] = statValue
+      }
+    }
+    current.stats.team = teamKey
+  }
+
+  const orderedTeams = [
+    ...['楽天', '巨人', 'DeNA', '阪神', '広島', '中日', 'ヤクルト', '日本ハム', '西武', 'ロッテ', 'オリックス', 'ソフトバンク']
+      .filter((team) => grouped.has(team)),
+    ...[...grouped.keys()].filter((team) => !['楽天', '巨人', 'DeNA', '阪神', '広島', '中日', 'ヤクルト', '日本ハム', '西武', 'ロッテ', 'オリックス', 'ソフトバンク'].includes(team)),
+  ]
+  if (orderedTeams.length < 2) {
+    return null
+  }
+
+  const selectedTeams = orderedTeams.slice(0, 2)
+  const selectedRows = selectedTeams.map((team) => grouped.get(team)!).filter(Boolean)
+  if (selectedRows.length < 2) {
+    return null
+  }
+
+  const playerName = playerResolution?.status === 'resolved'
+    ? playerResolution.name ?? String(filters.pitcher_name ?? '対象投手')
+    : String(filters.pitcher_name ?? rows[0]?.label ?? '対象投手')
+  const [first, second] = selectedRows
+  const firstEra = eraFromAggregateRow(first)
+  const secondEra = eraFromAggregateRow(second)
+  if (firstEra === null || secondEra === null) {
+    return null
+  }
+  const diff = secondEra - firstEra
+  const trendText = diff === 0
+    ? '防御率は変わりませんでした。'
+    : diff < 0
+      ? `巨人移籍後のほうが${formatDecimal(Math.abs(diff))}改善しています。`
+      : `巨人移籍後のほうが${formatDecimal(diff)}悪化しています。`
+
+  return `${playerName}の防御率は、${displayTeamName(selectedTeams[0])}時代が${formatDecimal(firstEra)}、${displayTeamName(selectedTeams[1])}移籍後が${formatDecimal(secondEra)}です。${trendText}`
+}
+
+function eraFromAggregateRow(row: AggregateRow): number | null {
+  const inningsPitched = Number(row.stats.inningsPitched ?? 0)
+  const earnedRuns = Number(row.stats.earnedRuns ?? 0)
+  if (!Number.isFinite(inningsPitched) || inningsPitched <= 0) {
+    return null
+  }
+  return earnedRuns * 9 / inningsPitched
 }
 
 function formatPlayerHomeRunAggregate(

@@ -873,6 +873,10 @@ describe('chat-service', () => {
       },
     })
     expect(aggregateYears).toEqual([2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024, 2025, 2026])
+    expect(response.answer.summary).toContain('則本昂大の防御率は')
+    expect(response.answer.summary).toContain('楽天時代')
+    expect(response.answer.summary).toContain('巨人移籍後')
+    expect(response.answer.summary).not.toContain('1位')
   })
 
   it('keeps top pitch count appearance questions on search_pitching', async () => {

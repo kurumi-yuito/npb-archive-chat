@@ -270,6 +270,73 @@ describe('chat-answer-formatter', () => {
     expect(answer.summary).toContain('5月14日')
   })
 
+  it('formats aggregate_pitching comparison questions as era comparisons instead of rankings', () => {
+    const results = emptyResults()
+    results.aggregates = [
+      {
+        kind: 'pitching',
+        label: '則本昂',
+        total: 60,
+        stats: {
+          team: '楽天',
+          games: 60,
+          inningsPitched: 356.67,
+          earnedRuns: 130,
+          hitsAllowed: 150,
+          walks: 32,
+          strikeouts: 142,
+          saves: 0,
+        },
+      },
+      {
+        kind: 'pitching',
+        label: '則本',
+        total: 3,
+        stats: {
+          team: '巨人',
+          games: 3,
+          inningsPitched: 18,
+          earnedRuns: 3,
+          hitsAllowed: 10,
+          walks: 2,
+          strikeouts: 12,
+          saves: 0,
+        },
+      },
+      {
+        kind: 'pitching',
+        label: '則本昂',
+        total: 5,
+        stats: {
+          team: '楽天',
+          games: 5,
+          inningsPitched: 25,
+          earnedRuns: 4,
+          hitsAllowed: 11,
+          walks: 7,
+          strikeouts: 23,
+          saves: 0,
+        },
+      },
+    ]
+
+    const answer = formatChatAnswer({
+      question: '則本昂大は楽天時代と巨人移籍後で防御率はどう変わりましたか？',
+      structuredQuery: {
+        intent: 'aggregate_pitching',
+        filters: { pitcher_name: '則本昂大' },
+      },
+      results,
+      sources: [],
+    })
+
+    expect(answer.summary).toContain('則本昂大の防御率は')
+    expect(answer.summary).toContain('楽天時代が3.16')
+    expect(answer.summary).toContain('巨人移籍後が1.50')
+    expect(answer.summary).toContain('1.66改善')
+    expect(answer.summary).not.toContain('1位')
+  })
+
   it('formats BIS batting season stats with year, team, player name, and key stats', () => {
     const results = emptyResults()
     results.batting = [
