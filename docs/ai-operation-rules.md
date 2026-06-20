@@ -18,14 +18,26 @@
 
 1. [docs/qa-test-cases.md](qa-test-cases.md) を確認する。
 2. 本番実行ログを確認する。
-3. intent / filters を確認する。
-4. routing を確認する。
-5. 最小修正を行う。
-6. deploy する。
-7. 本番 QA を行う。
-8. 本番 QA の実行結果を [docs/qa-test-cases.md](qa-test-cases.md) の A に反映する。
-9. 回帰確認を行う。
-10. commit する。
+3. intent / entities / data_requirements を確認する。
+4. player_id 解決結果を確認する。
+5. repository routing を確認する。
+6. 最小修正を行う。
+7. deploy する。
+8. 本番 QA を行う。
+9. 本番 QA の実行結果は [docs/qa-test-cases-current-vs-prod.md](qa-test-cases-current-vs-prod.md) に記録する。
+10. 回帰確認を行う。
+11. commit する。
+
+### 障害調査時の確認項目
+
+- 修正前に、本番実行ログ、intent、entities、player_id 解決結果、repository routing、data_requirements を必ず確認する。
+- player_id 解決失敗がある場合は、name fallback で曖昧に進めず、解決不能として扱う。
+- 500 エラー、timeout、null 参照、validation error を見つけた場合は、その場で原因を特定し、放置せずに修正する。
+
+### 修正後の確認項目
+
+- 修正後は、本番 QA 実行結果、pass / fail 件数、player_id 解決失敗件数、500 エラー件数、実行ログ保存先、Deploy Version ID を確認する。
+- QA 実行後は、[docs/qa-test-cases-current-vs-prod.md](qa-test-cases-current-vs-prod.md) を更新し、現行本番の実行結果と差分を記録する。
 
 ## Cloudflare deploy 認証エラー時の手順
 
