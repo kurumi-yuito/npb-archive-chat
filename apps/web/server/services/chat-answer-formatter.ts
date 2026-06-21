@@ -141,6 +141,10 @@ function buildSummary(
     return `${yearShiftPrefix}${formatGameSearchSummary(question, results.games as GameSummaryRow[], resultCount)}`
   }
 
+  if (structuredQuery.intent === 'search_events' && isBatterPitcherMatchupQuestion(structuredQuery, question)) {
+    return `${yearShiftPrefix}${formatBatterPitcherMatchupSummary(structuredQuery, results.events as EventSummaryRow[], resultCount)}`
+  }
+
   if (structuredQuery.intent === 'search_pitching') {
     const first = results.pitching[0] as PitchingLineRow
     if (/最後|最終登板|最後のNPB/u.test(question)) {
@@ -238,6 +242,60 @@ function buildSummary(
   }
 
   return `${yearShiftPrefix}${formatEventListSummary(structuredQuery, results.events, resultCount, playerResolution)}`
+}
+
+function isBatterPitcherMatchupQuestion(
+  structuredQuery: ChatStructuredQuery,
+  question: string,
+): boolean {
+  if (structuredQuery.intent !== 'search_events') {
+    return false
+  }
+  const filters = structuredQuery.filters as { batter_name?: string; pitcher_name?: string }
+  return Boolean(filters.batter_name && filters.pitcher_name && /対決|対戦|対した|当たった|対峙/u.test(question))
+}
+
+function formatBatterPitcherMatchupSummary(
+  structuredQuery: ChatStructuredQuery,
+  events: EventSummaryRow[],
+  resultCount: number,
+): string {
+  const filters = structuredQuery.filters as { batter_name?: string; pitcher_name?: string; team?: string }
+  const batter = filters.batter_name ?? '対象打者'
+  const pitcher = filters.pitcher_name ?? '対象投手'
+  const teamPrefix = filters.team ? `${filters.team}の` : ''
+  if (resultCount === 0) {
+    return `${teamPrefix}${batter}と${pitcher}の対戦記録は確認できませんでした。`
+  }
+  const firstRow = events[0]
+  const latestRow = events.at(-1)
+  const first = firstRow ? formatMatchupExample(firstRow, batter, pitcher) : ''
+  const latest = latestRow ? formatMatchupExample(latestRow, batter, pitcher) : ''
+  const latestLine =
+    latestRow && firstRow && (
+      latestRow.gameDate !== firstRow.gameDate ||
+      latestRow.resultText !== firstRow.resultText ||
+      latestRow.offenseTeam !== firstRow.offenseTeam
+    )
+      ? `直近の対戦は${latest}`
+      : ''
+  return [
+    `${teamPrefix}${batter}と${pitcher}には直接対決があります。`,
+    `確認できる記録は${resultCount}件です。`,
+    first ? `最初の対戦は${first}。` : undefined,
+    latestLine ? `${latestLine}。` : undefined,
+  ].filter(Boolean).join(' ')
+}
+
+function formatMatchupExample(
+  row: EventSummaryRow | undefined,
+  batter: string,
+  pitcher: string,
+): string {
+  if (!row) {
+    return ''
+  }
+  return `${formatDateJa(row.gameDate)}の${displayTeamName(row.offenseTeam)}戦で${batter}が${pitcher}から${row.resultText}`
 }
 
 function formatRosterSummary(rows: RosterEntryRow[], filters: Record<string, unknown>): string {

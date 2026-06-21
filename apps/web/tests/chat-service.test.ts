@@ -7,6 +7,7 @@ import {
 } from '@npb/db'
 import { richGameSchema } from '@npb/schemas'
 import { loadRichGame } from '../../../packages/db/src/loader'
+import { formatChatAnswer } from '../server/services/chat-answer-formatter'
 import { createChatService } from '../server/services/chat-service'
 import { ChatFinalAnswerLlmHttpError } from '../server/services/chat-final-answer-llm'
 
@@ -502,6 +503,7 @@ describe('chat-service', () => {
           limit: 50,
         },
       }),
+      formatChatAnswer,
     })
 
     for (const message of [

@@ -45,7 +45,14 @@ describe('chat-answer-formatter', () => {
       ...eventRow(1),
       batterName: '京田',
       pitcherName: '砂田',
-      resultText: 'ライトフライ',
+      resultText: 'ファーストゴロ',
+    }, {
+      ...eventRow(2),
+      gameDate: '2025-05-02',
+      offenseTeam: 'ヤクルト',
+      batterName: '京田',
+      pitcherName: '砂田',
+      resultText: 'センター前ヒット',
     }]
 
     const answer = formatChatAnswer({
@@ -62,7 +69,37 @@ describe('chat-answer-formatter', () => {
       sources: [],
     })
 
-    expect(answer.summary).toBe('DeNA京田が砂田から打ったイベントは1件です。')
+    expect(answer.summary).toBe('DeNAの京田と砂田には直接対決があります。 確認できる記録は2件です。 最初の対戦は2025年5月1日のヤクルト戦で京田が砂田からファーストゴロ。 直近の対戦は2025年5月2日のヤクルト戦で京田が砂田からセンター前ヒット。')
+    expect(answer.summary).not.toContain('打ったイベント')
+  })
+
+  it('describes pitcher-vs-pitcher matchup questions without batting language', () => {
+    const results = emptyResults()
+    results.events = [{
+      ...eventRow(2),
+      batterName: '田中将大',
+      pitcherName: '柳',
+      resultText: '空振り三振',
+      offenseTeam: '巨人',
+      gameDate: '2025-08-13',
+      sourceUrl: 'https://npb.jp/scores/2025/0813/g-d-19/playbyplay.html',
+    }]
+
+    const answer = formatChatAnswer({
+      question: '田中将大と柳は対決したことがあるか',
+      structuredQuery: {
+        intent: 'search_events',
+        filters: {
+          batter_name: '田中 将大',
+          pitcher_name: '柳',
+        },
+      },
+      results,
+      sources: [],
+    })
+
+    expect(answer.summary).toBe('田中 将大と柳には直接対決があります。 確認できる記録は1件です。 最初の対戦は2025年8月13日の巨人戦で田中 将大が柳から空振り三振。')
+    expect(answer.summary).not.toContain('打ったイベント')
   })
 
   it('formats game details with winner, score, and highlights without exposing game ids', () => {

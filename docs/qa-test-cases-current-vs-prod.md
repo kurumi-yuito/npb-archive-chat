@@ -1,10 +1,10 @@
 # QAテストケース一覧 - 現行本番との差分
 
-- 現行ケース数: 85
-- 本番QA実行日時: 2026-06-20T11:45:14.316Z
-- 対象デプロイVersion ID: 17814388-198d-4757-8e43-b62e706b4e8d
-- 実行ログパス: [data/logs/qa-prod-1781955906270.json](../data/logs/qa-prod-1781955906270.json)
-- 集計: Pass 85 / Fail 0 / Blocked 0
+- 現行ケース数: 90
+- 本番QA実行日時: 2026-06-20T17:35:39.738Z
+- 対象デプロイVersion ID: badb1f20-c6ed-4cb5-affe-b95ac6a7b101
+- 実行ログパス: [data/logs/qa-prod-1781975678653.json](../data/logs/qa-prod-1781975678653.json)
+- 集計: Pass 90 / Fail 0 / Blocked 0
 - Fail case_id: なし
 - Fail分類: なし
 - player_id解決失敗件数: 0
@@ -26,33 +26,33 @@
   最新登板は2026年6月13日で、4回、4奪三振、自責点5です。
   対象試合: 2026年6月13日、2026年6月5日、2026年5月30日、2026年5月22日、2026年5月8日
   2026年5月22日から2026年5月8日まで14日空いているため、最新5件を連続した最近の調子として扱う場合は注意が必要です。
-  確認できる最新の出場記録は2026年6月13日です。現在（2026年6月20日）から7日空いているため、これだけでは現在の調子とは言えません。
+  確認できる最新の出場記録は2026年6月13日です。現在（2026年6月21日）から8日空いているため、これだけでは現在の調子とは言えません。
 - intent: search_pitching
-- entities: {
-  "player": null,
-  "pitcher": "藤浪 晋太郎",
-  "batter": null,
-  "runner": null,
-  "team": null,
-  "opponent": null,
-  "game_id": null
-}
+- entities:   {
+    "player": null,
+    "pitcher": "藤浪 晋太郎",
+    "batter": null,
+    "runner": null,
+    "team": null,
+    "opponent": null,
+    "game_id": null
+  }
 - player_id: 41045137
-- data_requirements: [
-  "pitching_lines",
-  "source_snapshots"
-]
-- repositories: [
-  "searchPitchingLines",
-  "listSourceSnapshotsByGameIds"
-]
+- data_requirements:   [
+    "pitching_lines",
+    "source_snapshots"
+  ]
+- repositories:   [
+    "searchPitchingLines",
+    "listSourceSnapshotsByGameIds"
+  ]
 - pass/fail: Pass
 - fail理由: なし
 - fail分類: なし
 - 許容した差分: 日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
-- 実行ログパス: [data/logs/qa-prod-1781955906270.json](../data/logs/qa-prod-1781955906270.json)
-- 実行日時: 2026-06-20T11:45:14.316Z
-- デプロイVersion ID: 17814388-198d-4757-8e43-b62e706b4e8d
+- 実行ログパス: [data/logs/qa-prod-1781975678653.json](../data/logs/qa-prod-1781975678653.json)
+- 実行日時: 2026-06-20T17:14:50.529Z
+- デプロイVersion ID: badb1f20-c6ed-4cb5-affe-b95ac6a7b101
 
 ### Q-02: 藤浪は2026年のここまでの二軍での成績はどうですか？防御率や登板数など詳しく教えてください
 
@@ -64,31 +64,31 @@
   2026年二軍の横浜DeNAベイスターズ 藤浪 晋太郎の投手成績です。
   登板8、勝利2、敗北2、セーブ0、投球回29、被安打29、与四球9、奪三振27、失点16、自責点9、防御率2.79
 - intent: search_pitching
-- entities: {
-  "player": null,
-  "pitcher": "藤浪 晋太郎",
-  "batter": null,
-  "runner": null,
-  "team": null,
-  "opponent": null,
-  "game_id": null
-}
+- entities:   {
+    "player": null,
+    "pitcher": "藤浪 晋太郎",
+    "batter": null,
+    "runner": null,
+    "team": null,
+    "opponent": null,
+    "game_id": null
+  }
 - player_id: 41045137
-- data_requirements: [
-  "pitching_lines",
-  "source_snapshots"
-]
-- repositories: [
-  "searchPitchingLines",
-  "listSourceSnapshotsByGameIds"
-]
+- data_requirements:   [
+    "pitching_lines",
+    "source_snapshots"
+  ]
+- repositories:   [
+    "searchPitchingLines",
+    "listSourceSnapshotsByGameIds"
+  ]
 - pass/fail: Pass
 - fail理由: なし
 - fail分類: なし
 - 許容した差分: 日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
-- 実行ログパス: [data/logs/qa-prod-1781955906270.json](../data/logs/qa-prod-1781955906270.json)
-- 実行日時: 2026-06-20T11:45:25.853Z
-- デプロイVersion ID: 17814388-198d-4757-8e43-b62e706b4e8d
+- 実行ログパス: [data/logs/qa-prod-1781975678653.json](../data/logs/qa-prod-1781975678653.json)
+- 実行日時: 2026-06-20T17:15:01.708Z
+- デプロイVersion ID: badb1f20-c6ed-4cb5-affe-b95ac6a7b101
 
 ### Q-03: 藤浪晋太郎が最後に一軍に登板したのはいつ
 
@@ -99,31 +99,31 @@
 - 本番回答:
   横浜DeNAベイスターズ 藤浪が最後に一軍で登板したのは2025年9月30日です。この試合では1回、23球、1奪三振、失点2、自責点2でした。
 - intent: search_pitching
-- entities: {
-  "player": null,
-  "pitcher": "藤浪 晋太郎",
-  "batter": null,
-  "runner": null,
-  "team": null,
-  "opponent": null,
-  "game_id": null
-}
+- entities:   {
+    "player": null,
+    "pitcher": "藤浪 晋太郎",
+    "batter": null,
+    "runner": null,
+    "team": null,
+    "opponent": null,
+    "game_id": null
+  }
 - player_id: 41045137
-- data_requirements: [
-  "pitching_lines",
-  "source_snapshots"
-]
-- repositories: [
-  "searchPitchingLines",
-  "listSourceSnapshotsByGameIds"
-]
+- data_requirements:   [
+    "pitching_lines",
+    "source_snapshots"
+  ]
+- repositories:   [
+    "searchPitchingLines",
+    "listSourceSnapshotsByGameIds"
+  ]
 - pass/fail: Pass
 - fail理由: なし
 - fail分類: なし
 - 許容した差分: 日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
-- 実行ログパス: [data/logs/qa-prod-1781955906270.json](../data/logs/qa-prod-1781955906270.json)
-- 実行日時: 2026-06-20T11:45:36.446Z
-- デプロイVersion ID: 17814388-198d-4757-8e43-b62e706b4e8d
+- 実行ログパス: [data/logs/qa-prod-1781975678653.json](../data/logs/qa-prod-1781975678653.json)
+- 実行日時: 2026-06-20T17:15:12.589Z
+- デプロイVersion ID: badb1f20-c6ed-4cb5-affe-b95ac6a7b101
 
 ### Q-04: 藤浪晋太郎は今どこの球団に所属していますか？
 
@@ -134,31 +134,31 @@
 - 本番回答:
   藤浪晋太郎投手は2026年シーズン、横浜DeNAベイスターズに所属しています。
 - intent: player_affiliation
-- entities: {
-  "player": "藤浪 晋太郎",
-  "pitcher": null,
-  "batter": null,
-  "runner": null,
-  "team": null,
-  "opponent": null,
-  "game_id": null
-}
+- entities:   {
+    "player": "藤浪 晋太郎",
+    "pitcher": null,
+    "batter": null,
+    "runner": null,
+    "team": null,
+    "opponent": null,
+    "game_id": null
+  }
 - player_id: 41045137
-- data_requirements: [
-  "player_affiliations",
-  "source_snapshots"
-]
-- repositories: [
-  "searchPlayerAffiliations",
-  "listSourceSnapshotsByGameIds"
-]
+- data_requirements:   [
+    "player_affiliations",
+    "source_snapshots"
+  ]
+- repositories:   [
+    "searchPlayerAffiliations",
+    "listSourceSnapshotsByGameIds"
+  ]
 - pass/fail: Pass
 - fail理由: なし
 - fail分類: なし
 - 許容した差分: 日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
-- 実行ログパス: [data/logs/qa-prod-1781955906270.json](../data/logs/qa-prod-1781955906270.json)
-- 実行日時: 2026-06-20T11:45:54.331Z
-- デプロイVersion ID: 17814388-198d-4757-8e43-b62e706b4e8d
+- 実行ログパス: [data/logs/qa-prod-1781975678653.json](../data/logs/qa-prod-1781975678653.json)
+- 実行日時: 2026-06-20T17:15:29.773Z
+- デプロイVersion ID: badb1f20-c6ed-4cb5-affe-b95ac6a7b101
 
 ### Q-05: 則本昂大は楽天時代と巨人移籍後で防御率はどう変わりましたか？
 
@@ -169,31 +169,31 @@
 - 本番回答:
   則本昂大の防御率は、楽天時代が3.21、巨人移籍後が2.10です。巨人移籍後のほうが1.11改善しています。
 - intent: aggregate_pitching
-- entities: {
-  "player": null,
-  "pitcher": "則本昂大",
-  "batter": null,
-  "runner": null,
-  "team": null,
-  "opponent": null,
-  "game_id": null
-}
+- entities:   {
+    "player": null,
+    "pitcher": "則本昂大",
+    "batter": null,
+    "runner": null,
+    "team": null,
+    "opponent": null,
+    "game_id": null
+  }
 - player_id: null
-- data_requirements: [
-  "aggregate_pitching",
-  "source_snapshots"
-]
-- repositories: [
-  "aggregatePitchingLines",
-  "listSourceSnapshotsByGameIds"
-]
+- data_requirements:   [
+    "aggregate_pitching",
+    "source_snapshots"
+  ]
+- repositories:   [
+    "aggregatePitchingLines",
+    "listSourceSnapshotsByGameIds"
+  ]
 - pass/fail: Pass
 - fail理由: なし
 - fail分類: なし
 - 許容した差分: 日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
-- 実行ログパス: [data/logs/qa-prod-1781955906270.json](../data/logs/qa-prod-1781955906270.json)
-- 実行日時: 2026-06-20T11:46:03.711Z
-- デプロイVersion ID: 17814388-198d-4757-8e43-b62e706b4e8d
+- 実行ログパス: [data/logs/qa-prod-1781975678653.json](../data/logs/qa-prod-1781975678653.json)
+- 実行日時: 2026-06-20T17:15:39.420Z
+- デプロイVersion ID: badb1f20-c6ed-4cb5-affe-b95ac6a7b101
 
 ### Q-06: 巨人の則本昂大、最近の登板調子はどう？
 
@@ -208,33 +208,33 @@
   最新登板は2026年6月9日で、6回1/3、5奪三振、自責点2です。
   対象試合: 2026年6月9日、2026年6月2日、2026年4月21日、2026年4月14日、2026年4月2日
   2026年6月2日から2026年4月21日まで42日空いているため、最新5件を連続した最近の調子として扱う場合は注意が必要です。
-  確認できる最新の出場記録は2026年6月9日です。現在（2026年6月20日）から11日空いているため、これだけでは現在の調子とは言えません。
+  確認できる最新の出場記録は2026年6月9日です。現在（2026年6月21日）から12日空いているため、これだけでは現在の調子とは言えません。
 - intent: search_pitching
-- entities: {
-  "player": null,
-  "pitcher": "則本 昂大",
-  "batter": null,
-  "runner": null,
-  "team": "巨人",
-  "opponent": null,
-  "game_id": null
-}
+- entities:   {
+    "player": null,
+    "pitcher": "則本 昂大",
+    "batter": null,
+    "runner": null,
+    "team": "巨人",
+    "opponent": null,
+    "game_id": null
+  }
 - player_id: 51055137
-- data_requirements: [
-  "pitching_lines",
-  "source_snapshots"
-]
-- repositories: [
-  "searchPitchingLines",
-  "listSourceSnapshotsByGameIds"
-]
+- data_requirements:   [
+    "pitching_lines",
+    "source_snapshots"
+  ]
+- repositories:   [
+    "searchPitchingLines",
+    "listSourceSnapshotsByGameIds"
+  ]
 - pass/fail: Pass
 - fail理由: なし
 - fail分類: なし
 - 許容した差分: 日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
-- 実行ログパス: [data/logs/qa-prod-1781955906270.json](../data/logs/qa-prod-1781955906270.json)
-- 実行日時: 2026-06-20T11:46:13.391Z
-- デプロイVersion ID: 17814388-198d-4757-8e43-b62e706b4e8d
+- 実行ログパス: [data/logs/qa-prod-1781975678653.json](../data/logs/qa-prod-1781975678653.json)
+- 実行日時: 2026-06-20T17:15:49.515Z
+- デプロイVersion ID: badb1f20-c6ed-4cb5-affe-b95ac6a7b101
 
 ### Q-07: 山川穂高は今どこの球団ですか？
 
@@ -243,33 +243,33 @@
 - QA正:
   山川穂高選手は2026年シーズン、福岡ソフトバンクホークスに所属しています。
 - 本番回答:
-  山川穂高選手は2026年シーズン、福岡ソフトバンクホークスに所属しています。5月30日の試合でも同球団の選手として出場登録が確認されていますので、今シーズンはソフトバンクでプレーしていることが間違いありません。何か他に山川選手の成績や試合の様子について知りたいことがあれば教えてください。
+  山川穂高選手は2026年シーズン、福岡ソフトバンクホークスに所属しています。5月30日の試合でも同チームのロースターに名前が確認されていますので、今シーズンはソフトバンクでプレーしていることが確実です。
 - intent: player_affiliation
-- entities: {
-  "player": "山川",
-  "pitcher": null,
-  "batter": null,
-  "runner": null,
-  "team": null,
-  "opponent": null,
-  "game_id": null
-}
+- entities:   {
+    "player": "山川",
+    "pitcher": null,
+    "batter": null,
+    "runner": null,
+    "team": null,
+    "opponent": null,
+    "game_id": null
+  }
 - player_id: 21425139
-- data_requirements: [
-  "player_affiliations",
-  "source_snapshots"
-]
-- repositories: [
-  "searchPlayerAffiliations",
-  "listSourceSnapshotsByGameIds"
-]
+- data_requirements:   [
+    "player_affiliations",
+    "source_snapshots"
+  ]
+- repositories:   [
+    "searchPlayerAffiliations",
+    "listSourceSnapshotsByGameIds"
+  ]
 - pass/fail: Pass
 - fail理由: なし
 - fail分類: なし
 - 許容した差分: 日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
-- 実行ログパス: [data/logs/qa-prod-1781955906270.json](../data/logs/qa-prod-1781955906270.json)
-- 実行日時: 2026-06-20T11:46:30.062Z
-- デプロイVersion ID: 17814388-198d-4757-8e43-b62e706b4e8d
+- 実行ログパス: [data/logs/qa-prod-1781975678653.json](../data/logs/qa-prod-1781975678653.json)
+- 実行日時: 2026-06-20T17:16:04.193Z
+- デプロイVersion ID: badb1f20-c6ed-4cb5-affe-b95ac6a7b101
 
 ### Q-08: 西武時代の山川穂高の年別本塁打数を教えてください
 
@@ -288,31 +288,31 @@
   2022年: 42本（埼玉西武ライオンズ、対象131試合）
   2023年: 0本（埼玉西武ライオンズ、対象17試合）
 - intent: search_batting
-- entities: {
-  "player": "山川",
-  "pitcher": null,
-  "batter": null,
-  "runner": null,
-  "team": "西武",
-  "opponent": null,
-  "game_id": null
-}
+- entities:   {
+    "player": "山川",
+    "pitcher": null,
+    "batter": null,
+    "runner": null,
+    "team": "西武",
+    "opponent": null,
+    "game_id": null
+  }
 - player_id: 21425139
-- data_requirements: [
-  "aggregate_batting",
-  "source_snapshots"
-]
-- repositories: [
-  "searchBattingLines",
-  "listSourceSnapshotsByGameIds"
-]
+- data_requirements:   [
+    "aggregate_batting",
+    "source_snapshots"
+  ]
+- repositories:   [
+    "searchBattingLines",
+    "listSourceSnapshotsByGameIds"
+  ]
 - pass/fail: Pass
 - fail理由: なし
 - fail分類: なし
 - 許容した差分: 日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
-- 実行ログパス: [data/logs/qa-prod-1781955906270.json](../data/logs/qa-prod-1781955906270.json)
-- 実行日時: 2026-06-20T11:46:57.635Z
-- デプロイVersion ID: 17814388-198d-4757-8e43-b62e706b4e8d
+- 実行ログパス: [data/logs/qa-prod-1781975678653.json](../data/logs/qa-prod-1781975678653.json)
+- 実行日時: 2026-06-20T17:16:27.592Z
+- デプロイVersion ID: badb1f20-c6ed-4cb5-affe-b95ac6a7b101
 
 ### Q-09: 牧秀悟の最近の打撃成績
 
@@ -328,31 +328,31 @@
   内容は5試合で3安打、3打点、打率.150です。
   対象試合: 2026年6月19日、2026年6月13日、2026年6月12日、2026年6月11日、2026年6月10日
 - intent: search_batting
-- entities: {
-  "player": "牧 秀悟",
-  "pitcher": null,
-  "batter": null,
-  "runner": null,
-  "team": null,
-  "opponent": null,
-  "game_id": null
-}
+- entities:   {
+    "player": "牧 秀悟",
+    "pitcher": null,
+    "batter": null,
+    "runner": null,
+    "team": null,
+    "opponent": null,
+    "game_id": null
+  }
 - player_id: 13115153
-- data_requirements: [
-  "batting_lines",
-  "source_snapshots"
-]
-- repositories: [
-  "searchBattingLines",
-  "listSourceSnapshotsByGameIds"
-]
+- data_requirements:   [
+    "batting_lines",
+    "source_snapshots"
+  ]
+- repositories:   [
+    "searchBattingLines",
+    "listSourceSnapshotsByGameIds"
+  ]
 - pass/fail: Pass
 - fail理由: なし
 - fail分類: なし
 - 許容した差分: 日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
-- 実行ログパス: [data/logs/qa-prod-1781955906270.json](../data/logs/qa-prod-1781955906270.json)
-- 実行日時: 2026-06-20T11:47:07.259Z
-- デプロイVersion ID: 17814388-198d-4757-8e43-b62e706b4e8d
+- 実行ログパス: [data/logs/qa-prod-1781975678653.json](../data/logs/qa-prod-1781975678653.json)
+- 実行日時: 2026-06-20T17:16:37.405Z
+- デプロイVersion ID: badb1f20-c6ed-4cb5-affe-b95ac6a7b101
 
 ### Q-10: 最近の近本光司の調子は？
 
@@ -367,33 +367,33 @@
   阪神タイガース 近本の確認できる最新5出場の打撃内容です。
   内容は5試合で7安打、2打点、2四球、打率.318です。
   対象試合: 2026年4月26日、2026年4月25日、2026年4月22日、2026年4月21日、2026年4月19日
-  確認できる最新の出場記録は2026年4月26日です。現在（2026年6月20日）から55日空いているため、これだけでは現在の調子とは言えません。
+  確認できる最新の出場記録は2026年4月26日です。現在（2026年6月21日）から56日空いているため、これだけでは現在の調子とは言えません。
 - intent: search_batting
-- entities: {
-  "player": "近本 光司",
-  "pitcher": null,
-  "batter": null,
-  "runner": null,
-  "team": "阪神タイガース",
-  "opponent": null,
-  "game_id": null
-}
+- entities:   {
+    "player": "近本 光司",
+    "pitcher": null,
+    "batter": null,
+    "runner": null,
+    "team": "阪神タイガース",
+    "opponent": null,
+    "game_id": null
+  }
 - player_id: 71075138
-- data_requirements: [
-  "batting_lines",
-  "source_snapshots"
-]
-- repositories: [
-  "searchBattingLines",
-  "listSourceSnapshotsByGameIds"
-]
+- data_requirements:   [
+    "batting_lines",
+    "source_snapshots"
+  ]
+- repositories:   [
+    "searchBattingLines",
+    "listSourceSnapshotsByGameIds"
+  ]
 - pass/fail: Pass
 - fail理由: なし
 - fail分類: なし
 - 許容した差分: 日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
-- 実行ログパス: [data/logs/qa-prod-1781955906270.json](../data/logs/qa-prod-1781955906270.json)
-- 実行日時: 2026-06-20T11:47:16.688Z
-- デプロイVersion ID: 17814388-198d-4757-8e43-b62e706b4e8d
+- 実行ログパス: [data/logs/qa-prod-1781975678653.json](../data/logs/qa-prod-1781975678653.json)
+- 実行日時: 2026-06-20T17:16:47.165Z
+- デプロイVersion ID: badb1f20-c6ed-4cb5-affe-b95ac6a7b101
 
 ### Q-11: 坂倉将吾の最近の打席内容を教えてください
 
@@ -408,31 +408,31 @@
   内容は5試合で7安打、3打点、1四球、打率.368です。
   対象試合: 2026年6月19日、2026年6月16日、2026年6月14日、2026年6月13日、2026年6月12日
 - intent: search_batting
-- entities: {
-  "player": "坂倉 将吾",
-  "pitcher": null,
-  "batter": null,
-  "runner": null,
-  "team": null,
-  "opponent": null,
-  "game_id": null
-}
+- entities:   {
+    "player": "坂倉 将吾",
+    "pitcher": null,
+    "batter": null,
+    "runner": null,
+    "team": null,
+    "opponent": null,
+    "game_id": null
+  }
 - player_id: 11915134
-- data_requirements: [
-  "batting_lines",
-  "source_snapshots"
-]
-- repositories: [
-  "searchBattingLines",
-  "listSourceSnapshotsByGameIds"
-]
+- data_requirements:   [
+    "batting_lines",
+    "source_snapshots"
+  ]
+- repositories:   [
+    "searchBattingLines",
+    "listSourceSnapshotsByGameIds"
+  ]
 - pass/fail: Pass
 - fail理由: なし
 - fail分類: なし
 - 許容した差分: 日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
-- 実行ログパス: [data/logs/qa-prod-1781955906270.json](../data/logs/qa-prod-1781955906270.json)
-- 実行日時: 2026-06-20T11:47:26.362Z
-- デプロイVersion ID: 17814388-198d-4757-8e43-b62e706b4e8d
+- 実行ログパス: [data/logs/qa-prod-1781975678653.json](../data/logs/qa-prod-1781975678653.json)
+- 実行日時: 2026-06-20T17:16:56.752Z
+- デプロイVersion ID: badb1f20-c6ed-4cb5-affe-b95ac6a7b101
 
 ### Q-12: 牧秀悟の今シーズンの通算打率は？
 
@@ -443,31 +443,31 @@
 - 本番回答:
   横浜DeNAベイスターズの牧 秀悟選手の2026年シーズン通算では、21試合に出場し、78打数26安打で打率は約.333です。ホームランは2本、打点は10、盗塁は1、四球は11、三振は13となっています。
 - intent: aggregate_batting
-- entities: {
-  "player": "牧 秀悟",
-  "pitcher": null,
-  "batter": null,
-  "runner": null,
-  "team": null,
-  "opponent": null,
-  "game_id": null
-}
+- entities:   {
+    "player": "牧 秀悟",
+    "pitcher": null,
+    "batter": null,
+    "runner": null,
+    "team": null,
+    "opponent": null,
+    "game_id": null
+  }
 - player_id: 13115153
-- data_requirements: [
-  "aggregate_batting",
-  "source_snapshots"
-]
-- repositories: [
-  "aggregateBattingLines",
-  "listSourceSnapshotsByGameIds"
-]
+- data_requirements:   [
+    "aggregate_batting",
+    "source_snapshots"
+  ]
+- repositories:   [
+    "aggregateBattingLines",
+    "listSourceSnapshotsByGameIds"
+  ]
 - pass/fail: Pass
 - fail理由: なし
 - fail分類: なし
 - 許容した差分: 日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
-- 実行ログパス: [data/logs/qa-prod-1781955906270.json](../data/logs/qa-prod-1781955906270.json)
-- 実行日時: 2026-06-20T11:47:35.856Z
-- デプロイVersion ID: 17814388-198d-4757-8e43-b62e706b4e8d
+- 実行ログパス: [data/logs/qa-prod-1781975678653.json](../data/logs/qa-prod-1781975678653.json)
+- 実行日時: 2026-06-20T17:17:06.564Z
+- デプロイVersion ID: badb1f20-c6ed-4cb5-affe-b95ac6a7b101
 
 ### Q-13: 牧の2026年の成績を教えて
 
@@ -478,31 +478,31 @@
 - 本番回答:
   横浜DeNAベイスターズの牧 秀悟選手の2026年シーズンの成績をご紹介します。21試合に出場し、78打数で26安打、2本塁打、10打点、14得点、1盗塁、11四球、13三振という内容です。打率は約.333です。
 - intent: aggregate_batting
-- entities: {
-  "player": "牧 秀悟",
-  "pitcher": null,
-  "batter": null,
-  "runner": null,
-  "team": null,
-  "opponent": null,
-  "game_id": null
-}
+- entities:   {
+    "player": "牧 秀悟",
+    "pitcher": null,
+    "batter": null,
+    "runner": null,
+    "team": null,
+    "opponent": null,
+    "game_id": null
+  }
 - player_id: 13115153
-- data_requirements: [
-  "aggregate_batting",
-  "source_snapshots"
-]
-- repositories: [
-  "aggregateBattingLines",
-  "listSourceSnapshotsByGameIds"
-]
+- data_requirements:   [
+    "aggregate_batting",
+    "source_snapshots"
+  ]
+- repositories:   [
+    "aggregateBattingLines",
+    "listSourceSnapshotsByGameIds"
+  ]
 - pass/fail: Pass
 - fail理由: なし
 - fail分類: なし
 - 許容した差分: 日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
-- 実行ログパス: [data/logs/qa-prod-1781955906270.json](../data/logs/qa-prod-1781955906270.json)
-- 実行日時: 2026-06-20T11:47:45.315Z
-- デプロイVersion ID: 17814388-198d-4757-8e43-b62e706b4e8d
+- 実行ログパス: [data/logs/qa-prod-1781975678653.json](../data/logs/qa-prod-1781975678653.json)
+- 実行日時: 2026-06-20T17:17:15.905Z
+- デプロイVersion ID: badb1f20-c6ed-4cb5-affe-b95ac6a7b101
 
 ### Q-14: DeNAの牧の2026年の成績
 
@@ -513,31 +513,31 @@
 - 本番回答:
   横浜DeNAベイスターズの牧 秀悟選手の2026年シーズンの成績をご紹介します。21試合に出場し、78打数で26安打、2本塁打、10打点、14得点、1盗塁、11四球、13三振という内容です。打率は約.333です。
 - intent: aggregate_batting
-- entities: {
-  "player": "牧 秀悟",
-  "pitcher": null,
-  "batter": null,
-  "runner": null,
-  "team": "DeNA",
-  "opponent": null,
-  "game_id": null
-}
+- entities:   {
+    "player": "牧 秀悟",
+    "pitcher": null,
+    "batter": null,
+    "runner": null,
+    "team": "DeNA",
+    "opponent": null,
+    "game_id": null
+  }
 - player_id: 13115153
-- data_requirements: [
-  "aggregate_batting",
-  "source_snapshots"
-]
-- repositories: [
-  "aggregateBattingLines",
-  "listSourceSnapshotsByGameIds"
-]
+- data_requirements:   [
+    "aggregate_batting",
+    "source_snapshots"
+  ]
+- repositories:   [
+    "aggregateBattingLines",
+    "listSourceSnapshotsByGameIds"
+  ]
 - pass/fail: Pass
 - fail理由: なし
 - fail分類: なし
 - 許容した差分: 日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
-- 実行ログパス: [data/logs/qa-prod-1781955906270.json](../data/logs/qa-prod-1781955906270.json)
-- 実行日時: 2026-06-20T11:47:54.812Z
-- デプロイVersion ID: 17814388-198d-4757-8e43-b62e706b4e8d
+- 実行ログパス: [data/logs/qa-prod-1781975678653.json](../data/logs/qa-prod-1781975678653.json)
+- 実行日時: 2026-06-20T17:17:25.462Z
+- デプロイVersion ID: badb1f20-c6ed-4cb5-affe-b95ac6a7b101
 
 ### Q-15: 村上宗隆は今シーズン打率どのくらい？本塁打は何本出てる？
 
@@ -550,31 +550,31 @@
   
   条件に一致する打撃成績が20件あります。先頭は2025年4月17日の村上で、4打数1安打0打点です。
 - intent: search_batting
-- entities: {
-  "player": "村上",
-  "pitcher": null,
-  "batter": null,
-  "runner": null,
-  "team": "ヤクルト",
-  "opponent": null,
-  "game_id": null
-}
+- entities:   {
+    "player": "村上",
+    "pitcher": null,
+    "batter": null,
+    "runner": null,
+    "team": "ヤクルト",
+    "opponent": null,
+    "game_id": null
+  }
 - player_id: null
-- data_requirements: [
-  "aggregate_batting",
-  "source_snapshots"
-]
-- repositories: [
-  "searchBattingLines",
-  "listSourceSnapshotsByGameIds"
-]
+- data_requirements:   [
+    "aggregate_batting",
+    "source_snapshots"
+  ]
+- repositories:   [
+    "searchBattingLines",
+    "listSourceSnapshotsByGameIds"
+  ]
 - pass/fail: Pass
 - fail理由: なし
 - fail分類: なし
 - 許容した差分: 日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
-- 実行ログパス: [data/logs/qa-prod-1781955906270.json](../data/logs/qa-prod-1781955906270.json)
-- 実行日時: 2026-06-20T11:48:06.929Z
-- デプロイVersion ID: 17814388-198d-4757-8e43-b62e706b4e8d
+- 実行ログパス: [data/logs/qa-prod-1781975678653.json](../data/logs/qa-prod-1781975678653.json)
+- 実行日時: 2026-06-20T17:17:37.490Z
+- デプロイVersion ID: badb1f20-c6ed-4cb5-affe-b95ac6a7b101
 
 ### Q-16: ヤクルトの村上の今シーズン打率と本塁打数を教えてください
 
@@ -587,31 +587,31 @@
   
   条件に一致する打撃成績が20件あります。先頭は2025年4月17日の村上で、4打数1安打0打点です。
 - intent: search_batting
-- entities: {
-  "player": "村上",
-  "pitcher": null,
-  "batter": null,
-  "runner": null,
-  "team": "ヤクルト",
-  "opponent": null,
-  "game_id": null
-}
+- entities:   {
+    "player": "村上",
+    "pitcher": null,
+    "batter": null,
+    "runner": null,
+    "team": "ヤクルト",
+    "opponent": null,
+    "game_id": null
+  }
 - player_id: null
-- data_requirements: [
-  "aggregate_batting",
-  "source_snapshots"
-]
-- repositories: [
-  "searchBattingLines",
-  "listSourceSnapshotsByGameIds"
-]
+- data_requirements:   [
+    "aggregate_batting",
+    "source_snapshots"
+  ]
+- repositories:   [
+    "searchBattingLines",
+    "listSourceSnapshotsByGameIds"
+  ]
 - pass/fail: Pass
 - fail理由: なし
 - fail分類: なし
 - 許容した差分: 日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
-- 実行ログパス: [data/logs/qa-prod-1781955906270.json](../data/logs/qa-prod-1781955906270.json)
-- 実行日時: 2026-06-20T11:48:19.381Z
-- デプロイVersion ID: 17814388-198d-4757-8e43-b62e706b4e8d
+- 実行ログパス: [data/logs/qa-prod-1781975678653.json](../data/logs/qa-prod-1781975678653.json)
+- 実行日時: 2026-06-20T17:17:50.018Z
+- デプロイVersion ID: badb1f20-c6ed-4cb5-affe-b95ac6a7b101
 
 ### Q-17: 今シーズン（2026年）の山本由伸と佐々木朗希を比較してください。防御率・奪三振・投球回の3つの観点で。
 
@@ -622,31 +622,31 @@
 - 本番回答:
   選手候補は0件です。入力「山本由伸」は、収録対象（2016年以降のNPB一軍・ファーム出場記録）では確認できません。2016年以降にNPB公式戦へ出場した選手名を指定すると、年度をさかのぼって成績を集計します。
 - intent: aggregate_pitching
-- entities: {
-  "player": null,
-  "pitcher": "山本由伸",
-  "batter": null,
-  "runner": null,
-  "team": null,
-  "opponent": null,
-  "game_id": null
-}
+- entities:   {
+    "player": null,
+    "pitcher": "山本由伸",
+    "batter": null,
+    "runner": null,
+    "team": null,
+    "opponent": null,
+    "game_id": null
+  }
 - player_id: null
-- data_requirements: [
-  "aggregate_pitching",
-  "source_snapshots"
-]
-- repositories: [
-  "aggregatePitchingLines",
-  "listSourceSnapshotsByGameIds"
-]
+- data_requirements:   [
+    "aggregate_pitching",
+    "source_snapshots"
+  ]
+- repositories:   [
+    "aggregatePitchingLines",
+    "listSourceSnapshotsByGameIds"
+  ]
 - pass/fail: Pass
 - fail理由: なし
 - fail分類: なし
 - 許容した差分: 日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
-- 実行ログパス: [data/logs/qa-prod-1781955906270.json](../data/logs/qa-prod-1781955906270.json)
-- 実行日時: 2026-06-20T11:49:20.959Z
-- デプロイVersion ID: 17814388-198d-4757-8e43-b62e706b4e8d
+- 実行ログパス: [data/logs/qa-prod-1781975678653.json](../data/logs/qa-prod-1781975678653.json)
+- 実行日時: 2026-06-20T17:18:54.534Z
+- デプロイVersion ID: badb1f20-c6ed-4cb5-affe-b95ac6a7b101
 
 ### Q-18: オリックスの山本由伸の2026年の一軍での投球成績、登板数と防御率を教えてください
 
@@ -657,31 +657,31 @@
 - 本番回答:
   選手候補は0件です。入力「山本由伸」は、収録対象（2016年以降のNPB一軍・ファーム出場記録）では確認できません。2016年以降にNPB公式戦へ出場した選手名を指定すると、年度をさかのぼって成績を集計します。
 - intent: aggregate_pitching
-- entities: {
-  "player": null,
-  "pitcher": "山本由伸",
-  "batter": null,
-  "runner": null,
-  "team": "オリックス",
-  "opponent": null,
-  "game_id": null
-}
+- entities:   {
+    "player": null,
+    "pitcher": "山本由伸",
+    "batter": null,
+    "runner": null,
+    "team": "オリックス",
+    "opponent": null,
+    "game_id": null
+  }
 - player_id: null
-- data_requirements: [
-  "aggregate_pitching",
-  "source_snapshots"
-]
-- repositories: [
-  "aggregatePitchingLines",
-  "listSourceSnapshotsByGameIds"
-]
+- data_requirements:   [
+    "aggregate_pitching",
+    "source_snapshots"
+  ]
+- repositories:   [
+    "aggregatePitchingLines",
+    "listSourceSnapshotsByGameIds"
+  ]
 - pass/fail: Pass
 - fail理由: なし
 - fail分類: なし
 - 許容した差分: 日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
-- 実行ログパス: [data/logs/qa-prod-1781955906270.json](../data/logs/qa-prod-1781955906270.json)
-- 実行日時: 2026-06-20T11:50:20.523Z
-- デプロイVersion ID: 17814388-198d-4757-8e43-b62e706b4e8d
+- 実行ログパス: [data/logs/qa-prod-1781975678653.json](../data/logs/qa-prod-1781975678653.json)
+- 実行日時: 2026-06-20T17:19:57.574Z
+- デプロイVersion ID: badb1f20-c6ed-4cb5-affe-b95ac6a7b101
 
 ### Q-19: 2025年の山本由伸（オリックス）の最終的なシーズン成績はどうでしたか？勝敗と防御率が知りたい
 
@@ -692,31 +692,31 @@
 - 本番回答:
   選手候補は0件です。入力「山本由伸」は、収録対象（2016年以降のNPB一軍・ファーム出場記録）では確認できません。2016年以降にNPB公式戦へ出場した選手名を指定すると、年度をさかのぼって成績を集計します。
 - intent: aggregate_pitching
-- entities: {
-  "player": null,
-  "pitcher": "山本由伸",
-  "batter": null,
-  "runner": null,
-  "team": "オリックス",
-  "opponent": null,
-  "game_id": null
-}
+- entities:   {
+    "player": null,
+    "pitcher": "山本由伸",
+    "batter": null,
+    "runner": null,
+    "team": "オリックス",
+    "opponent": null,
+    "game_id": null
+  }
 - player_id: null
-- data_requirements: [
-  "aggregate_pitching",
-  "source_snapshots"
-]
-- repositories: [
-  "aggregatePitchingLines",
-  "listSourceSnapshotsByGameIds"
-]
+- data_requirements:   [
+    "aggregate_pitching",
+    "source_snapshots"
+  ]
+- repositories:   [
+    "aggregatePitchingLines",
+    "listSourceSnapshotsByGameIds"
+  ]
 - pass/fail: Pass
 - fail理由: なし
 - fail分類: なし
 - 許容した差分: 日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
-- 実行ログパス: [data/logs/qa-prod-1781955906270.json](../data/logs/qa-prod-1781955906270.json)
-- 実行日時: 2026-06-20T11:51:16.081Z
-- デプロイVersion ID: 17814388-198d-4757-8e43-b62e706b4e8d
+- 実行ログパス: [data/logs/qa-prod-1781975678653.json](../data/logs/qa-prod-1781975678653.json)
+- 実行日時: 2026-06-20T17:20:55.966Z
+- デプロイVersion ID: badb1f20-c6ed-4cb5-affe-b95ac6a7b101
 
 ### Q-20: 2025年の大谷翔平の成績を教えてください
 
@@ -727,31 +727,31 @@
 - 本番回答:
   選手候補は0件です。入力「大谷翔平」は、収録対象（2016年以降のNPB一軍・ファーム出場記録）では確認できません。2016年以降にNPB公式戦へ出場した選手名を指定すると、年度をさかのぼって成績を集計します。
 - intent: aggregate_batting
-- entities: {
-  "player": "大谷翔平",
-  "pitcher": null,
-  "batter": null,
-  "runner": null,
-  "team": null,
-  "opponent": null,
-  "game_id": null
-}
+- entities:   {
+    "player": "大谷翔平",
+    "pitcher": null,
+    "batter": null,
+    "runner": null,
+    "team": null,
+    "opponent": null,
+    "game_id": null
+  }
 - player_id: null
-- data_requirements: [
-  "aggregate_batting",
-  "source_snapshots"
-]
-- repositories: [
-  "aggregateBattingLines",
-  "listSourceSnapshotsByGameIds"
-]
+- data_requirements:   [
+    "aggregate_batting",
+    "source_snapshots"
+  ]
+- repositories:   [
+    "aggregateBattingLines",
+    "listSourceSnapshotsByGameIds"
+  ]
 - pass/fail: Pass
 - fail理由: なし
 - fail分類: なし
 - 許容した差分: 日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
-- 実行ログパス: [data/logs/qa-prod-1781955906270.json](../data/logs/qa-prod-1781955906270.json)
-- 実行日時: 2026-06-20T11:52:09.777Z
-- デプロイVersion ID: 17814388-198d-4757-8e43-b62e706b4e8d
+- 実行ログパス: [data/logs/qa-prod-1781975678653.json](../data/logs/qa-prod-1781975678653.json)
+- 実行日時: 2026-06-20T17:21:49.758Z
+- デプロイVersion ID: badb1f20-c6ed-4cb5-affe-b95ac6a7b101
 
 ### Q-21: 佐々木朗希の最後のNPBでの登板はいつですか？
 
@@ -762,31 +762,31 @@
 - 本番回答:
   選手候補は0件です。入力「佐々木朗希」は、収録対象（2016年以降のNPB一軍・ファーム出場記録）では確認できません。2016年以降にNPB公式戦へ出場した選手名を指定すると、年度をさかのぼって成績を集計します。
 - intent: search_pitching
-- entities: {
-  "player": null,
-  "pitcher": "佐々木朗希",
-  "batter": null,
-  "runner": null,
-  "team": null,
-  "opponent": null,
-  "game_id": null
-}
+- entities:   {
+    "player": null,
+    "pitcher": "佐々木朗希",
+    "batter": null,
+    "runner": null,
+    "team": null,
+    "opponent": null,
+    "game_id": null
+  }
 - player_id: null
-- data_requirements: [
-  "pitching_lines",
-  "source_snapshots"
-]
-- repositories: [
-  "searchPitchingLines",
-  "listSourceSnapshotsByGameIds"
-]
+- data_requirements:   [
+    "pitching_lines",
+    "source_snapshots"
+  ]
+- repositories:   [
+    "searchPitchingLines",
+    "listSourceSnapshotsByGameIds"
+  ]
 - pass/fail: Pass
 - fail理由: なし
 - fail分類: なし
 - 許容した差分: 日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
-- 実行ログパス: [data/logs/qa-prod-1781955906270.json](../data/logs/qa-prod-1781955906270.json)
-- 実行日時: 2026-06-20T11:52:22.489Z
-- デプロイVersion ID: 17814388-198d-4757-8e43-b62e706b4e8d
+- 実行ログパス: [data/logs/qa-prod-1781975678653.json](../data/logs/qa-prod-1781975678653.json)
+- 実行日時: 2026-06-20T17:22:02.978Z
+- デプロイVersion ID: badb1f20-c6ed-4cb5-affe-b95ac6a7b101
 
 ### Q-22: 2026年5月10日の広島の試合結果
 
@@ -797,37 +797,37 @@
 - 本番回答:
   条件に一致する試合詳細は見つかりませんでした。確認できる記録にないため、推測では回答しません。
 - intent: game_detail
-- entities: {
-  "player": null,
-  "pitcher": null,
-  "batter": null,
-  "runner": null,
-  "team": "広島",
-  "opponent": null,
-  "game_id": null
-}
+- entities:   {
+    "player": null,
+    "pitcher": null,
+    "batter": null,
+    "runner": null,
+    "team": "広島",
+    "opponent": null,
+    "game_id": null
+  }
 - player_id: null
-- data_requirements: [
-  "game_details",
-  "events",
-  "batting_lines",
-  "pitching_lines",
-  "source_snapshots"
-]
-- repositories: [
-  "searchGameDetails",
-  "searchEvents",
-  "searchBattingLines",
-  "searchPitchingLines",
-  "listSourceSnapshotsByGameIds"
-]
+- data_requirements:   [
+    "game_details",
+    "events",
+    "batting_lines",
+    "pitching_lines",
+    "source_snapshots"
+  ]
+- repositories:   [
+    "searchGameDetails",
+    "searchEvents",
+    "searchBattingLines",
+    "searchPitchingLines",
+    "listSourceSnapshotsByGameIds"
+  ]
 - pass/fail: Pass
 - fail理由: なし
 - fail分類: なし
 - 許容した差分: 日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
-- 実行ログパス: [data/logs/qa-prod-1781955906270.json](../data/logs/qa-prod-1781955906270.json)
-- 実行日時: 2026-06-20T11:52:31.562Z
-- デプロイVersion ID: 17814388-198d-4757-8e43-b62e706b4e8d
+- 実行ログパス: [data/logs/qa-prod-1781975678653.json](../data/logs/qa-prod-1781975678653.json)
+- 実行日時: 2026-06-20T17:22:12.612Z
+- デプロイVersion ID: badb1f20-c6ed-4cb5-affe-b95ac6a7b101
 
 ### Q-23: 2026年5月15日の阪神の試合詳細
 
@@ -844,37 +844,37 @@
      失策は広島が1、阪神が1です。
      得点経過: 4回表に広島が1点（1-0）、6回表に広島が1点（2-0）。
 - intent: game_detail
-- entities: {
-  "player": null,
-  "pitcher": null,
-  "batter": null,
-  "runner": null,
-  "team": "阪神",
-  "opponent": null,
-  "game_id": null
-}
+- entities:   {
+    "player": null,
+    "pitcher": null,
+    "batter": null,
+    "runner": null,
+    "team": "阪神",
+    "opponent": null,
+    "game_id": null
+  }
 - player_id: null
-- data_requirements: [
-  "game_details",
-  "events",
-  "batting_lines",
-  "pitching_lines",
-  "source_snapshots"
-]
-- repositories: [
-  "searchGameDetails",
-  "searchEvents",
-  "searchBattingLines",
-  "searchPitchingLines",
-  "listSourceSnapshotsByGameIds"
-]
+- data_requirements:   [
+    "game_details",
+    "events",
+    "batting_lines",
+    "pitching_lines",
+    "source_snapshots"
+  ]
+- repositories:   [
+    "searchGameDetails",
+    "searchEvents",
+    "searchBattingLines",
+    "searchPitchingLines",
+    "listSourceSnapshotsByGameIds"
+  ]
 - pass/fail: Pass
 - fail理由: なし
 - fail分類: なし
 - 許容した差分: 日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
-- 実行ログパス: [data/logs/qa-prod-1781955906270.json](../data/logs/qa-prod-1781955906270.json)
-- 実行日時: 2026-06-20T11:52:40.752Z
-- デプロイVersion ID: 17814388-198d-4757-8e43-b62e706b4e8d
+- 実行ログパス: [data/logs/qa-prod-1781975678653.json](../data/logs/qa-prod-1781975678653.json)
+- 実行日時: 2026-06-20T17:22:21.754Z
+- デプロイVersion ID: badb1f20-c6ed-4cb5-affe-b95ac6a7b101
 
 ### Q-24: 2026年5月21日の巨人対DeNAの試合結果を教えてください
 
@@ -885,31 +885,31 @@
 - 本番回答:
   選手候補は0件です。入力「5月21日の巨人」は、収録対象（2016年以降のNPB一軍・ファーム出場記録）では確認できません。2016年以降にNPB公式戦へ出場した選手名を指定すると、年度をさかのぼって成績を集計します。
 - intent: search_events
-- entities: {
-  "player": null,
-  "pitcher": "試合結果を教えてください",
-  "batter": "5月21日の巨人",
-  "runner": null,
-  "team": null,
-  "opponent": null,
-  "game_id": null
-}
+- entities:   {
+    "player": null,
+    "pitcher": "試合結果を教えてください",
+    "batter": "5月21日の巨人",
+    "runner": null,
+    "team": null,
+    "opponent": null,
+    "game_id": null
+  }
 - player_id: null
-- data_requirements: [
-  "events",
-  "source_snapshots"
-]
-- repositories: [
-  "searchEvents",
-  "listSourceSnapshotsByGameIds"
-]
+- data_requirements:   [
+    "events",
+    "source_snapshots"
+  ]
+- repositories:   [
+    "searchEvents",
+    "listSourceSnapshotsByGameIds"
+  ]
 - pass/fail: Pass
 - fail理由: なし
 - fail分類: なし
 - 許容した差分: 日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
-- 実行ログパス: [data/logs/qa-prod-1781955906270.json](../data/logs/qa-prod-1781955906270.json)
-- 実行日時: 2026-06-20T11:52:56.867Z
-- デプロイVersion ID: 17814388-198d-4757-8e43-b62e706b4e8d
+- 実行ログパス: [data/logs/qa-prod-1781975678653.json](../data/logs/qa-prod-1781975678653.json)
+- 実行日時: 2026-06-20T17:22:36.837Z
+- デプロイVersion ID: badb1f20-c6ed-4cb5-affe-b95ac6a7b101
 
 ### Q-25: 2025年の日本シリーズの結果を教えてください
 
@@ -925,31 +925,31 @@
   2025-10-29（2025年10月29日） 甲子園、福岡ソフトバンクホークス ソフトバンクが阪神タイガース 阪神に3-2で勝利しました。
   2025-10-30（2025年10月30日） 甲子園、福岡ソフトバンクホークス ソフトバンクが阪神タイガース 阪神に3-2で勝利しました。
 - intent: search_games
-- entities: {
-  "player": null,
-  "pitcher": null,
-  "batter": null,
-  "runner": null,
-  "team": null,
-  "opponent": null,
-  "game_id": null
-}
+- entities:   {
+    "player": null,
+    "pitcher": null,
+    "batter": null,
+    "runner": null,
+    "team": null,
+    "opponent": null,
+    "game_id": null
+  }
 - player_id: null
-- data_requirements: [
-  "games",
-  "source_snapshots"
-]
-- repositories: [
-  "searchGames",
-  "listSourceSnapshotsByGameIds"
-]
+- data_requirements:   [
+    "games",
+    "source_snapshots"
+  ]
+- repositories:   [
+    "searchGames",
+    "listSourceSnapshotsByGameIds"
+  ]
 - pass/fail: Pass
 - fail理由: なし
 - fail分類: なし
 - 許容した差分: 日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
-- 実行ログパス: [data/logs/qa-prod-1781955906270.json](../data/logs/qa-prod-1781955906270.json)
-- 実行日時: 2026-06-20T11:53:05.960Z
-- デプロイVersion ID: 17814388-198d-4757-8e43-b62e706b4e8d
+- 実行ログパス: [data/logs/qa-prod-1781975678653.json](../data/logs/qa-prod-1781975678653.json)
+- 実行日時: 2026-06-20T17:22:45.894Z
+- デプロイVersion ID: badb1f20-c6ed-4cb5-affe-b95ac6a7b101
 
 ### Q-26: 2026年5月10日の広島のスタメンを教えてください
 
@@ -960,31 +960,31 @@
 - 本番回答:
   条件に一致する打撃成績は見つかりませんでした。確認できる記録にないため、推測では回答しません。
 - intent: search_batting
-- entities: {
-  "player": null,
-  "pitcher": null,
-  "batter": null,
-  "runner": null,
-  "team": "広島",
-  "opponent": null,
-  "game_id": null
-}
+- entities:   {
+    "player": null,
+    "pitcher": null,
+    "batter": null,
+    "runner": null,
+    "team": "広島",
+    "opponent": null,
+    "game_id": null
+  }
 - player_id: null
-- data_requirements: [
-  "batting_lines",
-  "source_snapshots"
-]
-- repositories: [
-  "searchBattingLines",
-  "listSourceSnapshotsByGameIds"
-]
+- data_requirements:   [
+    "batting_lines",
+    "source_snapshots"
+  ]
+- repositories:   [
+    "searchBattingLines",
+    "listSourceSnapshotsByGameIds"
+  ]
 - pass/fail: Pass
 - fail理由: なし
 - fail分類: なし
 - 許容した差分: 日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
-- 実行ログパス: [data/logs/qa-prod-1781955906270.json](../data/logs/qa-prod-1781955906270.json)
-- 実行日時: 2026-06-20T11:53:14.982Z
-- デプロイVersion ID: 17814388-198d-4757-8e43-b62e706b4e8d
+- 実行ログパス: [data/logs/qa-prod-1781975678653.json](../data/logs/qa-prod-1781975678653.json)
+- 実行日時: 2026-06-20T17:22:54.870Z
+- デプロイVersion ID: badb1f20-c6ed-4cb5-affe-b95ac6a7b101
 
 ### Q-27: DeNAで5番ショートは最近いつ？
 
@@ -995,31 +995,31 @@
 - 本番回答:
   条件に一致するロスターは見つかりませんでした。確認できる記録にないため、推測では回答しません。
 - intent: search_roster
-- entities: {
-  "player": null,
-  "pitcher": null,
-  "batter": null,
-  "runner": null,
-  "team": "DeNA",
-  "opponent": null,
-  "game_id": null
-}
+- entities:   {
+    "player": null,
+    "pitcher": null,
+    "batter": null,
+    "runner": null,
+    "team": "DeNA",
+    "opponent": null,
+    "game_id": null
+  }
 - player_id: null
-- data_requirements: [
-  "roster_entries",
-  "source_snapshots"
-]
-- repositories: [
-  "searchRosterEntries",
-  "listSourceSnapshotsByGameIds"
-]
+- data_requirements:   [
+    "roster_entries",
+    "source_snapshots"
+  ]
+- repositories:   [
+    "searchRosterEntries",
+    "listSourceSnapshotsByGameIds"
+  ]
 - pass/fail: Pass
 - fail理由: なし
 - fail分類: なし
 - 許容した差分: 日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
-- 実行ログパス: [data/logs/qa-prod-1781955906270.json](../data/logs/qa-prod-1781955906270.json)
-- 実行日時: 2026-06-20T11:53:24.008Z
-- デプロイVersion ID: 17814388-198d-4757-8e43-b62e706b4e8d
+- 実行ログパス: [data/logs/qa-prod-1781975678653.json](../data/logs/qa-prod-1781975678653.json)
+- 実行日時: 2026-06-20T17:23:04.363Z
+- デプロイVersion ID: badb1f20-c6ed-4cb5-affe-b95ac6a7b101
 
 ### Q-28: 今シーズンのヤクルトで最も多く4番に起用されている選手は誰ですか？
 
@@ -1031,31 +1031,31 @@
   打撃集計結果は1件です。
   1位: オスナ（東京ヤクルトスワローズ） 試合31、打率.243、本塁打2、打点13、盗塁0、OPS.553、IsoP.000、BB%8.7%
 - intent: aggregate_batting
-- entities: {
-  "player": null,
-  "pitcher": null,
-  "batter": null,
-  "runner": null,
-  "team": "ヤクルト",
-  "opponent": null,
-  "game_id": null
-}
+- entities:   {
+    "player": null,
+    "pitcher": null,
+    "batter": null,
+    "runner": null,
+    "team": "ヤクルト",
+    "opponent": null,
+    "game_id": null
+  }
 - player_id: null
-- data_requirements: [
-  "aggregate_batting",
-  "source_snapshots"
-]
-- repositories: [
-  "aggregateBattingLines",
-  "listSourceSnapshotsByGameIds"
-]
+- data_requirements:   [
+    "aggregate_batting",
+    "source_snapshots"
+  ]
+- repositories:   [
+    "aggregateBattingLines",
+    "listSourceSnapshotsByGameIds"
+  ]
 - pass/fail: Pass
 - fail理由: なし
 - fail分類: なし
 - 許容した差分: 日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
-- 実行ログパス: [data/logs/qa-prod-1781955906270.json](../data/logs/qa-prod-1781955906270.json)
-- 実行日時: 2026-06-20T11:53:35.293Z
-- デプロイVersion ID: 17814388-198d-4757-8e43-b62e706b4e8d
+- 実行ログパス: [data/logs/qa-prod-1781975678653.json](../data/logs/qa-prod-1781975678653.json)
+- 実行日時: 2026-06-20T17:23:15.139Z
+- デプロイVersion ID: badb1f20-c6ed-4cb5-affe-b95ac6a7b101
 
 ### Q-29: 今シーズンDeNAで捕手（スタメン）として最も多く出場しているのは誰？
 
@@ -1069,31 +1069,31 @@
   2位: 山本（横浜DeNAベイスターズ） 試合16、打率.250、本塁打0、打点7、盗塁0、OPS.611、IsoP.000、BB%14.8%
   3位: 戸柱（横浜DeNAベイスターズ） 試合8、打率.211、本塁打0、打点4、盗塁0、OPS.496、IsoP.000、BB%9.5%
 - intent: aggregate_batting
-- entities: {
-  "player": null,
-  "pitcher": null,
-  "batter": null,
-  "runner": null,
-  "team": "DeNA",
-  "opponent": null,
-  "game_id": null
-}
+- entities:   {
+    "player": null,
+    "pitcher": null,
+    "batter": null,
+    "runner": null,
+    "team": "DeNA",
+    "opponent": null,
+    "game_id": null
+  }
 - player_id: null
-- data_requirements: [
-  "aggregate_batting",
-  "source_snapshots"
-]
-- repositories: [
-  "aggregateBattingLines",
-  "listSourceSnapshotsByGameIds"
-]
+- data_requirements:   [
+    "aggregate_batting",
+    "source_snapshots"
+  ]
+- repositories:   [
+    "aggregateBattingLines",
+    "listSourceSnapshotsByGameIds"
+  ]
 - pass/fail: Pass
 - fail理由: なし
 - fail分類: なし
 - 許容した差分: 日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
-- 実行ログパス: [data/logs/qa-prod-1781955906270.json](../data/logs/qa-prod-1781955906270.json)
-- 実行日時: 2026-06-20T11:53:46.163Z
-- デプロイVersion ID: 17814388-198d-4757-8e43-b62e706b4e8d
+- 実行ログパス: [data/logs/qa-prod-1781975678653.json](../data/logs/qa-prod-1781975678653.json)
+- 実行日時: 2026-06-20T17:23:25.708Z
+- デプロイVersion ID: badb1f20-c6ed-4cb5-affe-b95ac6a7b101
 
 ### Q-30: 今シーズンのパ・リーグ打率ランキングトップ5を教えてください
 
@@ -1109,31 +1109,31 @@
   4位: 山中（オリックス・バファローズ） 試合17、打率.339、本塁打0、打点7、盗塁1、OPS.752、IsoP.000、BB%11.1%
   5位: 古賀悠（埼玉西武ライオンズ） 試合31、打率.333、本塁打2、打点15、盗塁2、OPS.726、IsoP.000、BB%8.9%
 - intent: aggregate_batting
-- entities: {
-  "player": null,
-  "pitcher": null,
-  "batter": null,
-  "runner": null,
-  "team": "パ・リーグ",
-  "opponent": null,
-  "game_id": null
-}
+- entities:   {
+    "player": null,
+    "pitcher": null,
+    "batter": null,
+    "runner": null,
+    "team": "パ・リーグ",
+    "opponent": null,
+    "game_id": null
+  }
 - player_id: null
-- data_requirements: [
-  "aggregate_batting",
-  "source_snapshots"
-]
-- repositories: [
-  "aggregateBattingLines",
-  "listSourceSnapshotsByGameIds"
-]
+- data_requirements:   [
+    "aggregate_batting",
+    "source_snapshots"
+  ]
+- repositories:   [
+    "aggregateBattingLines",
+    "listSourceSnapshotsByGameIds"
+  ]
 - pass/fail: Pass
 - fail理由: なし
 - fail分類: なし
 - 許容した差分: 日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
-- 実行ログパス: [data/logs/qa-prod-1781955906270.json](../data/logs/qa-prod-1781955906270.json)
-- 実行日時: 2026-06-20T11:53:58.519Z
-- デプロイVersion ID: 17814388-198d-4757-8e43-b62e706b4e8d
+- 実行ログパス: [data/logs/qa-prod-1781975678653.json](../data/logs/qa-prod-1781975678653.json)
+- 実行日時: 2026-06-20T17:23:37.095Z
+- デプロイVersion ID: badb1f20-c6ed-4cb5-affe-b95ac6a7b101
 
 ### Q-31: 今シーズンのセ・リーグで打率・出塁率・長打率のバランスが最も優れていると思われる打者を1人挙げて、その根拠を数字で示してください。
 
@@ -1154,31 +1154,31 @@
   9位: 増田 珠（東京ヤクルトスワローズ） 試合22、打率.278、本塁打2、打点8、盗塁0、OPS.847、IsoP.167、BB%14.9%
   10位: * 勝又 温史（横浜DeNAベイスターズ） 試合14、打率.383、本塁打0、打点6、盗塁1、OPS.834、IsoP.043、BB%2.0%
 - intent: aggregate_batting
-- entities: {
-  "player": null,
-  "pitcher": null,
-  "batter": null,
-  "runner": null,
-  "team": "セ・リーグ",
-  "opponent": null,
-  "game_id": null
-}
+- entities:   {
+    "player": null,
+    "pitcher": null,
+    "batter": null,
+    "runner": null,
+    "team": "セ・リーグ",
+    "opponent": null,
+    "game_id": null
+  }
 - player_id: null
-- data_requirements: [
-  "aggregate_batting",
-  "source_snapshots"
-]
-- repositories: [
-  "aggregateBattingLines",
-  "listSourceSnapshotsByGameIds"
-]
+- data_requirements:   [
+    "aggregate_batting",
+    "source_snapshots"
+  ]
+- repositories:   [
+    "aggregateBattingLines",
+    "listSourceSnapshotsByGameIds"
+  ]
 - pass/fail: Pass
 - fail理由: なし
 - fail分類: なし
 - 許容した差分: 日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
-- 実行ログパス: [data/logs/qa-prod-1781955906270.json](../data/logs/qa-prod-1781955906270.json)
-- 実行日時: 2026-06-20T11:54:07.447Z
-- デプロイVersion ID: 17814388-198d-4757-8e43-b62e706b4e8d
+- 実行ログパス: [data/logs/qa-prod-1781975678653.json](../data/logs/qa-prod-1781975678653.json)
+- 実行日時: 2026-06-20T17:23:46.035Z
+- デプロイVersion ID: badb1f20-c6ed-4cb5-affe-b95ac6a7b101
 
 ### Q-32: 今シーズンのパ・リーグ盗塁数ランキングを教えてください
 
@@ -1199,31 +1199,31 @@
   9位: 長谷川（埼玉西武ライオンズ） 試合38、打率.319、本塁打2、打点12、盗塁4、OPS.672、IsoP.000、BB%5.0%
   10位: カナリオ（埼玉西武ライオンズ） 試合37、打率.248、本塁打2、打点19、盗塁3、OPS.562、IsoP.000、BB%8.8%
 - intent: aggregate_batting
-- entities: {
-  "player": null,
-  "pitcher": null,
-  "batter": null,
-  "runner": null,
-  "team": "パ・リーグ",
-  "opponent": null,
-  "game_id": null
-}
+- entities:   {
+    "player": null,
+    "pitcher": null,
+    "batter": null,
+    "runner": null,
+    "team": "パ・リーグ",
+    "opponent": null,
+    "game_id": null
+  }
 - player_id: null
-- data_requirements: [
-  "aggregate_batting",
-  "source_snapshots"
-]
-- repositories: [
-  "aggregateBattingLines",
-  "listSourceSnapshotsByGameIds"
-]
+- data_requirements:   [
+    "aggregate_batting",
+    "source_snapshots"
+  ]
+- repositories:   [
+    "aggregateBattingLines",
+    "listSourceSnapshotsByGameIds"
+  ]
 - pass/fail: Pass
 - fail理由: なし
 - fail分類: なし
 - 許容した差分: 日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
-- 実行ログパス: [data/logs/qa-prod-1781955906270.json](../data/logs/qa-prod-1781955906270.json)
-- 実行日時: 2026-06-20T11:54:18.931Z
-- デプロイVersion ID: 17814388-198d-4757-8e43-b62e706b4e8d
+- 実行ログパス: [data/logs/qa-prod-1781975678653.json](../data/logs/qa-prod-1781975678653.json)
+- 実行日時: 2026-06-20T17:23:57.377Z
+- デプロイVersion ID: badb1f20-c6ed-4cb5-affe-b95ac6a7b101
 
 ### Q-33: 今シーズンのセ・リーグ打点ランキングトップ5
 
@@ -1239,31 +1239,31 @@
   4位: * 武岡 龍世（東京ヤクルトスワローズ） 試合32、打率.262、本塁打3、打点11、盗塁0、OPS.762、IsoP.167、BB%9.7%
   5位: オスナ（東京ヤクルトスワローズ） 試合25、打率.247、本塁打2、打点10、盗塁0、OPS.648、IsoP.097、BB%7.8%
 - intent: aggregate_batting
-- entities: {
-  "player": null,
-  "pitcher": null,
-  "batter": null,
-  "runner": null,
-  "team": "セ・リーグ",
-  "opponent": null,
-  "game_id": null
-}
+- entities:   {
+    "player": null,
+    "pitcher": null,
+    "batter": null,
+    "runner": null,
+    "team": "セ・リーグ",
+    "opponent": null,
+    "game_id": null
+  }
 - player_id: null
-- data_requirements: [
-  "aggregate_batting",
-  "source_snapshots"
-]
-- repositories: [
-  "aggregateBattingLines",
-  "listSourceSnapshotsByGameIds"
-]
+- data_requirements:   [
+    "aggregate_batting",
+    "source_snapshots"
+  ]
+- repositories:   [
+    "aggregateBattingLines",
+    "listSourceSnapshotsByGameIds"
+  ]
 - pass/fail: Pass
 - fail理由: なし
 - fail分類: なし
 - 許容した差分: 日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
-- 実行ログパス: [data/logs/qa-prod-1781955906270.json](../data/logs/qa-prod-1781955906270.json)
-- 実行日時: 2026-06-20T11:54:27.915Z
-- デプロイVersion ID: 17814388-198d-4757-8e43-b62e706b4e8d
+- 実行ログパス: [data/logs/qa-prod-1781975678653.json](../data/logs/qa-prod-1781975678653.json)
+- 実行日時: 2026-06-20T17:24:06.577Z
+- デプロイVersion ID: badb1f20-c6ed-4cb5-affe-b95ac6a7b101
 
 ### Q-34: 2026年セ・リーグの本塁打ランキングを教えてください
 
@@ -1284,31 +1284,31 @@
   9位: 伊藤 琉偉（東京ヤクルトスワローズ） 試合30、打率.149、本塁打2、打点6、盗塁2、OPS.489、IsoP.090、BB%10.4%
   10位: 増田 珠（東京ヤクルトスワローズ） 試合22、打率.278、本塁打2、打点8、盗塁0、OPS.847、IsoP.167、BB%14.9%
 - intent: aggregate_batting
-- entities: {
-  "player": null,
-  "pitcher": null,
-  "batter": null,
-  "runner": null,
-  "team": "セ・リーグ",
-  "opponent": null,
-  "game_id": null
-}
+- entities:   {
+    "player": null,
+    "pitcher": null,
+    "batter": null,
+    "runner": null,
+    "team": "セ・リーグ",
+    "opponent": null,
+    "game_id": null
+  }
 - player_id: null
-- data_requirements: [
-  "aggregate_batting",
-  "source_snapshots"
-]
-- repositories: [
-  "aggregateBattingLines",
-  "listSourceSnapshotsByGameIds"
-]
+- data_requirements:   [
+    "aggregate_batting",
+    "source_snapshots"
+  ]
+- repositories:   [
+    "aggregateBattingLines",
+    "listSourceSnapshotsByGameIds"
+  ]
 - pass/fail: Pass
 - fail理由: なし
 - fail分類: なし
 - 許容した差分: 日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
-- 実行ログパス: [data/logs/qa-prod-1781955906270.json](../data/logs/qa-prod-1781955906270.json)
-- 実行日時: 2026-06-20T11:54:36.911Z
-- デプロイVersion ID: 17814388-198d-4757-8e43-b62e706b4e8d
+- 実行ログパス: [data/logs/qa-prod-1781975678653.json](../data/logs/qa-prod-1781975678653.json)
+- 実行日時: 2026-06-20T17:24:15.553Z
+- デプロイVersion ID: badb1f20-c6ed-4cb5-affe-b95ac6a7b101
 
 ### Q-35: 今シーズンのパ・リーグ本塁打ランキングを教えてください
 
@@ -1329,31 +1329,31 @@
   9位: 柳田（福岡ソフトバンクホークス） 試合39、打率.263、本塁打5、打点15、盗塁0、OPS.571、IsoP.000、BB%6.2%
   10位: 清宮幸（北海道日本ハムファイターズ） 試合41、打率.262、本塁打5、打点21、盗塁2、OPS.596、IsoP.000、BB%9.6%
 - intent: aggregate_batting
-- entities: {
-  "player": null,
-  "pitcher": null,
-  "batter": null,
-  "runner": null,
-  "team": "パ・リーグ",
-  "opponent": null,
-  "game_id": null
-}
+- entities:   {
+    "player": null,
+    "pitcher": null,
+    "batter": null,
+    "runner": null,
+    "team": "パ・リーグ",
+    "opponent": null,
+    "game_id": null
+  }
 - player_id: null
-- data_requirements: [
-  "aggregate_batting",
-  "source_snapshots"
-]
-- repositories: [
-  "aggregateBattingLines",
-  "listSourceSnapshotsByGameIds"
-]
+- data_requirements:   [
+    "aggregate_batting",
+    "source_snapshots"
+  ]
+- repositories:   [
+    "aggregateBattingLines",
+    "listSourceSnapshotsByGameIds"
+  ]
 - pass/fail: Pass
 - fail理由: なし
 - fail分類: なし
 - 許容した差分: 日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
-- 実行ログパス: [data/logs/qa-prod-1781955906270.json](../data/logs/qa-prod-1781955906270.json)
-- 実行日時: 2026-06-20T11:54:48.441Z
-- デプロイVersion ID: 17814388-198d-4757-8e43-b62e706b4e8d
+- 実行ログパス: [data/logs/qa-prod-1781975678653.json](../data/logs/qa-prod-1781975678653.json)
+- 実行日時: 2026-06-20T17:24:26.836Z
+- デプロイVersion ID: badb1f20-c6ed-4cb5-affe-b95ac6a7b101
 
 ### Q-36: 2022年から2024年の3年間で、NPB全体で最も本塁打を多く打った打者トップ3を教えてください。
 
@@ -1367,31 +1367,31 @@
   2位: 岡本和（読売ジャイアンツ） 試合429、打率.270、本塁打99、打点260、盗塁2、OPS.622、IsoP.000、BB%11.4%
   3位: 牧（横浜DeNAベイスターズ） 試合431、打率.292、本塁打77、打点271、盗塁17、OPS.631、IsoP.000、BB%6.7%
 - intent: aggregate_batting
-- entities: {
-  "player": null,
-  "pitcher": null,
-  "batter": null,
-  "runner": null,
-  "team": null,
-  "opponent": null,
-  "game_id": null
-}
+- entities:   {
+    "player": null,
+    "pitcher": null,
+    "batter": null,
+    "runner": null,
+    "team": null,
+    "opponent": null,
+    "game_id": null
+  }
 - player_id: null
-- data_requirements: [
-  "aggregate_batting",
-  "source_snapshots"
-]
-- repositories: [
-  "aggregateBattingLines",
-  "listSourceSnapshotsByGameIds"
-]
+- data_requirements:   [
+    "aggregate_batting",
+    "source_snapshots"
+  ]
+- repositories:   [
+    "aggregateBattingLines",
+    "listSourceSnapshotsByGameIds"
+  ]
 - pass/fail: Pass
 - fail理由: なし
 - fail分類: なし
 - 許容した差分: 日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
-- 実行ログパス: [data/logs/qa-prod-1781955906270.json](../data/logs/qa-prod-1781955906270.json)
-- 実行日時: 2026-06-20T11:55:01.566Z
-- デプロイVersion ID: 17814388-198d-4757-8e43-b62e706b4e8d
+- 実行ログパス: [data/logs/qa-prod-1781975678653.json](../data/logs/qa-prod-1781975678653.json)
+- 実行日時: 2026-06-20T17:24:39.233Z
+- デプロイVersion ID: badb1f20-c6ed-4cb5-affe-b95ac6a7b101
 
 ### Q-37: 2022年から2024年のパ・リーグで本塁打が最も多い打者トップ3
 
@@ -1405,31 +1405,31 @@
   2位: 万波（北海道日本ハムファイターズ） 試合383、打率.247、本塁打58、打点177、盗塁4、OPS.543、IsoP.000、BB%6.5%
   3位: 柳田（福岡ソフトバンクホークス） 試合330、打率.287、本塁打54、打点214、盗塁6、OPS.650、IsoP.000、BB%10.8%
 - intent: aggregate_batting
-- entities: {
-  "player": null,
-  "pitcher": null,
-  "batter": null,
-  "runner": null,
-  "team": "パ・リーグ",
-  "opponent": null,
-  "game_id": null
-}
+- entities:   {
+    "player": null,
+    "pitcher": null,
+    "batter": null,
+    "runner": null,
+    "team": "パ・リーグ",
+    "opponent": null,
+    "game_id": null
+  }
 - player_id: null
-- data_requirements: [
-  "aggregate_batting",
-  "source_snapshots"
-]
-- repositories: [
-  "aggregateBattingLines",
-  "listSourceSnapshotsByGameIds"
-]
+- data_requirements:   [
+    "aggregate_batting",
+    "source_snapshots"
+  ]
+- repositories:   [
+    "aggregateBattingLines",
+    "listSourceSnapshotsByGameIds"
+  ]
 - pass/fail: Pass
 - fail理由: なし
 - fail分類: なし
 - 許容した差分: 日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
-- 実行ログパス: [data/logs/qa-prod-1781955906270.json](../data/logs/qa-prod-1781955906270.json)
-- 実行日時: 2026-06-20T11:55:13.751Z
-- デプロイVersion ID: 17814388-198d-4757-8e43-b62e706b4e8d
+- 実行ログパス: [data/logs/qa-prod-1781975678653.json](../data/logs/qa-prod-1781975678653.json)
+- 実行日時: 2026-06-20T17:24:50.845Z
+- デプロイVersion ID: badb1f20-c6ed-4cb5-affe-b95ac6a7b101
 
 ### Q-38: 2026年の先発防御率ランキングトップ5
 
@@ -1445,31 +1445,31 @@
   4位: 栗林（広島東洋カープ） 登板4、セーブ0、投球回30.33、奪三振28、自責点4、防御率1.19、WHIP0.56、球数378
   5位: 瀧中（東北楽天ゴールデンイーグルス） 登板7、セーブ0、投球回41.33、奪三振32、自責点6、防御率1.31、WHIP0.94、球数643
 - intent: aggregate_pitching
-- entities: {
-  "player": null,
-  "pitcher": null,
-  "batter": null,
-  "runner": null,
-  "team": null,
-  "opponent": null,
-  "game_id": null
-}
+- entities:   {
+    "player": null,
+    "pitcher": null,
+    "batter": null,
+    "runner": null,
+    "team": null,
+    "opponent": null,
+    "game_id": null
+  }
 - player_id: null
-- data_requirements: [
-  "aggregate_pitching",
-  "source_snapshots"
-]
-- repositories: [
-  "aggregatePitchingLines",
-  "listSourceSnapshotsByGameIds"
-]
+- data_requirements:   [
+    "aggregate_pitching",
+    "source_snapshots"
+  ]
+- repositories:   [
+    "aggregatePitchingLines",
+    "listSourceSnapshotsByGameIds"
+  ]
 - pass/fail: Pass
 - fail理由: なし
 - fail分類: なし
 - 許容した差分: 日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
-- 実行ログパス: [data/logs/qa-prod-1781955906270.json](../data/logs/qa-prod-1781955906270.json)
-- 実行日時: 2026-06-20T11:55:23.249Z
-- デプロイVersion ID: 17814388-198d-4757-8e43-b62e706b4e8d
+- 実行ログパス: [data/logs/qa-prod-1781975678653.json](../data/logs/qa-prod-1781975678653.json)
+- 実行日時: 2026-06-20T17:25:00.382Z
+- デプロイVersion ID: badb1f20-c6ed-4cb5-affe-b95ac6a7b101
 
 ### Q-39: 2026年セ・リーグの先発防御率ランキングを教えてください
 
@@ -1490,31 +1490,31 @@
   9位: 竹丸（読売ジャイアンツ） 登板6、セーブ0、投球回34.33、奪三振39、自責点8、防御率2.10、WHIP1.28、球数554
   10位: 則本（読売ジャイアンツ） 登板5、セーブ0、投球回30.00、奪三振19、自責点7、防御率2.10、WHIP1.17、球数495
 - intent: aggregate_pitching
-- entities: {
-  "player": null,
-  "pitcher": null,
-  "batter": null,
-  "runner": null,
-  "team": "セ・リーグ",
-  "opponent": null,
-  "game_id": null
-}
+- entities:   {
+    "player": null,
+    "pitcher": null,
+    "batter": null,
+    "runner": null,
+    "team": "セ・リーグ",
+    "opponent": null,
+    "game_id": null
+  }
 - player_id: null
-- data_requirements: [
-  "aggregate_pitching",
-  "source_snapshots"
-]
-- repositories: [
-  "aggregatePitchingLines",
-  "listSourceSnapshotsByGameIds"
-]
+- data_requirements:   [
+    "aggregate_pitching",
+    "source_snapshots"
+  ]
+- repositories:   [
+    "aggregatePitchingLines",
+    "listSourceSnapshotsByGameIds"
+  ]
 - pass/fail: Pass
 - fail理由: なし
 - fail分類: なし
 - 許容した差分: 日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
-- 実行ログパス: [data/logs/qa-prod-1781955906270.json](../data/logs/qa-prod-1781955906270.json)
-- 実行日時: 2026-06-20T11:55:32.745Z
-- デプロイVersion ID: 17814388-198d-4757-8e43-b62e706b4e8d
+- 実行ログパス: [data/logs/qa-prod-1781975678653.json](../data/logs/qa-prod-1781975678653.json)
+- 実行日時: 2026-06-20T17:25:09.830Z
+- デプロイVersion ID: badb1f20-c6ed-4cb5-affe-b95ac6a7b101
 
 ### Q-40: 今シーズン（2026年）の先発陣で、WHIPが最も低い投手を教えてください。WHIPは（被安打＋与四球）÷投球回で計算してください。
 
@@ -1535,31 +1535,31 @@
   9位: ウィットリー（読売ジャイアンツ） 登板5、セーブ0、投球回30.33、奪三振26、自責点8、防御率2.37、WHIP0.89、球数424
   10位: 上沢（福岡ソフトバンクホークス） 登板5、セーブ0、投球回34.33、奪三振31、自責点9、防御率2.36、WHIP0.90、球数535
 - intent: aggregate_pitching
-- entities: {
-  "player": null,
-  "pitcher": null,
-  "batter": null,
-  "runner": null,
-  "team": null,
-  "opponent": null,
-  "game_id": null
-}
+- entities:   {
+    "player": null,
+    "pitcher": null,
+    "batter": null,
+    "runner": null,
+    "team": null,
+    "opponent": null,
+    "game_id": null
+  }
 - player_id: null
-- data_requirements: [
-  "aggregate_pitching",
-  "source_snapshots"
-]
-- repositories: [
-  "aggregatePitchingLines",
-  "listSourceSnapshotsByGameIds"
-]
+- data_requirements:   [
+    "aggregate_pitching",
+    "source_snapshots"
+  ]
+- repositories:   [
+    "aggregatePitchingLines",
+    "listSourceSnapshotsByGameIds"
+  ]
 - pass/fail: Pass
 - fail理由: なし
 - fail分類: なし
 - 許容した差分: 日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
-- 実行ログパス: [data/logs/qa-prod-1781955906270.json](../data/logs/qa-prod-1781955906270.json)
-- 実行日時: 2026-06-20T11:55:42.329Z
-- デプロイVersion ID: 17814388-198d-4757-8e43-b62e706b4e8d
+- 実行ログパス: [data/logs/qa-prod-1781975678653.json](../data/logs/qa-prod-1781975678653.json)
+- 実行日時: 2026-06-20T17:25:19.434Z
+- デプロイVersion ID: badb1f20-c6ed-4cb5-affe-b95ac6a7b101
 
 ### Q-41: 2026年セ・リーグのWHIPランキングを教えてください
 
@@ -1580,31 +1580,31 @@
   9位: 東（横浜DeNAベイスターズ） 登板7、セーブ0、投球回45.33、奪三振38、自責点13、防御率2.58、WHIP0.97、球数652
   10位: 高梨（東京ヤクルトスワローズ） 登板6、セーブ0、投球回34.00、奪三振32、自責点8、防御率2.12、WHIP0.97、球数557
 - intent: aggregate_pitching
-- entities: {
-  "player": null,
-  "pitcher": null,
-  "batter": null,
-  "runner": null,
-  "team": "セ・リーグ",
-  "opponent": null,
-  "game_id": null
-}
+- entities:   {
+    "player": null,
+    "pitcher": null,
+    "batter": null,
+    "runner": null,
+    "team": "セ・リーグ",
+    "opponent": null,
+    "game_id": null
+  }
 - player_id: null
-- data_requirements: [
-  "aggregate_pitching",
-  "source_snapshots"
-]
-- repositories: [
-  "aggregatePitchingLines",
-  "listSourceSnapshotsByGameIds"
-]
+- data_requirements:   [
+    "aggregate_pitching",
+    "source_snapshots"
+  ]
+- repositories:   [
+    "aggregatePitchingLines",
+    "listSourceSnapshotsByGameIds"
+  ]
 - pass/fail: Pass
 - fail理由: なし
 - fail分類: なし
 - 許容した差分: 日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
-- 実行ログパス: [data/logs/qa-prod-1781955906270.json](../data/logs/qa-prod-1781955906270.json)
-- 実行日時: 2026-06-20T11:55:51.853Z
-- デプロイVersion ID: 17814388-198d-4757-8e43-b62e706b4e8d
+- 実行ログパス: [data/logs/qa-prod-1781975678653.json](../data/logs/qa-prod-1781975678653.json)
+- 実行日時: 2026-06-20T17:25:28.838Z
+- デプロイVersion ID: badb1f20-c6ed-4cb5-affe-b95ac6a7b101
 
 ### Q-42: 今シーズンの広島の先発投手で防御率が最もいい投手を教えてください。防御率は自責点÷投球回×9で計算してください
 
@@ -1622,31 +1622,31 @@
   6位: 床田（広島東洋カープ） 登板6、セーブ0、投球回36.67、奪三振24、自責点14、防御率3.44、WHIP1.36、球数571
   7位: ターノック（広島東洋カープ） 登板7、セーブ0、投球回36.67、奪三振34、自責点19、防御率4.66、WHIP1.45、球数642
 - intent: aggregate_pitching
-- entities: {
-  "player": null,
-  "pitcher": null,
-  "batter": null,
-  "runner": null,
-  "team": "広島",
-  "opponent": null,
-  "game_id": null
-}
+- entities:   {
+    "player": null,
+    "pitcher": null,
+    "batter": null,
+    "runner": null,
+    "team": "広島",
+    "opponent": null,
+    "game_id": null
+  }
 - player_id: null
-- data_requirements: [
-  "aggregate_pitching",
-  "source_snapshots"
-]
-- repositories: [
-  "aggregatePitchingLines",
-  "listSourceSnapshotsByGameIds"
-]
+- data_requirements:   [
+    "aggregate_pitching",
+    "source_snapshots"
+  ]
+- repositories:   [
+    "aggregatePitchingLines",
+    "listSourceSnapshotsByGameIds"
+  ]
 - pass/fail: Pass
 - fail理由: なし
 - fail分類: なし
 - 許容した差分: 日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
-- 実行ログパス: [data/logs/qa-prod-1781955906270.json](../data/logs/qa-prod-1781955906270.json)
-- 実行日時: 2026-06-20T11:56:01.001Z
-- デプロイVersion ID: 17814388-198d-4757-8e43-b62e706b4e8d
+- 実行ログパス: [data/logs/qa-prod-1781975678653.json](../data/logs/qa-prod-1781975678653.json)
+- 実行日時: 2026-06-20T17:25:38.172Z
+- デプロイVersion ID: badb1f20-c6ed-4cb5-affe-b95ac6a7b101
 
 ### Q-43: 今シーズン（2026年）の先発登板で、7回以上投げてかつ自責点0だった試合が一番多い投手は誰ですか？その投手の名前と該当試合数を教えてください。
 
@@ -1667,31 +1667,31 @@
   9位: 金丸（中日ドラゴンズ） 登板8、セーブ0、投球回52.33、奪三振46、自責点13、防御率2.24、WHIP1.24、球数849
   10位: 平良（埼玉西武ライオンズ） 登板7、セーブ0、投球回50.00、奪三振46、自責点4、防御率0.72、WHIP0.74、球数746
 - intent: aggregate_pitching
-- entities: {
-  "player": null,
-  "pitcher": null,
-  "batter": null,
-  "runner": null,
-  "team": null,
-  "opponent": null,
-  "game_id": null
-}
+- entities:   {
+    "player": null,
+    "pitcher": null,
+    "batter": null,
+    "runner": null,
+    "team": null,
+    "opponent": null,
+    "game_id": null
+  }
 - player_id: null
-- data_requirements: [
-  "aggregate_pitching",
-  "source_snapshots"
-]
-- repositories: [
-  "aggregatePitchingLines",
-  "listSourceSnapshotsByGameIds"
-]
+- data_requirements:   [
+    "aggregate_pitching",
+    "source_snapshots"
+  ]
+- repositories:   [
+    "aggregatePitchingLines",
+    "listSourceSnapshotsByGameIds"
+  ]
 - pass/fail: Pass
 - fail理由: なし
 - fail分類: なし
 - 許容した差分: 日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
-- 実行ログパス: [data/logs/qa-prod-1781955906270.json](../data/logs/qa-prod-1781955906270.json)
-- 実行日時: 2026-06-20T11:56:10.692Z
-- デプロイVersion ID: 17814388-198d-4757-8e43-b62e706b4e8d
+- 実行ログパス: [data/logs/qa-prod-1781975678653.json](../data/logs/qa-prod-1781975678653.json)
+- 実行日時: 2026-06-20T17:25:48.299Z
+- デプロイVersion ID: badb1f20-c6ed-4cb5-affe-b95ac6a7b101
 
 ### Q-44: 今シーズンの奪三振数ランキングトップ5（全リーグ）
 
@@ -1707,31 +1707,31 @@
   4位: エスピノーザ（オリックス・バファローズ） 登板8、セーブ0、投球回55.33、奪三振50、自責点9、防御率1.46、WHIP0.89、球数812
   5位: 村上（阪神タイガース） 登板9、セーブ0、投球回60.33、奪三振49、自責点14、防御率2.09、WHIP0.99、球数986
 - intent: aggregate_pitching
-- entities: {
-  "player": null,
-  "pitcher": null,
-  "batter": null,
-  "runner": null,
-  "team": null,
-  "opponent": null,
-  "game_id": null
-}
+- entities:   {
+    "player": null,
+    "pitcher": null,
+    "batter": null,
+    "runner": null,
+    "team": null,
+    "opponent": null,
+    "game_id": null
+  }
 - player_id: null
-- data_requirements: [
-  "aggregate_pitching",
-  "source_snapshots"
-]
-- repositories: [
-  "aggregatePitchingLines",
-  "listSourceSnapshotsByGameIds"
-]
+- data_requirements:   [
+    "aggregate_pitching",
+    "source_snapshots"
+  ]
+- repositories:   [
+    "aggregatePitchingLines",
+    "listSourceSnapshotsByGameIds"
+  ]
 - pass/fail: Pass
 - fail理由: なし
 - fail分類: なし
 - 許容した差分: 日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
-- 実行ログパス: [data/logs/qa-prod-1781955906270.json](../data/logs/qa-prod-1781955906270.json)
-- 実行日時: 2026-06-20T11:56:20.366Z
-- デプロイVersion ID: 17814388-198d-4757-8e43-b62e706b4e8d
+- 実行ログパス: [data/logs/qa-prod-1781975678653.json](../data/logs/qa-prod-1781975678653.json)
+- 実行日時: 2026-06-20T17:25:57.895Z
+- デプロイVersion ID: badb1f20-c6ed-4cb5-affe-b95ac6a7b101
 
 ### Q-45: 今シーズン完封勝利した投手をすべて教えてください
 
@@ -1752,31 +1752,31 @@
   9位: 柳（中日ドラゴンズ） 登板1、セーブ0、投球回9.00、奪三振6、自責点0、防御率0.00、WHIP0.44、球数120
   10位: 栗林（広島東洋カープ） 登板1、セーブ0、投球回9.00、奪三振9、自責点0、防御率0.00、WHIP0.11、球数95
 - intent: aggregate_pitching
-- entities: {
-  "player": null,
-  "pitcher": null,
-  "batter": null,
-  "runner": null,
-  "team": null,
-  "opponent": null,
-  "game_id": null
-}
+- entities:   {
+    "player": null,
+    "pitcher": null,
+    "batter": null,
+    "runner": null,
+    "team": null,
+    "opponent": null,
+    "game_id": null
+  }
 - player_id: null
-- data_requirements: [
-  "aggregate_pitching",
-  "source_snapshots"
-]
-- repositories: [
-  "aggregatePitchingLines",
-  "listSourceSnapshotsByGameIds"
-]
+- data_requirements:   [
+    "aggregate_pitching",
+    "source_snapshots"
+  ]
+- repositories:   [
+    "aggregatePitchingLines",
+    "listSourceSnapshotsByGameIds"
+  ]
 - pass/fail: Pass
 - fail理由: なし
 - fail分類: なし
 - 許容した差分: 日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
-- 実行ログパス: [data/logs/qa-prod-1781955906270.json](../data/logs/qa-prod-1781955906270.json)
-- 実行日時: 2026-06-20T11:56:29.518Z
-- デプロイVersion ID: 17814388-198d-4757-8e43-b62e706b4e8d
+- 実行ログパス: [data/logs/qa-prod-1781975678653.json](../data/logs/qa-prod-1781975678653.json)
+- 実行日時: 2026-06-20T17:26:07.360Z
+- デプロイVersion ID: badb1f20-c6ed-4cb5-affe-b95ac6a7b101
 
 ### Q-46: 今シーズンのセーブ数ランキングを教えてください
 
@@ -1797,31 +1797,31 @@
   9位: ドリス（阪神タイガース） 登板18、セーブ7、投球回17.00、奪三振21、自責点3、防御率1.59、WHIP1.12、球数274
   10位: 山﨑（横浜DeNAベイスターズ） 登板12、セーブ7、投球回12.00、奪三振11、自責点5、防御率3.75、WHIP1.17、球数219
 - intent: aggregate_pitching
-- entities: {
-  "player": null,
-  "pitcher": null,
-  "batter": null,
-  "runner": null,
-  "team": null,
-  "opponent": null,
-  "game_id": null
-}
+- entities:   {
+    "player": null,
+    "pitcher": null,
+    "batter": null,
+    "runner": null,
+    "team": null,
+    "opponent": null,
+    "game_id": null
+  }
 - player_id: null
-- data_requirements: [
-  "aggregate_pitching",
-  "source_snapshots"
-]
-- repositories: [
-  "aggregatePitchingLines",
-  "listSourceSnapshotsByGameIds"
-]
+- data_requirements:   [
+    "aggregate_pitching",
+    "source_snapshots"
+  ]
+- repositories:   [
+    "aggregatePitchingLines",
+    "listSourceSnapshotsByGameIds"
+  ]
 - pass/fail: Pass
 - fail理由: なし
 - fail分類: なし
 - 許容した差分: 日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
-- 実行ログパス: [data/logs/qa-prod-1781955906270.json](../data/logs/qa-prod-1781955906270.json)
-- 実行日時: 2026-06-20T11:56:39.082Z
-- デプロイVersion ID: 17814388-198d-4757-8e43-b62e706b4e8d
+- 実行ログパス: [data/logs/qa-prod-1781975678653.json](../data/logs/qa-prod-1781975678653.json)
+- 実行日時: 2026-06-20T17:26:16.959Z
+- デプロイVersion ID: badb1f20-c6ed-4cb5-affe-b95ac6a7b101
 
 ### Q-47: 今シーズン（2026年）のパ・リーグ各チームの勝敗を教えてください
 
@@ -1838,31 +1838,31 @@
   ロッテ: 28勝23敗、引き分け2、対象53試合
   楽天: 19勝33敗、引き分け1、対象53試合
 - intent: aggregate_games
-- entities: {
-  "player": null,
-  "pitcher": null,
-  "batter": null,
-  "runner": null,
-  "team": "パ・リーグ",
-  "opponent": null,
-  "game_id": null
-}
+- entities:   {
+    "player": null,
+    "pitcher": null,
+    "batter": null,
+    "runner": null,
+    "team": "パ・リーグ",
+    "opponent": null,
+    "game_id": null
+  }
 - player_id: null
-- data_requirements: [
-  "aggregate_games",
-  "source_snapshots"
-]
-- repositories: [
-  "aggregateGameResults",
-  "listSourceSnapshotsByGameIds"
-]
+- data_requirements:   [
+    "aggregate_games",
+    "source_snapshots"
+  ]
+- repositories:   [
+    "aggregateGameResults",
+    "listSourceSnapshotsByGameIds"
+  ]
 - pass/fail: Pass
 - fail理由: なし
 - fail分類: なし
 - 許容した差分: 日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
-- 実行ログパス: [data/logs/qa-prod-1781955906270.json](../data/logs/qa-prod-1781955906270.json)
-- 実行日時: 2026-06-20T11:56:48.046Z
-- デプロイVersion ID: 17814388-198d-4757-8e43-b62e706b4e8d
+- 実行ログパス: [data/logs/qa-prod-1781975678653.json](../data/logs/qa-prod-1781975678653.json)
+- 実行日時: 2026-06-20T17:26:26.054Z
+- デプロイVersion ID: badb1f20-c6ed-4cb5-affe-b95ac6a7b101
 
 ### Q-48: 今シーズン阪神は何勝何敗ですか？
 
@@ -1874,31 +1874,31 @@
   2026年の勝敗集計です。
   阪神: 28勝23敗、引き分け1、対象52試合
 - intent: aggregate_games
-- entities: {
-  "player": null,
-  "pitcher": null,
-  "batter": null,
-  "runner": null,
-  "team": "阪神",
-  "opponent": null,
-  "game_id": null
-}
+- entities:   {
+    "player": null,
+    "pitcher": null,
+    "batter": null,
+    "runner": null,
+    "team": "阪神",
+    "opponent": null,
+    "game_id": null
+  }
 - player_id: null
-- data_requirements: [
-  "aggregate_games",
-  "source_snapshots"
-]
-- repositories: [
-  "aggregateGameResults",
-  "listSourceSnapshotsByGameIds"
-]
+- data_requirements:   [
+    "aggregate_games",
+    "source_snapshots"
+  ]
+- repositories:   [
+    "aggregateGameResults",
+    "listSourceSnapshotsByGameIds"
+  ]
 - pass/fail: Pass
 - fail理由: なし
 - fail分類: なし
 - 許容した差分: 日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
-- 実行ログパス: [data/logs/qa-prod-1781955906270.json](../data/logs/qa-prod-1781955906270.json)
-- 実行日時: 2026-06-20T11:56:56.956Z
-- デプロイVersion ID: 17814388-198d-4757-8e43-b62e706b4e8d
+- 実行ログパス: [data/logs/qa-prod-1781975678653.json](../data/logs/qa-prod-1781975678653.json)
+- 実行日時: 2026-06-20T17:26:34.977Z
+- デプロイVersion ID: badb1f20-c6ed-4cb5-affe-b95ac6a7b101
 
 ### Q-49: 今シーズンDeNAは勝ち越してますか？負け越してますか？
 
@@ -1910,31 +1910,31 @@
   2026年の勝敗集計です。
   DeNA: 19勝32敗、対象51試合
 - intent: aggregate_games
-- entities: {
-  "player": null,
-  "pitcher": null,
-  "batter": null,
-  "runner": null,
-  "team": "DeNA",
-  "opponent": null,
-  "game_id": null
-}
+- entities:   {
+    "player": null,
+    "pitcher": null,
+    "batter": null,
+    "runner": null,
+    "team": "DeNA",
+    "opponent": null,
+    "game_id": null
+  }
 - player_id: null
-- data_requirements: [
-  "aggregate_games",
-  "source_snapshots"
-]
-- repositories: [
-  "aggregateGameResults",
-  "listSourceSnapshotsByGameIds"
-]
+- data_requirements:   [
+    "aggregate_games",
+    "source_snapshots"
+  ]
+- repositories:   [
+    "aggregateGameResults",
+    "listSourceSnapshotsByGameIds"
+  ]
 - pass/fail: Pass
 - fail理由: なし
 - fail分類: なし
 - 許容した差分: 日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
-- 実行ログパス: [data/logs/qa-prod-1781955906270.json](../data/logs/qa-prod-1781955906270.json)
-- 実行日時: 2026-06-20T11:57:05.805Z
-- デプロイVersion ID: 17814388-198d-4757-8e43-b62e706b4e8d
+- 実行ログパス: [data/logs/qa-prod-1781975678653.json](../data/logs/qa-prod-1781975678653.json)
+- 実行日時: 2026-06-20T17:26:43.880Z
+- デプロイVersion ID: badb1f20-c6ed-4cb5-affe-b95ac6a7b101
 
 ### Q-50: 2024年のセ・リーグで勝利数が最も多いチームはどこですか？
 
@@ -1951,31 +1951,31 @@
   ヤクルト: 62勝77敗、引き分け4、対象143試合
   中日: 60勝75敗、引き分け8、対象143試合
 - intent: aggregate_games
-- entities: {
-  "player": null,
-  "pitcher": null,
-  "batter": null,
-  "runner": null,
-  "team": "セ・リーグ",
-  "opponent": null,
-  "game_id": null
-}
+- entities:   {
+    "player": null,
+    "pitcher": null,
+    "batter": null,
+    "runner": null,
+    "team": "セ・リーグ",
+    "opponent": null,
+    "game_id": null
+  }
 - player_id: null
-- data_requirements: [
-  "aggregate_games",
-  "source_snapshots"
-]
-- repositories: [
-  "aggregateGameResults",
-  "listSourceSnapshotsByGameIds"
-]
+- data_requirements:   [
+    "aggregate_games",
+    "source_snapshots"
+  ]
+- repositories:   [
+    "aggregateGameResults",
+    "listSourceSnapshotsByGameIds"
+  ]
 - pass/fail: Pass
 - fail理由: なし
 - fail分類: なし
 - 許容した差分: 日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
-- 実行ログパス: [data/logs/qa-prod-1781955906270.json](../data/logs/qa-prod-1781955906270.json)
-- 実行日時: 2026-06-20T11:57:14.879Z
-- デプロイVersion ID: 17814388-198d-4757-8e43-b62e706b4e8d
+- 実行ログパス: [data/logs/qa-prod-1781975678653.json](../data/logs/qa-prod-1781975678653.json)
+- 実行日時: 2026-06-20T17:26:53.082Z
+- デプロイVersion ID: badb1f20-c6ed-4cb5-affe-b95ac6a7b101
 
 ### Q-51: 牧秀悟の2023年から2025年の通算打率と本塁打数を教えてください
 
@@ -1986,31 +1986,31 @@
 - 本番回答:
   選手候補は0件です。入力「通算打率と」は、収録対象（2016年以降のNPB一軍・ファーム出場記録）では確認できません。2016年以降にNPB公式戦へ出場した選手名を指定すると、年度をさかのぼって成績を集計します。
 - intent: aggregate_batting
-- entities: {
-  "player": "通算打率と",
-  "pitcher": null,
-  "batter": null,
-  "runner": null,
-  "team": null,
-  "opponent": null,
-  "game_id": null
-}
+- entities:   {
+    "player": "通算打率と",
+    "pitcher": null,
+    "batter": null,
+    "runner": null,
+    "team": null,
+    "opponent": null,
+    "game_id": null
+  }
 - player_id: null
-- data_requirements: [
-  "aggregate_batting",
-  "source_snapshots"
-]
-- repositories: [
-  "aggregateBattingLines",
-  "listSourceSnapshotsByGameIds"
-]
+- data_requirements:   [
+    "aggregate_batting",
+    "source_snapshots"
+  ]
+- repositories:   [
+    "aggregateBattingLines",
+    "listSourceSnapshotsByGameIds"
+  ]
 - pass/fail: Pass
 - fail理由: なし
 - fail分類: なし
 - 許容した差分: 日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
-- 実行ログパス: [data/logs/qa-prod-1781955906270.json](../data/logs/qa-prod-1781955906270.json)
-- 実行日時: 2026-06-20T11:58:12.450Z
-- デプロイVersion ID: 17814388-198d-4757-8e43-b62e706b4e8d
+- 実行ログパス: [data/logs/qa-prod-1781975678653.json](../data/logs/qa-prod-1781975678653.json)
+- 実行日時: 2026-06-20T17:27:54.159Z
+- デプロイVersion ID: badb1f20-c6ed-4cb5-affe-b95ac6a7b101
 
 ### Q-52: 村上宗隆の2019年から2025年の年別本塁打数を教えてください
 
@@ -2021,31 +2021,31 @@
 - 本番回答:
   選手候補は0件です。入力「村上宗隆の2019年から2025年」は、収録対象（2016年以降のNPB一軍・ファーム出場記録）では確認できません。2016年以降にNPB公式戦へ出場した選手名を指定すると、年度をさかのぼって成績を集計します。
 - intent: aggregate_batting
-- entities: {
-  "player": "村上宗隆の2019年から2025年",
-  "pitcher": null,
-  "batter": null,
-  "runner": null,
-  "team": "ヤクルト",
-  "opponent": null,
-  "game_id": null
-}
+- entities:   {
+    "player": "村上宗隆の2019年から2025年",
+    "pitcher": null,
+    "batter": null,
+    "runner": null,
+    "team": "ヤクルト",
+    "opponent": null,
+    "game_id": null
+  }
 - player_id: null
-- data_requirements: [
-  "aggregate_batting",
-  "source_snapshots"
-]
-- repositories: [
-  "aggregateBattingLines",
-  "listSourceSnapshotsByGameIds"
-]
+- data_requirements:   [
+    "aggregate_batting",
+    "source_snapshots"
+  ]
+- repositories:   [
+    "aggregateBattingLines",
+    "listSourceSnapshotsByGameIds"
+  ]
 - pass/fail: Pass
 - fail理由: なし
 - fail分類: なし
 - 許容した差分: 日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
-- 実行ログパス: [data/logs/qa-prod-1781955906270.json](../data/logs/qa-prod-1781955906270.json)
-- 実行日時: 2026-06-20T11:58:38.169Z
-- デプロイVersion ID: 17814388-198d-4757-8e43-b62e706b4e8d
+- 実行ログパス: [data/logs/qa-prod-1781975678653.json](../data/logs/qa-prod-1781975678653.json)
+- 実行日時: 2026-06-20T17:28:20.116Z
+- デプロイVersion ID: badb1f20-c6ed-4cb5-affe-b95ac6a7b101
 
 ### Q-53: 岡本和真の2016年以降の通算本塁打数を教えてください
 
@@ -2056,31 +2056,31 @@
 - 本番回答:
   選手候補は0件です。入力「岡本和真」は、収録対象（2016年以降のNPB一軍・ファーム出場記録）では確認できません。2016年以降にNPB公式戦へ出場した選手名を指定すると、年度をさかのぼって成績を集計します。
 - intent: aggregate_batting
-- entities: {
-  "player": "岡本和真",
-  "pitcher": null,
-  "batter": null,
-  "runner": null,
-  "team": null,
-  "opponent": null,
-  "game_id": null
-}
+- entities:   {
+    "player": "岡本和真",
+    "pitcher": null,
+    "batter": null,
+    "runner": null,
+    "team": null,
+    "opponent": null,
+    "game_id": null
+  }
 - player_id: null
-- data_requirements: [
-  "aggregate_batting",
-  "source_snapshots"
-]
-- repositories: [
-  "aggregateBattingLines",
-  "listSourceSnapshotsByGameIds"
-]
+- data_requirements:   [
+    "aggregate_batting",
+    "source_snapshots"
+  ]
+- repositories:   [
+    "aggregateBattingLines",
+    "listSourceSnapshotsByGameIds"
+  ]
 - pass/fail: Pass
 - fail理由: なし
 - fail分類: なし
 - 許容した差分: 日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
-- 実行ログパス: [data/logs/qa-prod-1781955906270.json](../data/logs/qa-prod-1781955906270.json)
-- 実行日時: 2026-06-20T11:58:51.462Z
-- デプロイVersion ID: 17814388-198d-4757-8e43-b62e706b4e8d
+- 実行ログパス: [data/logs/qa-prod-1781975678653.json](../data/logs/qa-prod-1781975678653.json)
+- 実行日時: 2026-06-20T17:28:34.607Z
+- デプロイVersion ID: badb1f20-c6ed-4cb5-affe-b95ac6a7b101
 
 ### Q-54: 2019年のDeNA対阪神の対戦成績（勝敗）を教えてください
 
@@ -2092,31 +2092,31 @@
   2019年の勝敗集計です。
   DeNA: 9勝18敗、引き分け2、対象29試合
 - intent: aggregate_games
-- entities: {
-  "player": null,
-  "pitcher": null,
-  "batter": null,
-  "runner": null,
-  "team": "DeNA",
-  "opponent": "阪神",
-  "game_id": null
-}
+- entities:   {
+    "player": null,
+    "pitcher": null,
+    "batter": null,
+    "runner": null,
+    "team": "DeNA",
+    "opponent": "阪神",
+    "game_id": null
+  }
 - player_id: null
-- data_requirements: [
-  "aggregate_games",
-  "source_snapshots"
-]
-- repositories: [
-  "aggregateGameResults",
-  "listSourceSnapshotsByGameIds"
-]
+- data_requirements:   [
+    "aggregate_games",
+    "source_snapshots"
+  ]
+- repositories:   [
+    "aggregateGameResults",
+    "listSourceSnapshotsByGameIds"
+  ]
 - pass/fail: Pass
 - fail理由: なし
 - fail分類: なし
 - 許容した差分: 日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
-- 実行ログパス: [data/logs/qa-prod-1781955906270.json](../data/logs/qa-prod-1781955906270.json)
-- 実行日時: 2026-06-20T11:59:00.351Z
-- デプロイVersion ID: 17814388-198d-4757-8e43-b62e706b4e8d
+- 実行ログパス: [data/logs/qa-prod-1781975678653.json](../data/logs/qa-prod-1781975678653.json)
+- 実行日時: 2026-06-20T17:28:43.474Z
+- デプロイVersion ID: badb1f20-c6ed-4cb5-affe-b95ac6a7b101
 
 ### Q-55: 今シーズン代打ホームランを打った選手は？
 
@@ -2127,31 +2127,31 @@
 - 本番回答:
   条件期間の一軍公式戦では、代打本塁打は0件です。
 - intent: search_events
-- entities: {
-  "player": null,
-  "pitcher": null,
-  "batter": null,
-  "runner": null,
-  "team": null,
-  "opponent": null,
-  "game_id": null
-}
+- entities:   {
+    "player": null,
+    "pitcher": null,
+    "batter": null,
+    "runner": null,
+    "team": null,
+    "opponent": null,
+    "game_id": null
+  }
 - player_id: null
-- data_requirements: [
-  "events",
-  "source_snapshots"
-]
-- repositories: [
-  "searchEvents",
-  "listSourceSnapshotsByGameIds"
-]
+- data_requirements:   [
+    "events",
+    "source_snapshots"
+  ]
+- repositories:   [
+    "searchEvents",
+    "listSourceSnapshotsByGameIds"
+  ]
 - pass/fail: Pass
 - fail理由: なし
 - fail分類: なし
 - 許容した差分: 日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
-- 実行ログパス: [data/logs/qa-prod-1781955906270.json](../data/logs/qa-prod-1781955906270.json)
-- 実行日時: 2026-06-20T11:59:16.041Z
-- デプロイVersion ID: 17814388-198d-4757-8e43-b62e706b4e8d
+- 実行ログパス: [data/logs/qa-prod-1781975678653.json](../data/logs/qa-prod-1781975678653.json)
+- 実行日時: 2026-06-20T17:28:53.152Z
+- デプロイVersion ID: badb1f20-c6ed-4cb5-affe-b95ac6a7b101
 
 ### Q-56: 今シーズン阪神のサヨナラ勝ちはいつ？
 
@@ -2162,31 +2162,31 @@
 - 本番回答:
   条件期間の一軍公式戦では、該当チームのサヨナラ勝ちは0試合です。
 - intent: search_games
-- entities: {
-  "player": null,
-  "pitcher": null,
-  "batter": null,
-  "runner": null,
-  "team": "阪神",
-  "opponent": null,
-  "game_id": null
-}
+- entities:   {
+    "player": null,
+    "pitcher": null,
+    "batter": null,
+    "runner": null,
+    "team": "阪神",
+    "opponent": null,
+    "game_id": null
+  }
 - player_id: null
-- data_requirements: [
-  "games",
-  "source_snapshots"
-]
-- repositories: [
-  "searchGames",
-  "listSourceSnapshotsByGameIds"
-]
+- data_requirements:   [
+    "games",
+    "source_snapshots"
+  ]
+- repositories:   [
+    "searchGames",
+    "listSourceSnapshotsByGameIds"
+  ]
 - pass/fail: Pass
 - fail理由: なし
 - fail分類: なし
 - 許容した差分: 日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
-- 実行ログパス: [data/logs/qa-prod-1781955906270.json](../data/logs/qa-prod-1781955906270.json)
-- 実行日時: 2026-06-20T11:59:24.986Z
-- デプロイVersion ID: 17814388-198d-4757-8e43-b62e706b4e8d
+- 実行ログパス: [data/logs/qa-prod-1781975678653.json](../data/logs/qa-prod-1781975678653.json)
+- 実行日時: 2026-06-20T17:29:02.331Z
+- デプロイVersion ID: badb1f20-c6ed-4cb5-affe-b95ac6a7b101
 
 ### Q-57: 今シーズン最も球数が多かった登板を教えてください
 
@@ -2197,31 +2197,31 @@
 - 本番回答:
   条件期間で最も球数が多かった登板は、2026年6月10日の一軍・読売ジャイアンツ 戸郷です。9回を投げ、134球、14奪三振、失点0、自責点0でした。
 - intent: search_pitching
-- entities: {
-  "player": null,
-  "pitcher": null,
-  "batter": null,
-  "runner": null,
-  "team": null,
-  "opponent": null,
-  "game_id": null
-}
+- entities:   {
+    "player": null,
+    "pitcher": null,
+    "batter": null,
+    "runner": null,
+    "team": null,
+    "opponent": null,
+    "game_id": null
+  }
 - player_id: null
-- data_requirements: [
-  "pitching_lines",
-  "source_snapshots"
-]
-- repositories: [
-  "searchPitchingLines",
-  "listSourceSnapshotsByGameIds"
-]
+- data_requirements:   [
+    "pitching_lines",
+    "source_snapshots"
+  ]
+- repositories:   [
+    "searchPitchingLines",
+    "listSourceSnapshotsByGameIds"
+  ]
 - pass/fail: Pass
 - fail理由: なし
 - fail分類: なし
 - 許容した差分: 日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
-- 実行ログパス: [data/logs/qa-prod-1781955906270.json](../data/logs/qa-prod-1781955906270.json)
-- 実行日時: 2026-06-20T11:59:34.205Z
-- デプロイVersion ID: 17814388-198d-4757-8e43-b62e706b4e8d
+- 実行ログパス: [data/logs/qa-prod-1781975678653.json](../data/logs/qa-prod-1781975678653.json)
+- 実行日時: 2026-06-20T17:29:11.432Z
+- デプロイVersion ID: badb1f20-c6ed-4cb5-affe-b95ac6a7b101
 
 ### Q-58: 今シーズン広島の先発投手で最も長く投げた登板は？
 
@@ -2242,31 +2242,31 @@
   9位: 中﨑（広島東洋カープ） 登板15、セーブ4、投球回14.33、奪三振13、自責点4、防御率2.51、WHIP1.33、球数261
   10位: ハーン（広島東洋カープ） 登板15、セーブ0、投球回14.00、奪三振21、自責点1、防御率0.64、WHIP1.00、球数227
 - intent: aggregate_pitching
-- entities: {
-  "player": null,
-  "pitcher": null,
-  "batter": null,
-  "runner": null,
-  "team": "広島",
-  "opponent": null,
-  "game_id": null
-}
+- entities:   {
+    "player": null,
+    "pitcher": null,
+    "batter": null,
+    "runner": null,
+    "team": "広島",
+    "opponent": null,
+    "game_id": null
+  }
 - player_id: null
-- data_requirements: [
-  "aggregate_pitching",
-  "source_snapshots"
-]
-- repositories: [
-  "aggregatePitchingLines",
-  "listSourceSnapshotsByGameIds"
-]
+- data_requirements:   [
+    "aggregate_pitching",
+    "source_snapshots"
+  ]
+- repositories:   [
+    "aggregatePitchingLines",
+    "listSourceSnapshotsByGameIds"
+  ]
 - pass/fail: Pass
 - fail理由: なし
 - fail分類: なし
 - 許容した差分: 日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
-- 実行ログパス: [data/logs/qa-prod-1781955906270.json](../data/logs/qa-prod-1781955906270.json)
-- 実行日時: 2026-06-20T11:59:43.375Z
-- デプロイVersion ID: 17814388-198d-4757-8e43-b62e706b4e8d
+- 実行ログパス: [data/logs/qa-prod-1781975678653.json](../data/logs/qa-prod-1781975678653.json)
+- 実行日時: 2026-06-20T17:29:20.769Z
+- デプロイVersion ID: badb1f20-c6ed-4cb5-affe-b95ac6a7b101
 
 ### Q-59: 今シーズン甲子園での阪神の成績を教えてください
 
@@ -2278,31 +2278,31 @@
   2026年の勝敗集計です。
   阪神: 11勝13敗、引き分け1、対象25試合
 - intent: aggregate_games
-- entities: {
-  "player": null,
-  "pitcher": null,
-  "batter": null,
-  "runner": null,
-  "team": "阪神",
-  "opponent": null,
-  "game_id": null
-}
+- entities:   {
+    "player": null,
+    "pitcher": null,
+    "batter": null,
+    "runner": null,
+    "team": "阪神",
+    "opponent": null,
+    "game_id": null
+  }
 - player_id: null
-- data_requirements: [
-  "aggregate_games",
-  "source_snapshots"
-]
-- repositories: [
-  "aggregateGameResults",
-  "listSourceSnapshotsByGameIds"
-]
+- data_requirements:   [
+    "aggregate_games",
+    "source_snapshots"
+  ]
+- repositories:   [
+    "aggregateGameResults",
+    "listSourceSnapshotsByGameIds"
+  ]
 - pass/fail: Pass
 - fail理由: なし
 - fail分類: なし
 - 許容した差分: 日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
-- 実行ログパス: [data/logs/qa-prod-1781955906270.json](../data/logs/qa-prod-1781955906270.json)
-- 実行日時: 2026-06-20T11:59:52.466Z
-- デプロイVersion ID: 17814388-198d-4757-8e43-b62e706b4e8d
+- 実行ログパス: [data/logs/qa-prod-1781975678653.json](../data/logs/qa-prod-1781975678653.json)
+- 実行日時: 2026-06-20T17:29:29.643Z
+- デプロイVersion ID: badb1f20-c6ed-4cb5-affe-b95ac6a7b101
 
 ### Q-60: 東京ドームでのDeNA対巨人の試合結果（今シーズン）
 
@@ -2313,31 +2313,31 @@
 - 本番回答:
   選手候補は0件です。入力「東京ドームでのDeNA」は、収録対象（2016年以降のNPB一軍・ファーム出場記録）では確認できません。2016年以降にNPB公式戦へ出場した選手名を指定すると、年度をさかのぼって成績を集計します。
 - intent: search_events
-- entities: {
-  "player": null,
-  "pitcher": "試合結果（今シーズン）",
-  "batter": "東京ドームでのDeNA",
-  "runner": null,
-  "team": null,
-  "opponent": null,
-  "game_id": null
-}
+- entities:   {
+    "player": null,
+    "pitcher": "試合結果（今シーズン）",
+    "batter": "東京ドームでのDeNA",
+    "runner": null,
+    "team": null,
+    "opponent": null,
+    "game_id": null
+  }
 - player_id: null
-- data_requirements: [
-  "events",
-  "source_snapshots"
-]
-- repositories: [
-  "searchEvents",
-  "listSourceSnapshotsByGameIds"
-]
+- data_requirements:   [
+    "events",
+    "source_snapshots"
+  ]
+- repositories:   [
+    "searchEvents",
+    "listSourceSnapshotsByGameIds"
+  ]
 - pass/fail: Pass
 - fail理由: なし
 - fail分類: なし
 - 許容した差分: 日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
-- 実行ログパス: [data/logs/qa-prod-1781955906270.json](../data/logs/qa-prod-1781955906270.json)
-- 実行日時: 2026-06-20T12:00:09.227Z
-- デプロイVersion ID: 17814388-198d-4757-8e43-b62e706b4e8d
+- 実行ログパス: [data/logs/qa-prod-1781975678653.json](../data/logs/qa-prod-1781975678653.json)
+- 実行日時: 2026-06-20T17:29:45.429Z
+- デプロイVersion ID: badb1f20-c6ed-4cb5-affe-b95ac6a7b101
 
 ### Q-61: 今シーズンの田中の成績を教えてください。
 
@@ -2348,31 +2348,31 @@
 - 本番回答:
   どの田中ですか。選手候補が複数あるため検索を実行しませんでした。候補：田中（中日・2026-2026年）、田中（ヤクルト・2026-2026年）、田中（日本ハム・2026-2026年）、田中（ロッテ・2026-2026年）。フルネームまたはチーム名を指定してください。
 - intent: aggregate_batting
-- entities: {
-  "player": "田中",
-  "pitcher": null,
-  "batter": null,
-  "runner": null,
-  "team": null,
-  "opponent": null,
-  "game_id": null
-}
+- entities:   {
+    "player": "田中",
+    "pitcher": null,
+    "batter": null,
+    "runner": null,
+    "team": null,
+    "opponent": null,
+    "game_id": null
+  }
 - player_id: null
-- data_requirements: [
-  "aggregate_batting",
-  "source_snapshots"
-]
-- repositories: [
-  "aggregateBattingLines",
-  "listSourceSnapshotsByGameIds"
-]
+- data_requirements:   [
+    "aggregate_batting",
+    "source_snapshots"
+  ]
+- repositories:   [
+    "aggregateBattingLines",
+    "listSourceSnapshotsByGameIds"
+  ]
 - pass/fail: Pass
 - fail理由: なし
 - fail分類: なし
 - 許容した差分: 日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
-- 実行ログパス: [data/logs/qa-prod-1781955906270.json](../data/logs/qa-prod-1781955906270.json)
-- 実行日時: 2026-06-20T12:00:19.192Z
-- デプロイVersion ID: 17814388-198d-4757-8e43-b62e706b4e8d
+- 実行ログパス: [data/logs/qa-prod-1781975678653.json](../data/logs/qa-prod-1781975678653.json)
+- 実行日時: 2026-06-20T17:29:55.350Z
+- デプロイVersion ID: badb1f20-c6ed-4cb5-affe-b95ac6a7b101
 
 ### Q-62: 佐藤の今シーズン成績を教えて
 
@@ -2383,31 +2383,31 @@
 - 本番回答:
   どの佐藤ですか。選手候補が複数あるため検索を実行しませんでした。候補：佐藤（阪神・2026-2026年）、佐藤（楽天・2026-2026年）、佐藤（ロッテ・2026-2026年）。フルネームまたはチーム名を指定してください。
 - intent: aggregate_batting
-- entities: {
-  "player": "佐藤",
-  "pitcher": null,
-  "batter": null,
-  "runner": null,
-  "team": null,
-  "opponent": null,
-  "game_id": null
-}
+- entities:   {
+    "player": "佐藤",
+    "pitcher": null,
+    "batter": null,
+    "runner": null,
+    "team": null,
+    "opponent": null,
+    "game_id": null
+  }
 - player_id: null
-- data_requirements: [
-  "aggregate_batting",
-  "source_snapshots"
-]
-- repositories: [
-  "aggregateBattingLines",
-  "listSourceSnapshotsByGameIds"
-]
+- data_requirements:   [
+    "aggregate_batting",
+    "source_snapshots"
+  ]
+- repositories:   [
+    "aggregateBattingLines",
+    "listSourceSnapshotsByGameIds"
+  ]
 - pass/fail: Pass
 - fail理由: なし
 - fail分類: なし
 - 許容した差分: 日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
-- 実行ログパス: [data/logs/qa-prod-1781955906270.json](../data/logs/qa-prod-1781955906270.json)
-- 実行日時: 2026-06-20T12:00:29.107Z
-- デプロイVersion ID: 17814388-198d-4757-8e43-b62e706b4e8d
+- 実行ログパス: [data/logs/qa-prod-1781975678653.json](../data/logs/qa-prod-1781975678653.json)
+- 実行日時: 2026-06-20T17:30:05.309Z
+- デプロイVersion ID: badb1f20-c6ed-4cb5-affe-b95ac6a7b101
 
 ### Q-63: 村上と青木の今シーズン成績を比べてください
 
@@ -2423,31 +2423,31 @@
   対象試合: 2026年6月19日、2026年6月12日、2026年6月6日、2026年5月30日、2026年4月25日
   2026年5月30日から2026年4月25日まで35日空いているため、最新5件を連続した最近の調子として扱う場合は注意が必要です。
 - intent: search_pitching
-- entities: {
-  "player": null,
-  "pitcher": "村上",
-  "batter": null,
-  "runner": null,
-  "team": "阪神タイガース",
-  "opponent": null,
-  "game_id": null
-}
+- entities:   {
+    "player": null,
+    "pitcher": "村上",
+    "batter": null,
+    "runner": null,
+    "team": "阪神タイガース",
+    "opponent": null,
+    "game_id": null
+  }
 - player_id: null
-- data_requirements: [
-  "aggregate_batting",
-  "source_snapshots"
-]
-- repositories: [
-  "searchPitchingLines",
-  "listSourceSnapshotsByGameIds"
-]
+- data_requirements:   [
+    "aggregate_batting",
+    "source_snapshots"
+  ]
+- repositories:   [
+    "searchPitchingLines",
+    "listSourceSnapshotsByGameIds"
+  ]
 - pass/fail: Pass
 - fail理由: なし
 - fail分類: なし
 - 許容した差分: 日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
-- 実行ログパス: [data/logs/qa-prod-1781955906270.json](../data/logs/qa-prod-1781955906270.json)
-- 実行日時: 2026-06-20T12:00:39.601Z
-- デプロイVersion ID: 17814388-198d-4757-8e43-b62e706b4e8d
+- 実行ログパス: [data/logs/qa-prod-1781975678653.json](../data/logs/qa-prod-1781975678653.json)
+- 実行日時: 2026-06-20T17:30:15.337Z
+- デプロイVersion ID: badb1f20-c6ed-4cb5-affe-b95ac6a7b101
 
 ### Q-64: 阪神の佐藤の成績を教えてください（今シーズン）
 
@@ -2458,31 +2458,31 @@
 - 本番回答:
   阪神タイガースの佐藤選手の2026年シーズンの成績をご紹介します。41試合に出場し、149打数で53安打、9本塁打、33打点、29得点、3盗塁、22四球、39三振という内容です。打率は約.356です。
 - intent: aggregate_batting
-- entities: {
-  "player": "佐藤",
-  "pitcher": null,
-  "batter": null,
-  "runner": null,
-  "team": "阪神",
-  "opponent": null,
-  "game_id": null
-}
+- entities:   {
+    "player": "佐藤",
+    "pitcher": null,
+    "batter": null,
+    "runner": null,
+    "team": "阪神",
+    "opponent": null,
+    "game_id": null
+  }
 - player_id: null
-- data_requirements: [
-  "aggregate_batting",
-  "source_snapshots"
-]
-- repositories: [
-  "aggregateBattingLines",
-  "listSourceSnapshotsByGameIds"
-]
+- data_requirements:   [
+    "aggregate_batting",
+    "source_snapshots"
+  ]
+- repositories:   [
+    "aggregateBattingLines",
+    "listSourceSnapshotsByGameIds"
+  ]
 - pass/fail: Pass
 - fail理由: なし
 - fail分類: なし
 - 許容した差分: 日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
-- 実行ログパス: [data/logs/qa-prod-1781955906270.json](../data/logs/qa-prod-1781955906270.json)
-- 実行日時: 2026-06-20T12:00:51.123Z
-- デプロイVersion ID: 17814388-198d-4757-8e43-b62e706b4e8d
+- 実行ログパス: [data/logs/qa-prod-1781975678653.json](../data/logs/qa-prod-1781975678653.json)
+- 実行日時: 2026-06-20T17:30:27.060Z
+- デプロイVersion ID: badb1f20-c6ed-4cb5-affe-b95ac6a7b101
 
 ### Q-65: 田中将大の今シーズンの成績を教えてください
 
@@ -2494,31 +2494,31 @@
   投手集計結果は1件です。
   1位: 田中 将大（千葉ロッテマリーンズ、読売ジャイアンツ、北海道日本ハムファイターズ） 登板10、セーブ0、投球回40.20、奪三振32、自責点10、防御率2.24、WHIP0.00、球数583
 - intent: aggregate_pitching
-- entities: {
-  "player": null,
-  "pitcher": "田中 将大",
-  "batter": null,
-  "runner": null,
-  "team": null,
-  "opponent": null,
-  "game_id": null
-}
+- entities:   {
+    "player": null,
+    "pitcher": "田中 将大",
+    "batter": null,
+    "runner": null,
+    "team": null,
+    "opponent": null,
+    "game_id": null
+  }
 - player_id: 11215114
-- data_requirements: [
-  "aggregate_pitching",
-  "source_snapshots"
-]
-- repositories: [
-  "aggregatePitchingLines",
-  "listSourceSnapshotsByGameIds"
-]
+- data_requirements:   [
+    "aggregate_pitching",
+    "source_snapshots"
+  ]
+- repositories:   [
+    "aggregatePitchingLines",
+    "listSourceSnapshotsByGameIds"
+  ]
 - pass/fail: Pass
 - fail理由: なし
 - fail分類: なし
 - 許容した差分: 日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
-- 実行ログパス: [data/logs/qa-prod-1781955906270.json](../data/logs/qa-prod-1781955906270.json)
-- 実行日時: 2026-06-20T12:01:01.182Z
-- デプロイVersion ID: 17814388-198d-4757-8e43-b62e706b4e8d
+- 実行ログパス: [data/logs/qa-prod-1781975678653.json](../data/logs/qa-prod-1781975678653.json)
+- 実行日時: 2026-06-20T17:30:36.901Z
+- デプロイVersion ID: badb1f20-c6ed-4cb5-affe-b95ac6a7b101
 
 ### Q-66: 2026年のBaystarsの打撃成績を教えてください
 
@@ -2529,31 +2529,31 @@
 - 本番回答:
   選手候補は0件です。入力「Baystarsの」は、収録対象（2016年以降のNPB一軍・ファーム出場記録）では確認できません。2016年以降にNPB公式戦へ出場した選手名を指定すると、年度をさかのぼって成績を集計します。
 - intent: aggregate_batting
-- entities: {
-  "player": "Baystarsの",
-  "pitcher": null,
-  "batter": null,
-  "runner": null,
-  "team": null,
-  "opponent": null,
-  "game_id": null
-}
+- entities:   {
+    "player": "Baystarsの",
+    "pitcher": null,
+    "batter": null,
+    "runner": null,
+    "team": null,
+    "opponent": null,
+    "game_id": null
+  }
 - player_id: null
-- data_requirements: [
-  "aggregate_batting",
-  "source_snapshots"
-]
-- repositories: [
-  "aggregateBattingLines",
-  "listSourceSnapshotsByGameIds"
-]
+- data_requirements:   [
+    "aggregate_batting",
+    "source_snapshots"
+  ]
+- repositories:   [
+    "aggregateBattingLines",
+    "listSourceSnapshotsByGameIds"
+  ]
 - pass/fail: Pass
 - fail理由: なし
 - fail分類: なし
 - 許容した差分: 日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
-- 実行ログパス: [data/logs/qa-prod-1781955906270.json](../data/logs/qa-prod-1781955906270.json)
-- 実行日時: 2026-06-20T12:01:45.890Z
-- デプロイVersion ID: 17814388-198d-4757-8e43-b62e706b4e8d
+- 実行ログパス: [data/logs/qa-prod-1781975678653.json](../data/logs/qa-prod-1781975678653.json)
+- 実行日時: 2026-06-20T17:31:21.294Z
+- デプロイVersion ID: badb1f20-c6ed-4cb5-affe-b95ac6a7b101
 
 ### Q-67: はんしんの成績を教えてください
 
@@ -2574,31 +2574,31 @@
   9位: 髙寺（阪神タイガース） 試合33、打率.187、本塁打0、打点7、盗塁2、OPS.486、IsoP.000、BB%13.8%
   10位: 熊谷（阪神タイガース） 試合24、打率.245、本塁打0、打点7、盗塁3、OPS.519、IsoP.000、BB%3.9%
 - intent: aggregate_batting
-- entities: {
-  "player": null,
-  "pitcher": null,
-  "batter": null,
-  "runner": null,
-  "team": "阪神",
-  "opponent": null,
-  "game_id": null
-}
+- entities:   {
+    "player": null,
+    "pitcher": null,
+    "batter": null,
+    "runner": null,
+    "team": "阪神",
+    "opponent": null,
+    "game_id": null
+  }
 - player_id: null
-- data_requirements: [
-  "aggregate_batting",
-  "source_snapshots"
-]
-- repositories: [
-  "aggregateBattingLines",
-  "listSourceSnapshotsByGameIds"
-]
+- data_requirements:   [
+    "aggregate_batting",
+    "source_snapshots"
+  ]
+- repositories:   [
+    "aggregateBattingLines",
+    "listSourceSnapshotsByGameIds"
+  ]
 - pass/fail: Pass
 - fail理由: なし
 - fail分類: なし
 - 許容した差分: 日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
-- 実行ログパス: [data/logs/qa-prod-1781955906270.json](../data/logs/qa-prod-1781955906270.json)
-- 実行日時: 2026-06-20T12:01:57.525Z
-- デプロイVersion ID: 17814388-198d-4757-8e43-b62e706b4e8d
+- 実行ログパス: [data/logs/qa-prod-1781975678653.json](../data/logs/qa-prod-1781975678653.json)
+- 実行日時: 2026-06-20T17:31:32.217Z
+- デプロイVersion ID: badb1f20-c6ed-4cb5-affe-b95ac6a7b101
 
 ### Q-68: ジャイアンツの今シーズン投手成績を教えてください
 
@@ -2609,31 +2609,31 @@
 - 本番回答:
   条件に一致する投手成績が7件あります。先頭は2026-04-01のジャクソンで、5回 5奪三振です。
 - intent: search_pitching
-- entities: {
-  "player": null,
-  "pitcher": "ジャクソン",
-  "batter": null,
-  "runner": null,
-  "team": "千葉ロッテマリーンズ",
-  "opponent": null,
-  "game_id": null
-}
+- entities:   {
+    "player": null,
+    "pitcher": "ジャクソン",
+    "batter": null,
+    "runner": null,
+    "team": "千葉ロッテマリーンズ",
+    "opponent": null,
+    "game_id": null
+  }
 - player_id: null
-- data_requirements: [
-  "pitching_lines",
-  "source_snapshots"
-]
-- repositories: [
-  "searchPitchingLines",
-  "listSourceSnapshotsByGameIds"
-]
+- data_requirements:   [
+    "pitching_lines",
+    "source_snapshots"
+  ]
+- repositories:   [
+    "searchPitchingLines",
+    "listSourceSnapshotsByGameIds"
+  ]
 - pass/fail: Pass
 - fail理由: なし
 - fail分類: なし
 - 許容した差分: 日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
-- 実行ログパス: [data/logs/qa-prod-1781955906270.json](../data/logs/qa-prod-1781955906270.json)
-- 実行日時: 2026-06-20T12:02:08.277Z
-- デプロイVersion ID: 17814388-198d-4757-8e43-b62e706b4e8d
+- 実行ログパス: [data/logs/qa-prod-1781975678653.json](../data/logs/qa-prod-1781975678653.json)
+- 実行日時: 2026-06-20T17:31:42.932Z
+- デプロイVersion ID: badb1f20-c6ed-4cb5-affe-b95ac6a7b101
 
 ### Q-69: Carpの今シーズンの成績を教えてください
 
@@ -2654,31 +2654,31 @@
   9位: 勝田（広島東洋カープ） 試合23、打率.197、本塁打0、打点1、盗塁3、OPS.454、IsoP.000、BB%7.6%
   10位: 持丸（広島東洋カープ） 試合24、打率.154、本塁打2、打点4、盗塁0、OPS.379、IsoP.000、BB%8.5%
 - intent: aggregate_batting
-- entities: {
-  "player": null,
-  "pitcher": null,
-  "batter": null,
-  "runner": null,
-  "team": "広島",
-  "opponent": null,
-  "game_id": null
-}
+- entities:   {
+    "player": null,
+    "pitcher": null,
+    "batter": null,
+    "runner": null,
+    "team": "広島",
+    "opponent": null,
+    "game_id": null
+  }
 - player_id: null
-- data_requirements: [
-  "aggregate_batting",
-  "source_snapshots"
-]
-- repositories: [
-  "aggregateBattingLines",
-  "listSourceSnapshotsByGameIds"
-]
+- data_requirements:   [
+    "aggregate_batting",
+    "source_snapshots"
+  ]
+- repositories:   [
+    "aggregateBattingLines",
+    "listSourceSnapshotsByGameIds"
+  ]
 - pass/fail: Pass
 - fail理由: なし
 - fail分類: なし
 - 許容した差分: 日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
-- 実行ログパス: [data/logs/qa-prod-1781955906270.json](../data/logs/qa-prod-1781955906270.json)
-- 実行日時: 2026-06-20T12:02:19.368Z
-- デプロイVersion ID: 17814388-198d-4757-8e43-b62e706b4e8d
+- 実行ログパス: [data/logs/qa-prod-1781975678653.json](../data/logs/qa-prod-1781975678653.json)
+- 実行日時: 2026-06-20T17:31:53.753Z
+- デプロイVersion ID: badb1f20-c6ed-4cb5-affe-b95ac6a7b101
 
 ### Q-70: 今シーズンの得点圏打率が高い選手を3人教えてください
 
@@ -2692,31 +2692,31 @@
   2位: * 丸山 和郁（東京ヤクルトスワローズ） 試合22、打率.434、本塁打2、打点8、盗塁3、OPS1.094、IsoP.226、BB%0.0%
   3位: 内山 壮真（東京ヤクルトスワローズ） 試合7、打率.423、本塁打1、打点7、盗塁2、OPS1.021、IsoP.115、BB%10.3%
 - intent: aggregate_batting
-- entities: {
-  "player": null,
-  "pitcher": null,
-  "batter": null,
-  "runner": null,
-  "team": null,
-  "opponent": null,
-  "game_id": null
-}
+- entities:   {
+    "player": null,
+    "pitcher": null,
+    "batter": null,
+    "runner": null,
+    "team": null,
+    "opponent": null,
+    "game_id": null
+  }
 - player_id: null
-- data_requirements: [
-  "aggregate_batting",
-  "source_snapshots"
-]
-- repositories: [
-  "aggregateBattingLines",
-  "listSourceSnapshotsByGameIds"
-]
+- data_requirements:   [
+    "aggregate_batting",
+    "source_snapshots"
+  ]
+- repositories:   [
+    "aggregateBattingLines",
+    "listSourceSnapshotsByGameIds"
+  ]
 - pass/fail: Pass
 - fail理由: なし
 - fail分類: なし
 - 許容した差分: 日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
-- 実行ログパス: [data/logs/qa-prod-1781955906270.json](../data/logs/qa-prod-1781955906270.json)
-- 実行日時: 2026-06-20T12:02:28.536Z
-- デプロイVersion ID: 17814388-198d-4757-8e43-b62e706b4e8d
+- 実行ログパス: [data/logs/qa-prod-1781975678653.json](../data/logs/qa-prod-1781975678653.json)
+- 実行日時: 2026-06-20T17:32:02.970Z
+- デプロイVersion ID: badb1f20-c6ed-4cb5-affe-b95ac6a7b101
 
 ### Q-71: 今シーズンのパ・リーグでIsoP（長打率マイナス打率）が最も高い打者は？
 
@@ -2732,31 +2732,31 @@
   4位: レイエス（北海道日本ハムファイターズ） 試合39、打率.319、本塁打8、打点19、盗塁0、OPS.703、IsoP.000、BB%9.4%
   5位: ソト（千葉ロッテマリーンズ） 試合41、打率.250、本塁打6、打点19、盗塁0、OPS.559、IsoP.000、BB%7.9%
 - intent: aggregate_batting
-- entities: {
-  "player": null,
-  "pitcher": null,
-  "batter": null,
-  "runner": null,
-  "team": "パ・リーグ",
-  "opponent": null,
-  "game_id": null
-}
+- entities:   {
+    "player": null,
+    "pitcher": null,
+    "batter": null,
+    "runner": null,
+    "team": "パ・リーグ",
+    "opponent": null,
+    "game_id": null
+  }
 - player_id: null
-- data_requirements: [
-  "aggregate_batting",
-  "source_snapshots"
-]
-- repositories: [
-  "aggregateBattingLines",
-  "listSourceSnapshotsByGameIds"
-]
+- data_requirements:   [
+    "aggregate_batting",
+    "source_snapshots"
+  ]
+- repositories:   [
+    "aggregateBattingLines",
+    "listSourceSnapshotsByGameIds"
+  ]
 - pass/fail: Pass
 - fail理由: なし
 - fail分類: なし
 - 許容した差分: 日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
-- 実行ログパス: [data/logs/qa-prod-1781955906270.json](../data/logs/qa-prod-1781955906270.json)
-- 実行日時: 2026-06-20T12:02:40.513Z
-- デプロイVersion ID: 17814388-198d-4757-8e43-b62e706b4e8d
+- 実行ログパス: [data/logs/qa-prod-1781975678653.json](../data/logs/qa-prod-1781975678653.json)
+- 実行日時: 2026-06-20T17:32:14.620Z
+- デプロイVersion ID: badb1f20-c6ed-4cb5-affe-b95ac6a7b101
 
 ### Q-72: 今シーズン四球率（BB%）が最も高い打者を教えてください
 
@@ -2772,31 +2772,31 @@
   4位: * 筒香 嘉智（横浜DeNAベイスターズ） 試合9、打率.393、本塁打2、打点5、盗塁0、OPS1.193、IsoP.286、BB%17.1%
   5位: 中村 悠平（東京ヤクルトスワローズ） 試合8、打率.100、本塁打0、打点0、盗塁0、OPS.350、IsoP.000、BB%16.7%
 - intent: aggregate_batting
-- entities: {
-  "player": null,
-  "pitcher": null,
-  "batter": null,
-  "runner": null,
-  "team": null,
-  "opponent": null,
-  "game_id": null
-}
+- entities:   {
+    "player": null,
+    "pitcher": null,
+    "batter": null,
+    "runner": null,
+    "team": null,
+    "opponent": null,
+    "game_id": null
+  }
 - player_id: null
-- data_requirements: [
-  "aggregate_batting",
-  "source_snapshots"
-]
-- repositories: [
-  "aggregateBattingLines",
-  "listSourceSnapshotsByGameIds"
-]
+- data_requirements:   [
+    "aggregate_batting",
+    "source_snapshots"
+  ]
+- repositories:   [
+    "aggregateBattingLines",
+    "listSourceSnapshotsByGameIds"
+  ]
 - pass/fail: Pass
 - fail理由: なし
 - fail分類: なし
 - 許容した差分: 日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
-- 実行ログパス: [data/logs/qa-prod-1781955906270.json](../data/logs/qa-prod-1781955906270.json)
-- 実行日時: 2026-06-20T12:02:49.336Z
-- デプロイVersion ID: 17814388-198d-4757-8e43-b62e706b4e8d
+- 実行ログパス: [data/logs/qa-prod-1781975678653.json](../data/logs/qa-prod-1781975678653.json)
+- 実行日時: 2026-06-20T17:32:23.580Z
+- デプロイVersion ID: badb1f20-c6ed-4cb5-affe-b95ac6a7b101
 
 ### Q-73: test
 
@@ -2807,25 +2807,25 @@
 - 本番回答:
   このサービスはNPB（日本プロ野球）に関するご質問にお答えするサービスです。試合結果・選手成績・特定の打席など、プロ野球のことなら何でもお気軽にどうぞ！
 - intent: off_topic
-- entities: {
-  "player": null,
-  "pitcher": null,
-  "batter": null,
-  "runner": null,
-  "team": null,
-  "opponent": null,
-  "game_id": null
-}
+- entities:   {
+    "player": null,
+    "pitcher": null,
+    "batter": null,
+    "runner": null,
+    "team": null,
+    "opponent": null,
+    "game_id": null
+  }
 - player_id: null
-- data_requirements: null
-- repositories: null
+- data_requirements:   []
+- repositories:   []
 - pass/fail: Pass
 - fail理由: なし
 - fail分類: なし
 - 許容した差分: 日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
-- 実行ログパス: [data/logs/qa-prod-1781955906270.json](../data/logs/qa-prod-1781955906270.json)
-- 実行日時: 2026-06-20T12:02:57.433Z
-- デプロイVersion ID: 17814388-198d-4757-8e43-b62e706b4e8d
+- 実行ログパス: [data/logs/qa-prod-1781975678653.json](../data/logs/qa-prod-1781975678653.json)
+- 実行日時: 2026-06-20T17:32:31.703Z
+- デプロイVersion ID: badb1f20-c6ed-4cb5-affe-b95ac6a7b101
 
 ### Q-74: 今日の天気を教えてください
 
@@ -2836,25 +2836,25 @@
 - 本番回答:
   このサービスはNPB（日本プロ野球）に関するご質問にお答えするサービスです。試合結果・選手成績・特定の打席など、プロ野球のことなら何でもお気軽にどうぞ！
 - intent: off_topic
-- entities: {
-  "player": null,
-  "pitcher": null,
-  "batter": null,
-  "runner": null,
-  "team": null,
-  "opponent": null,
-  "game_id": null
-}
+- entities:   {
+    "player": null,
+    "pitcher": null,
+    "batter": null,
+    "runner": null,
+    "team": null,
+    "opponent": null,
+    "game_id": null
+  }
 - player_id: null
-- data_requirements: null
-- repositories: null
+- data_requirements:   []
+- repositories:   []
 - pass/fail: Pass
 - fail理由: なし
 - fail分類: なし
 - 許容した差分: 日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
-- 実行ログパス: [data/logs/qa-prod-1781955906270.json](../data/logs/qa-prod-1781955906270.json)
-- 実行日時: 2026-06-20T12:03:05.521Z
-- デプロイVersion ID: 17814388-198d-4757-8e43-b62e706b4e8d
+- 実行ログパス: [data/logs/qa-prod-1781975678653.json](../data/logs/qa-prod-1781975678653.json)
+- 実行日時: 2026-06-20T17:32:39.715Z
+- デプロイVersion ID: badb1f20-c6ed-4cb5-affe-b95ac6a7b101
 
 ### Q-75: ChatGPTよりあなたの方が賢いですか？
 
@@ -2865,25 +2865,25 @@
 - 本番回答:
   このサービスはNPB（日本プロ野球）に関するご質問にお答えするサービスです。試合結果・選手成績・特定の打席など、プロ野球のことなら何でもお気軽にどうぞ！
 - intent: off_topic
-- entities: {
-  "player": null,
-  "pitcher": null,
-  "batter": null,
-  "runner": null,
-  "team": null,
-  "opponent": null,
-  "game_id": null
-}
+- entities:   {
+    "player": null,
+    "pitcher": null,
+    "batter": null,
+    "runner": null,
+    "team": null,
+    "opponent": null,
+    "game_id": null
+  }
 - player_id: null
-- data_requirements: null
-- repositories: null
+- data_requirements:   []
+- repositories:   []
 - pass/fail: Pass
 - fail理由: なし
 - fail分類: なし
 - 許容した差分: 日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
-- 実行ログパス: [data/logs/qa-prod-1781955906270.json](../data/logs/qa-prod-1781955906270.json)
-- 実行日時: 2026-06-20T12:03:13.567Z
-- デプロイVersion ID: 17814388-198d-4757-8e43-b62e706b4e8d
+- 実行ログパス: [data/logs/qa-prod-1781975678653.json](../data/logs/qa-prod-1781975678653.json)
+- 実行日時: 2026-06-20T17:32:47.799Z
+- デプロイVersion ID: badb1f20-c6ed-4cb5-affe-b95ac6a7b101
 
 ### Q-76: 2016年の清原和博の成績を教えてください
 
@@ -2894,31 +2894,31 @@
 - 本番回答:
   選手候補は0件です。入力「清原和博」は、収録対象（2016年以降のNPB一軍・ファーム出場記録）では確認できません。2016年以降にNPB公式戦へ出場した選手名を指定すると、年度をさかのぼって成績を集計します。
 - intent: aggregate_batting
-- entities: {
-  "player": "清原和博",
-  "pitcher": null,
-  "batter": null,
-  "runner": null,
-  "team": null,
-  "opponent": null,
-  "game_id": null
-}
+- entities:   {
+    "player": "清原和博",
+    "pitcher": null,
+    "batter": null,
+    "runner": null,
+    "team": null,
+    "opponent": null,
+    "game_id": null
+  }
 - player_id: null
-- data_requirements: [
-  "aggregate_batting",
-  "source_snapshots"
-]
-- repositories: [
-  "aggregateBattingLines",
-  "listSourceSnapshotsByGameIds"
-]
+- data_requirements:   [
+    "aggregate_batting",
+    "source_snapshots"
+  ]
+- repositories:   [
+    "aggregateBattingLines",
+    "listSourceSnapshotsByGameIds"
+  ]
 - pass/fail: Pass
 - fail理由: なし
 - fail分類: なし
 - 許容した差分: 日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
-- 実行ログパス: [data/logs/qa-prod-1781955906270.json](../data/logs/qa-prod-1781955906270.json)
-- 実行日時: 2026-06-20T12:03:27.159Z
-- デプロイVersion ID: 17814388-198d-4757-8e43-b62e706b4e8d
+- 実行ログパス: [data/logs/qa-prod-1781975678653.json](../data/logs/qa-prod-1781975678653.json)
+- 実行日時: 2026-06-20T17:33:01.401Z
+- デプロイVersion ID: badb1f20-c6ed-4cb5-affe-b95ac6a7b101
 
 ### Q-77: 今シーズン（2026年）の村上宗隆の成績（データなし時の挙動確認）
 
@@ -2931,31 +2931,31 @@
   
   東京ヤクルトスワローズの村上選手の2026年シーズンの成績をご紹介します。56試合に出場し、187打数で51安打、22本塁打、47打点、34得点、4盗塁、32四球、64三振という内容です。打率は約.273です。
 - intent: aggregate_batting
-- entities: {
-  "player": "村上",
-  "pitcher": null,
-  "batter": null,
-  "runner": null,
-  "team": "ヤクルト",
-  "opponent": null,
-  "game_id": null
-}
+- entities:   {
+    "player": "村上",
+    "pitcher": null,
+    "batter": null,
+    "runner": null,
+    "team": "ヤクルト",
+    "opponent": null,
+    "game_id": null
+  }
 - player_id: null
-- data_requirements: [
-  "aggregate_batting",
-  "source_snapshots"
-]
-- repositories: [
-  "aggregateBattingLines",
-  "listSourceSnapshotsByGameIds"
-]
+- data_requirements:   [
+    "aggregate_batting",
+    "source_snapshots"
+  ]
+- repositories:   [
+    "aggregateBattingLines",
+    "listSourceSnapshotsByGameIds"
+  ]
 - pass/fail: Pass
 - fail理由: なし
 - fail分類: なし
 - 許容した差分: 日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
-- 実行ログパス: [data/logs/qa-prod-1781955906270.json](../data/logs/qa-prod-1781955906270.json)
-- 実行日時: 2026-06-20T12:03:40.352Z
-- デプロイVersion ID: 17814388-198d-4757-8e43-b62e706b4e8d
+- 実行ログパス: [data/logs/qa-prod-1781975678653.json](../data/logs/qa-prod-1781975678653.json)
+- 実行日時: 2026-06-20T17:33:14.350Z
+- デプロイVersion ID: badb1f20-c6ed-4cb5-affe-b95ac6a7b101
 
 ### Q-78: 昨シーズン（2025年）の新人王は誰ですか？
 
@@ -2966,31 +2966,31 @@
 - 本番回答:
   2025年度の最優秀新人賞（新人王）は、セ・リーグが荘司宏太（東京ヤクルト）、パ・リーグが西川史礁（千葉ロッテ）です。
 - intent: award_winners
-- entities: {
-  "player": null,
-  "pitcher": null,
-  "batter": null,
-  "runner": null,
-  "team": null,
-  "opponent": null,
-  "game_id": null
-}
+- entities:   {
+    "player": null,
+    "pitcher": null,
+    "batter": null,
+    "runner": null,
+    "team": null,
+    "opponent": null,
+    "game_id": null
+  }
 - player_id: null
-- data_requirements: [
-  "award_winners",
-  "source_snapshots"
-]
-- repositories: [
-  "fetchAwardWinners",
-  "listSourceSnapshotsByGameIds"
-]
+- data_requirements:   [
+    "award_winners",
+    "source_snapshots"
+  ]
+- repositories:   [
+    "fetchAwardWinners",
+    "listSourceSnapshotsByGameIds"
+  ]
 - pass/fail: Pass
 - fail理由: なし
 - fail分類: なし
 - 許容した差分: 日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
-- 実行ログパス: [data/logs/qa-prod-1781955906270.json](../data/logs/qa-prod-1781955906270.json)
-- 実行日時: 2026-06-20T12:03:50.003Z
-- デプロイVersion ID: 17814388-198d-4757-8e43-b62e706b4e8d
+- 実行ログパス: [data/logs/qa-prod-1781975678653.json](../data/logs/qa-prod-1781975678653.json)
+- 実行日時: 2026-06-20T17:33:24.057Z
+- デプロイVersion ID: badb1f20-c6ed-4cb5-affe-b95ac6a7b101
 
 ### Q-79: 今シーズンのDeNAの外国人打者の中で最もOPSが高いのは誰ですか？
 
@@ -3001,31 +3001,31 @@
 - 本番回答:
   選手候補は0件です。入力「外国人打者の中で最も」は、収録対象（2016年以降のNPB一軍・ファーム出場記録）では確認できません。2016年以降にNPB公式戦へ出場した選手名を指定すると、年度をさかのぼって成績を集計します。
 - intent: search_batting
-- entities: {
-  "player": "外国人打者の中で最も",
-  "pitcher": null,
-  "batter": null,
-  "runner": null,
-  "team": "DeNA",
-  "opponent": null,
-  "game_id": null
-}
+- entities:   {
+    "player": "外国人打者の中で最も",
+    "pitcher": null,
+    "batter": null,
+    "runner": null,
+    "team": "DeNA",
+    "opponent": null,
+    "game_id": null
+  }
 - player_id: null
-- data_requirements: [
-  "batting_lines",
-  "source_snapshots"
-]
-- repositories: [
-  "searchBattingLines",
-  "listSourceSnapshotsByGameIds"
-]
+- data_requirements:   [
+    "batting_lines",
+    "source_snapshots"
+  ]
+- repositories:   [
+    "searchBattingLines",
+    "listSourceSnapshotsByGameIds"
+  ]
 - pass/fail: Pass
 - fail理由: なし
 - fail分類: なし
 - 許容した差分: 日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
-- 実行ログパス: [data/logs/qa-prod-1781955906270.json](../data/logs/qa-prod-1781955906270.json)
-- 実行日時: 2026-06-20T12:04:08.178Z
-- デプロイVersion ID: 17814388-198d-4757-8e43-b62e706b4e8d
+- 実行ログパス: [data/logs/qa-prod-1781975678653.json](../data/logs/qa-prod-1781975678653.json)
+- 実行日時: 2026-06-20T17:33:41.806Z
+- デプロイVersion ID: badb1f20-c6ed-4cb5-affe-b95ac6a7b101
 
 ### Q-80: 2024年のDeNA日本一の最終戦の詳細を教えてください
 
@@ -3091,37 +3091,37 @@
      - 5回裏 DeNA 桑原: 左中間タイムリーツーベース（打点2）
      - 7回裏 DeNA 牧: レフトオーバータイムリーツーベース（打点1）
 - intent: game_detail
-- entities: {
-  "player": null,
-  "pitcher": null,
-  "batter": null,
-  "runner": null,
-  "team": "DeNA",
-  "opponent": null,
-  "game_id": null
-}
+- entities:   {
+    "player": null,
+    "pitcher": null,
+    "batter": null,
+    "runner": null,
+    "team": "DeNA",
+    "opponent": null,
+    "game_id": null
+  }
 - player_id: null
-- data_requirements: [
-  "game_details",
-  "events",
-  "batting_lines",
-  "pitching_lines",
-  "source_snapshots"
-]
-- repositories: [
-  "searchGameDetails",
-  "searchEvents",
-  "searchBattingLines",
-  "searchPitchingLines",
-  "listSourceSnapshotsByGameIds"
-]
+- data_requirements:   [
+    "game_details",
+    "events",
+    "batting_lines",
+    "pitching_lines",
+    "source_snapshots"
+  ]
+- repositories:   [
+    "searchGameDetails",
+    "searchEvents",
+    "searchBattingLines",
+    "searchPitchingLines",
+    "listSourceSnapshotsByGameIds"
+  ]
 - pass/fail: Pass
 - fail理由: なし
 - fail分類: なし
 - 許容した差分: 日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
-- 実行ログパス: [data/logs/qa-prod-1781955906270.json](../data/logs/qa-prod-1781955906270.json)
-- 実行日時: 2026-06-20T12:04:17.286Z
-- デプロイVersion ID: 17814388-198d-4757-8e43-b62e706b4e8d
+- 実行ログパス: [data/logs/qa-prod-1781975678653.json](../data/logs/qa-prod-1781975678653.json)
+- 実行日時: 2026-06-20T17:33:51.075Z
+- デプロイVersion ID: badb1f20-c6ed-4cb5-affe-b95ac6a7b101
 
 ### Q-81: 藤浪って最近何してんの
 
@@ -3141,33 +3141,33 @@
   最新登板は2026年6月13日で、4回、4奪三振、自責点5です。
   対象試合: 2026年6月13日、2026年6月5日、2026年5月30日、2026年5月22日、2026年5月8日
   2026年5月22日から2026年5月8日まで14日空いているため、最新5件を連続した最近の調子として扱う場合は注意が必要です。
-  確認できる最新の出場記録は2026年6月13日です。現在（2026年6月20日）から7日空いているため、これだけでは現在の調子とは言えません。
+  確認できる最新の出場記録は2026年6月13日です。現在（2026年6月21日）から8日空いているため、これだけでは現在の調子とは言えません。
 - intent: search_pitching
-- entities: {
-  "player": null,
-  "pitcher": "藤浪 晋太郎",
-  "batter": null,
-  "runner": null,
-  "team": null,
-  "opponent": null,
-  "game_id": null
-}
+- entities:   {
+    "player": null,
+    "pitcher": "藤浪 晋太郎",
+    "batter": null,
+    "runner": null,
+    "team": null,
+    "opponent": null,
+    "game_id": null
+  }
 - player_id: 41045137
-- data_requirements: [
-  "pitching_lines",
-  "source_snapshots"
-]
-- repositories: [
-  "searchPitchingLines",
-  "listSourceSnapshotsByGameIds"
-]
+- data_requirements:   [
+    "pitching_lines",
+    "source_snapshots"
+  ]
+- repositories:   [
+    "searchPitchingLines",
+    "listSourceSnapshotsByGameIds"
+  ]
 - pass/fail: Pass
 - fail理由: なし
 - fail分類: なし
 - 許容した差分: 日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
-- 実行ログパス: [data/logs/qa-prod-1781955906270.json](../data/logs/qa-prod-1781955906270.json)
-- 実行日時: 2026-06-20T12:04:32.041Z
-- デプロイVersion ID: 17814388-198d-4757-8e43-b62e706b4e8d
+- 実行ログパス: [data/logs/qa-prod-1781975678653.json](../data/logs/qa-prod-1781975678653.json)
+- 実行日時: 2026-06-20T17:34:04.726Z
+- デプロイVersion ID: badb1f20-c6ed-4cb5-affe-b95ac6a7b101
 
 ### Q-82: 藤浪近ごろ見ない気がするんだけど
 
@@ -3187,33 +3187,33 @@
   最新登板は2026年6月13日で、4回、4奪三振、自責点5です。
   対象試合: 2026年6月13日、2026年6月5日、2026年5月30日、2026年5月22日、2026年5月8日
   2026年5月22日から2026年5月8日まで14日空いているため、最新5件を連続した最近の調子として扱う場合は注意が必要です。
-  確認できる最新の出場記録は2026年6月13日です。現在（2026年6月20日）から7日空いているため、これだけでは現在の調子とは言えません。
+  確認できる最新の出場記録は2026年6月13日です。現在（2026年6月21日）から8日空いているため、これだけでは現在の調子とは言えません。
 - intent: search_pitching
-- entities: {
-  "player": null,
-  "pitcher": "藤浪 晋太郎",
-  "batter": null,
-  "runner": null,
-  "team": null,
-  "opponent": null,
-  "game_id": null
-}
+- entities:   {
+    "player": null,
+    "pitcher": "藤浪 晋太郎",
+    "batter": null,
+    "runner": null,
+    "team": null,
+    "opponent": null,
+    "game_id": null
+  }
 - player_id: 41045137
-- data_requirements: [
-  "pitching_lines",
-  "source_snapshots"
-]
-- repositories: [
-  "searchPitchingLines",
-  "listSourceSnapshotsByGameIds"
-]
+- data_requirements:   [
+    "pitching_lines",
+    "source_snapshots"
+  ]
+- repositories:   [
+    "searchPitchingLines",
+    "listSourceSnapshotsByGameIds"
+  ]
 - pass/fail: Pass
 - fail理由: なし
 - fail分類: なし
 - 許容した差分: 日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
-- 実行ログパス: [data/logs/qa-prod-1781955906270.json](../data/logs/qa-prod-1781955906270.json)
-- 実行日時: 2026-06-20T12:04:45.979Z
-- デプロイVersion ID: 17814388-198d-4757-8e43-b62e706b4e8d
+- 実行ログパス: [data/logs/qa-prod-1781975678653.json](../data/logs/qa-prod-1781975678653.json)
+- 実行日時: 2026-06-20T17:34:18.420Z
+- デプロイVersion ID: badb1f20-c6ed-4cb5-affe-b95ac6a7b101
 
 ### Q-83: 藤浪ってホームラン打ったことある？
 
@@ -3228,31 +3228,31 @@
   1. 2018年9月16日 3回表 阪神 藤浪: レフト満塁ホームラン（打点4）
   2. 2021年4月16日 5回裏 阪神 藤浪: レフト2ランホームラン（打点2）
 - intent: search_events
-- entities: {
-  "player": "藤浪 晋太郎",
-  "pitcher": null,
-  "batter": null,
-  "runner": null,
-  "team": null,
-  "opponent": null,
-  "game_id": null
-}
+- entities:   {
+    "player": "藤浪 晋太郎",
+    "pitcher": null,
+    "batter": null,
+    "runner": null,
+    "team": null,
+    "opponent": null,
+    "game_id": null
+  }
 - player_id: 41045137
-- data_requirements: [
-  "events",
-  "source_snapshots"
-]
-- repositories: [
-  "searchEvents",
-  "listSourceSnapshotsByGameIds"
-]
+- data_requirements:   [
+    "events",
+    "source_snapshots"
+  ]
+- repositories:   [
+    "searchEvents",
+    "listSourceSnapshotsByGameIds"
+  ]
 - pass/fail: Pass
 - fail理由: なし
 - fail分類: なし
 - 許容した差分: 日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
-- 実行ログパス: [data/logs/qa-prod-1781955906270.json](../data/logs/qa-prod-1781955906270.json)
-- 実行日時: 2026-06-20T12:04:56.225Z
-- デプロイVersion ID: 17814388-198d-4757-8e43-b62e706b4e8d
+- 実行ログパス: [data/logs/qa-prod-1781975678653.json](../data/logs/qa-prod-1781975678653.json)
+- 実行日時: 2026-06-20T17:34:28.367Z
+- デプロイVersion ID: badb1f20-c6ed-4cb5-affe-b95ac6a7b101
 
 ### Q-84: （直前にQ-83の回答がある状態で）二つ目の試合についてもっと詳しく教えて
 
@@ -3260,6 +3260,16 @@
 - 入力文: （直前にQ-83の回答がある状態で）二つ目の試合についてもっと詳しく教えて
 - QA正:
   該当する試合は1件です。
+  
+  1. 2021年4月16日 甲子園、阪神タイガースが東京ヤクルトスワローズに2-0で勝利しました。
+  5回裏に阪神タイガースが2点を取り、ここでリードを奪いました。
+  安打数は東京ヤクルトスワローズが5本、阪神タイガースが5本でした。
+  失策は東京ヤクルトスワローズが1、阪神タイガースが0です。
+  得点経過: 5回裏に阪神タイガースが2点（0-2）。
+  主な投手成績: 阪神タイガース 藤浪 5回2/3、94球、6奪三振、失点0、自責点0。
+  主な打撃成績: 阪神タイガース 藤浪 1打数1安打、2打点、1得点 / 阪神タイガース サンズ 3打数1安打 / 阪神タイガース 糸原 4打数1安打 / 阪神タイガース 大山 3打数1安打 / 阪神タイガース 中野 3打数1安打 / 阪神タイガース 近本 3打数0安打。
+  主な得点・長打イベント:
+  - 5回裏 阪神 藤浪: レフト2ランホームラン（打点2）
 - 本番回答:
   該当する試合は1件です。
   
@@ -3273,37 +3283,37 @@
      主な得点・長打イベント:
      - 5回裏 阪神 藤浪: レフト2ランホームラン（打点2）
 - intent: game_detail
-- entities: {
-  "player": null,
-  "pitcher": null,
-  "batter": null,
-  "runner": null,
-  "team": "阪神",
-  "opponent": null,
-  "game_id": null
-}
+- entities:   {
+    "player": null,
+    "pitcher": null,
+    "batter": null,
+    "runner": null,
+    "team": "阪神",
+    "opponent": null,
+    "game_id": null
+  }
 - player_id: null
-- data_requirements: [
-  "game_details",
-  "events",
-  "batting_lines",
-  "pitching_lines",
-  "source_snapshots"
-]
-- repositories: [
-  "searchGameDetails",
-  "searchEvents",
-  "searchBattingLines",
-  "searchPitchingLines",
-  "listSourceSnapshotsByGameIds"
-]
+- data_requirements:   [
+    "game_details",
+    "events",
+    "batting_lines",
+    "pitching_lines",
+    "source_snapshots"
+  ]
+- repositories:   [
+    "searchGameDetails",
+    "searchEvents",
+    "searchBattingLines",
+    "searchPitchingLines",
+    "listSourceSnapshotsByGameIds"
+  ]
 - pass/fail: Pass
 - fail理由: なし
 - fail分類: なし
 - 許容した差分: 日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
-- 実行ログパス: [data/logs/qa-prod-1781955906270.json](../data/logs/qa-prod-1781955906270.json)
-- 実行日時: 2026-06-20T12:05:05.289Z
-- デプロイVersion ID: 17814388-198d-4757-8e43-b62e706b4e8d
+- 実行ログパス: [data/logs/qa-prod-1781975678653.json](../data/logs/qa-prod-1781975678653.json)
+- 実行日時: 2026-06-20T17:34:37.604Z
+- デプロイVersion ID: badb1f20-c6ed-4cb5-affe-b95ac6a7b101
 
 ### Q-85: 阪神の藤浪の最近の成績は？
 
@@ -3320,31 +3330,206 @@
   最新登板は2026年6月13日で、4回、4奪三振、自責点5です。
   対象試合: 2026年6月13日、2026年6月5日、2026年5月30日、2026年5月22日、2026年5月8日
   2026年5月22日から2026年5月8日まで14日空いているため、最新5件を連続した最近の調子として扱う場合は注意が必要です。
-  確認できる最新の出場記録は2026年6月13日です。現在（2026年6月20日）から7日空いているため、これだけでは現在の調子とは言えません。
+  確認できる最新の出場記録は2026年6月13日です。現在（2026年6月21日）から8日空いているため、これだけでは現在の調子とは言えません。
 - intent: search_pitching
-- entities: {
-  "player": null,
-  "pitcher": "藤浪 晋太郎",
-  "batter": null,
-  "runner": null,
-  "team": null,
-  "opponent": null,
-  "game_id": null
-}
+- entities:   {
+    "player": null,
+    "pitcher": "藤浪 晋太郎",
+    "batter": null,
+    "runner": null,
+    "team": null,
+    "opponent": null,
+    "game_id": null
+  }
 - player_id: 41045137
-- data_requirements: [
-  "pitching_lines",
-  "source_snapshots"
-]
-- repositories: [
-  "searchPitchingLines",
-  "listSourceSnapshotsByGameIds"
-]
+- data_requirements:   [
+    "pitching_lines",
+    "source_snapshots"
+  ]
+- repositories:   [
+    "searchPitchingLines",
+    "listSourceSnapshotsByGameIds"
+  ]
 - pass/fail: Pass
 - fail理由: なし
 - fail分類: なし
 - 許容した差分: 日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
-- 実行ログパス: [data/logs/qa-prod-1781955906270.json](../data/logs/qa-prod-1781955906270.json)
-- 実行日時: 2026-06-20T12:05:19.274Z
-- デプロイVersion ID: 17814388-198d-4757-8e43-b62e706b4e8d
+- 実行ログパス: [data/logs/qa-prod-1781975678653.json](../data/logs/qa-prod-1781975678653.json)
+- 実行日時: 2026-06-20T17:34:52.485Z
+- デプロイVersion ID: badb1f20-c6ed-4cb5-affe-b95ac6a7b101
+
+### Q-86: オリックスの西川龍馬とソフトバンクの上沢は対決したことがあるか
+
+- case_id: Q-86
+- 入力文: オリックスの西川龍馬とソフトバンクの上沢は対決したことがあるか
+- QA正:
+  オリックスの西川龍馬とソフトバンクの上沢には直接対決があります。確認できる記録は22件です。最初の対戦は2025年4月23日のオリックス戦で西川龍馬が上沢からファーストゴロ。直近の対戦は2026年4月18日のオリックス戦で西川龍馬が上沢からセンター前ヒット。
+- 本番回答:
+  オリックスの西川 龍馬と上沢には直接対決があります。 確認できる記録は22件です。 最初の対戦は2025年4月23日のオリックス戦で西川 龍馬が上沢からファーストゴロ。 直近の対戦は2026年4月18日のオリックス戦で西川 龍馬が上沢からセンター前ヒット。
+- intent: search_events
+- entities:   {
+    "player": null,
+    "pitcher": "上沢",
+    "batter": "西川 龍馬",
+    "runner": null,
+    "team": "オリックス",
+    "opponent": null,
+    "game_id": null
+  }
+- player_id: 71475132
+- data_requirements:   [
+    "events",
+    "source_snapshots"
+  ]
+- repositories:   [
+    "searchEvents",
+    "listSourceSnapshotsByGameIds"
+  ]
+- pass/fail: Pass
+- fail理由: なし
+- fail分類: なし
+- 許容した差分: 日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
+- 実行ログパス: [data/logs/qa-prod-1781975678653.json](../data/logs/qa-prod-1781975678653.json)
+- 実行日時: 2026-06-20T17:35:01.911Z
+- デプロイVersion ID: badb1f20-c6ed-4cb5-affe-b95ac6a7b101
+
+### Q-87: 西川龍馬と上沢は対決したことがあるか
+
+- case_id: Q-87
+- 入力文: 西川龍馬と上沢は対決したことがあるか
+- QA正:
+  西川龍馬と上沢には直接対決があります。確認できる記録は34件です。最初の対戦は2018年6月6日の広島戦で西川龍馬が上沢からレフト前ヒット。直近の対戦は2026年4月18日のオリックス戦で西川龍馬が上沢からセンター前ヒット。
+- 本番回答:
+  西川 龍馬と上沢には直接対決があります。 確認できる記録は34件です。 最初の対戦は2018年6月6日の広島戦で西川 龍馬が上沢からレフト前ヒット。 直近の対戦は2026年4月18日のオリックス戦で西川 龍馬が上沢からセンター前ヒット。
+- intent: search_events
+- entities:   {
+    "player": null,
+    "pitcher": "上沢",
+    "batter": "西川 龍馬",
+    "runner": null,
+    "team": null,
+    "opponent": null,
+    "game_id": null
+  }
+- player_id: 71475132
+- data_requirements:   [
+    "events",
+    "source_snapshots"
+  ]
+- repositories:   [
+    "searchEvents",
+    "listSourceSnapshotsByGameIds"
+  ]
+- pass/fail: Pass
+- fail理由: なし
+- fail分類: なし
+- 許容した差分: 日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
+- 実行ログパス: [data/logs/qa-prod-1781975678653.json](../data/logs/qa-prod-1781975678653.json)
+- 実行日時: 2026-06-20T17:35:11.236Z
+- デプロイVersion ID: badb1f20-c6ed-4cb5-affe-b95ac6a7b101
+
+### Q-88: 田中将大と柳は対決したことがあるか
+
+- case_id: Q-88
+- 入力文: 田中将大と柳は対決したことがあるか
+- QA正:
+  田中将大と柳には直接対決があります。確認できる記録は2件です。最初の対戦は2025年8月13日の巨人戦で田中将大が柳から空振り三振。
+- 本番回答:
+  田中 将大と柳には直接対決があります。 確認できる記録は2件です。 最初の対戦は2025年8月13日の巨人戦で田中 将大が柳から空振り三振。
+- intent: search_events
+- entities:   {
+    "player": null,
+    "pitcher": "柳",
+    "batter": "田中 将大",
+    "runner": null,
+    "team": null,
+    "opponent": null,
+    "game_id": null
+  }
+- player_id: 11215114
+- data_requirements:   [
+    "events",
+    "source_snapshots"
+  ]
+- repositories:   [
+    "searchEvents",
+    "listSourceSnapshotsByGameIds"
+  ]
+- pass/fail: Pass
+- fail理由: なし
+- fail分類: なし
+- 許容した差分: 日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
+- 実行ログパス: [data/logs/qa-prod-1781975678653.json](../data/logs/qa-prod-1781975678653.json)
+- 実行日時: 2026-06-20T17:35:20.793Z
+- デプロイVersion ID: badb1f20-c6ed-4cb5-affe-b95ac6a7b101
+
+### Q-89: 丸佳浩と戸根は対決したことがあるか
+
+- case_id: Q-89
+- 入力文: 丸佳浩と戸根は対決したことがあるか
+- QA正:
+  丸佳浩と戸根には直接対決があります。確認できる記録は14件です。最初の対戦は2016年4月2日の広島戦で丸佳浩が戸根からファーストゴロ。直近の対戦は2023年5月14日の巨人戦で丸佳浩が戸根からライト線ツーベース。
+- 本番回答:
+  丸 佳浩と戸根には直接対決があります。 確認できる記録は14件です。 最初の対戦は2016年4月2日の広島戦で丸 佳浩が戸根からファーストゴロ。 直近の対戦は2023年5月14日の巨人戦で丸 佳浩が戸根からライト線ツーベース。
+- intent: search_events
+- entities:   {
+    "player": null,
+    "pitcher": "戸根",
+    "batter": "丸 佳浩",
+    "runner": null,
+    "team": null,
+    "opponent": null,
+    "game_id": null
+  }
+- player_id: 21425116
+- data_requirements:   [
+    "events",
+    "source_snapshots"
+  ]
+- repositories:   [
+    "searchEvents",
+    "listSourceSnapshotsByGameIds"
+  ]
+- pass/fail: Pass
+- fail理由: なし
+- fail分類: なし
+- 許容した差分: 日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
+- 実行ログパス: [data/logs/qa-prod-1781975678653.json](../data/logs/qa-prod-1781975678653.json)
+- 実行日時: 2026-06-20T17:35:30.172Z
+- デプロイVersion ID: badb1f20-c6ed-4cb5-affe-b95ac6a7b101
+
+### Q-90: 近藤健介と藤原は対決したことがあるか？ 2026年4月16日のソフトバンク対楽天戦には中村晃も出場していた。
+
+- case_id: Q-90
+- 入力文: 近藤健介と藤原は対決したことがあるか？ 2026年4月16日のソフトバンク対楽天戦には中村晃も出場していた。
+- QA正:
+  近藤健介と藤原には直接対決があります。確認できる記録は3件です。最初の対戦は2026年4月16日のソフトバンク戦で近藤健介が藤原からフォアボール。
+- 本番回答:
+  近藤 健介と藤原には直接対決があります。 確認できる記録は3件です。 最初の対戦は2026年4月16日のソフトバンク戦で近藤 健介が藤原からフォアボール。 直近の対戦は2026年4月16日のソフトバンク戦で近藤 健介が藤原からレフトフライ。
+- intent: search_events
+- entities:   {
+    "player": null,
+    "pitcher": "藤原",
+    "batter": "近藤 健介",
+    "runner": null,
+    "team": null,
+    "opponent": null,
+    "game_id": null
+  }
+- player_id: 41745135
+- data_requirements:   [
+    "events",
+    "source_snapshots"
+  ]
+- repositories:   [
+    "searchEvents",
+    "listSourceSnapshotsByGameIds"
+  ]
+- pass/fail: Pass
+- fail理由: なし
+- fail分類: なし
+- 許容した差分: 日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
+- 実行ログパス: [data/logs/qa-prod-1781975678653.json](../data/logs/qa-prod-1781975678653.json)
+- 実行日時: 2026-06-20T17:35:39.738Z
+- デプロイVersion ID: badb1f20-c6ed-4cb5-affe-b95ac6a7b101
 

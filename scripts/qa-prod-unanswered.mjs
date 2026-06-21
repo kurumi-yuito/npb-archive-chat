@@ -41,6 +41,7 @@ const endNo = parseQId(endId)
 const text = await readFile(docPath, 'utf8')
 const cases = []
 const lines = text.split(/\r?\n/)
+let lastCaseLineIndex = -1
 for (let i = 0; i < lines.length; i += 1) {
   const q = lines[i].match(/^Q-(\d+)(?:\s+\[未実行\])?:\s*(.+)$/)
   if (!q) {
@@ -61,7 +62,15 @@ for (let i = 0; i < lines.length; i += 1) {
   const answer = answerLine.slice(2).trim()
   if (process.env.QA_ALL === '1' || answer === '' || (startNo !== null || endNo !== null) || process.env.QA_ALL !== '0') {
     cases.push({ id: `Q-${id}`, question: question.trim() })
+    lastCaseLineIndex = i + 1
   }
+}
+
+const trailingContent = lines
+  .slice(lastCaseLineIndex + 1)
+  .find((line) => line.trim() !== '')
+if (trailingContent) {
+  throw new Error(`Unexpected trailing content after last QA case: ${trailingContent}`)
 }
 
 const runId = `qa-prod-${Date.now()}`
