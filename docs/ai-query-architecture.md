@@ -308,6 +308,201 @@ QA判定要件は以下を原文どおり維持する。
 - Historical backfill は今回まだ実装しない
 - 先に future ingest を安定させ、その後に historical backfill を別フェーズで扱う
 
+## Identity Layer design
+
+### 現在 `player-resolution.ts` が担っている責務
+
+- `batter_name` / `pitcher_name` / `runner_name` / `player_name` を structured query から探す
+- 入力文字列の正規化と alias 候補生成
+- team qualifier による候補絞り込み
+- `player-repository.ts` / `queryService.searchPlayerCandidates()` の結果統合
+- 同一人物っぽい fallback 候補の折りたたみ
+- year フィルタがある場合の年シフト
+- resolved した `player_id` / `*_player_id` の structured query への埋め戻し
+- team 補正
+- ambiguous / not_found の返却
+
+### Identity Layer が本来担うべき責務
+
+- `player_id` を canonical identity として扱う
+- `player_name` / alias / URL / team 履歴 / season を統合して人物を識別する
+- source URL を provenance として保持する
+- 同姓同名、移籍、登録名変更を含めた一意性判定を行う
+- Planner / Executor が使える粒度で resolve 結果を返す
+- ambiguous / not_found / resolved を明示的に区別する
+
+### `player-resolution.ts` から切り出すべき処理
+
+- alias 展開ロジック
+- team alias 正規化
+- 候補収集の統合
+- event / roster / stats 横断検索の方針
+- year shift 判定
+- team injection 判定
+- fallback 候補の collapse
+- structured query への書き戻し
+- ambiguous / not_found の分類
+
+### `player-repository.ts` に残すべき処理
+
+- `player_profiles` の canonical lookup
+- `player_aliases` の検索
+- `player_sources` の URL / source_key lookup
+- `player_id` を軸にした候補検索
+- roles / teams / years の事実抽出
+- 永続化済みデータの read-only retrieval
+
+Repository に残さないもの:
+
+- 意味解釈
+- 会話文脈の解釈
+- year shift の判断
+- follow-up の解釈
+
+### alias 解決フロー
+
+```text
+入力 alias
+  ↓
+正規化
+  ↓
+alias テーブル検索
+  ↓
+候補 player_id 集約
+  ↓
+曖昧なら候補提示
+  ↓
+単一なら player_id 確定
+```
+
+- alias は canonical identity にぶら下がる補助情報
+- alias 単独を正にしない
+- team history で候補を絞り込む
+
+### source URL 解決フロー
+
+```text
+source URL
+  ↓
+source_type / source_key 正規化
+  ↓
+player_sources / facts tables 参照
+  ↓
+player_id 確定
+```
+
+- URL は provenance
+- URL は canonical identity ではない
+- source URL は player_id への逆引き補助として扱う
+
+### team 履歴の扱い
+
+- team は identity そのものではなく文脈
+- current team と historical team intervals を分けて持つ
+- 同姓同名の disambiguation に使う
+- 移籍選手の候補順位付けに使う
+
+### season をまたぐ解決方法
+
+- 先に `player_id` を解決する
+- season は属性として解釈する
+- その年のデータがなければ、別人へ自動で落とさない
+- 必要なら Executor / policy 側で最終在籍年や current season への寄せ方を決める
+
+### Executor / Repository との責務分担
+
+- Identity Layer: 誰かを決める
+- Executor: どの repository をどう呼ぶか決める
+- Repository: 永続化済みデータを引く
+
+この3層を分けることで、name fallback の増築を防ぐ。
+
+### Identity Layer の公開API案
+
+#### `resolvePlayer()`
+
+- 入力: `input`, `team?`, `season?`, `context?`
+- 出力: `status`, `player_id`, `canonical_name`, `aliases`, `primary_team`, `team_history`, `sources`, `confidence`, `candidates`
+- エラー: `IdentityLayerUnavailableError`, `IdentityResolutionTimeoutError`, `IdentitySchemaError`
+- 利用箇所: Planner 後の Executor, QA ログ
+
+#### `resolvePlayers()`
+
+- 入力: `inputs[]`, `team?`, `season?`, `context?`
+- 出力: `resolved[]`, `ambiguous[]`, `not_found[]`
+- エラー: `IdentityLayerUnavailableError`, `IdentityResolutionTimeoutError`
+- 利用箇所: 対戦系、比較系、複数人物同時解決
+
+#### `resolveAlias()`
+
+- 入力: `alias`, `season?`, `team?`
+- 出力: `player_id`, `canonical_name`, `alias_type`, `confidence`, `candidate_count`
+- エラー: `AliasNotFoundError`, `AliasAmbiguousError`
+- 利用箇所: UI 補助、管理画面、Planner 前後補正
+
+#### `resolveSourceUrl()`
+
+- 入力: `source_url`, `source_type?`, `season?`
+- 出力: `player_id`, `source_key`, `canonical_name`, `confidence`
+- エラー: `SourceUrlNotFoundError`, `SourceUrlAmbiguousError`
+- 利用箇所: ETL、provenance 検証、backfill 設計
+
+#### `resolveHistoricalPlayer()`
+
+- 入力: `input`, `year`, `team?`, `context?`
+- 出力: `player_id`, `canonical_name`, `year_team`, `team_history`, `status`
+- エラー: `HistoricalIdentityAmbiguousError`, `HistoricalIdentityNotFoundError`
+- 利用箇所: historical rows / events、将来の backfill
+
+#### `resolveCurrentPlayer()`
+
+- 入力: `input`, `current_year`, `team?`, `context?`
+- 出力: `player_id`, `canonical_name`, `current_team`, `confidence`, `sources`
+- エラー: `CurrentIdentityAmbiguousError`, `CurrentIdentityNotFoundError`
+- 利用箇所: current stats、現役選手検索、QA
+
+### 最終構成図
+
+```text
+ユーザー入力
+  ↓
+Planner
+  ↓
+Identity Layer
+  ├─ resolvePlayer
+  ├─ resolvePlayers
+  ├─ resolveAlias
+  ├─ resolveSourceUrl
+  ├─ resolveHistoricalPlayer
+  └─ resolveCurrentPlayer
+  ↓
+Executor
+  ↓
+Repository
+  ↓
+D1 schema
+  ↓
+Answer Generator
+  ↓
+回答
+```
+
+補助データの位置づけ:
+
+```text
+player_id        = canonical identity
+URL              = provenance
+player_name      = display / input
+alias            = resolution aid
+team             = context / disambiguation
+season           = temporal scope
+```
+
+### 補足
+
+- Historical backfill はまだ実装しない
+- 先に Identity Layer を固め、その後に future ingest と historical backfill を分けて進める
+
 ## Future ingest 検証メモ
 
 - 対象コミット: `d8baadb5c`
