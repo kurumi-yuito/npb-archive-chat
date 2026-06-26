@@ -365,6 +365,14 @@ describe('chat-service', () => {
       expect(response.answer.source_urls).toContain(
         'https://npb.jp/scores/2025/0815/b-l-17/playbyplay.html',
       )
+      expect(response.answer.execution_metadata?.identity_resolution).toMatchObject({
+        path: 'explicit_player_id',
+        field: 'batter_name',
+        input: '山村',
+        status: 'resolved',
+        playerId: 'yamamura',
+        candidateCount: 1,
+      })
       expect(response.sources).toHaveLength(4)
     } finally {
       database.close()

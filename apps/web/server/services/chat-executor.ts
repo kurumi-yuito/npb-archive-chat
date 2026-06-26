@@ -1,4 +1,5 @@
 import type { ChatStructuredQuery } from '@npb/schemas'
+import { buildIdentityResolutionMetadata } from './player-identity'
 import type { PlayerResolution } from './player-resolution'
 import {
   inferDataRequirements,
@@ -20,6 +21,9 @@ export function buildChatExecutionMetadata(
     dataRequirements: plannerOutput?.dataRequirements ?? inferDataRequirements(structuredQuery),
     repositories: repositoriesForQuery(structuredQuery),
     playerResolution,
+    ...(playerResolution
+      ? { identityResolution: buildIdentityResolutionMetadata(structuredQuery, playerResolution) }
+      : {}),
     playerIdRequired,
     playerIdSatisfied: !playerIdRequired || queryHasPlayerId(structuredQuery) || resolvedPlayerId,
     followUpType: plannerOutput?.followUpType ?? 'standalone',

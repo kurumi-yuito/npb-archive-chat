@@ -1,4 +1,5 @@
 import { z, type ChatRequest, type ChatStructuredQuery } from '@npb/schemas'
+import type { IdentityResolutionMetadata } from './player-identity'
 import type { PlayerResolution } from './player-resolution'
 
 export const chatDataRequirementSchema = z.enum([
@@ -120,6 +121,7 @@ export type ChatExecutionMetadata = {
   dataRequirements: ChatDataRequirement[]
   repositories: ChatExecutionRepository[]
   playerResolution: PlayerResolution | null
+  identityResolution?: IdentityResolutionMetadata | null
   playerIdRequired: boolean
   playerIdSatisfied: boolean
   followUpType: ChatFollowUpType

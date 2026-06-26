@@ -30,7 +30,7 @@ import {
   classifyFollowUpContext,
   type ChatFollowUpType,
 } from './chat-query-plan'
-import { resolveStructuredQueryPlayer, type PlayerResolution } from './player-resolution'
+import { resolvePlayer as resolveStructuredQueryPlayer, type PlayerResolution } from './player-identity'
 import type { ChatFinalAnswerGenerator } from './chat-final-answer-llm'
 import { buildPlannerOutput, createChatPlanner } from './chat-planner'
 import { buildChatExecutionMetadata } from './chat-executor'
