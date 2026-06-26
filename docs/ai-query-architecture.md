@@ -239,6 +239,75 @@ QA正は `docs/qa-test-cases.md` とする。
 
 QA判定要件は以下を原文どおり維持する。
 
+## Player identity architecture roadmap
+
+### 現状アーキテクチャ
+
+- `player_profiles` は canonical master に近いが、current stats / historical rows / events / repository で `player_id` と `URL` と `name` の扱いが揃っていない
+- structured ingest は future ingest で URL を保持できるようになったが、historical 側は未補完が残る
+- Planner / Executor は `player_id` 必須化へ寄せているが、DB 実体はまだ完全に一枚岩ではない
+
+### 理想アーキテクチャ
+
+- `player_id` を唯一の正とする
+- `URL` は provenance として保持する
+- `player_name` は表示・入力補助、`alias` は解決補助、`team` は文脈、`season` は時間軸として扱う
+- ETL は識別子を落とさず、Repository は player_id-first、Planner は意図解釈、Executor は実行と解決を担う
+
+### 責務分離
+
+- ETL: parser から得た `player_id` / `URL` / `name` を保持し、future ingest で欠損を増やさない
+- Repository: 保存済みデータを `player_id` 中心に引く。曖昧な name fallback は増築しない
+- Planner: intent / entities / time_range / data_requirements を決める
+- Executor: Planner 出力から `player_id` を解決し、Repository routing を確定する
+- Historical backfill: 過去欠損を埋める別責務。今回は未実装
+- Future ingest: 今後の投入データで URL / player_id を失わせない
+
+### migration が必要になるタイミング
+
+- canonical identity 表を新設するとき
+- alias / source provenance を正式テーブル化するとき
+- facts tables を player_id 前提へ再設計するとき
+- historical backfill の結果を永続化するために列追加が必要なとき
+
+### 2030年まで保守する前提の推奨構成
+
+- `player_profiles` を canonical master とする
+- `player_aliases` と `player_sources` を必要に応じて追加する
+- facts tables は `player_id` を主キー相当として保持し、URL / name は補助列にする
+- Planner / Executor / QA は player_id ベースで整合させる
+
+### ロードマップ
+
+#### Phase 1（短期）
+
+- 目的: future ingest で player_id / URL を落とさない
+- 作業内容: parser / loader の保持経路を維持、QA で URL 保持を確認
+- 完了条件: 新規 ingest で URL 欠損が増えない
+- QA項目: structured/raw 比較、player_id 解決、回帰確認
+- リスク: historical 欠損は残る
+
+#### Phase 2（中期）
+
+- 目的: canonical identity 層を強化する
+- 作業内容: alias / source provenance の整理、repository の fallback 縮小
+- 完了条件: player_id-first で大半の検索が回る
+- QA項目: 同姓同名、所属変更、登録名変更
+- リスク: 旧データとの整合コスト
+
+#### Phase 3（長期）
+
+- 目的: 2030年まで耐える identity 中心モデルにする
+- 作業内容: historical backfill、legacy fallback の大幅縮小、identity 再集計
+- 完了条件: historical / future の両方で player_id が主軸になる
+- QA項目: 1選手多所属、同姓同名、cross-season lookup
+- リスク: 大規模 backfill と QA 期待値の再定義
+
+### 補足
+
+- Historical backfill は今回まだ実装しない
+- 先に future ingest を安定させ、その後に historical backfill を別フェーズで扱う
+
 ## Future ingest 検証メモ
 
 - 対象コミット: `d8baadb5c`
