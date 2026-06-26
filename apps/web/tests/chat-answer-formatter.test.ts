@@ -73,6 +73,45 @@ describe('chat-answer-formatter', () => {
     expect(answer.summary).not.toContain('打ったイベント')
   })
 
+  it('surfaces follow-up planner metadata in the answer execution metadata', () => {
+    const answer = formatChatAnswer({
+      question: 'なんで？',
+      structuredQuery: {
+        intent: 'game_detail',
+        filters: { game_date: '2021-04-16', team: '阪神' },
+      },
+      results: emptyResults(),
+      sources: [],
+      executionMetadata: {
+        dataRequirements: ['game_details'],
+        repositories: ['searchGameDetails'],
+        playerResolution: null,
+        playerIdRequired: false,
+        playerIdSatisfied: true,
+        followUpType: 'reason_request',
+        referencedContext: {
+          source: 'latest_assistant_entry',
+          anchor: '1. 2021年4月16日 r20210416t-s-01 ...',
+          ordinal: null,
+          summary: '1. 2021年4月16日 r20210416t-s-01 ...',
+        },
+        targetEntity: {
+          kind: 'game',
+          label: '2021年4月16日 r20210416t-s-01 ...',
+          players: [],
+          teams: ['阪神'],
+        },
+        targetGameId: 'r20210416t-s-01',
+        targetPlayerId: null,
+        answerMode: 'reason_explanation',
+      },
+    })
+
+    expect(answer.execution_metadata?.follow_up_type).toBe('reason_request')
+    expect(answer.execution_metadata?.answer_mode).toBe('reason_explanation')
+    expect(answer.execution_metadata?.target_game_id).toBe('r20210416t-s-01')
+  })
+
   it('describes pitcher-vs-pitcher matchup questions without batting language', () => {
     const results = emptyResults()
     results.events = [{

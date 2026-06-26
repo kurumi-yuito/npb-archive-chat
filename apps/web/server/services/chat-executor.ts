@@ -22,5 +22,11 @@ export function buildChatExecutionMetadata(
     playerResolution,
     playerIdRequired,
     playerIdSatisfied: !playerIdRequired || queryHasPlayerId(structuredQuery) || resolvedPlayerId,
+    followUpType: plannerOutput?.followUpType ?? 'standalone',
+    referencedContext: plannerOutput?.referencedContext ?? null,
+    targetEntity: plannerOutput?.targetEntity ?? null,
+    targetGameId: plannerOutput?.targetGameId ?? null,
+    targetPlayerId: plannerOutput?.targetPlayerId ?? null,
+    answerMode: plannerOutput?.answerMode ?? 'direct_answer',
   }
 }

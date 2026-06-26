@@ -7,6 +7,7 @@ import {
   type ChatRequest,
   type ChatResponseCore,
   type ChatStructuredQuery,
+  type PlayerCandidate,
   type PlayerAffiliationFilters,
 } from '@npb/schemas'
 import {
@@ -26,9 +27,10 @@ import {
 } from './chat-query-parser'
 import { normalizeChatStructuredQuery, normalizeTeamName } from './chat-query-normalizer'
 import {
-  resolveStructuredQueryPlayer,
-  type PlayerResolution,
-} from './player-resolution'
+  classifyFollowUpContext,
+  type ChatFollowUpType,
+} from './chat-query-plan'
+import { resolveStructuredQueryPlayer, type PlayerResolution } from './player-resolution'
 import type { ChatFinalAnswerGenerator } from './chat-final-answer-llm'
 import { buildPlannerOutput, createChatPlanner } from './chat-planner'
 import { buildChatExecutionMetadata } from './chat-executor'
@@ -86,7 +88,10 @@ export function createChatService(
       parsedQuery = rewriteSeasonalPlayerStatsMisparseIfNeeded(message, parsedQuery)
       parsedQuery = recoverOffTopicRecentPlayerQuery(message, parsedQuery)
       parsedQuery = stabilizeQaQueryFromQuestion(message, parsedQuery)
-      const effectivePlan = buildPlannerOutput(parsedQuery, parsedQuery !== rawParsedQuery)
+      const effectivePlan = buildPlannerOutput(parsedQuery, parsedQuery !== rawParsedQuery, {
+        message,
+        history: options.history,
+      })
 
       if (isNorimotoTeamComparison(message, parsedQuery)) {
         const results = await aggregatePitchingAcrossYears(queryService, parsedQuery)
@@ -500,29 +505,7 @@ export function createChatService(
         results.aggregates.length === 0
       ) {
         const aggFilters = structuredQuery.filters as Record<string, unknown>
-        if (aggFilters.player_name) {
-          const fallbackBatting = await queryService.searchBattingLines({
-            player_name: aggFilters.player_name as string,
-            ...(typeof aggFilters.player_id === 'string' ? { player_id: aggFilters.player_id } : {}),
-            ...(aggFilters.team ? { team: aggFilters.team as string } : {}),
-            ...(aggFilters.year ? { year: aggFilters.year as number } : {}),
-            ...(aggFilters.year_from ? { year_from: aggFilters.year_from as number } : {}),
-            ...(aggFilters.year_to ? { year_to: aggFilters.year_to as number } : {}),
-            limit: 50,
-          })
-          if (fallbackBatting.length > 0) {
-            structuredQuery = { intent: 'search_batting', filters: {
-              player_name: aggFilters.player_name as string,
-              ...(typeof aggFilters.player_id === 'string' ? { player_id: aggFilters.player_id } : {}),
-              ...(aggFilters.team ? { team: aggFilters.team as string } : {}),
-              ...(aggFilters.year ? { year: aggFilters.year as number } : {}),
-              ...(aggFilters.year_from ? { year_from: aggFilters.year_from as number } : {}),
-              ...(aggFilters.year_to ? { year_to: aggFilters.year_to as number } : {}),
-              limit: 50,
-            }}
-            results = { ...emptyResults, batting: fallbackBatting }
-          }
-        } else if (aggFilters.result_text_contains) {
+        if (aggFilters.result_text_contains) {
           // e.g. 得点圏打率 → result_text_contains='得点圏' yields 0 results; retry without that filter
           const retryAggregates = await queryService.aggregateBattingLines({
             ...(aggFilters.year ? { year: aggFilters.year as number } : {}),
@@ -561,8 +544,8 @@ export function createChatService(
         const requestedYear = aggFilters.year as number | undefined
         if (requestedYear) {
           const candidateYears = playerResolution.candidates
-            .flatMap((c) => c.years)
-            .filter((y) => y < requestedYear)
+            .flatMap((candidate: PlayerCandidate) => candidate.years)
+            .filter((y: number) => y < requestedYear)
           if (candidateYears.length > 0) {
             const latestPriorYear = Math.max(...candidateYears)
             const shiftedFilters = { ...aggFilters, year: latestPriorYear } as AggregateBattingFilters
@@ -626,8 +609,8 @@ export function createChatService(
         const requestedYear = aggFilters.year as number | undefined
         if (requestedYear) {
           const candidateYears = playerResolution.candidates
-            .flatMap((c) => c.years)
-            .filter((y) => y < requestedYear)
+            .flatMap((candidate: PlayerCandidate) => candidate.years)
+            .filter((y: number) => y < requestedYear)
           if (candidateYears.length > 0) {
             const latestPriorYear = Math.max(...candidateYears)
             const shiftedFilters = { ...aggFilters, year: latestPriorYear } as AggregatePitchingFilters
@@ -934,7 +917,7 @@ function isPitcherOnlyResolution(resolution: PlayerResolution | null): boolean {
   if (resolution?.status !== 'resolved') {
     return false
   }
-  const candidateRoles = resolution.candidates.flatMap((candidate) => candidate.roles)
+  const candidateRoles = resolution.candidates.flatMap((candidate: PlayerCandidate) => candidate.roles)
   return candidateRoles.length > 0 && candidateRoles.some((role) => /pitch/i.test(role))
 }
 
@@ -1421,7 +1404,7 @@ async function searchLightweightAggregateBattingForChat(
     return null
   }
 
-  const candidateRoles = resolved?.candidates.flatMap((candidate) => candidate.roles) ?? []
+  const candidateRoles = resolved?.candidates.flatMap((candidate: PlayerCandidate) => candidate.roles) ?? []
   const isPitcherOnlyResolution =
     candidateRoles.length > 0 &&
     candidateRoles.some((role) => /pitch/i.test(role))
@@ -1835,7 +1818,7 @@ async function aggregatePitchingForResolvedPlayer(
 
   const filters = structuredQuery.filters as Record<string, unknown>
   const resolvedYears = uniqueInOrder(
-    playerResolution.candidates.flatMap((candidate) => candidate.years.map((year) => Number(year))),
+    playerResolution.candidates.flatMap((candidate: PlayerCandidate) => candidate.years.map((year: number) => Number(year))),
   )
   if (resolvedYears.length === 0) {
     return null
@@ -2022,18 +2005,24 @@ async function buildAwardWinnersResponse(
     return chatResponseCoreSchema.parse({
       message,
       structured_query: structuredQuery,
-      answer: {
-        summary: `${year}年の表彰結果は確認できませんでした。確認できるNPBデータにないため、推測では回答しません。`,
-        result_count: 0,
-        source_urls: [],
-        applied_filters: structuredQuery.filters,
-        execution_metadata: {
-          data_requirements: executionMetadata.dataRequirements,
-          repositories: executionMetadata.repositories,
-          player_id_required: executionMetadata.playerIdRequired,
-          player_id_satisfied: executionMetadata.playerIdSatisfied,
+        answer: {
+          summary: `${year}年の表彰結果は確認できませんでした。確認できるNPBデータにないため、推測では回答しません。`,
+          result_count: 0,
+          source_urls: [],
+          applied_filters: structuredQuery.filters,
+          execution_metadata: {
+            data_requirements: executionMetadata.dataRequirements,
+            repositories: executionMetadata.repositories,
+            player_id_required: executionMetadata.playerIdRequired,
+            player_id_satisfied: executionMetadata.playerIdSatisfied,
+            follow_up_type: executionMetadata.followUpType,
+            referenced_context: executionMetadata.referencedContext,
+            target_entity: executionMetadata.targetEntity,
+            target_game_id: executionMetadata.targetGameId,
+            target_player_id: executionMetadata.targetPlayerId,
+            answer_mode: executionMetadata.answerMode,
+          },
         },
-      },
       results: emptyResults,
       sources: [],
     })
@@ -2043,18 +2032,24 @@ async function buildAwardWinnersResponse(
   return chatResponseCoreSchema.parse({
     message,
     structured_query: structuredQuery,
-    answer: {
-      summary: formatAwardWinnersSummary(year, result.winners),
-      result_count: result.winners.length,
-      source_urls: [result.sourceUrl],
-      applied_filters: structuredQuery.filters,
-      execution_metadata: {
-        data_requirements: executionMetadata.dataRequirements,
-        repositories: executionMetadata.repositories,
-        player_id_required: executionMetadata.playerIdRequired,
-        player_id_satisfied: executionMetadata.playerIdSatisfied,
+      answer: {
+        summary: formatAwardWinnersSummary(year, result.winners),
+        result_count: result.winners.length,
+        source_urls: [result.sourceUrl],
+        applied_filters: structuredQuery.filters,
+        execution_metadata: {
+          data_requirements: executionMetadata.dataRequirements,
+          repositories: executionMetadata.repositories,
+          player_id_required: executionMetadata.playerIdRequired,
+          player_id_satisfied: executionMetadata.playerIdSatisfied,
+          follow_up_type: executionMetadata.followUpType,
+          referenced_context: executionMetadata.referencedContext,
+          target_entity: executionMetadata.targetEntity,
+          target_game_id: executionMetadata.targetGameId,
+          target_player_id: executionMetadata.targetPlayerId,
+          answer_mode: executionMetadata.answerMode,
+        },
       },
-    },
     results: emptyResults,
     sources: [],
   })
@@ -2174,7 +2169,7 @@ function getPlayerAffiliationSearchFilters(
   }
 
   const latestYear = Math.max(
-    ...resolution.candidates.flatMap((candidate) => candidate.years),
+    ...resolution.candidates.flatMap((candidate: PlayerCandidate) => candidate.years),
   )
   if (!Number.isFinite(latestYear)) {
     return filters
@@ -2598,26 +2593,70 @@ function rewriteFollowUpFromHistory(
   query: ChatStructuredQuery,
   history: ChatRequest['history'] | undefined,
 ): ChatStructuredQuery {
-  const ordinalIndex = extractOrdinalIndex(message)
-  if (ordinalIndex === null || !history?.length) {
+  if (!history?.length) {
     return query
   }
-  if (!/試合|ゲーム|詳細|詳しく|について|教えて|それ|これ/u.test(message)) {
+  const followUpClassification = classifyFollowUpContext(message, history, query)
+  if (!shouldRewriteFollowUpToGameDetail(followUpClassification.followUpType)) {
     return query
   }
-
-  const gameIds = extractRecentAssistantGameIds(history)
-  const gameId = gameIds[ordinalIndex]
-  if (!gameId) {
+  const followUpTarget = extractFollowUpGameTarget(message, history, followUpClassification.followUpType)
+  if (!followUpTarget) {
     return query
   }
-
   return {
     intent: 'game_detail',
     filters: {
-      game_id: gameId,
       limit: 1,
+      ...(followUpTarget.gameId ? { game_id: followUpTarget.gameId } : {}),
+      ...(followUpTarget.gameDate ? { game_date: followUpTarget.gameDate } : {}),
+      ...(followUpTarget.team ? { team: followUpTarget.team } : {}),
     },
+  }
+}
+
+function shouldRewriteFollowUpToGameDetail(followUpType: ChatFollowUpType): boolean {
+  return followUpType === 'detail_request' ||
+    followUpType === 'reason_request' ||
+    followUpType === 'summary_request' ||
+    followUpType === 'recheck_request' ||
+    followUpType === 'context_reference' ||
+    followUpType === 'explanation_request' ||
+    followUpType === 'doubt_request' ||
+    followUpType === 'casual_followup'
+}
+
+function extractFollowUpGameTarget(
+  message: string,
+  history: NonNullable<ChatRequest['history']>,
+  followUpType: ChatFollowUpType,
+): { gameId?: string; gameDate?: string; team?: string } | null {
+  const assistantEntries = extractRecentAssistantEntries(history)
+  if (assistantEntries.length === 0) {
+    return null
+  }
+  const ordinalIndex = extractOrdinalIndex(message)
+  const relativeIndex = extractRelativeIndex(message, assistantEntries.length)
+  const selectedEntry = ordinalIndex !== null
+    ? assistantEntries[ordinalIndex] ?? assistantEntries.at(-1)
+    : relativeIndex !== null
+      ? assistantEntries[relativeIndex] ?? assistantEntries.at(-1)
+      : followUpType !== 'standalone'
+        ? assistantEntries.at(-1)
+        : null
+  if (!selectedEntry) {
+    return null
+  }
+  const gameId = selectedEntry.match(/\b[rf]\d{8}[a-z0-9-]+\b/iu)?.[0] ?? null
+  const gameDate = extractGameDateFromText(selectedEntry)
+  const team = extractGameTeamFromText(selectedEntry)
+  if (!gameId && !gameDate) {
+    return null
+  }
+  return {
+    ...(gameId ? { gameId } : {}),
+    ...(gameDate ? { gameDate } : {}),
+    ...(team ? { team } : {}),
   }
 }
 
@@ -2640,19 +2679,47 @@ function extractOrdinalIndex(message: string): number | null {
   return null
 }
 
-function extractRecentAssistantGameIds(history: NonNullable<ChatRequest['history']>): string[] {
+function extractRelativeIndex(message: string, entryCount: number): number | null {
+  if (entryCount < 2) {
+    return null
+  }
+  if (/その前のやつ|その前|ひとつ前|一つ前|1つ前|前のやつ|前の試合/u.test(message)) {
+    return Math.max(0, entryCount - 2)
+  }
+  return null
+}
+
+function extractRecentAssistantEntries(history: NonNullable<ChatRequest['history']>): string[] {
   for (const item of [...history].reverse()) {
     if (item.role !== 'assistant') {
       continue
     }
-    const ids = uniqueInOrder(
-      [...item.content.matchAll(/\b[rf]\d{8}[a-z0-9-]+\b/giu)].map((match) => match[0]),
-    )
-    if (ids.length > 0) {
-      return ids
+    const numberedEntries = item.content
+      .split(/\r?\n/u)
+      .map((line) => line.trim())
+      .filter((line) => /^\d+\.\s/.test(line))
+    if (numberedEntries.length > 0) {
+      return numberedEntries
     }
   }
   return []
+}
+
+function extractGameDateFromText(text: string): string | null {
+  const match = text.match(/(\d{4})年(\d{1,2})月(\d{1,2})日/u)
+  if (!match) {
+    return null
+  }
+  const [, year, month, day] = match
+  return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`
+}
+
+function extractGameTeamFromText(text: string): string | null {
+  const match = text.match(/^\d+\.\s+\d{4}年\d{1,2}月\d{1,2}日(?:\s+[^\s]+)?\s+([^\s:]+)\s+[^\s:]+:/u)
+  if (!match) {
+    return null
+  }
+  return match[1] ?? null
 }
 
 function uniqueInOrder<T>(values: T[]): T[] {

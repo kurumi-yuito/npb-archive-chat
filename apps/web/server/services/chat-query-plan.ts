@@ -1,4 +1,4 @@
-import { z, type ChatStructuredQuery } from '@npb/schemas'
+import { z, type ChatRequest, type ChatStructuredQuery } from '@npb/schemas'
 import type { PlayerResolution } from './player-resolution'
 
 export const chatDataRequirementSchema = z.enum([
@@ -18,6 +18,66 @@ export const chatDataRequirementSchema = z.enum([
 ])
 
 export type ChatDataRequirement = z.infer<typeof chatDataRequirementSchema>
+
+export const chatFollowUpTypeSchema = z.enum([
+  'standalone',
+  'detail_request',
+  'reason_request',
+  'summary_request',
+  'correction_request',
+  'doubt_request',
+  'recheck_request',
+  'comparison_request',
+  'target_omission',
+  'context_reference',
+  'explanation_request',
+  'scope_clarification',
+  'team_context_correction',
+  'timeframe_correction',
+  'evaluation_request',
+  'casual_followup',
+])
+
+export type ChatFollowUpType = z.infer<typeof chatFollowUpTypeSchema>
+
+export const chatAnswerModeSchema = z.enum([
+  'direct_answer',
+  'detail_explanation',
+  'reason_explanation',
+  'summary_explanation',
+  'comparison_explanation',
+  'correction_explanation',
+  'recheck_explanation',
+  'contextual_answer',
+  'clarification_request',
+  'evaluation_explanation',
+])
+
+export type ChatAnswerMode = z.infer<typeof chatAnswerModeSchema>
+
+export const chatReferencedContextSchema = z.object({
+  source: z.enum([
+    'none',
+    'latest_assistant_entry',
+    'latest_user_entry',
+    'conversation_history',
+    'explicit_phrase',
+  ]),
+  anchor: z.string().min(1).nullable(),
+  ordinal: z.number().int().positive().nullable(),
+  summary: z.string().min(1).nullable(),
+}).nullable()
+
+export type ChatReferencedContext = z.infer<typeof chatReferencedContextSchema>
+
+export const chatTargetEntitySchema = z.object({
+  kind: z.enum(['player', 'game', 'team', 'comparison', 'mixed', 'unknown']),
+  label: z.string().min(1).nullable(),
+  players: z.array(z.string().min(1)),
+  teams: z.array(z.string().min(1)),
+}).nullable()
+
+export type ChatTargetEntity = z.infer<typeof chatTargetEntitySchema>
 
 export const chatExecutionRepositorySchema = z.enum([
   'searchEvents',
@@ -41,8 +101,14 @@ export const chatPlannerOutputSchema = z.object({
   intent: z.string().min(1),
   structuredQuery: z.custom<ChatStructuredQuery>(),
   entities: z.record(z.unknown()),
+  followUpType: chatFollowUpTypeSchema,
+  referencedContext: chatReferencedContextSchema,
+  targetEntity: chatTargetEntitySchema,
+  targetGameId: z.string().min(1).nullable(),
+  targetPlayerId: z.string().min(1).nullable(),
   timeRange: z.record(z.unknown()).nullable(),
   dataRequirements: z.array(chatDataRequirementSchema),
+  answerMode: chatAnswerModeSchema,
   confidence: z.number().min(0).max(1),
   clarificationRequired: z.boolean(),
   legacyStabilizationApplied: z.boolean(),
@@ -56,6 +122,12 @@ export type ChatExecutionMetadata = {
   playerResolution: PlayerResolution | null
   playerIdRequired: boolean
   playerIdSatisfied: boolean
+  followUpType: ChatFollowUpType
+  referencedContext: ChatReferencedContext
+  targetEntity: ChatTargetEntity
+  targetGameId: string | null
+  targetPlayerId: string | null
+  answerMode: ChatAnswerMode
 }
 
 export function inferDataRequirements(query: ChatStructuredQuery): ChatDataRequirement[] {
@@ -166,4 +238,354 @@ export function queryHasPlayerId(query: ChatStructuredQuery): boolean {
     typeof filters.pitcher_player_id === 'string' ||
     typeof filters.batter_player_id === 'string' ||
     typeof filters.runner_player_id === 'string'
+}
+
+export function classifyFollowUpContext(
+  message: string,
+  history: ChatRequest['history'] | undefined,
+  query: ChatStructuredQuery,
+): Pick<ChatPlannerOutput,
+  'followUpType' |
+  'referencedContext' |
+  'targetEntity' |
+  'targetGameId' |
+  'targetPlayerId' |
+  'answerMode'
+> {
+  const normalizedMessage = normalizeMessageForClassification(message)
+  const hasHistory = Boolean(history?.length)
+  const followUpType = classifyFollowUpType(normalizedMessage, hasHistory)
+  const assistantEntry = extractReferencedAssistantEntry(normalizedMessage, history, followUpType)
+  const filters = query.filters as Record<string, unknown>
+  const targetGameId = typeof filters.game_id === 'string'
+    ? filters.game_id
+    : assistantEntry?.gameId ?? null
+  const targetPlayerId = typeof filters.player_id === 'string'
+    ? filters.player_id
+    : typeof filters.pitcher_player_id === 'string'
+      ? filters.pitcher_player_id
+      : typeof filters.batter_player_id === 'string'
+        ? filters.batter_player_id
+        : typeof filters.runner_player_id === 'string'
+          ? filters.runner_player_id
+          : null
+  const targetEntity = buildTargetEntity(query, normalizedMessage, assistantEntry, followUpType)
+  const referencedContext = assistantEntry
+    ? {
+        source: assistantEntry.source,
+        anchor: assistantEntry.anchor,
+        ordinal: assistantEntry.ordinal,
+        summary: assistantEntry.summary,
+      }
+    : normalizedMessage.length > 0 && followUpType !== 'standalone'
+      ? {
+          source: 'explicit_phrase' as const,
+          anchor: normalizedMessage,
+          ordinal: null,
+          summary: null,
+        }
+      : {
+          source: 'none' as const,
+          anchor: null,
+          ordinal: null,
+          summary: null,
+        }
+  const answerMode = classifyAnswerMode(followUpType, query, normalizedMessage)
+  return {
+    followUpType,
+    referencedContext,
+    targetEntity,
+    targetGameId,
+    targetPlayerId,
+    answerMode,
+  }
+}
+
+type ReferencedAssistantEntry = {
+  source: 'latest_assistant_entry'
+  anchor: string
+  ordinal: number | null
+  summary: string | null
+  gameId: string | null
+  gameDate: string | null
+  team: string | null
+}
+
+function classifyFollowUpType(message: string, hasAssistantHistory: boolean): ChatFollowUpType {
+  if (message.length === 0 || !hasAssistantHistory) {
+    return 'standalone'
+  }
+  if (/なんで|なぜ|どうして|理由|負けた|勝てた/u.test(message)) {
+    return 'reason_request'
+  }
+  if (/つまり|結局|要するに|で結局|結論/u.test(message)) {
+    return 'summary_request'
+  }
+  if (/比較|比べ|どっち|変化|移籍後|時代/u.test(message)) {
+    return 'comparison_request'
+  }
+  if (/いや.+じゃなくて|藤浪じゃなくて|村上じゃなくて|選手じゃなくて/u.test(message)) {
+    return 'team_context_correction'
+  }
+  if (/今年じゃなくて|去年じゃなくて|通算じゃなくて|直近じゃなくて|最近って何試合|何試合/u.test(message)) {
+    return 'timeframe_correction'
+  }
+  if (/その前のやつ|その前|ひとつ前|一つ前|1つ前|前のやつ|前の試合/u.test(message)) {
+    return 'context_reference'
+  }
+  if (/違う|通算じゃなくて|今年の話|最近の話|訂正|修正/u.test(message)) {
+    return 'correction_request'
+  }
+  if (/調べなおして|調べ直して|もう一回|再確認|見直して/u.test(message)) {
+    return 'recheck_request'
+  }
+  if (/ちがうはず|おかしくない|本当|ほんとに|怪しくない|変じゃない/u.test(message)) {
+    return 'doubt_request'
+  }
+  if (/一軍の話|二軍も含む|今の所属|当時の所属|所属で見て/u.test(message)) {
+    return 'scope_clarification'
+  }
+  if (/それってどういう意味|ようわからん|もうちょい噛み砕いて|その数字どう見ればいい|で、結論は|他と比べてどう/u.test(message)) {
+    return 'explanation_request'
+  }
+  if (/これ強い|やばい|微妙|良いの悪いの|どこがよかった|どこが悪かった|どっちがよかった/u.test(message)) {
+    return 'evaluation_request'
+  }
+  if (/詳しく|もっと|その試合|試合教えて|教えて|ハイライト/u.test(message)) {
+    return 'detail_request'
+  }
+  if (/やばくない|きつい|怖い|しんどい|微妙/u.test(message)) {
+    return 'casual_followup'
+  }
+  if (/それ|これ|その|あの|さっき|前の|二つ目|2つ目|二番目|2番目|二件目|2件目|二本目|2本目/u.test(message)) {
+    return 'context_reference'
+  }
+  if (/どう|どうですか|どうなん|今年|今シーズン|今季|通算|最近|調子/u.test(message)) {
+    return 'target_omission'
+  }
+  return 'standalone'
+}
+
+function classifyAnswerMode(
+  followUpType: ChatFollowUpType,
+  query: ChatStructuredQuery,
+  message: string,
+): ChatAnswerMode {
+  if (followUpType === 'comparison_request') {
+    return 'comparison_explanation'
+  }
+  if (followUpType === 'reason_request') {
+    return 'reason_explanation'
+  }
+  if (followUpType === 'summary_request') {
+    return 'summary_explanation'
+  }
+  if (followUpType === 'detail_request' || followUpType === 'context_reference' || followUpType === 'explanation_request') {
+    return query.intent === 'game_detail' ? 'detail_explanation' : 'contextual_answer'
+  }
+  if (followUpType === 'correction_request') {
+    return 'correction_explanation'
+  }
+  if (followUpType === 'team_context_correction' || followUpType === 'timeframe_correction') {
+    return 'correction_explanation'
+  }
+  if (followUpType === 'recheck_request') {
+    return 'recheck_explanation'
+  }
+  if (followUpType === 'scope_clarification') {
+    return 'clarification_request'
+  }
+  if (followUpType === 'evaluation_request' || followUpType === 'doubt_request' || followUpType === 'casual_followup') {
+    return 'evaluation_explanation'
+  }
+  if (followUpType === 'target_omission') {
+    return /対決|対戦|対した|当たった|比較/u.test(message) ? 'comparison_explanation' : 'contextual_answer'
+  }
+  return 'direct_answer'
+}
+
+function buildTargetEntity(
+  query: ChatStructuredQuery,
+  message: string,
+  assistantEntry: ReferencedAssistantEntry | null,
+  followUpType: ChatFollowUpType,
+): ChatTargetEntity {
+  const filters = query.filters as Record<string, unknown>
+  const players = [
+    typeof filters.player_name === 'string' ? filters.player_name : null,
+    typeof filters.pitcher_name === 'string' ? filters.pitcher_name : null,
+    typeof filters.batter_name === 'string' ? filters.batter_name : null,
+    typeof filters.runner_name === 'string' ? filters.runner_name : null,
+  ].filter((value): value is string => Boolean(value))
+  const teams = [
+    typeof filters.team === 'string' ? filters.team : null,
+    assistantEntry?.team ?? null,
+  ].filter((value): value is string => Boolean(value))
+
+  if (players.length >= 2 || /対決|対戦|比較|比べ|変化/u.test(message)) {
+    return {
+      kind: players.length >= 2 ? 'comparison' : 'mixed',
+      label: players.join(' と ') || (assistantEntry?.summary ?? null),
+      players,
+      teams,
+    }
+  }
+  if (players.length === 1) {
+    return {
+      kind: 'player',
+      label: players[0] ?? assistantEntry?.summary ?? null,
+      players,
+      teams,
+    }
+  }
+  if (
+    query.intent === 'game_detail' ||
+    (assistantEntry?.gameId && (
+      followUpType === 'detail_request' ||
+      followUpType === 'reason_request' ||
+      followUpType === 'summary_request' ||
+      followUpType === 'recheck_request' ||
+      followUpType === 'context_reference' ||
+      followUpType === 'explanation_request' ||
+      followUpType === 'scope_clarification' ||
+      followUpType === 'team_context_correction' ||
+      followUpType === 'timeframe_correction' ||
+      followUpType === 'evaluation_request' ||
+      followUpType === 'doubt_request' ||
+      followUpType === 'casual_followup'
+    ))
+  ) {
+    return {
+      kind: 'game',
+      label: assistantEntry?.summary ?? assistantEntry?.anchor ?? null,
+      players,
+      teams,
+    }
+  }
+  if (teams.length > 0) {
+    return {
+      kind: 'team',
+      label: teams.join(' / '),
+      players,
+      teams,
+    }
+  }
+  if (assistantEntry) {
+    return {
+      kind: assistantEntry.gameId ? 'game' : 'unknown',
+      label: assistantEntry.summary ?? assistantEntry.anchor,
+      players,
+      teams,
+    }
+  }
+  return {
+    kind: 'unknown',
+    label: null,
+    players,
+    teams,
+  }
+}
+
+function normalizeMessageForClassification(message: string): string {
+  return message.replace(/\s+/gu, '').trim()
+}
+
+function extractReferencedAssistantEntry(
+  message: string,
+  history: ChatRequest['history'] | undefined,
+  followUpType: ChatFollowUpType,
+): ReferencedAssistantEntry | null {
+  if (!history?.length) {
+    return null
+  }
+  const assistantEntries = extractRecentAssistantEntries(history)
+  if (assistantEntries.length === 0) {
+    return null
+  }
+  const ordinalIndex = extractOrdinalIndex(message)
+  const relativeIndex = extractRelativeIndex(message, assistantEntries.length)
+  const selectedEntry = ordinalIndex !== null
+    ? assistantEntries[ordinalIndex] ?? assistantEntries.at(-1)
+    : relativeIndex !== null
+      ? assistantEntries[relativeIndex] ?? assistantEntries.at(-1)
+      : followUpType !== 'standalone'
+        ? assistantEntries.at(-1)
+        : null
+  if (!selectedEntry) {
+    return null
+  }
+  const gameId = selectedEntry.match(/\b[rf]\d{8}[a-z0-9-]+\b/iu)?.[0] ?? null
+  const gameDate = extractGameDateFromText(selectedEntry)
+  const team = extractGameTeamFromText(selectedEntry)
+  return {
+    source: 'latest_assistant_entry',
+    anchor: selectedEntry,
+    ordinal: ordinalIndex,
+    summary: selectedEntry,
+    gameId,
+    gameDate,
+    team,
+  }
+}
+
+function extractRecentAssistantEntries(history: NonNullable<ChatRequest['history']>): string[] {
+  for (const item of [...history].reverse()) {
+    if (item.role !== 'assistant') {
+      continue
+    }
+    const numberedEntries = item.content
+      .split(/\r?\n/u)
+      .map((line) => line.trim())
+      .filter((line) => /^\d+\.\s/.test(line))
+    if (numberedEntries.length > 0) {
+      return numberedEntries
+    }
+  }
+  return []
+}
+
+function extractOrdinalIndex(message: string): number | null {
+  const normalized = message.replace(/[０-９]/gu, (char) =>
+    String.fromCharCode(char.charCodeAt(0) - 0xFEE0),
+  )
+  const ordinalPatterns: Array<[RegExp, number]> = [
+    [/(?:最初|一つ目|1つ目|一番目|1番目|一件目|1件目|一本目|1本目)/u, 0],
+    [/(?:二つ目|2つ目|二番目|2番目|二件目|2件目|二本目|2本目)/u, 1],
+    [/(?:三つ目|3つ目|三番目|3番目|三件目|3件目|三本目|3本目)/u, 2],
+    [/(?:四つ目|4つ目|四番目|4番目|四件目|4件目|四本目|4本目)/u, 3],
+    [/(?:五つ目|5つ目|五番目|5番目|五件目|5件目|五本目|5本目)/u, 4],
+  ]
+  for (const [pattern, index] of ordinalPatterns) {
+    if (pattern.test(normalized)) {
+      return index
+    }
+  }
+  return null
+}
+
+function extractRelativeIndex(message: string, entryCount: number): number | null {
+  if (entryCount < 2) {
+    return null
+  }
+  if (/その前のやつ|その前|ひとつ前|一つ前|1つ前|前のやつ|前の試合/u.test(message)) {
+    return Math.max(0, entryCount - 2)
+  }
+  return null
+}
+
+function extractGameDateFromText(text: string): string | null {
+  const match = text.match(/(\d{4})年(\d{1,2})月(\d{1,2})日/u)
+  if (!match) {
+    return null
+  }
+  const [, year, month, day] = match
+  return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`
+}
+
+function extractGameTeamFromText(text: string): string | null {
+  const match = text.match(/^\d+\.\s+\d{4}年\d{1,2}月\d{1,2}日(?:\s+[^\s]+)?\s+([^\s:]+)\s+[^\s:]+:/u)
+  if (!match) {
+    return null
+  }
+  return match[1] ?? null
 }

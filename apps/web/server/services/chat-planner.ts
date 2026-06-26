@@ -2,6 +2,7 @@ import type { ChatRequest, ChatStructuredQuery } from '@npb/schemas'
 import type { ChatQueryParser } from './chat-query-parser'
 import type { normalizeChatStructuredQuery } from './chat-query-normalizer'
 import {
+  classifyFollowUpContext,
   chatPlannerOutputSchema,
   extractPlannerEntities,
   extractPlannerTimeRange,
@@ -29,20 +30,35 @@ export function createChatPlanner({
         history: context.history,
       }),
     )
-    return buildPlannerOutput(structuredQuery, false)
+    return buildPlannerOutput(structuredQuery, false, {
+      message,
+      history: context.history,
+    })
   }
 }
 
 export function buildPlannerOutput(
   structuredQuery: ChatStructuredQuery,
   legacyStabilizationApplied: boolean,
+  context: { message?: string; history?: ChatRequest['history'] } = {},
 ): ChatPlannerOutput {
+  const classification = classifyFollowUpContext(
+    context.message ?? '',
+    context.history,
+    structuredQuery,
+  )
   return chatPlannerOutputSchema.parse({
     intent: structuredQuery.intent,
     structuredQuery,
     entities: extractPlannerEntities(structuredQuery),
+    followUpType: classification.followUpType,
+    referencedContext: classification.referencedContext,
+    targetEntity: classification.targetEntity,
+    targetGameId: classification.targetGameId,
+    targetPlayerId: classification.targetPlayerId,
     timeRange: extractPlannerTimeRange(structuredQuery),
     dataRequirements: inferDataRequirements(structuredQuery),
+    answerMode: classification.answerMode,
     confidence: legacyStabilizationApplied ? 0.72 : 0.86,
     clarificationRequired: false,
     legacyStabilizationApplied,

@@ -109,6 +109,56 @@
 
 したがって現段階では、player_id解決を必須化し、解決後の補助条件として名前を使う箇所は残す。これは同姓同名の曖昧検索を許すためではなく、DB側のURL/ID欠落を補うためである。
 
+## 雑な入力・follow-up分類設計
+
+今回の実装で、短文・雑文・訂正・疑義・再調査・比較・省略表現を Planner 側で分類するためのフィールドを追加した。対象は `chat-query-plan.ts` の Planner 出力であり、`chat-service.ts` の既存 follow-up rewrite はこの分類を参照して game_detail への寄せ先を決める。`Q-84` のような履歴参照付きの game_detail は、件数回答を出さずにそのまま試合内容説明へ寄せる。
+
+実装ファイル:
+
+- `apps/web/server/services/chat-query-plan.ts`
+- `apps/web/server/services/chat-planner.ts`
+- `apps/web/server/services/chat-service.ts`
+- `apps/web/server/services/chat-answer-formatter.ts`
+- `apps/web/server/services/chat-final-answer-llm.ts`
+- `scripts/qa-prod-unanswered.mjs`
+
+Planner が出す分類フィールド:
+
+- `followUpType`
+- `referencedContext`
+- `targetEntity`
+- `targetGameId`
+- `targetPlayerId`
+- `timeRange`
+- `dataRequirements`
+- `answerMode`
+
+分類カテゴリは次の系統を扱う。
+
+| followUpType | 例 | Planner の意図 |
+| --- | --- | --- |
+| `detail_request` | それ詳しく / もっと詳しく / その試合教えて | 直前の対象を詳述する |
+| `reason_request` | なんで？ / なんで負けた？ / なんで勝てた？ | 勝敗・好不調・失点理由を説明する |
+| `summary_request` | つまり？ / で結局どうなの？ | 要点を短くまとめる |
+| `correction_request` | 違う、今年の話 / 通算じゃなくて最近 | 対象期間や条件を修正する |
+| `doubt_request` | ちがうはずなんだけど / おかしくない？ | 前提や解釈の違和感を検知する |
+| `recheck_request` | 調べなおして / もう一回見て | 同じ対象を再取得する |
+| `comparison_request` | どっちが良かった？ / 去年と比べてどう？ | 比較対象を並べて差分を見る |
+| `target_omission` | 藤浪どう？ / 村上今年どう？ | 主語が省略された短文を補う |
+| `context_reference` | さっきの二つ目 / それ / あの試合 | 会話履歴の指示対象を拾う |
+| `explanation_request` | それってどういう意味？ / もうちょい噛み砕いて / その数字どう見ればいい？ | 対象の意味や解釈を説明する |
+| `scope_clarification` | 一軍の話？ / 二軍も含む？ | どの範囲の話かを確認する |
+| `team_context_correction` | いや藤浪じゃなくて村上 / 当時の所属で見て | 対象選手や所属の文脈を修正する |
+| `timeframe_correction` | 今年じゃなくて去年 / 通算じゃなくて直近 / 最近って何試合？ | 対象期間・集計窓を修正する |
+| `evaluation_request` | これ強い？ / やばい？ / 微妙？ / で、結論は？ | 数字の良し悪しを評価する |
+| `casual_followup` | これやばくない？ / 結局きついん？ | 感想混じりの追い質問を受ける |
+
+`referencedContext` は履歴参照の実体を表す。`targetEntity` は `player` / `game` / `team` / `comparison` / `mixed` / `unknown` を使い、`targetGameId` と `targetPlayerId` は分かる範囲で埋める。`answerMode` は `detail_explanation` / `reason_explanation` / `summary_explanation` / `comparison_explanation` / `correction_explanation` / `recheck_explanation` / `contextual_answer` / `clarification_request` / `evaluation_explanation` / `direct_answer` を使う。`detail_request`・`context_reference`・`explanation_request` は game_detail なら `detail_explanation` に寄せ、`scope_clarification` は `clarification_request`、`evaluation_request` は `evaluation_explanation` に寄せる。
+
+`chat-answer-formatter.ts` は `execution_metadata.follow_up_type` を見て、履歴ベースの game_detail では `該当する試合は1件です。` の件数前置きを省き、試合の流れ・投打・得点経過を先に出す。これが Q-84 の修正ポイントだった。
+
+`chat-answer-formatter.ts` は `answerMode` を `execution_metadata` に載せ、`chat-final-answer-llm.ts` はその値を見て、単なる数値列挙ではなく、詳細・理由・比較・要約の出し分けを行う。`scripts/qa-prod-unanswered.mjs` は `execution_metadata` の `follow_up_type` / `referenced_context` / `target_entity` / `target_game_id` / `target_player_id` / `answer_mode` を本番QAログへ残す。
+
 ## 正規化層の扱い
 
 `chat-query-normalizer.ts` は以下に限定する。
@@ -201,3 +251,11 @@ QA runner `scripts/qa-prod-unanswered.mjs` は今回、以下をログに追加�
 - repositories
 
 これにより、選手系QAで解決された player_id と repository選択を記録できる。
+
+## 直近の本番QA記録
+
+- 本番QA実行日時: 2026-06-26T06:13:37.218Z
+- 対象デプロイVersion ID: `cbb2a58c-740d-455a-9046-a59d5a3b569f`
+- 実行ログ: `data/logs/qa-prod-1782453010913.json`
+- 結果: Pass 108 / Fail 0 / Blocked 0
+- 追加メモ: Q-58 の `inningsPitched` 不整合は `chat-query-llm.ts` / `chat-query-parser.ts` / `packages/schemas/src/index.ts` で修正済み

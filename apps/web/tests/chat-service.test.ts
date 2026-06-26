@@ -427,6 +427,22 @@ describe('chat-service', () => {
       repositories: ['fetchAwardWinners', 'listSourceSnapshotsByGameIds'],
       player_id_required: false,
       player_id_satisfied: true,
+      follow_up_type: 'standalone',
+      referenced_context: {
+        source: 'none',
+        anchor: null,
+        ordinal: null,
+        summary: null,
+      },
+      target_entity: {
+        kind: 'unknown',
+        label: null,
+        players: [],
+        teams: [],
+      },
+      target_game_id: null,
+      target_player_id: null,
+      answer_mode: 'direct_answer',
     })
   })
 
@@ -1258,6 +1274,54 @@ describe('chat-service', () => {
     expect(response.answer.summary).not.toContain('選手を特定できない')
   })
 
+  it('keeps season batting summaries on the aggregate path instead of falling back to game logs', async () => {
+    const service = createChatService(createFakeQueryService({
+      aggregateBattingLines: async () => [],
+      searchBattingLines: async () => [{
+        gameId: 'r20260501s-g-01',
+        gameDate: '2026-05-01',
+        team: '東京ヤクルトスワローズ',
+        playerName: '村上宗隆',
+        battingOrder: 4,
+        position: '(三)',
+        atBats: 4,
+        runs: 1,
+        hits: 2,
+        runsBattedIn: 1,
+        stolenBases: 0,
+        strikeouts: 1,
+        walks: 0,
+        rawText: '村上 右安',
+      }],
+      playerCandidatesForFilters: () => [{
+        player_id: 'murakami-2026',
+        name: '村上宗隆',
+        primary_team: '東京ヤクルトスワローズ',
+        roles: ['batter'],
+        teams: ['東京ヤクルトスワローズ'],
+        years: [2026],
+      }],
+    }), {
+      parseStructuredQueryFromMessage: async () => ({
+        intent: 'aggregate_batting',
+        filters: {
+          year: 2026,
+          player_name: '村上宗隆',
+          team: 'ヤクルト',
+        },
+      }),
+    })
+
+    const response = await service.answerQuestion('今シーズン（2026年）の村上宗隆の成績')
+
+    expect(response.structured_query.intent).toBe('aggregate_batting')
+    expect(response.results.aggregates).toHaveLength(0)
+    expect(response.results.batting).toHaveLength(0)
+    expect(response.answer.summary).toContain('条件に一致する打撃成績は見つかりませんでした')
+    expect(response.answer.summary).not.toContain('右安')
+    expect(response.answer.summary).not.toContain('打撃内容')
+  })
+
   it('resolves a surname through player_id-bearing roster rows when the year is explicit', async () => {
     // Simulates "村上宗隆 vs 村上頌樹": year-filtered search only sees 村上頌樹 (stored as "村上 頌樹")
     // but broad search reveals both. The old code used selectCandidatesForInput on the broad
@@ -1329,6 +1393,8 @@ describe('chat-service', () => {
     })
     expect(pitchingFilters).not.toMatchObject({ team: '阪神' })
     expect(response.answer.summary).toContain('現在のNPB所属は横浜DeNAベイスターズです')
+    expect(response.answer.summary).toContain('確認できる最新')
+    expect(response.answer.summary).toContain('投球内容')
   })
 
   it('routes 最近の打席内容 to batting instead of events', async () => {
@@ -1758,7 +1824,52 @@ describe('chat-service', () => {
     expect(response.answer.summary).toContain('得点経過:')
     expect(response.answer.summary).toContain('主な投手成績:')
     expect(response.answer.summary).toContain('主な打撃成績:')
-    expect(response.answer.summary).not.toContain('該当する試合は6件')
+    expect(response.answer.summary).not.toContain('該当する試合は1件です')
+  })
+
+  it('uses the most recent game from history for terse follow-up questions', async () => {
+    const service = createChatService(createFakeQueryService({
+      searchGameDetails: async (filters) => (filters.game_date === '2026-06-05')
+        ? [{
+            gameId: 'r20260605s-g-03',
+            date: '2026-06-05',
+            venue: '神宮球場',
+            competition: null,
+            awayTeamName: '阪神タイガース',
+            homeTeamName: '東京ヤクルトスワローズ',
+            matchupText: '阪神タイガース vs 東京ヤクルトスワローズ',
+            linescoreJson: JSON.stringify({
+              away: { team: '阪神タイガース', innings: ['0', '1', '0', '0', '0', '0', '0', '0', '0'], totals: { runs: 1, hits: 6, errors: 0 } },
+              home: { team: '東京ヤクルトスワローズ', innings: ['0', '0', '0', '2', '0', '0', '0', '0', 'X'], totals: { runs: 2, hits: 7, errors: 0 } },
+            }),
+          }]
+        : [],
+    }), {
+      parseStructuredQueryFromMessage: async () => ({
+        intent: 'search_events',
+        filters: {},
+      }),
+    })
+
+    const response = await service.answerQuestion('それ詳しく', {
+      history: [
+        { role: 'user', content: '昨日の阪神戦どうだった？' },
+        {
+          role: 'assistant',
+          content: [
+            '1. 2026年6月4日 甲子園、阪神タイガースが東京ヤクルトスワローズに4-3で勝利しました。',
+            '2. 2026年6月5日 神宮球場、東京ヤクルトスワローズが阪神タイガースに2-1で勝利しました。',
+          ].join('\n'),
+        },
+      ],
+    })
+
+    expect(response.structured_query).toEqual({
+      intent: 'game_detail',
+      filters: { game_date: '2026-06-05', limit: 1 },
+    })
+    expect(response.answer.summary).toContain('2026年6月5日')
+    expect(response.answer.summary).not.toContain('該当する試合は1件です')
   })
 
 })

@@ -250,6 +250,32 @@ describe('chat-query-parser', () => {
     })
   })
 
+  it('normalizes LLM longest-start queries that use search_pitching with inningsPitched', async () => {
+    const generateStructuredQuery = vi.fn().mockResolvedValue({
+      intent: 'search_pitching',
+      filters: {
+        team: '広島',
+        sort_by: 'inningsPitched',
+        limit: 20,
+      },
+    })
+    const parser = createChatQueryParser(
+      { baseUrl: 'https://example.test/v1', apiKey: 'secret', model: 'test-model' },
+      {
+        llmGenerator: { generateStructuredQuery },
+      },
+    )
+
+    expect(await parser('今シーズン広島の先発投手で最も長く投げた登板は？')).toEqual({
+      intent: 'aggregate_pitching',
+      filters: {
+        team: '広島',
+        sort_by: 'inningsPitched',
+        limit: 20,
+      },
+    })
+  })
+
   it('keeps the stub parser behavior available as fallback logic', () => {
     expect(
       parseStructuredQueryFromMessageStub(

@@ -67,7 +67,7 @@ export function formatChatAnswer({
     : 0
 
   return {
-    summary: buildSummary(question, structuredQuery, results, resultCount, playerResolution),
+    summary: buildSummary(question, structuredQuery, results, resultCount, playerResolution, executionMetadata),
     result_count: resultCount,
     ...(remainingCount > 0 ? { remaining_count: remainingCount } : {}),
     source_urls: sourceUrls,
@@ -75,13 +75,19 @@ export function formatChatAnswer({
     applied_filters: structuredQuery.filters,
     ...(executionMetadata
       ? {
-          execution_metadata: {
-            data_requirements: executionMetadata.dataRequirements,
-            repositories: executionMetadata.repositories,
-            player_id_required: executionMetadata.playerIdRequired,
-            player_id_satisfied: executionMetadata.playerIdSatisfied,
-          },
-        }
+        execution_metadata: {
+          data_requirements: executionMetadata.dataRequirements,
+          repositories: executionMetadata.repositories,
+          player_id_required: executionMetadata.playerIdRequired,
+          player_id_satisfied: executionMetadata.playerIdSatisfied,
+          follow_up_type: executionMetadata.followUpType,
+          referenced_context: executionMetadata.referencedContext,
+          target_entity: executionMetadata.targetEntity,
+          target_game_id: executionMetadata.targetGameId,
+          target_player_id: executionMetadata.targetPlayerId,
+          answer_mode: executionMetadata.answerMode,
+        },
+      }
       : {}),
   }
 }
@@ -94,6 +100,7 @@ function buildSummary(
   results: ChatResponse['results'],
   resultCount: number,
   playerResolution: PlayerResolution | null,
+  executionMetadata?: ChatExecutionMetadata,
 ): string {
   if (playerResolution?.status === 'not_found') {
     return `選手候補は0件です。入力「${playerResolution.input}」は、収録対象（2016年以降のNPB一軍・ファーム出場記録）では確認できません。2016年以降にNPB公式戦へ出場した選手名を指定すると、年度をさかのぼって成績を集計します。`
@@ -207,6 +214,7 @@ function buildSummary(
       results.batting as BattingLineRow[],
       results.pitching as PitchingLineRow[],
       resultCount,
+      executionMetadata,
     )}`
   }
 
@@ -670,6 +678,7 @@ function formatGameDetailSummary(
   battingRows: BattingLineRow[],
   pitchingRows: PitchingLineRow[],
   resultCount: number,
+  executionMetadata?: ChatExecutionMetadata,
 ): string {
   const lines = rows.slice(0, 5).flatMap((row, index) => {
     const linescore = parseLinescore(row.linescoreJson)
@@ -692,11 +701,22 @@ function formatGameDetailSummary(
       ...(gameEvents.length === 0 && !linescore ? ['   詳細な打席情報は確認できませんでした。'] : []),
     ]
   })
+  const suppressCountLine =
+    executionMetadata?.followUpType !== undefined &&
+    executionMetadata.followUpType !== 'standalone' &&
+    (executionMetadata.answerMode === 'detail_explanation' ||
+      executionMetadata.answerMode === 'contextual_answer' ||
+      executionMetadata.answerMode === 'reason_explanation' ||
+      executionMetadata.answerMode === 'summary_explanation' ||
+      executionMetadata.answerMode === 'recheck_explanation' ||
+      executionMetadata.answerMode === 'evaluation_explanation' ||
+      executionMetadata.answerMode === 'clarification_request')
   return [
-    resultCount === 1
-      ? '該当する試合は1件です。'
-      : `該当する試合は${resultCount}件です。`,
-    '',
+    ...(!suppressCountLine
+      ? [resultCount === 1
+          ? '該当する試合は1件です。'
+          : `該当する試合は${resultCount}件です。`, '']
+      : []),
     ...lines,
     ...(resultCount > 5 ? ['', `ほか${resultCount - 5}件は省略しています。`] : []),
   ].join('\n')

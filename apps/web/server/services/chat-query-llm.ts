@@ -144,7 +144,7 @@ function extractJsonObject(content: string): string {
   return content.slice(start, end + 1)
 }
 
-function normalizeStructuredQueryFromLlmMessage(message: string, value: unknown): unknown {
+export function normalizeStructuredQueryFromLlmMessage(message: string, value: unknown): unknown {
   if (!value || typeof value !== 'object') {
     return value
   }
@@ -155,11 +155,36 @@ function normalizeStructuredQueryFromLlmMessage(message: string, value: unknown)
   }
 
   if (query.intent !== 'aggregate_pitching' || !query.filters || typeof query.filters !== 'object') {
+    if (
+      query.intent === 'search_pitching' &&
+      query.filters &&
+      typeof query.filters === 'object'
+    ) {
+      const filters = query.filters as Record<string, unknown>
+      if (filters.sort_by === 'inningsPitched') {
+        return {
+          intent: 'aggregate_pitching',
+          filters: {
+            ...filters,
+            sort_by: 'inningsPitched',
+          },
+        }
+      }
+    }
     return value
   }
 
   const filters = query.filters as Record<string, unknown>
   if (filters.sort_by !== 'pitchCount') {
+    if (filters.sort_by === 'inningsPitched') {
+      return {
+        intent: 'aggregate_pitching',
+        filters: {
+          ...filters,
+          sort_by: 'inningsPitched',
+        },
+      }
+    }
     return value
   }
 

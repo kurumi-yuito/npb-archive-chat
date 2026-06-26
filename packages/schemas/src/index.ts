@@ -168,7 +168,7 @@ export const searchPitchingLinesFiltersSchema = z.object({
   pitcher_player_id: z.string().min(1).optional(),
   team: coercedText.optional(),
   recent: z.boolean().optional(),
-  sort_by: z.enum(['date', 'pitchCount']).optional(),
+  sort_by: z.enum(['date', 'pitchCount', 'inningsPitched']).optional(),
   limit: z.number().int().positive().max(500).optional(),
 })
 
@@ -441,6 +441,12 @@ export const chatResponseSchema = z.object({
       repositories: z.array(z.string().min(1)),
       player_id_required: z.boolean(),
       player_id_satisfied: z.boolean(),
+      follow_up_type: z.string().min(1),
+      referenced_context: z.unknown().nullable(),
+      target_entity: z.unknown().nullable(),
+      target_game_id: z.string().min(1).nullable(),
+      target_player_id: z.string().min(1).nullable(),
+      answer_mode: z.string().min(1),
     }).optional(),
   }),
   usage: chatUsageInfoSchema,

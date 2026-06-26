@@ -2,6 +2,7 @@ import type { ChatStructuredQuery } from '@npb/schemas'
 import {
   createChatQueryLlm,
   hasChatQueryLlmConfig,
+  normalizeStructuredQueryFromLlmMessage,
   type ChatQueryLlmConfig,
 } from './chat-query-llm'
 import { parseStructuredQueryFromMessageStub } from './chat-query-parser-stub'
@@ -53,7 +54,8 @@ export function createChatQueryParser(
     }
 
     try {
-      return await llmGenerator.generateStructuredQuery(message, context)
+      const structuredQuery = await llmGenerator.generateStructuredQuery(message, context)
+      return normalizeStructuredQueryFromLlmMessage(message, structuredQuery) as ChatStructuredQuery
     } catch (error) {
       if (!allowFallback) {
         const detail = error instanceof Error ? error.message : String(error)
