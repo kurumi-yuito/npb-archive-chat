@@ -239,6 +239,15 @@ QA正は `docs/qa-test-cases.md` とする。
 
 QA判定要件は以下を原文どおり維持する。
 
+## Future ingest 検証メモ
+
+- 対象コミット: `d8baadb5c`
+- サンプル試合: `r20250815b-l-17`
+- structured ingest と raw ingest を一時 SQLite に流し、URL 列の non-null 件数を比較した
+- `batting_lines.player_url` / `pitching_lines.pitcher_url` / `roster_entries.player_url` / `events.batter_url` / `events.pitcher_url` / `events.runner_url` は structured と raw で同件数だった
+- future ingest では URL 保持が確認できた
+- historical backfill は未対応のまま
+
 テストは本番環境で実行し「QAテストケース一覧 - 現行本番との差分」のQA正を模範解答として、日付差による情報更新（日付や打率など）と改行や句読点などの差のみを許容し、現行本番の回答の文意はQA正と揃うことを正常とすること。
 
 QA runner `scripts/qa-prod-unanswered.mjs` は今回、以下をログに追加した。
