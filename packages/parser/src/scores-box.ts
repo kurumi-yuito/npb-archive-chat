@@ -65,6 +65,7 @@ function parseBattingTables(
         game_id: null,
         team,
         player_name: playerName,
+        player_url: cells[2]?.links[0]?.url ?? null,
         batting_order: normalizeNumber(cells[0]?.text),
         position: normalizeNullableText(cells[1]?.text),
         at_bats: normalizeNumber(cells[3]?.text),
@@ -115,6 +116,7 @@ function parsePitchingTables(
         team,
         pitcher_name:
           cells[1]?.links[0]?.name ?? normalizeNullableText(cells[1]?.text) ?? null,
+        pitcher_url: cells[1]?.links[0]?.url ?? null,
         sequence: index,
         innings_pitched: parsePitchingInnings(cells[4]?.rawHtml ?? ''),
         batters_faced: normalizeNumber(cells[3]?.text),

@@ -152,6 +152,14 @@ describe('enrich-scores-calendar', () => {
       roster: countTable(dbAfterFirst, 'roster_entries', gameId),
       sources: countTable(dbAfterFirst, 'source_snapshots', gameId),
     }
+    const firstUrlCounts = {
+      eventsBatter: countNonNullTable(dbAfterFirst, 'events', 'batter_url', gameId),
+      eventsPitcher: countNonNullTable(dbAfterFirst, 'events', 'pitcher_url', gameId),
+      eventsRunner: countNonNullTable(dbAfterFirst, 'events', 'runner_url', gameId),
+      batting: countNonNullTable(dbAfterFirst, 'batting_lines', 'player_url', gameId),
+      pitching: countNonNullTable(dbAfterFirst, 'pitching_lines', 'pitcher_url', gameId),
+      roster: countNonNullTable(dbAfterFirst, 'roster_entries', 'player_url', gameId),
+    }
     dbAfterFirst.close()
 
     expect(firstCounts.events).toBeGreaterThan(0)
@@ -159,6 +167,8 @@ describe('enrich-scores-calendar', () => {
     expect(firstCounts.pitching).toBeGreaterThan(0)
     expect(firstCounts.roster).toBeGreaterThan(0)
     expect(firstCounts.sources).toBeGreaterThan(0)
+    expect(firstUrlCounts.eventsBatter + firstUrlCounts.eventsPitcher + firstUrlCounts.eventsRunner).toBeGreaterThan(0)
+    expect(firstUrlCounts.batting + firstUrlCounts.pitching + firstUrlCounts.roster).toBeGreaterThan(0)
 
     const second = await runScoresCalendarEnrichment({
       year: 2025,
@@ -801,6 +811,21 @@ function countTable(database: ReturnType<typeof openDatabase>, table: string, ga
   return Number(
     (
       database.prepare(`SELECT COUNT(*) AS count FROM ${table} WHERE game_id = ?`).get(gameId) as {
+        count: number
+      }
+    ).count,
+  )
+}
+
+function countNonNullTable(
+  database: ReturnType<typeof openDatabase>,
+  table: string,
+  column: string,
+  gameId: string,
+): number {
+  return Number(
+    (
+      database.prepare(`SELECT COUNT(*) AS count FROM ${table} WHERE game_id = ? AND ${column} IS NOT NULL AND ${column} <> ''`).get(gameId) as {
         count: number
       }
     ).count,

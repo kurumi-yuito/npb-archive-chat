@@ -38,6 +38,7 @@ describe('scores parser modules', () => {
     expect(events.length).toBeGreaterThan(100)
     expect(events.every((event) => Object.hasOwn(event, 'game_id'))).toBe(true)
     expect(events.every((event) => Object.hasOwn(event, 'event_attributes_json'))).toBe(true)
+    expect(events.some((event) => event.batter_url || event.pitcher_url || event.runner_url)).toBe(true)
     expect(events.some((event) => event.event_type === 'steal')).toBe(true)
     expect(events.some((event) => event.event_type === 'pitching_change')).toBe(true)
   })
@@ -60,6 +61,8 @@ describe('scores parser modules', () => {
     const pitchingLines = parsed.pitchingLines
     expect(battingLines.length).toBeGreaterThan(0)
     expect(pitchingLines.length).toBeGreaterThan(0)
+    expect(battingLines.some((line) => line.player_url)).toBe(true)
+    expect(pitchingLines.some((line) => line.pitcher_url)).toBe(true)
     expect(parsed.linescore.away_team).toBeTruthy()
   })
 
@@ -77,6 +80,7 @@ describe('scores parser modules', () => {
     const entries = parseScoresRosterHtml(html)
     expect(entries.length).toBeGreaterThan(0)
     expect(entries.every((entry) => Object.hasOwn(entry, 'starter'))).toBe(true)
+    expect(entries.some((entry) => entry.player_url)).toBe(true)
   })
 
   it('parses scores index fixture into metadata', async () => {

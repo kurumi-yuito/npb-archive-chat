@@ -25,11 +25,14 @@ export type StructuredEvent = {
   inning: number | null
   half: 'top' | 'bottom' | null
   batter_name: string | null
+  batter_url: string | null
   pitcher_name: string | null
+  pitcher_url: string | null
   event_type: string
   event_subtype: string | null
   result_text: string | null
   runner_name: string | null
+  runner_url: string | null
   outs: string | null
   bases: string | null
   runs_scored: number | null
@@ -45,6 +48,7 @@ export type StructuredBattingLine = {
   game_id: string | null
   team: string | null
   player_name: string | null
+  player_url: string | null
   batting_order: number | null
   position: string | null
   at_bats: number | null
@@ -66,6 +70,7 @@ export type StructuredPitchingLine = {
   game_id: string | null
   team: string | null
   pitcher_name: string | null
+  pitcher_url: string | null
   sequence: number
   innings_pitched: string | null
   batters_faced: number | null
@@ -86,6 +91,7 @@ export type StructuredRosterEntry = {
   game_id: string | null
   team: string | null
   player_name: string | null
+  player_url: string | null
   uniform_number: string | null
   position: string | null
   starter: boolean | null

@@ -37,6 +37,7 @@ export function parseScoresRosterHtml(html: string): StructuredRosterEntry[] {
         team,
         player_name:
           cells[1]?.links[0]?.name ?? normalizeNullableText(cells[1]?.text) ?? null,
+        player_url: cells[1]?.links[0]?.url ?? null,
         uniform_number: normalizeNullableText(cells[0]?.text),
         position: currentGroup,
         starter: null,

@@ -71,6 +71,7 @@ export function parseScoresPlayByPlayHtml(html: string): StructuredEvent[] {
 
         const batterCell = cells[2]
         const rawBatterText = normalizeNullableText(batterCell?.text)
+        const batterRef = batterCell?.links[0] ?? null
         const resultText = normalizeNullableText(cells[4]?.text)
         const runner = !rawBatterText ? extractRunnerRef(resultText ?? '', cells[4]?.links ?? []) : null
         const impliedPinchRunner = inferImpliedPinchRunner(events.at(-1) ?? null, runner, resultText)
@@ -89,11 +90,14 @@ export function parseScoresPlayByPlayHtml(html: string): StructuredEvent[] {
           inning: halfBlock.inning,
           half: halfBlock.half,
           batter_name: rawBatterText ? extractBatterName(rawBatterText) : null,
+          batter_url: batterRef?.url ?? null,
           pitcher_name: currentPitchers[defendingHalf]?.name ?? null,
+          pitcher_url: currentPitchers[defendingHalf]?.url ?? null,
           event_type: classifyEventType(rawBatterText, resultText, impliedPinchRunner),
           event_subtype: classifyEventSubtype(rawBatterText, resultText, impliedPinchRunner),
           result_text: resultText,
           runner_name: runner?.name ?? null,
+          runner_url: runner?.url ?? null,
           outs: normalizeNullableText(cells[0]?.text),
           bases: normalizeNullableText(cells[1]?.text),
           runs_scored: runsScored,
@@ -177,11 +181,14 @@ function buildSingleCellEvent(
     inning: halfBlock.inning,
     half: halfBlock.half,
     batter_name: null,
+    batter_url: null,
     pitcher_name: currentPitchers[defendingHalf]?.name ?? null,
+    pitcher_url: currentPitchers[defendingHalf]?.url ?? null,
     event_type: eventType,
     event_subtype: eventSubtype,
     result_text: normalized || null,
     runner_name: null,
+    runner_url: null,
     outs: null,
     bases: null,
     runs_scored: countRunsScored(normalized),
