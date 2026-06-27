@@ -30,7 +30,14 @@ import {
   classifyFollowUpContext,
   type ChatFollowUpType,
 } from './chat-query-plan'
-import { resolvePlayer as resolveStructuredQueryPlayer, type PlayerResolution } from './player-identity'
+import {
+  resolveCurrentPlayer as resolveCurrentStructuredQueryPlayer,
+  resolveHistoricalPlayer as resolveHistoricalStructuredQueryPlayer,
+  resolvePlayer as resolveStructuredQueryPlayer,
+  type IdentityResolutionScope,
+  type ResolvePlayerResult,
+  type PlayerResolution,
+} from './player-identity'
 import type { ChatFinalAnswerGenerator } from './chat-final-answer-llm'
 import { buildPlannerOutput, createChatPlanner } from './chat-planner'
 import { buildChatExecutionMetadata } from './chat-executor'
@@ -42,6 +49,8 @@ type ChatServiceDependencies = {
   formatChatAnswer?: typeof formatChatAnswer
   normalizeStructuredQuery?: typeof normalizeChatStructuredQuery
   resolveStructuredQueryPlayer?: typeof resolveStructuredQueryPlayer
+  resolveCurrentStructuredQueryPlayer?: typeof resolveCurrentStructuredQueryPlayer
+  resolveHistoricalStructuredQueryPlayer?: typeof resolveHistoricalStructuredQueryPlayer
   generateFinalAnswer?: ChatFinalAnswerGenerator
 }
 
@@ -59,6 +68,10 @@ export function createChatService(
     dependencies.normalizeStructuredQuery ?? normalizeChatStructuredQuery
   const resolvePlayer =
     dependencies.resolveStructuredQueryPlayer ?? resolveStructuredQueryPlayer
+  const resolveCurrentPlayer =
+    dependencies.resolveCurrentStructuredQueryPlayer ?? resolveCurrentStructuredQueryPlayer
+  const resolveHistoricalPlayer =
+    dependencies.resolveHistoricalStructuredQueryPlayer ?? resolveHistoricalStructuredQueryPlayer
   const generateFinalAnswer = dependencies.generateFinalAnswer
   const allowFinalAnswerFallback = dependencies.allowFinalAnswerFallback ?? true
   const planner = createChatPlanner({
@@ -195,7 +208,16 @@ export function createChatService(
         })
         const playerCandidate = candidateRows.find((candidate) => candidate.player_id)
         if (!playerCandidate?.player_id) {
-          const value = await resolvePlayer(queryService, parsedQuery)
+          const value = await resolvePlayerForIdentityScope(
+            queryService,
+            parsedQuery,
+            effectivePlan.identityResolutionScope,
+            {
+              resolvePlayer,
+              resolveCurrentPlayer,
+              resolveHistoricalPlayer,
+            },
+          )
           resolved = value
         } else {
           const resolvedQuery = {
@@ -219,7 +241,16 @@ export function createChatService(
           }
         }
       } else {
-        const value = await resolvePlayer(queryService, parsedQuery)
+        const value = await resolvePlayerForIdentityScope(
+          queryService,
+          parsedQuery,
+          effectivePlan.identityResolutionScope,
+          {
+            resolvePlayer,
+            resolveCurrentPlayer,
+            resolveHistoricalPlayer,
+          },
+        )
         resolved = value
       }
       let structuredQuery = resolved.structuredQuery
@@ -753,6 +784,27 @@ function isChatQueryService(value: QueryDatabase | ChatQueryService): value is C
 
 function shouldSkipForPlayerResolution(resolution: PlayerResolution | null): boolean {
   return resolution?.status === 'ambiguous' || resolution?.status === 'not_found'
+}
+
+type ScopedPlayerResolver = typeof resolveStructuredQueryPlayer
+
+async function resolvePlayerForIdentityScope(
+  queryService: ChatQueryService,
+  structuredQuery: ChatStructuredQuery,
+  scope: IdentityResolutionScope,
+  resolvers: {
+    resolvePlayer: ScopedPlayerResolver
+    resolveCurrentPlayer: ScopedPlayerResolver
+    resolveHistoricalPlayer: ScopedPlayerResolver
+  },
+): Promise<ResolvePlayerResult> {
+  if (scope === 'current') {
+    return resolvers.resolveCurrentPlayer(queryService, structuredQuery)
+  }
+  if (scope === 'historical') {
+    return resolvers.resolveHistoricalPlayer(queryService, structuredQuery)
+  }
+  return resolvers.resolvePlayer(queryService, structuredQuery)
 }
 
 function applyCurrentTeamCorrection(

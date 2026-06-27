@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import {
   migrateDatabase,
   openDatabase,
@@ -287,6 +287,46 @@ function buildFixtureRichGame() {
   })
 }
 
+function scopedResolution<const Scope extends 'current' | 'historical' | 'unspecified'>(
+  scope: Scope,
+  playerId: string,
+) {
+  return {
+    input: '山田',
+    player_id: playerId,
+    name: '山田',
+    primary_team: '巨人',
+    status: 'resolved' as const,
+    candidates: [{
+      player_id: playerId,
+      name: '山田',
+      primary_team: '巨人',
+      roles: ['batter'],
+      teams: ['巨人'],
+      years: scope === 'current' ? [2026] : [2025],
+    }],
+    identityResolution: {
+      path: 'candidate_search' as const,
+      field: 'player_name' as const,
+      input: '山田',
+      status: 'resolved' as const,
+      playerId,
+      candidateCount: 1,
+      candidatePlayerIds: [playerId],
+      candidateNames: ['山田'],
+      hasTeamFilter: false,
+      hasYearFilter: scope !== 'unspecified',
+      context: {
+        scope,
+        team: null,
+        season: scope === 'current' ? 2026 : scope === 'historical' ? 2025 : null,
+        hasTeamFilter: false,
+        hasYearFilter: scope !== 'unspecified',
+      },
+    },
+  }
+}
+
 describe('chat-service', () => {
   it('rejects non-baseball topics before invoking the query parser', async () => {
     let parserCalled = false
@@ -328,6 +368,102 @@ describe('chat-service', () => {
     })
 
     expect(parserCalled).toBe(true)
+  })
+
+  it('uses the current scoped resolver for current identity scope', async () => {
+    const currentResolver = vi.fn(async (_queryService, structuredQuery) => ({
+      structuredQuery: {
+        ...structuredQuery,
+        filters: {
+          ...structuredQuery.filters,
+          player_id: 'current-yamada',
+        },
+      },
+      resolution: scopedResolution('current', 'current-yamada'),
+    }))
+    const historicalResolver = vi.fn()
+    const unspecifiedResolver = vi.fn()
+    const service = createChatService(createFakeQueryService(), {
+      parseStructuredQueryFromMessage: async () => ({
+        intent: 'search_batting',
+        filters: { player_name: '山田', year: 2026 },
+      }),
+      resolveStructuredQueryPlayer: unspecifiedResolver,
+      resolveCurrentStructuredQueryPlayer: currentResolver,
+      resolveHistoricalStructuredQueryPlayer: historicalResolver,
+    })
+
+    const response = await service.answerQuestion('山田の今シーズン成績')
+
+    expect(currentResolver).toHaveBeenCalledTimes(1)
+    expect(historicalResolver).not.toHaveBeenCalled()
+    expect(unspecifiedResolver).not.toHaveBeenCalled()
+    expect(response.answer.execution_metadata?.identity_resolution?.context?.scope).toBe('current')
+    expect(response.answer.summary).toContain('打撃成績')
+  })
+
+  it('uses the historical scoped resolver for historical identity scope', async () => {
+    const currentResolver = vi.fn()
+    const historicalResolver = vi.fn(async (_queryService, structuredQuery) => ({
+      structuredQuery: {
+        ...structuredQuery,
+        filters: {
+          ...structuredQuery.filters,
+          player_id: 'historical-yamada',
+        },
+      },
+      resolution: scopedResolution('historical', 'historical-yamada'),
+    }))
+    const unspecifiedResolver = vi.fn()
+    const service = createChatService(createFakeQueryService(), {
+      parseStructuredQueryFromMessage: async () => ({
+        intent: 'search_batting',
+        filters: { player_name: '山田', year: 2025 },
+      }),
+      resolveStructuredQueryPlayer: unspecifiedResolver,
+      resolveCurrentStructuredQueryPlayer: currentResolver,
+      resolveHistoricalStructuredQueryPlayer: historicalResolver,
+    })
+
+    const response = await service.answerQuestion('2025年の山田の打撃成績')
+
+    expect(historicalResolver).toHaveBeenCalledTimes(1)
+    expect(currentResolver).not.toHaveBeenCalled()
+    expect(unspecifiedResolver).not.toHaveBeenCalled()
+    expect(response.answer.execution_metadata?.identity_resolution?.context?.scope).toBe('historical')
+    expect(response.answer.summary).toContain('打撃成績')
+  })
+
+  it('uses the default resolver for unspecified identity scope', async () => {
+    const currentResolver = vi.fn()
+    const historicalResolver = vi.fn()
+    const unspecifiedResolver = vi.fn(async (_queryService, structuredQuery) => ({
+      structuredQuery: {
+        ...structuredQuery,
+        filters: {
+          ...structuredQuery.filters,
+          player_id: 'unspecified-yamada',
+        },
+      },
+      resolution: scopedResolution('unspecified', 'unspecified-yamada'),
+    }))
+    const service = createChatService(createFakeQueryService(), {
+      parseStructuredQueryFromMessage: async () => ({
+        intent: 'search_batting',
+        filters: { player_name: '山田' },
+      }),
+      resolveStructuredQueryPlayer: unspecifiedResolver,
+      resolveCurrentStructuredQueryPlayer: currentResolver,
+      resolveHistoricalStructuredQueryPlayer: historicalResolver,
+    })
+
+    const response = await service.answerQuestion('山田の打撃成績')
+
+    expect(unspecifiedResolver).toHaveBeenCalledTimes(1)
+    expect(currentResolver).not.toHaveBeenCalled()
+    expect(historicalResolver).not.toHaveBeenCalled()
+    expect(response.answer.execution_metadata?.identity_resolution?.context?.scope).toBe('unspecified')
+    expect(response.answer.summary).toContain('打撃成績')
   })
 
   it('returns DB-backed event answers with source urls', async () => {

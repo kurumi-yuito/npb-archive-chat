@@ -1,5 +1,5 @@
 import type { ChatStructuredQuery } from '@npb/schemas'
-import { buildIdentityResolutionMetadata } from './player-identity'
+import { buildIdentityResolutionMetadata, type IdentityResolutionMetadata } from './player-identity'
 import type { PlayerResolution } from './player-resolution'
 import {
   inferDataRequirements,
@@ -17,12 +17,13 @@ export function buildChatExecutionMetadata(
 ): ChatExecutionMetadata {
   const playerIdRequired = queryHasPlayerName(structuredQuery)
   const resolvedPlayerId = playerResolution?.status === 'resolved' && Boolean(playerResolution.player_id)
+  const identityResolution = buildExecutionIdentityResolution(structuredQuery, playerResolution)
   return {
     dataRequirements: plannerOutput?.dataRequirements ?? inferDataRequirements(structuredQuery),
     repositories: repositoriesForQuery(structuredQuery),
     playerResolution,
-    ...(playerResolution
-      ? { identityResolution: buildIdentityResolutionMetadata(structuredQuery, playerResolution) }
+    ...(identityResolution
+      ? { identityResolution }
       : {}),
     playerIdRequired,
     playerIdSatisfied: !playerIdRequired || queryHasPlayerId(structuredQuery) || resolvedPlayerId,
@@ -34,4 +35,27 @@ export function buildChatExecutionMetadata(
     answerMode: plannerOutput?.answerMode ?? 'direct_answer',
     identityResolutionScope: plannerOutput?.identityResolutionScope ?? 'unspecified',
   }
+}
+
+function getResolverIdentityResolution(
+  playerResolution: PlayerResolution | null,
+): IdentityResolutionMetadata | null {
+  if (!playerResolution || !('identityResolution' in playerResolution)) {
+    return null
+  }
+  return playerResolution.identityResolution as IdentityResolutionMetadata
+}
+
+function buildExecutionIdentityResolution(
+  structuredQuery: ChatStructuredQuery,
+  playerResolution: PlayerResolution | null,
+): IdentityResolutionMetadata | null {
+  if (!playerResolution) {
+    return null
+  }
+  const metadata = buildIdentityResolutionMetadata(structuredQuery, playerResolution)
+  const resolverMetadata = getResolverIdentityResolution(playerResolution)
+  return resolverMetadata
+    ? { ...metadata, context: resolverMetadata.context }
+    : metadata
 }

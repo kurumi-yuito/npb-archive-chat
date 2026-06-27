@@ -459,6 +459,13 @@ export const chatResponseSchema = z.object({
         candidateNames: z.array(z.string().min(1)),
         hasTeamFilter: z.boolean(),
         hasYearFilter: z.boolean(),
+        context: z.object({
+          scope: z.enum(['unspecified', 'current', 'historical']),
+          team: z.string().min(1).nullable(),
+          season: z.number().int().nullable(),
+          hasTeamFilter: z.boolean(),
+          hasYearFilter: z.boolean(),
+        }).optional(),
       }).optional(),
     }).optional(),
   }),
