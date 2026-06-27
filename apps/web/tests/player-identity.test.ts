@@ -3,6 +3,8 @@ import type { ChatStructuredQuery, PlayerCandidate } from '@npb/schemas'
 import type { ChatQueryService } from '@npb/db'
 import {
   resolvePlayer,
+  resolveCurrentPlayer,
+  resolveHistoricalPlayer,
   resolvePlayers,
   buildIdentityResolutionMetadata,
   resolveAlias,
@@ -128,6 +130,72 @@ describe('player-identity facade', () => {
       input: '山村',
       status: 'skipped',
       playerId: '12345',
+      hasYearFilter: true,
+      context: {
+        scope: 'unspecified',
+        team: null,
+        season: 2025,
+        hasTeamFilter: false,
+        hasYearFilter: true,
+      },
+    })
+  })
+
+  it('annotates current player resolution metadata with current scope', async () => {
+    const queryService = createQueryService([
+      {
+        player_id: 'yamamura',
+        name: '山村',
+        primary_team: 'ロッテ',
+        roles: ['batter'],
+        teams: ['ロッテ'],
+        years: [2025],
+      },
+    ])
+
+    const result = await resolveCurrentPlayer(queryService, {
+      intent: 'search_batting',
+      filters: {
+        player_name: '山村',
+        team: 'ロッテ',
+      },
+    })
+
+    expect(result.resolution?.identityResolution.context).toMatchObject({
+      scope: 'current',
+      team: 'ロッテ',
+      season: null,
+      hasTeamFilter: true,
+      hasYearFilter: false,
+    })
+  })
+
+  it('annotates historical player resolution metadata with historical scope', async () => {
+    const queryService = createQueryService([
+      {
+        player_id: 'yamamura',
+        name: '山村',
+        primary_team: 'ロッテ',
+        roles: ['batter'],
+        teams: ['ロッテ'],
+        years: [2025],
+      },
+    ])
+
+    const result = await resolveHistoricalPlayer(queryService, {
+      intent: 'search_batting',
+      filters: {
+        player_name: '山村',
+        team: 'ロッテ',
+        year: 2025,
+      },
+    })
+
+    expect(result.resolution?.identityResolution.context).toMatchObject({
+      scope: 'historical',
+      team: 'ロッテ',
+      season: 2025,
+      hasTeamFilter: true,
       hasYearFilter: true,
     })
   })

@@ -18,6 +18,15 @@ export { resolveSourceUrl } from './player-source-url'
 import { resolveStructuredQueryPlayer, type PlayerResolution } from './player-resolution'
 
 export type IdentityResolutionField = 'batter_name' | 'pitcher_name' | 'runner_name' | 'player_name' | null
+export type IdentityResolutionScope = 'unspecified' | 'current' | 'historical'
+
+export type IdentityResolutionContextMetadata = {
+  scope: IdentityResolutionScope
+  team: string | null
+  season: number | null
+  hasTeamFilter: boolean
+  hasYearFilter: boolean
+}
 
 export type IdentityResolutionPath = 'explicit_player_id' | 'candidate_search' | 'none'
 
@@ -32,15 +41,58 @@ export type IdentityResolutionMetadata = {
   candidateNames: string[]
   hasTeamFilter: boolean
   hasYearFilter: boolean
+  context: IdentityResolutionContextMetadata
 }
 
 export type IdentityAwarePlayerResolution = PlayerResolution & {
   identityResolution: IdentityResolutionMetadata
 }
 
+export type CurrentIdentityResolutionMetadata = IdentityResolutionMetadata & {
+  context: IdentityResolutionContextMetadata & {
+    scope: 'current'
+  }
+}
+
+export type HistoricalIdentityResolutionMetadata = IdentityResolutionMetadata & {
+  context: IdentityResolutionContextMetadata & {
+    scope: 'historical'
+  }
+}
+
+export type CurrentIdentityAwarePlayerResolution = PlayerResolution & {
+  identityResolution: CurrentIdentityResolutionMetadata
+}
+
+export type HistoricalIdentityAwarePlayerResolution = PlayerResolution & {
+  identityResolution: HistoricalIdentityResolutionMetadata
+}
+
 export type ResolvePlayerResult = {
   structuredQuery: ChatStructuredQuery
   resolution: IdentityAwarePlayerResolution | null
+}
+
+export type ResolveCurrentPlayerResult = {
+  structuredQuery: ChatStructuredQuery
+  resolution: CurrentIdentityAwarePlayerResolution | null
+}
+
+export type ResolveHistoricalPlayerResult = {
+  structuredQuery: ChatStructuredQuery
+  resolution: HistoricalIdentityAwarePlayerResolution | null
+}
+
+type ScopedIdentityResolution<S extends IdentityResolutionScope> =
+  S extends 'current'
+    ? CurrentIdentityAwarePlayerResolution
+    : S extends 'historical'
+      ? HistoricalIdentityAwarePlayerResolution
+      : IdentityAwarePlayerResolution
+
+type ScopedResolvePlayerResult<S extends IdentityResolutionScope> = {
+  structuredQuery: ChatStructuredQuery
+  resolution: ScopedIdentityResolution<S> | null
 }
 
 export type ResolvePlayersResult = ResolvePlayerResult[]
@@ -49,13 +101,21 @@ export async function resolvePlayer(
   queryService: ChatQueryService,
   structuredQuery: ChatStructuredQuery,
 ): Promise<ResolvePlayerResult> {
-  const resolved = await resolveStructuredQueryPlayer(queryService, structuredQuery)
-  return {
-    structuredQuery: resolved.structuredQuery,
-    resolution: resolved.resolution
-      ? attachIdentityResolutionMetadata(structuredQuery, resolved.resolution)
-      : null,
-  }
+  return resolvePlayerWithScope(queryService, structuredQuery, 'unspecified')
+}
+
+export async function resolveCurrentPlayer(
+  queryService: ChatQueryService,
+  structuredQuery: ChatStructuredQuery,
+): Promise<ResolveCurrentPlayerResult> {
+  return resolvePlayerWithScope(queryService, structuredQuery, 'current')
+}
+
+export async function resolveHistoricalPlayer(
+  queryService: ChatQueryService,
+  structuredQuery: ChatStructuredQuery,
+): Promise<ResolveHistoricalPlayerResult> {
+  return resolvePlayerWithScope(queryService, structuredQuery, 'historical')
 }
 
 export async function resolvePlayers(
@@ -72,6 +132,7 @@ export async function resolvePlayers(
 export function buildIdentityResolutionMetadata(
   structuredQuery: ChatStructuredQuery,
   resolution: PlayerResolution | null,
+  scope: IdentityResolutionScope = 'unspecified',
 ): IdentityResolutionMetadata {
   const target = findResolutionTarget(structuredQuery)
   const filters = structuredQuery.filters as Record<string, unknown>
@@ -106,16 +167,75 @@ export function buildIdentityResolutionMetadata(
       typeof filters.year === 'number' ||
       typeof filters.year_from === 'number' ||
       typeof filters.year_to === 'number',
+    context: buildIdentityResolutionContext(structuredQuery, scope),
   }
 }
 
-function attachIdentityResolutionMetadata(
+async function resolvePlayerWithScope(
+  queryService: ChatQueryService,
+  structuredQuery: ChatStructuredQuery,
+  scope: 'unspecified',
+): Promise<ResolvePlayerResult>
+async function resolvePlayerWithScope(
+  queryService: ChatQueryService,
+  structuredQuery: ChatStructuredQuery,
+  scope: 'current',
+): Promise<ResolveCurrentPlayerResult>
+async function resolvePlayerWithScope(
+  queryService: ChatQueryService,
+  structuredQuery: ChatStructuredQuery,
+  scope: 'historical',
+): Promise<ResolveHistoricalPlayerResult>
+async function resolvePlayerWithScope<S extends IdentityResolutionScope>(
+  queryService: ChatQueryService,
+  structuredQuery: ChatStructuredQuery,
+  scope: S,
+): Promise<ScopedResolvePlayerResult<S>> {
+  const resolved = await resolveStructuredQueryPlayer(queryService, structuredQuery)
+  return {
+    structuredQuery: resolved.structuredQuery,
+    resolution: resolved.resolution
+      ? attachIdentityResolutionMetadata(structuredQuery, resolved.resolution, scope)
+      : null,
+  }
+}
+
+function attachIdentityResolutionMetadata<S extends IdentityResolutionScope>(
   structuredQuery: ChatStructuredQuery,
   resolution: PlayerResolution,
-): IdentityAwarePlayerResolution {
+  scope: S,
+): ScopedIdentityResolution<S> {
   return {
     ...resolution,
-    identityResolution: buildIdentityResolutionMetadata(structuredQuery, resolution),
+    identityResolution: buildIdentityResolutionMetadata(structuredQuery, resolution, scope),
+  } as ScopedIdentityResolution<S>
+}
+
+function buildIdentityResolutionContext(
+  structuredQuery: ChatStructuredQuery,
+  scope: IdentityResolutionScope,
+): IdentityResolutionContextMetadata {
+  const filters = structuredQuery.filters as Record<string, unknown>
+  const team = typeof filters.team === 'string' && filters.team.trim().length > 0
+    ? filters.team
+    : null
+  const season = typeof filters.year === 'number'
+    ? filters.year
+    : typeof filters.year_from === 'number'
+      ? filters.year_from
+      : typeof filters.year_to === 'number'
+        ? filters.year_to
+        : null
+
+  return {
+    scope,
+    team,
+    season,
+    hasTeamFilter: team !== null,
+    hasYearFilter:
+      typeof filters.year === 'number' ||
+      typeof filters.year_from === 'number' ||
+      typeof filters.year_to === 'number',
   }
 }
 
