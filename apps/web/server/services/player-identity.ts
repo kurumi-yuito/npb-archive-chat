@@ -1,5 +1,13 @@
 import type { ChatStructuredQuery } from '@npb/schemas'
 import type { ChatQueryService } from '@npb/db'
+export {
+  buildAliases,
+  normalizeAliases,
+  resolveAlias,
+  type AliasResolution,
+  type AliasResolutionMetadata,
+  type AliasResolutionStatus,
+} from './player-alias'
 import { resolveStructuredQueryPlayer, type PlayerResolution } from './player-resolution'
 
 export type IdentityResolutionField = 'batter_name' | 'pitcher_name' | 'runner_name' | 'player_name' | null

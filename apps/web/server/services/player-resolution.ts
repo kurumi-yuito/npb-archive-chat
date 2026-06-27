@@ -1,6 +1,7 @@
 import type { ChatStructuredQuery, PlayerCandidate } from '@npb/schemas'
 import type { ChatQueryService } from '@npb/db'
 import { normalizeFreeText } from './chat-query-normalizer'
+import { buildAliases } from './player-alias'
 
 export type PlayerResolution = {
   input: string
@@ -56,7 +57,7 @@ export async function resolveStructuredQueryPlayer(
   }
 
   const input = target.value
-  const aliases = aliasesForPlayerInput(input)
+  const aliases = buildAliases(input)
   const candidateFilters = {
     ...yearFilters(structuredQuery),
     name: input,
@@ -243,30 +244,6 @@ function hasExplicitYearFilter(structuredQuery: ChatStructuredQuery): boolean {
     year_to?: number
   }
   return Boolean(filters.year || filters.year_from || filters.year_to)
-}
-
-function aliasesForPlayerInput(input: string): string[] {
-  const normalized = normalizeFreeText(input) ?? input
-  return [
-    normalized,
-    ...displayNameFallbackAliases(normalized),
-  ].filter(Boolean) as string[]
-}
-
-function displayNameFallbackAliases(input: string): string[] {
-  const normalized = normalizeLookupKey(input)
-  if (!/^[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}]+$/u.test(normalized)) {
-    return []
-  }
-  if (normalized.length < 3) {
-    return []
-  }
-
-  const aliases: string[] = []
-  for (let length = normalized.length - 1; length >= 2; length -= 1) {
-    aliases.push(normalized.slice(0, length))
-  }
-  return aliases
 }
 
 function teamQualifier(structuredQuery: ChatStructuredQuery): string[] {

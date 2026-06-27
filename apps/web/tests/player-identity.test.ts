@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import type { ChatStructuredQuery, PlayerCandidate } from '@npb/schemas'
 import type { ChatQueryService } from '@npb/db'
-import { resolvePlayer, resolvePlayers, buildIdentityResolutionMetadata } from '../server/services/player-identity'
+import { resolvePlayer, resolvePlayers, buildIdentityResolutionMetadata, resolveAlias } from '../server/services/player-identity'
 
 function createQueryService(candidates: PlayerCandidate[]): ChatQueryService {
   return {
@@ -10,6 +10,35 @@ function createQueryService(candidates: PlayerCandidate[]): ChatQueryService {
 }
 
 describe('player-identity facade', () => {
+  it('resolves alias candidates through the facade without changing ranking behavior', async () => {
+    const queryService = createQueryService([
+      {
+        player_id: 'yamada',
+        name: '山田太郎',
+        primary_team: 'ヤクルト',
+        roles: ['batter'],
+        teams: ['ヤクルト'],
+        years: [2025],
+      },
+    ])
+    const structuredQuery: ChatStructuredQuery = {
+      intent: 'search_batting',
+      filters: {
+        player_name: '山田太郎',
+        team: 'ヤクルト',
+      },
+    }
+
+    const result = await resolvePlayer(queryService, structuredQuery)
+
+    expect(queryService.searchPlayerCandidates).toHaveBeenCalledWith(expect.objectContaining({
+      name: '山田太郎',
+      aliases: ['山田太郎', '山田太', '山田'],
+    }))
+    expect(result.resolution?.player_id).toBe('yamada')
+    expect(result.resolution?.status).toBe('resolved')
+  })
+
   it('wraps existing player resolution results with identity metadata', async () => {
     const queryService = createQueryService([
       {
@@ -95,5 +124,12 @@ describe('player-identity facade', () => {
       playerId: '12345',
       hasYearFilter: true,
     })
+  })
+
+  it('exports alias resolution for downstream callers', () => {
+    const alias = resolveAlias('山田太郎')
+
+    expect(alias.aliases).toEqual(['山田太郎', '山田太', '山田'])
+    expect(alias.metadata.status).toBe('resolved')
   })
 })
