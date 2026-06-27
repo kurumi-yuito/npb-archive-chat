@@ -8,6 +8,13 @@ export {
   type AliasResolutionMetadata,
   type AliasResolutionStatus,
 } from './player-alias'
+export {
+  type SourceUrlResolution,
+  type SourceUrlResolutionKind,
+  type SourceUrlResolutionMetadata,
+  type SourceUrlResolutionStatus,
+} from './player-source-url'
+export { resolveSourceUrl } from './player-source-url'
 import { resolveStructuredQueryPlayer, type PlayerResolution } from './player-resolution'
 
 export type IdentityResolutionField = 'batter_name' | 'pitcher_name' | 'runner_name' | 'player_name' | null

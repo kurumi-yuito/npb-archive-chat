@@ -1,7 +1,13 @@
 import { describe, expect, it, vi } from 'vitest'
 import type { ChatStructuredQuery, PlayerCandidate } from '@npb/schemas'
 import type { ChatQueryService } from '@npb/db'
-import { resolvePlayer, resolvePlayers, buildIdentityResolutionMetadata, resolveAlias } from '../server/services/player-identity'
+import {
+  resolvePlayer,
+  resolvePlayers,
+  buildIdentityResolutionMetadata,
+  resolveAlias,
+  resolveSourceUrl,
+} from '../server/services/player-identity'
 
 function createQueryService(candidates: PlayerCandidate[]): ChatQueryService {
   return {
@@ -131,5 +137,12 @@ describe('player-identity facade', () => {
 
     expect(alias.aliases).toEqual(['山田太郎', '山田太', '山田'])
     expect(alias.metadata.status).toBe('resolved')
+  })
+
+  it('exports source url resolution for downstream callers', () => {
+    const result = resolveSourceUrl('https://npb.jp/bis/players/41045137.html#profile')
+
+    expect(result.playerId).toBe('41045137')
+    expect(result.metadata.kind).toBe('player_profile')
   })
 })

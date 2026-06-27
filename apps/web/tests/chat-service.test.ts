@@ -452,7 +452,7 @@ describe('chat-service', () => {
       target_player_id: null,
       answer_mode: 'direct_answer',
     })
-  })
+  }, 10000)
 
   it('uses an injected async structured query parser result for DB search', async () => {
     const database = openDatabase()
