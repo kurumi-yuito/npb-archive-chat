@@ -466,6 +466,38 @@ describe('chat-service', () => {
     expect(response.answer.summary).toContain('打撃成績')
   })
 
+  it('does not apply current team correction for historical identity scope', async () => {
+    let battingFilters: Parameters<ChatQueryService['searchBattingLines']>[0] | null = null
+    const service = createChatService(createFakeQueryService({
+      playerCandidates: [{
+        player_id: 'yamakawa',
+        name: '山川穂高',
+        primary_team: 'ソフトバンク',
+        roles: ['batter'],
+        teams: ['西武', 'ソフトバンク'],
+        years: [2025, 2026],
+      }],
+      searchBattingLines: async (filters) => {
+        battingFilters = filters
+        return []
+      },
+    }), {
+      parseStructuredQueryFromMessage: async () => ({
+        intent: 'search_batting',
+        filters: { year: 2025, team: '西武', player_name: '山川穂高' },
+      }),
+    })
+
+    const response = await service.answerQuestion('去年の西武の山川穂高の成績は？')
+
+    expect(battingFilters).toMatchObject({
+      year: 2025,
+      team: '西武',
+      player_name: '山川穂高',
+    })
+    expect(response.answer.summary).not.toContain('現所属を優先')
+  })
+
   it('returns DB-backed event answers with source urls', async () => {
     const database = openDatabase()
 

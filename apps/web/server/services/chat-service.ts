@@ -273,7 +273,12 @@ export function createChatService(
           }
         }
       }
-      const teamCorrection = applyCurrentTeamCorrection(message, structuredQuery, playerResolution)
+      const teamCorrection = applyCurrentTeamCorrection(
+        message,
+        structuredQuery,
+        playerResolution,
+        effectivePlan.identityResolutionScope,
+      )
       structuredQuery = teamCorrection.structuredQuery
       playerResolution = teamCorrection.playerResolution
       const seasonRoleRewrite = await rewriteGenericSeasonStatToPitchingIfNeeded(
@@ -811,6 +816,7 @@ function applyCurrentTeamCorrection(
   message: string,
   structuredQuery: ChatStructuredQuery,
   playerResolution: PlayerResolution | null,
+  identityResolutionScope: IdentityResolutionScope,
 ): { structuredQuery: ChatStructuredQuery; playerResolution: PlayerResolution | null } {
   if (playerResolution?.status !== 'resolved') {
     return { structuredQuery, playerResolution }
@@ -818,7 +824,10 @@ function applyCurrentTeamCorrection(
   const filters = structuredQuery.filters as Record<string, unknown>
   const requestedTeam = typeof filters.team === 'string' ? filters.team : null
   const currentTeam = playerResolution.primary_team
-  if (!requestedTeam || !currentTeam || isHistoricalTeamContext(message)) {
+  if (!requestedTeam || !currentTeam || identityResolutionScope === 'historical') {
+    return { structuredQuery, playerResolution }
+  }
+  if (identityResolutionScope === 'unspecified' && isHistoricalTeamContext(message)) {
     return { structuredQuery, playerResolution }
   }
   if (sameCanonicalTeam(requestedTeam, currentTeam)) {
