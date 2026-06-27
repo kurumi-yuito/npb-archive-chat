@@ -9,6 +9,7 @@ import {
   inferDataRequirements,
   type ChatPlannerOutput,
 } from './chat-query-plan'
+import { inferIdentityResolutionScope } from './chat-identity-scope'
 
 export type ChatPlanner = (
   message: string,
@@ -59,6 +60,10 @@ export function buildPlannerOutput(
     timeRange: extractPlannerTimeRange(structuredQuery),
     dataRequirements: inferDataRequirements(structuredQuery),
     answerMode: classification.answerMode,
+    identityResolutionScope: inferIdentityResolutionScope({
+      message: context.message ?? '',
+      structuredQuery,
+    }),
     confidence: legacyStabilizationApplied ? 0.72 : 0.86,
     clarificationRequired: false,
     legacyStabilizationApplied,

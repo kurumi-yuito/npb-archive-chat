@@ -104,12 +104,14 @@ describe('chat-answer-formatter', () => {
         targetGameId: 'r20210416t-s-01',
         targetPlayerId: null,
         answerMode: 'reason_explanation',
+        identityResolutionScope: 'unspecified',
       },
     })
 
     expect(answer.execution_metadata?.follow_up_type).toBe('reason_request')
     expect(answer.execution_metadata?.answer_mode).toBe('reason_explanation')
     expect(answer.execution_metadata?.target_game_id).toBe('r20210416t-s-01')
+    expect(answer.execution_metadata?.identity_resolution_scope).toBe('unspecified')
   })
 
   it('describes pitcher-vs-pitcher matchup questions without batting language', () => {

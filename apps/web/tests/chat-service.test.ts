@@ -451,6 +451,7 @@ describe('chat-service', () => {
       target_game_id: null,
       target_player_id: null,
       answer_mode: 'direct_answer',
+      identity_resolution_scope: 'historical',
     })
   }, 10000)
 

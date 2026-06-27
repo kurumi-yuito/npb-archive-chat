@@ -195,6 +195,7 @@ describe('chat-planner follow-up classification', () => {
     if ('targetPlayerId' in expected) {
       expect(planner.targetPlayerId).toBe(expected.targetPlayerId)
     }
+    expect(['current', 'historical', 'unspecified']).toContain(planner.identityResolutionScope)
     expect(planner.referencedContext).not.toBeNull()
   })
 })

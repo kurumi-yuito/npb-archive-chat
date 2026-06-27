@@ -1,5 +1,5 @@
 import { z, type ChatRequest, type ChatStructuredQuery } from '@npb/schemas'
-import type { IdentityResolutionMetadata } from './player-identity'
+import type { IdentityResolutionMetadata, IdentityResolutionScope } from './player-identity'
 import type { PlayerResolution } from './player-resolution'
 
 export const chatDataRequirementSchema = z.enum([
@@ -110,6 +110,7 @@ export const chatPlannerOutputSchema = z.object({
   timeRange: z.record(z.unknown()).nullable(),
   dataRequirements: z.array(chatDataRequirementSchema),
   answerMode: chatAnswerModeSchema,
+  identityResolutionScope: z.enum(['unspecified', 'current', 'historical']),
   confidence: z.number().min(0).max(1),
   clarificationRequired: z.boolean(),
   legacyStabilizationApplied: z.boolean(),
@@ -130,6 +131,7 @@ export type ChatExecutionMetadata = {
   targetGameId: string | null
   targetPlayerId: string | null
   answerMode: ChatAnswerMode
+  identityResolutionScope: IdentityResolutionScope
 }
 
 export function inferDataRequirements(query: ChatStructuredQuery): ChatDataRequirement[] {

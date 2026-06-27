@@ -447,6 +447,7 @@ export const chatResponseSchema = z.object({
       target_game_id: z.string().min(1).nullable(),
       target_player_id: z.string().min(1).nullable(),
       answer_mode: z.string().min(1),
+      identity_resolution_scope: z.enum(['unspecified', 'current', 'historical']).optional(),
       identity_resolution: z.object({
         path: z.enum(['explicit_player_id', 'candidate_search', 'none']),
         field: z.enum(['batter_name', 'pitcher_name', 'runner_name', 'player_name']).nullable(),

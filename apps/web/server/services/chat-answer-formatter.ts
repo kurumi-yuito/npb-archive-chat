@@ -86,6 +86,7 @@ export function formatChatAnswer({
           target_game_id: executionMetadata.targetGameId,
           target_player_id: executionMetadata.targetPlayerId,
           answer_mode: executionMetadata.answerMode,
+          identity_resolution_scope: executionMetadata.identityResolutionScope,
           ...(executionMetadata.identityResolution
             ? { identity_resolution: executionMetadata.identityResolution }
             : {}),

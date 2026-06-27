@@ -32,5 +32,6 @@ export function buildChatExecutionMetadata(
     targetGameId: plannerOutput?.targetGameId ?? null,
     targetPlayerId: plannerOutput?.targetPlayerId ?? null,
     answerMode: plannerOutput?.answerMode ?? 'direct_answer',
+    identityResolutionScope: plannerOutput?.identityResolutionScope ?? 'unspecified',
   }
 }
