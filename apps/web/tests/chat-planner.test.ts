@@ -238,4 +238,59 @@ describe('chat-planner follow-up classification', () => {
     })
     expect(planner.structuredQuery).toEqual(query)
   })
+
+  it.each([
+    {
+      message: '今年じゃなくて去年',
+      query: basePitchingQuery({ year: 2025 }),
+      expected: {
+        inheritanceBlockedReason: 'explicit_season_override',
+        hasExplicitSeasonOverride: true,
+        hasExplicitScopeOverride: true,
+      },
+    },
+    {
+      message: '一軍の話？',
+      query: basePitchingQuery({ pitcher_player_id: '41045137' }),
+      expected: {
+        inheritanceBlockedReason: 'explicit_scope_override',
+        hasExplicitSeasonOverride: false,
+        hasExplicitScopeOverride: true,
+      },
+    },
+    {
+      message: 'いや藤浪じゃなくて村上',
+      query: basePitchingQuery({ pitcher_player_id: '41045137', pitcher_name: '村上' }),
+      expected: {
+        inheritanceBlockedReason: 'player_replacement',
+        hasPlayerReplacement: true,
+      },
+    },
+    {
+      message: 'いや、そうじゃなくて',
+      query: basePitchingQuery({ pitcher_player_id: '41045137' }),
+      expected: {
+        inheritanceBlockedReason: 'ambiguous_correction',
+        hasAmbiguousCorrection: true,
+      },
+    },
+    {
+      message: 'それ詳しく',
+      query: baseGameQuery(),
+      expected: {
+        inheritanceBlockedReason: 'game_context',
+      },
+    },
+  ])('exposes correction guard metadata for $message', ({ message, query, expected }) => {
+    const planner = buildPlannerOutput(query, false, {
+      message,
+      history: historyWithGameContext,
+    })
+
+    expect(planner.correctionGuard).toMatchObject({
+      ...expected,
+      shouldBlockInheritance: true,
+    })
+    expect(planner.structuredQuery).toEqual(query)
+  })
 })

@@ -7,6 +7,7 @@ import {
   extractPlannerEntities,
   extractPlannerTimeRange,
   extractFollowUpContextMetadata,
+  inferCorrectionGuardMetadata,
   inferDataRequirements,
   type ChatPlannerOutput,
 } from './chat-query-plan'
@@ -53,6 +54,15 @@ export function buildPlannerOutput(
     message: context.message ?? '',
     structuredQuery,
   })
+  const followUpContext = extractFollowUpContextMetadata({
+    query: structuredQuery,
+    identityResolutionScope,
+    followUpType: classification.followUpType,
+    referencedContext: classification.referencedContext,
+    targetEntity: classification.targetEntity,
+    targetGameId: classification.targetGameId,
+    history: context.history,
+  })
   return chatPlannerOutputSchema.parse({
     intent: structuredQuery.intent,
     structuredQuery,
@@ -60,14 +70,13 @@ export function buildPlannerOutput(
     followUpType: classification.followUpType,
     referencedContext: classification.referencedContext,
     targetEntity: classification.targetEntity,
-    followUpContext: extractFollowUpContextMetadata({
+    followUpContext,
+    correctionGuard: inferCorrectionGuardMetadata({
+      message: context.message ?? '',
       query: structuredQuery,
-      identityResolutionScope,
       followUpType: classification.followUpType,
-      referencedContext: classification.referencedContext,
-      targetEntity: classification.targetEntity,
+      followUpContext,
       targetGameId: classification.targetGameId,
-      history: context.history,
     }),
     targetGameId: classification.targetGameId,
     targetPlayerId: classification.targetPlayerId,

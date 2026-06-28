@@ -464,6 +464,10 @@ describe('chat-service', () => {
       fields: ['player', 'team', 'season', 'scope'],
       reason: 'player_stats_follow_up_context',
     })
+    expect(response.answer.execution_metadata?.correction_guard).toMatchObject({
+      inheritanceBlockedReason: 'none',
+      shouldBlockInheritance: false,
+    })
   })
 
   it('keeps explicit season correction ahead of inherited player stats season', async () => {
@@ -494,6 +498,11 @@ describe('chat-service', () => {
     })
 
     expect(response.structured_query.filters).toMatchObject({ year: 2025 })
+    expect(response.answer.execution_metadata?.correction_guard).toMatchObject({
+      inheritanceBlockedReason: 'explicit_season_override',
+      hasExplicitSeasonOverride: true,
+      shouldBlockInheritance: true,
+    })
     expect(response.answer.execution_metadata?.follow_up_context_applied).toBeUndefined()
   })
 
@@ -522,6 +531,11 @@ describe('chat-service', () => {
     })
     expect(response.structured_query.filters).not.toMatchObject({
       player_name: '藤浪 晋太郎',
+    })
+    expect(response.answer.execution_metadata?.correction_guard).toMatchObject({
+      inheritanceBlockedReason: 'player_replacement',
+      hasPlayerReplacement: true,
+      shouldBlockInheritance: true,
     })
     expect(response.answer.execution_metadata?.follow_up_context_applied).toBeUndefined()
   })
@@ -2165,6 +2179,10 @@ describe('chat-service', () => {
       contextKind: 'game',
       shouldApplyInheritance: false,
     })
+    expect(response.answer.execution_metadata?.correction_guard).toMatchObject({
+      inheritanceBlockedReason: 'game_context',
+      shouldBlockInheritance: true,
+    })
     expect(response.answer.execution_metadata?.follow_up_context_applied).toBeUndefined()
     expect(seenGameIds).toEqual(['r20210416t-s-04'])
     expect(response.answer.result_count).toBe(1)
@@ -2222,6 +2240,10 @@ describe('chat-service', () => {
     expect(response.answer.execution_metadata?.follow_up_context).toMatchObject({
       contextKind: 'game',
       shouldApplyInheritance: false,
+    })
+    expect(response.answer.execution_metadata?.correction_guard).toMatchObject({
+      inheritanceBlockedReason: 'game_context',
+      shouldBlockInheritance: true,
     })
     expect(response.answer.execution_metadata?.follow_up_context_applied).toBeUndefined()
     expect(response.answer.summary).toContain('2026年6月5日')

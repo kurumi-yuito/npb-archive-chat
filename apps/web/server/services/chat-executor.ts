@@ -44,6 +44,14 @@ export function buildChatExecutionMetadata(
     ...(plannerOutput?.appliedFollowUpContext
       ? { appliedFollowUpContext: plannerOutput.appliedFollowUpContext }
       : {}),
+    correctionGuard: plannerOutput?.correctionGuard ?? {
+      inheritanceBlockedReason: 'none',
+      hasAmbiguousCorrection: false,
+      hasPlayerReplacement: false,
+      hasExplicitSeasonOverride: false,
+      hasExplicitScopeOverride: false,
+      shouldBlockInheritance: false,
+    },
     targetGameId: plannerOutput?.targetGameId ?? null,
     targetPlayerId: plannerOutput?.targetPlayerId ?? null,
     answerMode: plannerOutput?.answerMode ?? 'direct_answer',

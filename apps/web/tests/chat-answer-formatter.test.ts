@@ -112,6 +112,14 @@ describe('chat-answer-formatter', () => {
           inheritanceConfidence: 0.9,
           shouldApplyInheritance: false,
         },
+        correctionGuard: {
+          inheritanceBlockedReason: 'game_context',
+          hasAmbiguousCorrection: false,
+          hasPlayerReplacement: false,
+          hasExplicitSeasonOverride: false,
+          hasExplicitScopeOverride: false,
+          shouldBlockInheritance: true,
+        },
         targetGameId: 'r20210416t-s-01',
         targetPlayerId: null,
         answerMode: 'reason_explanation',
@@ -127,6 +135,10 @@ describe('chat-answer-formatter', () => {
       contextKind: 'game',
       inheritedTeam: '阪神',
       shouldApplyInheritance: false,
+    })
+    expect(answer.execution_metadata?.correction_guard).toMatchObject({
+      inheritanceBlockedReason: 'game_context',
+      shouldBlockInheritance: true,
     })
   })
 

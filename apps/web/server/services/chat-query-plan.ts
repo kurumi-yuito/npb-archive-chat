@@ -107,6 +107,29 @@ export const chatAppliedFollowUpContextSchema = z.object({
 
 export type ChatAppliedFollowUpContext = z.infer<typeof chatAppliedFollowUpContextSchema>
 
+export const chatCorrectionGuardReasonSchema = z.enum([
+  'none',
+  'ambiguous_correction',
+  'player_replacement',
+  'explicit_season_override',
+  'explicit_scope_override',
+  'game_context',
+  'follow_up_type_excluded',
+])
+
+export type ChatCorrectionGuardReason = z.infer<typeof chatCorrectionGuardReasonSchema>
+
+export const chatCorrectionGuardMetadataSchema = z.object({
+  inheritanceBlockedReason: chatCorrectionGuardReasonSchema,
+  hasAmbiguousCorrection: z.boolean(),
+  hasPlayerReplacement: z.boolean(),
+  hasExplicitSeasonOverride: z.boolean(),
+  hasExplicitScopeOverride: z.boolean(),
+  shouldBlockInheritance: z.boolean(),
+})
+
+export type ChatCorrectionGuardMetadata = z.infer<typeof chatCorrectionGuardMetadataSchema>
+
 export const chatExecutionRepositorySchema = z.enum([
   'searchEvents',
   'searchGames',
@@ -134,6 +157,7 @@ export const chatPlannerOutputSchema = z.object({
   targetEntity: chatTargetEntitySchema,
   followUpContext: chatFollowUpContextMetadataSchema,
   appliedFollowUpContext: chatAppliedFollowUpContextSchema.optional(),
+  correctionGuard: chatCorrectionGuardMetadataSchema,
   targetGameId: z.string().min(1).nullable(),
   targetPlayerId: z.string().min(1).nullable(),
   timeRange: z.record(z.unknown()).nullable(),
@@ -159,6 +183,7 @@ export type ChatExecutionMetadata = {
   targetEntity: ChatTargetEntity
   followUpContext: ChatFollowUpContextMetadata
   appliedFollowUpContext?: ChatAppliedFollowUpContext
+  correctionGuard: ChatCorrectionGuardMetadata
   targetGameId: string | null
   targetPlayerId: string | null
   answerMode: ChatAnswerMode
@@ -393,6 +418,107 @@ export function extractFollowUpContextMetadata({
     inheritanceConfidence: inferInheritanceConfidence(inheritanceSource, contextKind),
     shouldApplyInheritance: false,
   }
+}
+
+const PLAYER_STATS_FOLLOW_UP_INHERITANCE_TYPES = new Set<ChatFollowUpType>([
+  'target_omission',
+  'timeframe_correction',
+  'scope_clarification',
+  'evaluation_request',
+])
+
+const EXCLUDED_FOLLOW_UP_INHERITANCE_TYPES = new Set<ChatFollowUpType>([
+  'detail_request',
+  'reason_request',
+  'summary_request',
+  'context_reference',
+  'recheck_request',
+  'casual_followup',
+])
+
+export function inferCorrectionGuardMetadata({
+  message,
+  query,
+  followUpType,
+  followUpContext,
+  targetGameId,
+}: {
+  message: string
+  query: ChatStructuredQuery
+  followUpType: ChatFollowUpType
+  followUpContext: ChatFollowUpContextMetadata
+  targetGameId: string | null
+}): ChatCorrectionGuardMetadata {
+  const normalizedMessage = normalizeMessageForClassification(message)
+  const hasPlayerReplacement = isPlayerReplacementFollowUp(normalizedMessage, query)
+  const hasExplicitSeasonOverride = hasExplicitSeasonOverrideInMessage(normalizedMessage)
+  const hasExplicitScopeOverride = hasExplicitScopeOverrideInMessage(normalizedMessage)
+  const hasAmbiguousCorrection =
+    (followUpType === 'correction_request' || /いや|違う|ちがう|そうじゃなくて|そうではなく|訂正|修正/u.test(normalizedMessage)) &&
+    /いや|違う|ちがう|そうじゃなくて|そうではなく|訂正|修正/u.test(normalizedMessage) &&
+    !hasPlayerReplacement &&
+    !hasExplicitSeasonOverride &&
+    !hasExplicitScopeOverride
+  const hasGameContext =
+    query.intent === 'game_detail' ||
+    followUpContext.contextKind === 'game' ||
+    Boolean(targetGameId)
+  const hasExcludedFollowUpType =
+    followUpContext.contextKind === 'player_stats' &&
+    followUpType !== 'standalone' &&
+    !PLAYER_STATS_FOLLOW_UP_INHERITANCE_TYPES.has(followUpType) &&
+    EXCLUDED_FOLLOW_UP_INHERITANCE_TYPES.has(followUpType)
+  const inheritanceBlockedReason = firstCorrectionGuardReason([
+    hasPlayerReplacement ? 'player_replacement' : null,
+    hasAmbiguousCorrection ? 'ambiguous_correction' : null,
+    hasExplicitSeasonOverride ? 'explicit_season_override' : null,
+    hasExplicitScopeOverride ? 'explicit_scope_override' : null,
+    hasGameContext ? 'game_context' : null,
+    hasExcludedFollowUpType ? 'follow_up_type_excluded' : null,
+  ])
+  return {
+    inheritanceBlockedReason,
+    hasAmbiguousCorrection,
+    hasPlayerReplacement,
+    hasExplicitSeasonOverride,
+    hasExplicitScopeOverride,
+    shouldBlockInheritance: inheritanceBlockedReason !== 'none',
+  }
+}
+
+function firstCorrectionGuardReason(
+  reasons: Array<ChatCorrectionGuardReason | null>,
+): ChatCorrectionGuardReason {
+  return reasons.find((reason): reason is ChatCorrectionGuardReason => Boolean(reason)) ?? 'none'
+}
+
+function isPlayerReplacementFollowUp(message: string, query: ChatStructuredQuery): boolean {
+  return hasPlayerReplacementSurface(message) &&
+    (queryHasPlayerName(query) || queryHasPlayerId(query))
+}
+
+function hasPlayerReplacementSurface(message: string): boolean {
+  if (/別の選手/u.test(message)) {
+    return true
+  }
+  const match = message.match(/(.{1,24})(?:じゃなくて|ではなく)(.{1,24})/u)
+  if (!match) {
+    return /違って/u.test(message)
+  }
+  const left = match[1]?.replace(/[、。！？!?]/gu, '').trim() ?? ''
+  const right = match[2]?.replace(/[、。！？!?]/gu, '').trim() ?? ''
+  if (/(今年|去年|昨年|今シーズン|昨シーズン|今季|通算|直近|最近|一軍|二軍|ファーム|そう|話)/u.test(`${left}${right}`)) {
+    return false
+  }
+  return /[一-龯々ァ-ヶーA-Za-z]{2,}/u.test(left) && /[一-龯々ァ-ヶーA-Za-z]{2,}/u.test(right)
+}
+
+function hasExplicitSeasonOverrideInMessage(message: string): boolean {
+  return /20\d{2}年|今年|今シーズン|今季|去年|昨年|昨シーズン|前シーズン|通算/u.test(message)
+}
+
+function hasExplicitScopeOverrideInMessage(message: string): boolean {
+  return /現在|今の|現所属|今年|今シーズン|今季|去年|昨年|昨シーズン|時代|在籍時|移籍前|移籍後|一軍|二軍|ファーム|所属で見て|当時の所属/u.test(message)
 }
 
 type PlayerStatsContextCandidate = {
