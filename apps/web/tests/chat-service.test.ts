@@ -379,6 +379,151 @@ describe('chat-service', () => {
       inheritedTeam: '巨人',
       shouldApplyInheritance: false,
     })
+    expect(response.answer.execution_metadata?.follow_up_context_applied).toBeUndefined()
+  })
+
+  it('applies limited player stats follow-up context to missing player, team, season and scope', async () => {
+    let pitchingFilters: Parameters<ChatQueryService['searchPitchingLines']>[0] | null = null
+    const currentResolver = vi.fn(async (_queryService, structuredQuery) => ({
+      structuredQuery: {
+        ...structuredQuery,
+        filters: {
+          ...structuredQuery.filters,
+          pitcher_player_id: '41045137',
+        },
+      },
+      resolution: {
+        ...scopedResolution('current', '41045137'),
+        input: '藤浪 晋太郎',
+        name: '藤浪 晋太郎',
+        primary_team: '横浜DeNAベイスターズ',
+      },
+    }))
+    const service = createChatService(createFakeQueryService({
+      searchPitchingLines: async (filters) => {
+        pitchingFilters = filters
+        return [{
+          gameId: 'bis:2026:db:fujinami',
+          gameDate: '2026-06-01',
+          team: '横浜DeNAベイスターズ',
+          pitcherName: '藤浪 晋太郎',
+          result: '勝',
+          inningsPitched: '6',
+          battersFaced: 24,
+          pitchCount: 98,
+          hitsAllowed: 3,
+          homeRunsAllowed: 0,
+          strikeouts: 7,
+          walks: 2,
+          hitByPitch: 0,
+          runs: 1,
+          earnedRuns: 1,
+          rawText: '藤浪 6回 1失点',
+        }]
+      },
+    }), {
+      parseStructuredQueryFromMessage: async () => ({
+        intent: 'search_pitching',
+        filters: { recent: true, limit: 5 },
+      }),
+      resolveCurrentStructuredQueryPlayer: currentResolver,
+    })
+
+    const response = await service.answerQuestion('どこがよかった？', {
+      history: [
+        { role: 'user', content: '藤浪の最近の投球は？' },
+        { role: 'assistant', content: '横浜DeNAベイスターズ 藤浪 晋太郎の2026年の確認できる最新5試合の投球内容です。' },
+      ],
+    })
+
+    expect(response.structured_query.filters).toMatchObject({
+      pitcher_name: '藤浪 晋太郎',
+      pitcher_player_id: '41045137',
+      team: '横浜DeNAベイスターズ',
+      year: 2026,
+      recent: true,
+      limit: 5,
+    })
+    expect(pitchingFilters).toMatchObject({
+      pitcher_name: '藤浪 晋太郎',
+      pitcher_player_id: '41045137',
+      team: '横浜DeNAベイスターズ',
+      year: 2026,
+    })
+    expect(currentResolver).toHaveBeenCalledTimes(1)
+    expect(response.answer.execution_metadata?.follow_up_context).toMatchObject({
+      contextKind: 'player_stats',
+      inheritedPlayerName: '藤浪 晋太郎',
+      inheritedTeam: '横浜DeNAベイスターズ',
+      inheritedSeason: 2026,
+      inheritedScope: 'current',
+      shouldApplyInheritance: false,
+    })
+    expect(response.answer.execution_metadata?.follow_up_context_applied).toEqual({
+      applied: true,
+      fields: ['player', 'team', 'season', 'scope'],
+      reason: 'player_stats_follow_up_context',
+    })
+  })
+
+  it('keeps explicit season correction ahead of inherited player stats season', async () => {
+    const service = createChatService(createFakeQueryService(), {
+      parseStructuredQueryFromMessage: async () => ({
+        intent: 'search_batting',
+        filters: { player_name: '村上宗隆', team: '東京ヤクルトスワローズ', year: 2025 },
+      }),
+      resolveStructuredQueryPlayer: async (_queryService, structuredQuery) => ({
+        structuredQuery,
+        resolution: null,
+      }),
+      resolveCurrentStructuredQueryPlayer: async (_queryService, structuredQuery) => ({
+        structuredQuery,
+        resolution: null,
+      }),
+      resolveHistoricalStructuredQueryPlayer: async (_queryService, structuredQuery) => ({
+        structuredQuery,
+        resolution: null,
+      }),
+    })
+
+    const response = await service.answerQuestion('村上宗隆の成績は今年じゃなくて去年', {
+      history: [
+        { role: 'user', content: '村上の今年の成績は？' },
+        { role: 'assistant', content: '東京ヤクルトスワローズ 村上宗隆の2026年の打撃成績です。' },
+      ],
+    })
+
+    expect(response.structured_query.filters).toMatchObject({ year: 2025 })
+    expect(response.answer.execution_metadata?.follow_up_context_applied).toBeUndefined()
+  })
+
+  it('does not inherit the previous player when the follow-up names another player', async () => {
+    const service = createChatService(createFakeQueryService(), {
+      parseStructuredQueryFromMessage: async () => ({
+        intent: 'search_batting',
+        filters: { player_name: '村上', year: 2026 },
+      }),
+      resolveCurrentStructuredQueryPlayer: async (_queryService, structuredQuery) => ({
+        structuredQuery,
+        resolution: null,
+      }),
+    })
+
+    const response = await service.answerQuestion('いや藤浪じゃなくて村上の成績', {
+      history: [
+        { role: 'user', content: '藤浪の今年の打撃は？' },
+        { role: 'assistant', content: '横浜DeNAベイスターズ 藤浪 晋太郎の2026年の打撃成績です。' },
+      ],
+    })
+
+    expect(response.structured_query.filters).toMatchObject({
+      player_name: '村上',
+      year: 2026,
+    })
+    expect(response.structured_query.filters).not.toMatchObject({
+      player_name: '藤浪 晋太郎',
+    })
+    expect(response.answer.execution_metadata?.follow_up_context_applied).toBeUndefined()
   })
 
   it('uses the current scoped resolver for current identity scope', async () => {
@@ -2020,6 +2165,7 @@ describe('chat-service', () => {
       contextKind: 'game',
       shouldApplyInheritance: false,
     })
+    expect(response.answer.execution_metadata?.follow_up_context_applied).toBeUndefined()
     expect(seenGameIds).toEqual(['r20210416t-s-04'])
     expect(response.answer.result_count).toBe(1)
     expect(response.results.batting.map((row) => row.gameId)).toEqual(['r20210416t-s-04'])
@@ -2077,6 +2223,7 @@ describe('chat-service', () => {
       contextKind: 'game',
       shouldApplyInheritance: false,
     })
+    expect(response.answer.execution_metadata?.follow_up_context_applied).toBeUndefined()
     expect(response.answer.summary).toContain('2026年6月5日')
     expect(response.answer.summary).not.toContain('該当する試合は1件です')
   })

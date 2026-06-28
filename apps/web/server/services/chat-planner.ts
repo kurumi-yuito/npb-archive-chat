@@ -67,6 +67,7 @@ export function buildPlannerOutput(
       referencedContext: classification.referencedContext,
       targetEntity: classification.targetEntity,
       targetGameId: classification.targetGameId,
+      history: context.history,
     }),
     targetGameId: classification.targetGameId,
     targetPlayerId: classification.targetPlayerId,

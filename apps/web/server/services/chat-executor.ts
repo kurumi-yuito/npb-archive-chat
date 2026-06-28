@@ -41,6 +41,9 @@ export function buildChatExecutionMetadata(
       inheritanceConfidence: 0,
       shouldApplyInheritance: false,
     },
+    ...(plannerOutput?.appliedFollowUpContext
+      ? { appliedFollowUpContext: plannerOutput.appliedFollowUpContext }
+      : {}),
     targetGameId: plannerOutput?.targetGameId ?? null,
     targetPlayerId: plannerOutput?.targetPlayerId ?? null,
     answerMode: plannerOutput?.answerMode ?? 'direct_answer',

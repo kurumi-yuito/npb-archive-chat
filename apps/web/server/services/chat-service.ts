@@ -28,6 +28,9 @@ import {
 import { normalizeChatStructuredQuery, normalizeTeamName } from './chat-query-normalizer'
 import {
   classifyFollowUpContext,
+  queryHasPlayerId,
+  queryHasPlayerName,
+  type ChatAppliedFollowUpContext,
   type ChatFollowUpType,
 } from './chat-query-plan'
 import {
@@ -101,10 +104,28 @@ export function createChatService(
       parsedQuery = rewriteSeasonalPlayerStatsMisparseIfNeeded(message, parsedQuery)
       parsedQuery = recoverOffTopicRecentPlayerQuery(message, parsedQuery)
       parsedQuery = stabilizeQaQueryFromQuestion(message, parsedQuery)
-      const effectivePlan = buildPlannerOutput(parsedQuery, parsedQuery !== rawParsedQuery, {
+      let effectivePlan = buildPlannerOutput(parsedQuery, parsedQuery !== rawParsedQuery, {
         message,
         history: options.history,
       })
+      const followUpContextApplication = applyPlayerStatsFollowUpContext(
+        message,
+        parsedQuery,
+        effectivePlan,
+      )
+      if (followUpContextApplication.metadata.applied) {
+        parsedQuery = followUpContextApplication.structuredQuery
+        effectivePlan = {
+          ...buildPlannerOutput(parsedQuery, true, {
+            message,
+            history: options.history,
+          }),
+          ...(followUpContextApplication.identityResolutionScope
+            ? { identityResolutionScope: followUpContextApplication.identityResolutionScope }
+            : {}),
+          appliedFollowUpContext: followUpContextApplication.metadata,
+        }
+      }
 
       if (isNorimotoTeamComparison(message, parsedQuery)) {
         const results = await aggregatePitchingAcrossYears(queryService, parsedQuery)
@@ -810,6 +831,137 @@ async function resolvePlayerForIdentityScope(
     return resolvers.resolveHistoricalPlayer(queryService, structuredQuery)
   }
   return resolvers.resolvePlayer(queryService, structuredQuery)
+}
+
+const PLAYER_STATS_FOLLOW_UP_INHERITANCE_TYPES = new Set<ChatFollowUpType>([
+  'target_omission',
+  'timeframe_correction',
+  'scope_clarification',
+  'evaluation_request',
+])
+
+const EXCLUDED_FOLLOW_UP_INHERITANCE_TYPES = new Set<ChatFollowUpType>([
+  'detail_request',
+  'reason_request',
+  'summary_request',
+  'context_reference',
+  'recheck_request',
+  'casual_followup',
+])
+
+function applyPlayerStatsFollowUpContext(
+  message: string,
+  structuredQuery: ChatStructuredQuery,
+  plannerOutput: ChatPlannerOutput,
+): {
+  structuredQuery: ChatStructuredQuery
+  identityResolutionScope: IdentityResolutionScope | null
+  metadata: ChatAppliedFollowUpContext
+} {
+  const notApplied = (reason: string) => ({
+    structuredQuery,
+    identityResolutionScope: null,
+    metadata: { applied: false, fields: [], reason },
+  })
+  if (!PLAYER_STATS_FOLLOW_UP_INHERITANCE_TYPES.has(plannerOutput.followUpType)) {
+    return notApplied('follow_up_type_not_allowed')
+  }
+  if (EXCLUDED_FOLLOW_UP_INHERITANCE_TYPES.has(plannerOutput.followUpType)) {
+    return notApplied('follow_up_type_excluded')
+  }
+  if (
+    structuredQuery.intent === 'game_detail' ||
+    plannerOutput.followUpContext.contextKind === 'game' ||
+    plannerOutput.targetGameId
+  ) {
+    return notApplied('game_context_excluded')
+  }
+  if (plannerOutput.followUpContext.contextKind !== 'player_stats') {
+    return notApplied('context_kind_not_player_stats')
+  }
+  if (plannerOutput.followUpContext.inheritanceConfidence < 0.6) {
+    return notApplied('inheritance_confidence_too_low')
+  }
+  if (isPlayerReplacementFollowUp(message, structuredQuery)) {
+    return notApplied('player_replacement_excluded')
+  }
+
+  const filters = structuredQuery.filters as Record<string, unknown>
+  const nextFilters = { ...filters }
+  const fields: ChatAppliedFollowUpContext['fields'] = []
+  const inherited = plannerOutput.followUpContext
+  const playerField = playerNameFieldForStatsIntent(structuredQuery.intent)
+  if (
+    playerField &&
+    !queryHasPlayerName(structuredQuery) &&
+    !queryHasPlayerId(structuredQuery) &&
+    inherited.inheritedPlayerName
+  ) {
+    nextFilters[playerField] = inherited.inheritedPlayerName
+    fields.push('player')
+  }
+  if (typeof filters.team !== 'string' && inherited.inheritedTeam) {
+    nextFilters.team = inherited.inheritedTeam
+    fields.push('team')
+  }
+  if (!hasSeasonFilter(filters) && !hasExplicitSeasonOverride(message) && inherited.inheritedSeason !== null) {
+    nextFilters.year = inherited.inheritedSeason
+    fields.push('season')
+  }
+
+  const identityResolutionScope =
+    plannerOutput.identityResolutionScope === 'unspecified' &&
+    inherited.inheritedScope !== 'unspecified' &&
+    !hasExplicitScopeOverride(message)
+      ? inherited.inheritedScope
+      : null
+  if (identityResolutionScope) {
+    fields.push('scope')
+  }
+  if (fields.length === 0) {
+    return notApplied('no_missing_context')
+  }
+  return {
+    structuredQuery: {
+      ...structuredQuery,
+      filters: nextFilters,
+    } as ChatStructuredQuery,
+    identityResolutionScope,
+    metadata: {
+      applied: true,
+      fields,
+      reason: 'player_stats_follow_up_context',
+    },
+  }
+}
+
+function playerNameFieldForStatsIntent(intent: ChatStructuredQuery['intent']): 'player_name' | 'pitcher_name' | null {
+  if (intent === 'search_pitching' || intent === 'aggregate_pitching') {
+    return 'pitcher_name'
+  }
+  if (intent === 'search_batting' || intent === 'aggregate_batting') {
+    return 'player_name'
+  }
+  return null
+}
+
+function hasSeasonFilter(filters: Record<string, unknown>): boolean {
+  return typeof filters.year === 'number' ||
+    typeof filters.year_from === 'number' ||
+    typeof filters.year_to === 'number'
+}
+
+function hasExplicitSeasonOverride(message: string): boolean {
+  return /20\d{2}年|今年|今シーズン|今季|去年|昨年|昨シーズン|前シーズン|通算/u.test(message)
+}
+
+function hasExplicitScopeOverride(message: string): boolean {
+  return /現在|今の|現所属|今年|今シーズン|今季|去年|昨年|昨シーズン|時代|在籍時|移籍前|移籍後/u.test(message)
+}
+
+function isPlayerReplacementFollowUp(message: string, structuredQuery: ChatStructuredQuery): boolean {
+  return /じゃなくて|ではなく|違って|別の選手/u.test(message) &&
+    (queryHasPlayerName(structuredQuery) || queryHasPlayerId(structuredQuery))
 }
 
 function applyCurrentTeamCorrection(

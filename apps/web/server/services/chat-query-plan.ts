@@ -99,6 +99,14 @@ export const chatFollowUpContextMetadataSchema = z.object({
 
 export type ChatFollowUpContextMetadata = z.infer<typeof chatFollowUpContextMetadataSchema>
 
+export const chatAppliedFollowUpContextSchema = z.object({
+  applied: z.boolean(),
+  fields: z.array(z.enum(['player', 'team', 'season', 'scope'])),
+  reason: z.string().min(1).nullable(),
+})
+
+export type ChatAppliedFollowUpContext = z.infer<typeof chatAppliedFollowUpContextSchema>
+
 export const chatExecutionRepositorySchema = z.enum([
   'searchEvents',
   'searchGames',
@@ -125,6 +133,7 @@ export const chatPlannerOutputSchema = z.object({
   referencedContext: chatReferencedContextSchema,
   targetEntity: chatTargetEntitySchema,
   followUpContext: chatFollowUpContextMetadataSchema,
+  appliedFollowUpContext: chatAppliedFollowUpContextSchema.optional(),
   targetGameId: z.string().min(1).nullable(),
   targetPlayerId: z.string().min(1).nullable(),
   timeRange: z.record(z.unknown()).nullable(),
@@ -149,6 +158,7 @@ export type ChatExecutionMetadata = {
   referencedContext: ChatReferencedContext
   targetEntity: ChatTargetEntity
   followUpContext: ChatFollowUpContextMetadata
+  appliedFollowUpContext?: ChatAppliedFollowUpContext
   targetGameId: string | null
   targetPlayerId: string | null
   answerMode: ChatAnswerMode
@@ -333,6 +343,7 @@ export function extractFollowUpContextMetadata({
   referencedContext,
   targetEntity,
   targetGameId,
+  history,
 }: {
   query: ChatStructuredQuery
   identityResolutionScope: IdentityResolutionScope
@@ -340,14 +351,18 @@ export function extractFollowUpContextMetadata({
   referencedContext: ChatReferencedContext
   targetEntity: ChatTargetEntity
   targetGameId: string | null
+  history?: ChatRequest['history']
 }): ChatFollowUpContextMetadata {
   const filters = query.filters as Record<string, unknown>
   const inheritedPlayerId = extractPlannerPlayerId(filters)
-  const inheritedPlayerName = extractPlannerPlayerName(filters)
+  const historyCandidate = followUpType !== 'standalone' && !targetGameId
+    ? extractPlayerStatsContextFromHistory(history)
+    : null
+  const inheritedPlayerName = extractPlannerPlayerName(filters) ?? historyCandidate?.playerName ?? null
   const inheritedTeam = typeof filters.team === 'string'
     ? filters.team
-    : targetEntity?.teams[0] ?? null
-  const inheritedSeason = extractPlannerSeason(filters)
+    : targetEntity?.teams[0] ?? historyCandidate?.team ?? null
+  const inheritedSeason = extractPlannerSeason(filters) ?? historyCandidate?.season ?? null
   const contextKind = inferFollowUpContextKind(query, {
     targetGameId,
     inheritedPlayerId,
@@ -371,11 +386,72 @@ export function extractFollowUpContextMetadata({
     inheritedPlayerName,
     inheritedTeam,
     inheritedSeason,
-    inheritedScope: identityResolutionScope,
+    inheritedScope: identityResolutionScope === 'unspecified'
+      ? historyCandidate?.scope ?? identityResolutionScope
+      : identityResolutionScope,
     inheritanceSource,
     inheritanceConfidence: inferInheritanceConfidence(inheritanceSource, contextKind),
     shouldApplyInheritance: false,
   }
+}
+
+type PlayerStatsContextCandidate = {
+  playerName: string | null
+  team: string | null
+  season: number | null
+  scope: IdentityResolutionScope
+}
+
+const TEAM_NAME_PATTERN =
+  '横浜DeNAベイスターズ|横浜DeNA|DeNA|東京ヤクルトスワローズ|ヤクルト|阪神タイガース|阪神|読売ジャイアンツ|巨人|広島東洋カープ|広島|中日ドラゴンズ|中日|福岡ソフトバンクホークス|ソフトバンク|北海道日本ハムファイターズ|日本ハム|千葉ロッテマリーンズ|ロッテ|東北楽天ゴールデンイーグルス|楽天|オリックス・バファローズ|オリックス|埼玉西武ライオンズ|西武'
+
+function extractPlayerStatsContextFromHistory(
+  history: ChatRequest['history'] | undefined,
+): PlayerStatsContextCandidate | null {
+  const latestAssistant = [...(history ?? [])].reverse().find((item) => item.role === 'assistant')?.content
+  if (!latestAssistant) {
+    return null
+  }
+  const season = extractSeasonFromText(latestAssistant)
+  const team = latestAssistant.match(new RegExp(TEAM_NAME_PATTERN, 'u'))?.[0] ?? null
+  const playerName = extractPlayerNameFromAssistantSummary(latestAssistant, team)
+  if (!playerName && !team && season === null) {
+    return null
+  }
+  return {
+    playerName,
+    team,
+    season,
+    scope: season === null
+      ? 'unspecified'
+      : season >= currentJstYear()
+        ? 'current'
+        : 'historical',
+  }
+}
+
+function extractPlayerNameFromAssistantSummary(text: string, team: string | null): string | null {
+  const compactText = text.replace(/\r?\n/gu, ' ')
+  const teamPrefix = team ? `${escapeRegExp(team)}\\s*` : `(?:${TEAM_NAME_PATTERN})?\\s*`
+  const match = compactText.match(new RegExp(`${teamPrefix}([一-龯々ぁ-んァ-ヶーA-Za-z・･.\\s]{2,24}?)(?:の|は)`, 'u'))
+  return match?.[1]?.replace(/\s+/gu, ' ').trim() ?? null
+}
+
+function extractSeasonFromText(text: string): number | null {
+  const match = text.match(/(20\d{2})年/u)
+  return match ? Number(match[1]) : null
+}
+
+function currentJstYear(): number {
+  const year = new Intl.DateTimeFormat('ja-JP', {
+    timeZone: 'Asia/Tokyo',
+    year: 'numeric',
+  }).formatToParts(new Date()).find((part) => part.type === 'year')?.value
+  return Number(year)
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&')
 }
 
 function extractPlannerPlayerId(filters: Record<string, unknown>): string | null {

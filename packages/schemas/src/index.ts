@@ -460,6 +460,11 @@ export const chatResponseSchema = z.object({
         inheritanceConfidence: z.number().min(0).max(1),
         shouldApplyInheritance: z.literal(false),
       }).optional(),
+      follow_up_context_applied: z.object({
+        applied: z.boolean(),
+        fields: z.array(z.enum(['player', 'team', 'season', 'scope'])),
+        reason: z.string().min(1).nullable(),
+      }).optional(),
       target_game_id: z.string().min(1).nullable(),
       target_player_id: z.string().min(1).nullable(),
       answer_mode: z.string().min(1),
