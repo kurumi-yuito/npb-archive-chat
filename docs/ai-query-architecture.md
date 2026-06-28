@@ -532,3 +532,42 @@ QA runner `scripts/qa-prod-unanswered.mjs` は今回、以下をログに追加�
 - 実行ログ: `data/logs/qa-prod-1782453010913.json`
 - 結果: Pass 108 / Fail 0 / Blocked 0
 - 追加メモ: Q-58 の `inningsPitched` 不整合は `chat-query-llm.ts` / `chat-query-parser.ts` / `packages/schemas/src/index.ts` で修正済み
+
+## Phase 2 completion
+
+Phase 2 は、Identity Layer 本体を DB 化する前に、既存 chat-service / planner / executor から安定して参照できる identity 境界を整える段階として完了した。
+
+実装済み:
+
+- Identity facade
+- Alias resolution facade
+- Source URL provenance API
+- Current/Historical identity scope
+- Scope-aware resolver selection
+- Scope-aware current team correction
+- Follow-up context metadata
+- Controlled player stats follow-up inheritance
+
+意図的に実施していない内容:
+
+- Repository fallback 削除
+- Historical backfill
+- Migration
+- `player_aliases` テーブル
+- `player_sources` テーブル
+- Identity Layer 本体のDB化
+
+本番実績:
+
+- 最新 deploy Version ID: `fe47706a-4f1c-441d-b90f-001488724ee8`
+- QA結果: Pass 108 / Fail 0 / Blocked 0
+- player_id resolution failures: 0
+- HTTP 500: 0
+- 実行ログ: `data/logs/qa-prod-1782621039223.json`
+
+Phase 3 の前提条件:
+
+- Identity Layer API が安定していること
+- future ingest が `player_id` / URL を保持すること
+- follow-up metadata が導入済みであること
+- current/historical scope が導入済みであること
