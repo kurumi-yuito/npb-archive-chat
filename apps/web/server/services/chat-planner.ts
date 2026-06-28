@@ -6,6 +6,7 @@ import {
   chatPlannerOutputSchema,
   extractPlannerEntities,
   extractPlannerTimeRange,
+  extractFollowUpContextMetadata,
   inferDataRequirements,
   type ChatPlannerOutput,
 } from './chat-query-plan'
@@ -48,6 +49,10 @@ export function buildPlannerOutput(
     context.history,
     structuredQuery,
   )
+  const identityResolutionScope = inferIdentityResolutionScope({
+    message: context.message ?? '',
+    structuredQuery,
+  })
   return chatPlannerOutputSchema.parse({
     intent: structuredQuery.intent,
     structuredQuery,
@@ -55,15 +60,20 @@ export function buildPlannerOutput(
     followUpType: classification.followUpType,
     referencedContext: classification.referencedContext,
     targetEntity: classification.targetEntity,
+    followUpContext: extractFollowUpContextMetadata({
+      query: structuredQuery,
+      identityResolutionScope,
+      followUpType: classification.followUpType,
+      referencedContext: classification.referencedContext,
+      targetEntity: classification.targetEntity,
+      targetGameId: classification.targetGameId,
+    }),
     targetGameId: classification.targetGameId,
     targetPlayerId: classification.targetPlayerId,
     timeRange: extractPlannerTimeRange(structuredQuery),
     dataRequirements: inferDataRequirements(structuredQuery),
     answerMode: classification.answerMode,
-    identityResolutionScope: inferIdentityResolutionScope({
-      message: context.message ?? '',
-      structuredQuery,
-    }),
+    identityResolutionScope,
     confidence: legacyStabilizationApplied ? 0.72 : 0.86,
     clarificationRequired: false,
     legacyStabilizationApplied,

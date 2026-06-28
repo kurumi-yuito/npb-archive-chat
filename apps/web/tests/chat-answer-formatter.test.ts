@@ -101,6 +101,17 @@ describe('chat-answer-formatter', () => {
           players: [],
           teams: ['阪神'],
         },
+        followUpContext: {
+          contextKind: 'game',
+          inheritedPlayerId: null,
+          inheritedPlayerName: null,
+          inheritedTeam: '阪神',
+          inheritedSeason: null,
+          inheritedScope: 'unspecified',
+          inheritanceSource: 'latest_assistant_entry',
+          inheritanceConfidence: 0.9,
+          shouldApplyInheritance: false,
+        },
         targetGameId: 'r20210416t-s-01',
         targetPlayerId: null,
         answerMode: 'reason_explanation',
@@ -112,6 +123,11 @@ describe('chat-answer-formatter', () => {
     expect(answer.execution_metadata?.answer_mode).toBe('reason_explanation')
     expect(answer.execution_metadata?.target_game_id).toBe('r20210416t-s-01')
     expect(answer.execution_metadata?.identity_resolution_scope).toBe('unspecified')
+    expect(answer.execution_metadata?.follow_up_context).toMatchObject({
+      contextKind: 'game',
+      inheritedTeam: '阪神',
+      shouldApplyInheritance: false,
+    })
   })
 
   it('describes pitcher-vs-pitcher matchup questions without batting language', () => {

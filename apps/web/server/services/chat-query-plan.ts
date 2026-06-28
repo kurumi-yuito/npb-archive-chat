@@ -80,6 +80,25 @@ export const chatTargetEntitySchema = z.object({
 
 export type ChatTargetEntity = z.infer<typeof chatTargetEntitySchema>
 
+export const chatFollowUpContextMetadataSchema = z.object({
+  contextKind: z.enum(['game', 'player_stats', 'team_stats', 'unknown']),
+  inheritedPlayerId: z.string().min(1).nullable(),
+  inheritedPlayerName: z.string().min(1).nullable(),
+  inheritedTeam: z.string().min(1).nullable(),
+  inheritedSeason: z.number().int().nullable(),
+  inheritedScope: z.enum(['unspecified', 'current', 'historical']),
+  inheritanceSource: z.enum([
+    'none',
+    'structured_query',
+    'latest_assistant_entry',
+    'conversation_history',
+  ]),
+  inheritanceConfidence: z.number().min(0).max(1),
+  shouldApplyInheritance: z.literal(false),
+})
+
+export type ChatFollowUpContextMetadata = z.infer<typeof chatFollowUpContextMetadataSchema>
+
 export const chatExecutionRepositorySchema = z.enum([
   'searchEvents',
   'searchGames',
@@ -105,6 +124,7 @@ export const chatPlannerOutputSchema = z.object({
   followUpType: chatFollowUpTypeSchema,
   referencedContext: chatReferencedContextSchema,
   targetEntity: chatTargetEntitySchema,
+  followUpContext: chatFollowUpContextMetadataSchema,
   targetGameId: z.string().min(1).nullable(),
   targetPlayerId: z.string().min(1).nullable(),
   timeRange: z.record(z.unknown()).nullable(),
@@ -128,6 +148,7 @@ export type ChatExecutionMetadata = {
   followUpType: ChatFollowUpType
   referencedContext: ChatReferencedContext
   targetEntity: ChatTargetEntity
+  followUpContext: ChatFollowUpContextMetadata
   targetGameId: string | null
   targetPlayerId: string | null
   answerMode: ChatAnswerMode
@@ -303,6 +324,166 @@ export function classifyFollowUpContext(
     targetPlayerId,
     answerMode,
   }
+}
+
+export function extractFollowUpContextMetadata({
+  query,
+  identityResolutionScope,
+  followUpType,
+  referencedContext,
+  targetEntity,
+  targetGameId,
+}: {
+  query: ChatStructuredQuery
+  identityResolutionScope: IdentityResolutionScope
+  followUpType: ChatFollowUpType
+  referencedContext: ChatReferencedContext
+  targetEntity: ChatTargetEntity
+  targetGameId: string | null
+}): ChatFollowUpContextMetadata {
+  const filters = query.filters as Record<string, unknown>
+  const inheritedPlayerId = extractPlannerPlayerId(filters)
+  const inheritedPlayerName = extractPlannerPlayerName(filters)
+  const inheritedTeam = typeof filters.team === 'string'
+    ? filters.team
+    : targetEntity?.teams[0] ?? null
+  const inheritedSeason = extractPlannerSeason(filters)
+  const contextKind = inferFollowUpContextKind(query, {
+    targetGameId,
+    inheritedPlayerId,
+    inheritedPlayerName,
+    inheritedTeam,
+  })
+  const inheritanceSource = inferInheritanceSource({
+    followUpType,
+    referencedContext,
+    hasStructuredContext: Boolean(
+      inheritedPlayerId ||
+      inheritedPlayerName ||
+      inheritedTeam ||
+      inheritedSeason !== null ||
+      query.intent !== 'off_topic',
+    ),
+  })
+  return {
+    contextKind,
+    inheritedPlayerId,
+    inheritedPlayerName,
+    inheritedTeam,
+    inheritedSeason,
+    inheritedScope: identityResolutionScope,
+    inheritanceSource,
+    inheritanceConfidence: inferInheritanceConfidence(inheritanceSource, contextKind),
+    shouldApplyInheritance: false,
+  }
+}
+
+function extractPlannerPlayerId(filters: Record<string, unknown>): string | null {
+  return typeof filters.player_id === 'string'
+    ? filters.player_id
+    : typeof filters.pitcher_player_id === 'string'
+      ? filters.pitcher_player_id
+      : typeof filters.batter_player_id === 'string'
+        ? filters.batter_player_id
+        : typeof filters.runner_player_id === 'string'
+          ? filters.runner_player_id
+          : null
+}
+
+function extractPlannerPlayerName(filters: Record<string, unknown>): string | null {
+  return typeof filters.player_name === 'string'
+    ? filters.player_name
+    : typeof filters.pitcher_name === 'string'
+      ? filters.pitcher_name
+      : typeof filters.batter_name === 'string'
+        ? filters.batter_name
+        : typeof filters.runner_name === 'string'
+          ? filters.runner_name
+          : null
+}
+
+function extractPlannerSeason(filters: Record<string, unknown>): number | null {
+  if (typeof filters.year === 'number') {
+    return filters.year
+  }
+  return typeof filters.year_from === 'number' &&
+    typeof filters.year_to === 'number' &&
+    filters.year_from === filters.year_to
+    ? filters.year_from
+    : null
+}
+
+function inferFollowUpContextKind(
+  query: ChatStructuredQuery,
+  context: {
+    targetGameId: string | null
+    inheritedPlayerId: string | null
+    inheritedPlayerName: string | null
+    inheritedTeam: string | null
+  },
+): ChatFollowUpContextMetadata['contextKind'] {
+  if (query.intent === 'game_detail' || context.targetGameId) {
+    return 'game'
+  }
+  if (
+    (query.intent === 'search_batting' ||
+      query.intent === 'search_pitching' ||
+      query.intent === 'aggregate_batting' ||
+      query.intent === 'aggregate_pitching') &&
+    (context.inheritedPlayerId || context.inheritedPlayerName)
+  ) {
+    return 'player_stats'
+  }
+  if (
+    (query.intent === 'search_games' ||
+      query.intent === 'aggregate_games' ||
+      query.intent === 'aggregate_batting' ||
+      query.intent === 'aggregate_pitching') &&
+    context.inheritedTeam
+  ) {
+    return 'team_stats'
+  }
+  return 'unknown'
+}
+
+function inferInheritanceSource({
+  followUpType,
+  referencedContext,
+  hasStructuredContext,
+}: {
+  followUpType: ChatFollowUpType
+  referencedContext: ChatReferencedContext
+  hasStructuredContext: boolean
+}): ChatFollowUpContextMetadata['inheritanceSource'] {
+  if (referencedContext?.source === 'latest_assistant_entry') {
+    return 'latest_assistant_entry'
+  }
+  if (followUpType !== 'standalone' && referencedContext?.source === 'explicit_phrase') {
+    return 'conversation_history'
+  }
+  if (hasStructuredContext) {
+    return 'structured_query'
+  }
+  return 'none'
+}
+
+function inferInheritanceConfidence(
+  source: ChatFollowUpContextMetadata['inheritanceSource'],
+  contextKind: ChatFollowUpContextMetadata['contextKind'],
+): number {
+  if (source === 'latest_assistant_entry' && contextKind === 'game') {
+    return 0.9
+  }
+  if (source === 'latest_assistant_entry') {
+    return 0.78
+  }
+  if (source === 'conversation_history') {
+    return 0.62
+  }
+  if (source === 'structured_query') {
+    return 0.55
+  }
+  return 0
 }
 
 type ReferencedAssistantEntry = {

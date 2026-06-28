@@ -83,6 +83,7 @@ export function formatChatAnswer({
           follow_up_type: executionMetadata.followUpType,
           referenced_context: executionMetadata.referencedContext,
           target_entity: executionMetadata.targetEntity,
+          follow_up_context: executionMetadata.followUpContext,
           target_game_id: executionMetadata.targetGameId,
           target_player_id: executionMetadata.targetPlayerId,
           answer_mode: executionMetadata.answerMode,

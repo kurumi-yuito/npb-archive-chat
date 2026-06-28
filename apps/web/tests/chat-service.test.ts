@@ -360,7 +360,7 @@ describe('chat-service', () => {
       },
     })
 
-    await service.answerQuestion('それで最近どう？', {
+    const response = await service.answerQuestion('それで最近どう？', {
       history: [
         { role: 'user', content: '巨人の大城って今どんな感じ' },
         { role: 'assistant', content: '大城の打撃成績です。' },
@@ -368,6 +368,17 @@ describe('chat-service', () => {
     })
 
     expect(parserCalled).toBe(true)
+    expect(response.structured_query).toMatchObject({
+      intent: 'search_batting',
+      filters: { player_name: '大城', team: '巨人', recent: true },
+    })
+    expect(response.answer.applied_filters).toMatchObject({ player_name: '大城', team: '巨人', recent: true })
+    expect(response.answer.execution_metadata?.follow_up_context).toMatchObject({
+      contextKind: 'player_stats',
+      inheritedPlayerName: '大城',
+      inheritedTeam: '巨人',
+      shouldApplyInheritance: false,
+    })
   })
 
   it('uses the current scoped resolver for current identity scope', async () => {
@@ -615,6 +626,17 @@ describe('chat-service', () => {
         label: null,
         players: [],
         teams: [],
+      },
+      follow_up_context: {
+        contextKind: 'unknown',
+        inheritedPlayerId: null,
+        inheritedPlayerName: null,
+        inheritedTeam: null,
+        inheritedSeason: 2025,
+        inheritedScope: 'historical',
+        inheritanceSource: 'structured_query',
+        inheritanceConfidence: 0.55,
+        shouldApplyInheritance: false,
       },
       target_game_id: null,
       target_player_id: null,
@@ -1993,6 +2015,11 @@ describe('chat-service', () => {
       intent: 'game_detail',
       filters: { game_id: 'r20210416t-s-04', limit: 1 },
     })
+    expect(response.answer.applied_filters).toEqual({ game_id: 'r20210416t-s-04', limit: 1 })
+    expect(response.answer.execution_metadata?.follow_up_context).toMatchObject({
+      contextKind: 'game',
+      shouldApplyInheritance: false,
+    })
     expect(seenGameIds).toEqual(['r20210416t-s-04'])
     expect(response.answer.result_count).toBe(1)
     expect(response.results.batting.map((row) => row.gameId)).toEqual(['r20210416t-s-04'])
@@ -2044,6 +2071,11 @@ describe('chat-service', () => {
     expect(response.structured_query).toEqual({
       intent: 'game_detail',
       filters: { game_date: '2026-06-05', limit: 1 },
+    })
+    expect(response.answer.applied_filters).toEqual({ game_date: '2026-06-05', limit: 1 })
+    expect(response.answer.execution_metadata?.follow_up_context).toMatchObject({
+      contextKind: 'game',
+      shouldApplyInheritance: false,
     })
     expect(response.answer.summary).toContain('2026年6月5日')
     expect(response.answer.summary).not.toContain('該当する試合は1件です')

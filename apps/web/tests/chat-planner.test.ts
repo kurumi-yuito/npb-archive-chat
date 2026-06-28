@@ -198,4 +198,44 @@ describe('chat-planner follow-up classification', () => {
     expect(['current', 'historical', 'unspecified']).toContain(planner.identityResolutionScope)
     expect(planner.referencedContext).not.toBeNull()
   })
+
+  it('extracts non-applying game follow-up context metadata', () => {
+    const planner = buildPlannerOutput(baseGameQuery(), false, {
+      message: 'それ詳しく',
+      history: historyWithGameContext,
+    })
+
+    expect(planner.followUpContext).toMatchObject({
+      contextKind: 'game',
+      inheritedTeam: '阪神',
+      inheritedSeason: null,
+      inheritedScope: 'unspecified',
+      inheritanceSource: 'latest_assistant_entry',
+      shouldApplyInheritance: false,
+    })
+    expect(planner.structuredQuery).toEqual(baseGameQuery())
+  })
+
+  it('extracts non-applying player stats follow-up context metadata', () => {
+    const query = basePitchingQuery({
+      pitcher_player_id: '41045137',
+      year: 2026,
+    })
+    const planner = buildPlannerOutput(query, false, {
+      message: '一軍の話？',
+      history: [
+        { role: 'assistant', content: '横浜DeNAベイスターズ 藤浪 晋太郎の確認できる最新5試合の投球内容です。' },
+      ],
+    })
+
+    expect(planner.followUpContext).toMatchObject({
+      contextKind: 'player_stats',
+      inheritedPlayerId: '41045137',
+      inheritedPlayerName: '藤浪',
+      inheritedSeason: 2026,
+      inheritedScope: 'current',
+      shouldApplyInheritance: false,
+    })
+    expect(planner.structuredQuery).toEqual(query)
+  })
 })
