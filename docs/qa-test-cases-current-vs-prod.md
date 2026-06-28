@@ -1,15 +1,15 @@
 # QAテストケース一覧 - 現行本番との差分
 
 - 現行ケース数: 108
-- 本番QA実行日時: 2026-06-28T03:10:56.949Z
-- 対象デプロイVersion ID: e3dbb343-2a23-4604-98eb-d41fee485439
-- 実行ログパス: [data/logs/qa-prod-1782616253204.json](../data/logs/qa-prod-1782616253204.json)
+- 本番QA実行日時: 2026-06-28T04:30:45.186Z
+- 対象デプロイVersion ID: fe47706a-4f1c-441d-b90f-001488724ee8
+- 実行ログパス: [data/logs/qa-prod-1782621039223.json](../data/logs/qa-prod-1782621039223.json)
 - 集計: Pass 108 / Fail 0 / Blocked 0
 - Fail case_id: なし
 - Fail分類: なし
 - player_id解決失敗件数: 0
 - 500エラー件数: 0
-- follow_up_context出力確認: 直接API確認でレスポンスschema上の出力を確認済み（contextKind=game / shouldApplyInheritance=false）。本QAログ内では execution_metadata が保存された94件で follow_up_context を確認。off_topic等の14件はQA runnerの保存対象metadataなし。
+- follow_up_context出力確認: 本QAログ内では execution_metadata が保存された94件で follow_up_context を94件確認。shouldApplyInheritance=false 固定違反は0件。follow_up_context_applied は実補完時のみ出力され、今回の全QAでは0件。直接API確認では player_stats follow-up の実補完時のみ follow_up_context_applied が出力されることを確認済み（fields=team,season,scope）。
 - 許容した差分: 日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
 
 ## ケース別結果
@@ -92,6 +92,8 @@
     "inheritanceConfidence": 0.55,
     "shouldApplyInheritance": false
   }
+- follow_up_context_applied:
+  null
 - target_game_id:
   null
 - target_player_id:
@@ -107,11 +109,11 @@
 - 許容した差分:
   日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
 - 実行ログパス:
-  [data/logs/qa-prod-1782616253204.json](../data/logs/qa-prod-1782616253204.json)
+  [data/logs/qa-prod-1782621039223.json](../data/logs/qa-prod-1782621039223.json)
 - 実行日時:
-  2026-06-28T03:10:56.949Z
+  2026-06-28T04:30:45.186Z
 - デプロイVersion ID:
-  e3dbb343-2a23-4604-98eb-d41fee485439
+  fe47706a-4f1c-441d-b90f-001488724ee8
 ### Q-02: 藤浪は2026年のここまでの二軍での成績はどうですか？防御率や登板数など詳しく教えてください
 
 - case_id:
@@ -190,6 +192,8 @@
     "inheritanceConfidence": 0.55,
     "shouldApplyInheritance": false
   }
+- follow_up_context_applied:
+  null
 - target_game_id:
   null
 - target_player_id:
@@ -205,11 +209,11 @@
 - 許容した差分:
   日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
 - 実行ログパス:
-  [data/logs/qa-prod-1782616253204.json](../data/logs/qa-prod-1782616253204.json)
+  [data/logs/qa-prod-1782621039223.json](../data/logs/qa-prod-1782621039223.json)
 - 実行日時:
-  2026-06-28T03:11:05.836Z
+  2026-06-28T04:30:54.179Z
 - デプロイVersion ID:
-  e3dbb343-2a23-4604-98eb-d41fee485439
+  fe47706a-4f1c-441d-b90f-001488724ee8
 ### Q-03: 藤浪晋太郎が最後に一軍に登板したのはいつ
 
 - case_id:
@@ -283,6 +287,8 @@
     "inheritanceConfidence": 0.55,
     "shouldApplyInheritance": false
   }
+- follow_up_context_applied:
+  null
 - target_game_id:
   null
 - target_player_id:
@@ -298,11 +304,11 @@
 - 許容した差分:
   日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
 - 実行ログパス:
-  [data/logs/qa-prod-1782616253204.json](../data/logs/qa-prod-1782616253204.json)
+  [data/logs/qa-prod-1782621039223.json](../data/logs/qa-prod-1782621039223.json)
 - 実行日時:
-  2026-06-28T03:11:15.153Z
+  2026-06-28T04:31:03.112Z
 - デプロイVersion ID:
-  e3dbb343-2a23-4604-98eb-d41fee485439
+  fe47706a-4f1c-441d-b90f-001488724ee8
 ### Q-04: 藤浪晋太郎は今どこの球団に所属していますか？
 
 - case_id:
@@ -376,6 +382,8 @@
     "inheritanceConfidence": 0.55,
     "shouldApplyInheritance": false
   }
+- follow_up_context_applied:
+  null
 - target_game_id:
   null
 - target_player_id:
@@ -391,11 +399,11 @@
 - 許容した差分:
   日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
 - 実行ログパス:
-  [data/logs/qa-prod-1782616253204.json](../data/logs/qa-prod-1782616253204.json)
+  [data/logs/qa-prod-1782621039223.json](../data/logs/qa-prod-1782621039223.json)
 - 実行日時:
-  2026-06-28T03:11:31.025Z
+  2026-06-28T04:31:19.161Z
 - デプロイVersion ID:
-  e3dbb343-2a23-4604-98eb-d41fee485439
+  fe47706a-4f1c-441d-b90f-001488724ee8
 ### Q-05: 則本昂大は楽天時代と巨人移籍後で防御率はどう変わりましたか？
 
 - case_id:
@@ -469,6 +477,8 @@
     "inheritanceConfidence": 0.55,
     "shouldApplyInheritance": false
   }
+- follow_up_context_applied:
+  null
 - target_game_id:
   null
 - target_player_id:
@@ -484,11 +494,11 @@
 - 許容した差分:
   日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
 - 実行ログパス:
-  [data/logs/qa-prod-1782616253204.json](../data/logs/qa-prod-1782616253204.json)
+  [data/logs/qa-prod-1782621039223.json](../data/logs/qa-prod-1782621039223.json)
 - 実行日時:
-  2026-06-28T03:11:40.245Z
+  2026-06-28T04:31:28.608Z
 - デプロイVersion ID:
-  e3dbb343-2a23-4604-98eb-d41fee485439
+  fe47706a-4f1c-441d-b90f-001488724ee8
 ### Q-06: 巨人の則本昂大、最近の登板調子はどう？
 
 - case_id:
@@ -570,6 +580,8 @@
     "inheritanceConfidence": 0.55,
     "shouldApplyInheritance": false
   }
+- follow_up_context_applied:
+  null
 - target_game_id:
   null
 - target_player_id:
@@ -585,11 +597,11 @@
 - 許容した差分:
   日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
 - 実行ログパス:
-  [data/logs/qa-prod-1782616253204.json](../data/logs/qa-prod-1782616253204.json)
+  [data/logs/qa-prod-1782621039223.json](../data/logs/qa-prod-1782621039223.json)
 - 実行日時:
-  2026-06-28T03:11:48.742Z
+  2026-06-28T04:31:37.570Z
 - デプロイVersion ID:
-  e3dbb343-2a23-4604-98eb-d41fee485439
+  fe47706a-4f1c-441d-b90f-001488724ee8
 ### Q-07: 山川穂高は今どこの球団ですか？
 
 - case_id:
@@ -600,7 +612,7 @@
 - QA正:
   山川穂高選手は2026年シーズン、福岡ソフトバンクホークスに所属しています。
 - 本番回答:
-  山川穂高選手は2026年シーズン、福岡ソフトバンクホークスに所属しています。5月29日や30日の試合でも同球団のロースターに名前が確認されていますので、今シーズンはソフトバンクでプレーしていることが確実です。
+  山川穂高選手は2026年シーズン、福岡ソフトバンクホークスに所属しています。5月29日や30日の試合でもソフトバンクの一員として出場している記録がありますので、今はソフトバンクでプレーしていることが確かです。何か他に山川選手の成績や試合の様子について知りたいことがあれば教えてください。
 - intent:
   player_affiliation
 - entities:
@@ -663,6 +675,8 @@
     "inheritanceConfidence": 0.55,
     "shouldApplyInheritance": false
   }
+- follow_up_context_applied:
+  null
 - target_game_id:
   null
 - target_player_id:
@@ -678,11 +692,11 @@
 - 許容した差分:
   日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
 - 実行ログパス:
-  [data/logs/qa-prod-1782616253204.json](../data/logs/qa-prod-1782616253204.json)
+  [data/logs/qa-prod-1782621039223.json](../data/logs/qa-prod-1782621039223.json)
 - 実行日時:
-  2026-06-28T03:12:01.248Z
+  2026-06-28T04:31:51.394Z
 - デプロイVersion ID:
-  e3dbb343-2a23-4604-98eb-d41fee485439
+  fe47706a-4f1c-441d-b90f-001488724ee8
 ### Q-08: 西武時代の山川穂高の年別本塁打数を教えてください
 
 - case_id:
@@ -770,6 +784,8 @@
     "inheritanceConfidence": 0.55,
     "shouldApplyInheritance": false
   }
+- follow_up_context_applied:
+  null
 - target_game_id:
   null
 - target_player_id:
@@ -785,11 +801,11 @@
 - 許容した差分:
   日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
 - 実行ログパス:
-  [data/logs/qa-prod-1782616253204.json](../data/logs/qa-prod-1782616253204.json)
+  [data/logs/qa-prod-1782621039223.json](../data/logs/qa-prod-1782621039223.json)
 - 実行日時:
-  2026-06-28T03:12:21.984Z
+  2026-06-28T04:32:11.550Z
 - デプロイVersion ID:
-  e3dbb343-2a23-4604-98eb-d41fee485439
+  fe47706a-4f1c-441d-b90f-001488724ee8
 ### Q-09: 牧秀悟の最近の打撃成績
 
 - case_id:
@@ -868,6 +884,8 @@
     "inheritanceConfidence": 0.55,
     "shouldApplyInheritance": false
   }
+- follow_up_context_applied:
+  null
 - target_game_id:
   null
 - target_player_id:
@@ -883,11 +901,11 @@
 - 許容した差分:
   日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
 - 実行ログパス:
-  [data/logs/qa-prod-1782616253204.json](../data/logs/qa-prod-1782616253204.json)
+  [data/logs/qa-prod-1782621039223.json](../data/logs/qa-prod-1782621039223.json)
 - 実行日時:
-  2026-06-28T03:12:31.135Z
+  2026-06-28T04:32:20.580Z
 - デプロイVersion ID:
-  e3dbb343-2a23-4604-98eb-d41fee485439
+  fe47706a-4f1c-441d-b90f-001488724ee8
 ### Q-10: 最近の近本光司の調子は？
 
 - case_id:
@@ -967,6 +985,8 @@
     "inheritanceConfidence": 0.55,
     "shouldApplyInheritance": false
   }
+- follow_up_context_applied:
+  null
 - target_game_id:
   null
 - target_player_id:
@@ -982,11 +1002,11 @@
 - 許容した差分:
   日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
 - 実行ログパス:
-  [data/logs/qa-prod-1782616253204.json](../data/logs/qa-prod-1782616253204.json)
+  [data/logs/qa-prod-1782621039223.json](../data/logs/qa-prod-1782621039223.json)
 - 実行日時:
-  2026-06-28T03:12:40.350Z
+  2026-06-28T04:32:29.513Z
 - デプロイVersion ID:
-  e3dbb343-2a23-4604-98eb-d41fee485439
+  fe47706a-4f1c-441d-b90f-001488724ee8
 ### Q-11: 坂倉将吾の最近の打席内容を教えてください
 
 - case_id:
@@ -1068,6 +1088,8 @@
     "inheritanceConfidence": 0.55,
     "shouldApplyInheritance": false
   }
+- follow_up_context_applied:
+  null
 - target_game_id:
   null
 - target_player_id:
@@ -1083,11 +1105,11 @@
 - 許容した差分:
   日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
 - 実行ログパス:
-  [data/logs/qa-prod-1782616253204.json](../data/logs/qa-prod-1782616253204.json)
+  [data/logs/qa-prod-1782621039223.json](../data/logs/qa-prod-1782621039223.json)
 - 実行日時:
-  2026-06-28T03:12:54.690Z
+  2026-06-28T04:32:38.422Z
 - デプロイVersion ID:
-  e3dbb343-2a23-4604-98eb-d41fee485439
+  fe47706a-4f1c-441d-b90f-001488724ee8
 ### Q-12: 牧秀悟の今シーズンの通算打率は？
 
 - case_id:
@@ -1161,6 +1183,8 @@
     "inheritanceConfidence": 0.55,
     "shouldApplyInheritance": false
   }
+- follow_up_context_applied:
+  null
 - target_game_id:
   null
 - target_player_id:
@@ -1176,11 +1200,11 @@
 - 許容した差分:
   日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
 - 実行ログパス:
-  [data/logs/qa-prod-1782616253204.json](../data/logs/qa-prod-1782616253204.json)
+  [data/logs/qa-prod-1782621039223.json](../data/logs/qa-prod-1782621039223.json)
 - 実行日時:
-  2026-06-28T03:13:03.905Z
+  2026-06-28T04:32:47.440Z
 - デプロイVersion ID:
-  e3dbb343-2a23-4604-98eb-d41fee485439
+  fe47706a-4f1c-441d-b90f-001488724ee8
 ### Q-13: 牧の2026年の成績を教えて
 
 - case_id:
@@ -1254,6 +1278,8 @@
     "inheritanceConfidence": 0.55,
     "shouldApplyInheritance": false
   }
+- follow_up_context_applied:
+  null
 - target_game_id:
   null
 - target_player_id:
@@ -1269,11 +1295,11 @@
 - 許容した差分:
   日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
 - 実行ログパス:
-  [data/logs/qa-prod-1782616253204.json](../data/logs/qa-prod-1782616253204.json)
+  [data/logs/qa-prod-1782621039223.json](../data/logs/qa-prod-1782621039223.json)
 - 実行日時:
-  2026-06-28T03:13:14.549Z
+  2026-06-28T04:32:56.544Z
 - デプロイVersion ID:
-  e3dbb343-2a23-4604-98eb-d41fee485439
+  fe47706a-4f1c-441d-b90f-001488724ee8
 ### Q-14: DeNAの牧の2026年の成績
 
 - case_id:
@@ -1349,6 +1375,8 @@
     "inheritanceConfidence": 0.55,
     "shouldApplyInheritance": false
   }
+- follow_up_context_applied:
+  null
 - target_game_id:
   null
 - target_player_id:
@@ -1364,11 +1392,11 @@
 - 許容した差分:
   日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
 - 実行ログパス:
-  [data/logs/qa-prod-1782616253204.json](../data/logs/qa-prod-1782616253204.json)
+  [data/logs/qa-prod-1782621039223.json](../data/logs/qa-prod-1782621039223.json)
 - 実行日時:
-  2026-06-28T03:13:22.950Z
+  2026-06-28T04:33:04.823Z
 - デプロイVersion ID:
-  e3dbb343-2a23-4604-98eb-d41fee485439
+  fe47706a-4f1c-441d-b90f-001488724ee8
 ### Q-15: 村上宗隆は今シーズン打率どのくらい？本塁打は何本出てる？
 
 - case_id:
@@ -1446,6 +1474,8 @@
     "inheritanceConfidence": 0.55,
     "shouldApplyInheritance": false
   }
+- follow_up_context_applied:
+  null
 - target_game_id:
   null
 - target_player_id:
@@ -1461,11 +1491,11 @@
 - 許容した差分:
   日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
 - 実行ログパス:
-  [data/logs/qa-prod-1782616253204.json](../data/logs/qa-prod-1782616253204.json)
+  [data/logs/qa-prod-1782621039223.json](../data/logs/qa-prod-1782621039223.json)
 - 実行日時:
-  2026-06-28T03:13:33.400Z
+  2026-06-28T04:33:19.997Z
 - デプロイVersion ID:
-  e3dbb343-2a23-4604-98eb-d41fee485439
+  fe47706a-4f1c-441d-b90f-001488724ee8
 ### Q-16: ヤクルトの村上の今シーズン打率と本塁打数を教えてください
 
 - case_id:
@@ -1547,6 +1577,8 @@
     "inheritanceConfidence": 0.55,
     "shouldApplyInheritance": false
   }
+- follow_up_context_applied:
+  null
 - target_game_id:
   null
 - target_player_id:
@@ -1562,11 +1594,11 @@
 - 許容した差分:
   日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
 - 実行ログパス:
-  [data/logs/qa-prod-1782616253204.json](../data/logs/qa-prod-1782616253204.json)
+  [data/logs/qa-prod-1782621039223.json](../data/logs/qa-prod-1782621039223.json)
 - 実行日時:
-  2026-06-28T03:13:43.015Z
+  2026-06-28T04:33:30.230Z
 - デプロイVersion ID:
-  e3dbb343-2a23-4604-98eb-d41fee485439
+  fe47706a-4f1c-441d-b90f-001488724ee8
 ### Q-17: 今シーズン（2026年）の山本由伸と佐々木朗希を比較してください。防御率・奪三振・投球回の3つの観点で。
 
 - case_id:
@@ -1640,6 +1672,8 @@
     "inheritanceConfidence": 0.55,
     "shouldApplyInheritance": false
   }
+- follow_up_context_applied:
+  null
 - target_game_id:
   null
 - target_player_id:
@@ -1655,11 +1689,11 @@
 - 許容した差分:
   日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
 - 実行ログパス:
-  [data/logs/qa-prod-1782616253204.json](../data/logs/qa-prod-1782616253204.json)
+  [data/logs/qa-prod-1782621039223.json](../data/logs/qa-prod-1782621039223.json)
 - 実行日時:
-  2026-06-28T03:14:21.724Z
+  2026-06-28T04:34:06.897Z
 - デプロイVersion ID:
-  e3dbb343-2a23-4604-98eb-d41fee485439
+  fe47706a-4f1c-441d-b90f-001488724ee8
 ### Q-18: オリックスの山本由伸の2026年の一軍での投球成績、登板数と防御率を教えてください
 
 - case_id:
@@ -1735,6 +1769,8 @@
     "inheritanceConfidence": 0.55,
     "shouldApplyInheritance": false
   }
+- follow_up_context_applied:
+  null
 - target_game_id:
   null
 - target_player_id:
@@ -1750,11 +1786,11 @@
 - 許容した差分:
   日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
 - 実行ログパス:
-  [data/logs/qa-prod-1782616253204.json](../data/logs/qa-prod-1782616253204.json)
+  [data/logs/qa-prod-1782621039223.json](../data/logs/qa-prod-1782621039223.json)
 - 実行日時:
-  2026-06-28T03:14:57.974Z
+  2026-06-28T04:34:42.530Z
 - デプロイVersion ID:
-  e3dbb343-2a23-4604-98eb-d41fee485439
+  fe47706a-4f1c-441d-b90f-001488724ee8
 ### Q-19: 2025年の山本由伸（オリックス）の最終的なシーズン成績はどうでしたか？勝敗と防御率が知りたい
 
 - case_id:
@@ -1830,6 +1866,8 @@
     "inheritanceConfidence": 0.55,
     "shouldApplyInheritance": false
   }
+- follow_up_context_applied:
+  null
 - target_game_id:
   null
 - target_player_id:
@@ -1845,11 +1883,11 @@
 - 許容した差分:
   日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
 - 実行ログパス:
-  [data/logs/qa-prod-1782616253204.json](../data/logs/qa-prod-1782616253204.json)
+  [data/logs/qa-prod-1782621039223.json](../data/logs/qa-prod-1782621039223.json)
 - 実行日時:
-  2026-06-28T03:15:31.783Z
+  2026-06-28T04:35:16.441Z
 - デプロイVersion ID:
-  e3dbb343-2a23-4604-98eb-d41fee485439
+  fe47706a-4f1c-441d-b90f-001488724ee8
 ### Q-20: 2025年の大谷翔平の成績を教えてください
 
 - case_id:
@@ -1923,6 +1961,8 @@
     "inheritanceConfidence": 0.55,
     "shouldApplyInheritance": false
   }
+- follow_up_context_applied:
+  null
 - target_game_id:
   null
 - target_player_id:
@@ -1938,11 +1978,11 @@
 - 許容した差分:
   日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
 - 実行ログパス:
-  [data/logs/qa-prod-1782616253204.json](../data/logs/qa-prod-1782616253204.json)
+  [data/logs/qa-prod-1782621039223.json](../data/logs/qa-prod-1782621039223.json)
 - 実行日時:
-  2026-06-28T03:16:05.454Z
+  2026-06-28T04:35:50.013Z
 - デプロイVersion ID:
-  e3dbb343-2a23-4604-98eb-d41fee485439
+  fe47706a-4f1c-441d-b90f-001488724ee8
 ### Q-21: 佐々木朗希の最後のNPBでの登板はいつですか？
 
 - case_id:
@@ -2020,6 +2060,8 @@
     "inheritanceConfidence": 0.55,
     "shouldApplyInheritance": false
   }
+- follow_up_context_applied:
+  null
 - target_game_id:
   null
 - target_player_id:
@@ -2035,11 +2077,11 @@
 - 許容した差分:
   日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
 - 実行ログパス:
-  [data/logs/qa-prod-1782616253204.json](../data/logs/qa-prod-1782616253204.json)
+  [data/logs/qa-prod-1782621039223.json](../data/logs/qa-prod-1782621039223.json)
 - 実行日時:
-  2026-06-28T03:16:16.541Z
+  2026-06-28T04:36:00.891Z
 - デプロイVersion ID:
-  e3dbb343-2a23-4604-98eb-d41fee485439
+  fe47706a-4f1c-441d-b90f-001488724ee8
 ### Q-22: 2026年5月10日の広島の試合結果
 
 - case_id:
@@ -2119,6 +2161,8 @@
     "inheritanceConfidence": 0.55,
     "shouldApplyInheritance": false
   }
+- follow_up_context_applied:
+  null
 - target_game_id:
   null
 - target_player_id:
@@ -2134,11 +2178,11 @@
 - 許容した差分:
   日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
 - 実行ログパス:
-  [data/logs/qa-prod-1782616253204.json](../data/logs/qa-prod-1782616253204.json)
+  [data/logs/qa-prod-1782621039223.json](../data/logs/qa-prod-1782621039223.json)
 - 実行日時:
-  2026-06-28T03:16:25.013Z
+  2026-06-28T04:36:14.895Z
 - デプロイVersion ID:
-  e3dbb343-2a23-4604-98eb-d41fee485439
+  fe47706a-4f1c-441d-b90f-001488724ee8
 ### Q-23: 2026年5月15日の阪神の試合詳細
 
 - case_id:
@@ -2224,6 +2268,8 @@
     "inheritanceConfidence": 0.55,
     "shouldApplyInheritance": false
   }
+- follow_up_context_applied:
+  null
 - target_game_id:
   null
 - target_player_id:
@@ -2239,11 +2285,11 @@
 - 許容した差分:
   日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
 - 実行ログパス:
-  [data/logs/qa-prod-1782616253204.json](../data/logs/qa-prod-1782616253204.json)
+  [data/logs/qa-prod-1782621039223.json](../data/logs/qa-prod-1782621039223.json)
 - 実行日時:
-  2026-06-28T03:16:34.638Z
+  2026-06-28T04:36:23.300Z
 - デプロイVersion ID:
-  e3dbb343-2a23-4604-98eb-d41fee485439
+  fe47706a-4f1c-441d-b90f-001488724ee8
 ### Q-24: 2026年5月21日の巨人対DeNAの試合結果を教えてください
 
 - case_id:
@@ -2318,6 +2364,8 @@
     "inheritanceConfidence": 0.55,
     "shouldApplyInheritance": false
   }
+- follow_up_context_applied:
+  null
 - target_game_id:
   null
 - target_player_id:
@@ -2333,11 +2381,11 @@
 - 許容した差分:
   日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
 - 実行ログパス:
-  [data/logs/qa-prod-1782616253204.json](../data/logs/qa-prod-1782616253204.json)
+  [data/logs/qa-prod-1782621039223.json](../data/logs/qa-prod-1782621039223.json)
 - 実行日時:
-  2026-06-28T03:16:47.133Z
+  2026-06-28T04:36:36.500Z
 - デプロイVersion ID:
-  e3dbb343-2a23-4604-98eb-d41fee485439
+  fe47706a-4f1c-441d-b90f-001488724ee8
 ### Q-25: 2025年の日本シリーズの結果を教えてください
 
 - case_id:
@@ -2418,6 +2466,8 @@
     "inheritanceConfidence": 0.55,
     "shouldApplyInheritance": false
   }
+- follow_up_context_applied:
+  null
 - target_game_id:
   null
 - target_player_id:
@@ -2433,11 +2483,11 @@
 - 許容した差分:
   日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
 - 実行ログパス:
-  [data/logs/qa-prod-1782616253204.json](../data/logs/qa-prod-1782616253204.json)
+  [data/logs/qa-prod-1782621039223.json](../data/logs/qa-prod-1782621039223.json)
 - 実行日時:
-  2026-06-28T03:16:56.600Z
+  2026-06-28T04:36:45.204Z
 - デプロイVersion ID:
-  e3dbb343-2a23-4604-98eb-d41fee485439
+  fe47706a-4f1c-441d-b90f-001488724ee8
 ### Q-26: 2026年5月10日の広島のスタメンを教えてください
 
 - case_id:
@@ -2511,6 +2561,8 @@
     "inheritanceConfidence": 0.55,
     "shouldApplyInheritance": false
   }
+- follow_up_context_applied:
+  null
 - target_game_id:
   null
 - target_player_id:
@@ -2526,11 +2578,11 @@
 - 許容した差分:
   日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
 - 実行ログパス:
-  [data/logs/qa-prod-1782616253204.json](../data/logs/qa-prod-1782616253204.json)
+  [data/logs/qa-prod-1782621039223.json](../data/logs/qa-prod-1782621039223.json)
 - 実行日時:
-  2026-06-28T03:17:05.268Z
+  2026-06-28T04:36:53.810Z
 - デプロイVersion ID:
-  e3dbb343-2a23-4604-98eb-d41fee485439
+  fe47706a-4f1c-441d-b90f-001488724ee8
 ### Q-27: DeNAで5番ショートは最近いつ？
 
 - case_id:
@@ -2604,6 +2656,8 @@
     "inheritanceConfidence": 0.55,
     "shouldApplyInheritance": false
   }
+- follow_up_context_applied:
+  null
 - target_game_id:
   null
 - target_player_id:
@@ -2619,11 +2673,11 @@
 - 許容した差分:
   日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
 - 実行ログパス:
-  [data/logs/qa-prod-1782616253204.json](../data/logs/qa-prod-1782616253204.json)
+  [data/logs/qa-prod-1782621039223.json](../data/logs/qa-prod-1782621039223.json)
 - 実行日時:
-  2026-06-28T03:17:13.965Z
+  2026-06-28T04:37:02.612Z
 - デプロイVersion ID:
-  e3dbb343-2a23-4604-98eb-d41fee485439
+  fe47706a-4f1c-441d-b90f-001488724ee8
 ### Q-28: 今シーズンのヤクルトで最も多く4番に起用されている選手は誰ですか？
 
 - case_id:
@@ -2698,6 +2752,8 @@
     "inheritanceConfidence": 0.55,
     "shouldApplyInheritance": false
   }
+- follow_up_context_applied:
+  null
 - target_game_id:
   null
 - target_player_id:
@@ -2713,11 +2769,11 @@
 - 許容した差分:
   日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
 - 実行ログパス:
-  [data/logs/qa-prod-1782616253204.json](../data/logs/qa-prod-1782616253204.json)
+  [data/logs/qa-prod-1782621039223.json](../data/logs/qa-prod-1782621039223.json)
 - 実行日時:
-  2026-06-28T03:17:25.432Z
+  2026-06-28T04:37:13.635Z
 - デプロイVersion ID:
-  e3dbb343-2a23-4604-98eb-d41fee485439
+  fe47706a-4f1c-441d-b90f-001488724ee8
 ### Q-29: 今シーズンDeNAで捕手（スタメン）として最も多く出場しているのは誰？
 
 - case_id:
@@ -2798,6 +2854,8 @@
     "inheritanceConfidence": 0.55,
     "shouldApplyInheritance": false
   }
+- follow_up_context_applied:
+  null
 - target_game_id:
   null
 - target_player_id:
@@ -2813,11 +2871,11 @@
 - 許容した差分:
   日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
 - 実行ログパス:
-  [data/logs/qa-prod-1782616253204.json](../data/logs/qa-prod-1782616253204.json)
+  [data/logs/qa-prod-1782621039223.json](../data/logs/qa-prod-1782621039223.json)
 - 実行日時:
-  2026-06-28T03:17:35.772Z
+  2026-06-28T04:37:24.014Z
 - デプロイVersion ID:
-  e3dbb343-2a23-4604-98eb-d41fee485439
+  fe47706a-4f1c-441d-b90f-001488724ee8
 ### Q-30: 今シーズンのパ・リーグ打率ランキングトップ5を教えてください
 
 - case_id:
@@ -2896,6 +2954,8 @@
     "inheritanceConfidence": 0.55,
     "shouldApplyInheritance": false
   }
+- follow_up_context_applied:
+  null
 - target_game_id:
   null
 - target_player_id:
@@ -2911,11 +2971,11 @@
 - 許容した差分:
   日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
 - 実行ログパス:
-  [data/logs/qa-prod-1782616253204.json](../data/logs/qa-prod-1782616253204.json)
+  [data/logs/qa-prod-1782621039223.json](../data/logs/qa-prod-1782621039223.json)
 - 実行日時:
-  2026-06-28T03:17:47.085Z
+  2026-06-28T04:37:34.981Z
 - デプロイVersion ID:
-  e3dbb343-2a23-4604-98eb-d41fee485439
+  fe47706a-4f1c-441d-b90f-001488724ee8
 ### Q-31: 今シーズンのセ・リーグで打率・出塁率・長打率のバランスが最も優れていると思われる打者を1人挙げて、その根拠を数字で示してください。
 
 - case_id:
@@ -2999,6 +3059,8 @@
     "inheritanceConfidence": 0.55,
     "shouldApplyInheritance": false
   }
+- follow_up_context_applied:
+  null
 - target_game_id:
   null
 - target_player_id:
@@ -3014,11 +3076,11 @@
 - 許容した差分:
   日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
 - 実行ログパス:
-  [data/logs/qa-prod-1782616253204.json](../data/logs/qa-prod-1782616253204.json)
+  [data/logs/qa-prod-1782621039223.json](../data/logs/qa-prod-1782621039223.json)
 - 実行日時:
-  2026-06-28T03:17:56.152Z
+  2026-06-28T04:37:43.269Z
 - デプロイVersion ID:
-  e3dbb343-2a23-4604-98eb-d41fee485439
+  fe47706a-4f1c-441d-b90f-001488724ee8
 ### Q-32: 今シーズンのパ・リーグ盗塁数ランキングを教えてください
 
 - case_id:
@@ -3102,6 +3164,8 @@
     "inheritanceConfidence": 0.55,
     "shouldApplyInheritance": false
   }
+- follow_up_context_applied:
+  null
 - target_game_id:
   null
 - target_player_id:
@@ -3117,11 +3181,11 @@
 - 許容した差分:
   日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
 - 実行ログパス:
-  [data/logs/qa-prod-1782616253204.json](../data/logs/qa-prod-1782616253204.json)
+  [data/logs/qa-prod-1782621039223.json](../data/logs/qa-prod-1782621039223.json)
 - 実行日時:
-  2026-06-28T03:18:07.628Z
+  2026-06-28T04:37:54.632Z
 - デプロイVersion ID:
-  e3dbb343-2a23-4604-98eb-d41fee485439
+  fe47706a-4f1c-441d-b90f-001488724ee8
 ### Q-33: 今シーズンのセ・リーグ打点ランキングトップ5
 
 - case_id:
@@ -3204,6 +3268,8 @@
     "inheritanceConfidence": 0.55,
     "shouldApplyInheritance": false
   }
+- follow_up_context_applied:
+  null
 - target_game_id:
   null
 - target_player_id:
@@ -3219,11 +3285,11 @@
 - 許容した差分:
   日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
 - 実行ログパス:
-  [data/logs/qa-prod-1782616253204.json](../data/logs/qa-prod-1782616253204.json)
+  [data/logs/qa-prod-1782621039223.json](../data/logs/qa-prod-1782621039223.json)
 - 実行日時:
-  2026-06-28T03:18:16.121Z
+  2026-06-28T04:38:03.475Z
 - デプロイVersion ID:
-  e3dbb343-2a23-4604-98eb-d41fee485439
+  fe47706a-4f1c-441d-b90f-001488724ee8
 ### Q-34: 2026年セ・リーグの本塁打ランキングを教えてください
 
 - case_id:
@@ -3307,6 +3373,8 @@
     "inheritanceConfidence": 0.55,
     "shouldApplyInheritance": false
   }
+- follow_up_context_applied:
+  null
 - target_game_id:
   null
 - target_player_id:
@@ -3322,11 +3390,11 @@
 - 許容した差分:
   日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
 - 実行ログパス:
-  [data/logs/qa-prod-1782616253204.json](../data/logs/qa-prod-1782616253204.json)
+  [data/logs/qa-prod-1782621039223.json](../data/logs/qa-prod-1782621039223.json)
 - 実行日時:
-  2026-06-28T03:18:24.618Z
+  2026-06-28T04:38:12.245Z
 - デプロイVersion ID:
-  e3dbb343-2a23-4604-98eb-d41fee485439
+  fe47706a-4f1c-441d-b90f-001488724ee8
 ### Q-35: 今シーズンのパ・リーグ本塁打ランキングを教えてください
 
 - case_id:
@@ -3410,6 +3478,8 @@
     "inheritanceConfidence": 0.55,
     "shouldApplyInheritance": false
   }
+- follow_up_context_applied:
+  null
 - target_game_id:
   null
 - target_player_id:
@@ -3425,11 +3495,11 @@
 - 許容した差分:
   日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
 - 実行ログパス:
-  [data/logs/qa-prod-1782616253204.json](../data/logs/qa-prod-1782616253204.json)
+  [data/logs/qa-prod-1782621039223.json](../data/logs/qa-prod-1782621039223.json)
 - 実行日時:
-  2026-06-28T03:18:35.890Z
+  2026-06-28T04:38:23.100Z
 - デプロイVersion ID:
-  e3dbb343-2a23-4604-98eb-d41fee485439
+  fe47706a-4f1c-441d-b90f-001488724ee8
 ### Q-36: 2022年から2024年の3年間で、NPB全体で最も本塁打を多く打った打者トップ3を教えてください。
 
 - case_id:
@@ -3504,6 +3574,8 @@
     "inheritanceConfidence": 0.55,
     "shouldApplyInheritance": false
   }
+- follow_up_context_applied:
+  null
 - target_game_id:
   null
 - target_player_id:
@@ -3519,11 +3591,11 @@
 - 許容した差分:
   日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
 - 実行ログパス:
-  [data/logs/qa-prod-1782616253204.json](../data/logs/qa-prod-1782616253204.json)
+  [data/logs/qa-prod-1782621039223.json](../data/logs/qa-prod-1782621039223.json)
 - 実行日時:
-  2026-06-28T03:18:48.169Z
+  2026-06-28T04:38:34.977Z
 - デプロイVersion ID:
-  e3dbb343-2a23-4604-98eb-d41fee485439
+  fe47706a-4f1c-441d-b90f-001488724ee8
 ### Q-37: 2022年から2024年のパ・リーグで本塁打が最も多い打者トップ3
 
 - case_id:
@@ -3604,6 +3676,8 @@
     "inheritanceConfidence": 0.55,
     "shouldApplyInheritance": false
   }
+- follow_up_context_applied:
+  null
 - target_game_id:
   null
 - target_player_id:
@@ -3619,11 +3693,11 @@
 - 許容した差分:
   日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
 - 実行ログパス:
-  [data/logs/qa-prod-1782616253204.json](../data/logs/qa-prod-1782616253204.json)
+  [data/logs/qa-prod-1782621039223.json](../data/logs/qa-prod-1782621039223.json)
 - 実行日時:
-  2026-06-28T03:18:59.955Z
+  2026-06-28T04:38:46.243Z
 - デプロイVersion ID:
-  e3dbb343-2a23-4604-98eb-d41fee485439
+  fe47706a-4f1c-441d-b90f-001488724ee8
 ### Q-38: 2026年の先発防御率ランキングトップ5
 
 - case_id:
@@ -3700,6 +3774,8 @@
     "inheritanceConfidence": 0.55,
     "shouldApplyInheritance": false
   }
+- follow_up_context_applied:
+  null
 - target_game_id:
   null
 - target_player_id:
@@ -3715,11 +3791,11 @@
 - 許容した差分:
   日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
 - 実行ログパス:
-  [data/logs/qa-prod-1782616253204.json](../data/logs/qa-prod-1782616253204.json)
+  [data/logs/qa-prod-1782621039223.json](../data/logs/qa-prod-1782621039223.json)
 - 実行日時:
-  2026-06-28T03:19:09.217Z
+  2026-06-28T04:38:55.459Z
 - デプロイVersion ID:
-  e3dbb343-2a23-4604-98eb-d41fee485439
+  fe47706a-4f1c-441d-b90f-001488724ee8
 ### Q-39: 2026年セ・リーグの先発防御率ランキングを教えてください
 
 - case_id:
@@ -3803,6 +3879,8 @@
     "inheritanceConfidence": 0.55,
     "shouldApplyInheritance": false
   }
+- follow_up_context_applied:
+  null
 - target_game_id:
   null
 - target_player_id:
@@ -3818,11 +3896,11 @@
 - 許容した差分:
   日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
 - 実行ログパス:
-  [data/logs/qa-prod-1782616253204.json](../data/logs/qa-prod-1782616253204.json)
+  [data/logs/qa-prod-1782621039223.json](../data/logs/qa-prod-1782621039223.json)
 - 実行日時:
-  2026-06-28T03:19:18.737Z
+  2026-06-28T04:39:04.674Z
 - デプロイVersion ID:
-  e3dbb343-2a23-4604-98eb-d41fee485439
+  fe47706a-4f1c-441d-b90f-001488724ee8
 ### Q-40: 今シーズン（2026年）の先発陣で、WHIPが最も低い投手を教えてください。WHIPは（被安打＋与四球）÷投球回で計算してください。
 
 - case_id:
@@ -3904,6 +3982,8 @@
     "inheritanceConfidence": 0.55,
     "shouldApplyInheritance": false
   }
+- follow_up_context_applied:
+  null
 - target_game_id:
   null
 - target_player_id:
@@ -3919,11 +3999,11 @@
 - 許容した差分:
   日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
 - 実行ログパス:
-  [data/logs/qa-prod-1782616253204.json](../data/logs/qa-prod-1782616253204.json)
+  [data/logs/qa-prod-1782621039223.json](../data/logs/qa-prod-1782621039223.json)
 - 実行日時:
-  2026-06-28T03:19:28.318Z
+  2026-06-28T04:39:19.219Z
 - デプロイVersion ID:
-  e3dbb343-2a23-4604-98eb-d41fee485439
+  fe47706a-4f1c-441d-b90f-001488724ee8
 ### Q-41: 2026年セ・リーグのWHIPランキングを教えてください
 
 - case_id:
@@ -4007,6 +4087,8 @@
     "inheritanceConfidence": 0.55,
     "shouldApplyInheritance": false
   }
+- follow_up_context_applied:
+  null
 - target_game_id:
   null
 - target_player_id:
@@ -4022,11 +4104,11 @@
 - 許容した差分:
   日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
 - 実行ログパス:
-  [data/logs/qa-prod-1782616253204.json](../data/logs/qa-prod-1782616253204.json)
+  [data/logs/qa-prod-1782621039223.json](../data/logs/qa-prod-1782621039223.json)
 - 実行日時:
-  2026-06-28T03:19:38.226Z
+  2026-06-28T04:39:28.049Z
 - デプロイVersion ID:
-  e3dbb343-2a23-4604-98eb-d41fee485439
+  fe47706a-4f1c-441d-b90f-001488724ee8
 ### Q-42: 今シーズンの広島の先発投手で防御率が最もいい投手を教えてください。防御率は自責点÷投球回×9で計算してください
 
 - case_id:
@@ -4107,6 +4189,8 @@
     "inheritanceConfidence": 0.55,
     "shouldApplyInheritance": false
   }
+- follow_up_context_applied:
+  null
 - target_game_id:
   null
 - target_player_id:
@@ -4122,11 +4206,11 @@
 - 許容した差分:
   日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
 - 実行ログパス:
-  [data/logs/qa-prod-1782616253204.json](../data/logs/qa-prod-1782616253204.json)
+  [data/logs/qa-prod-1782621039223.json](../data/logs/qa-prod-1782621039223.json)
 - 実行日時:
-  2026-06-28T03:19:47.152Z
+  2026-06-28T04:39:36.628Z
 - デプロイVersion ID:
-  e3dbb343-2a23-4604-98eb-d41fee485439
+  fe47706a-4f1c-441d-b90f-001488724ee8
 ### Q-43: 今シーズン（2026年）の先発登板で、7回以上投げてかつ自責点0だった試合が一番多い投手は誰ですか？その投手の名前と該当試合数を教えてください。
 
 - case_id:
@@ -4208,6 +4292,8 @@
     "inheritanceConfidence": 0.55,
     "shouldApplyInheritance": false
   }
+- follow_up_context_applied:
+  null
 - target_game_id:
   null
 - target_player_id:
@@ -4223,11 +4309,11 @@
 - 許容した差分:
   日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
 - 実行ログパス:
-  [data/logs/qa-prod-1782616253204.json](../data/logs/qa-prod-1782616253204.json)
+  [data/logs/qa-prod-1782621039223.json](../data/logs/qa-prod-1782621039223.json)
 - 実行日時:
-  2026-06-28T03:19:57.597Z
+  2026-06-28T04:39:46.247Z
 - デプロイVersion ID:
-  e3dbb343-2a23-4604-98eb-d41fee485439
+  fe47706a-4f1c-441d-b90f-001488724ee8
 ### Q-44: 今シーズンの奪三振数ランキングトップ5（全リーグ）
 
 - case_id:
@@ -4304,6 +4390,8 @@
     "inheritanceConfidence": 0.55,
     "shouldApplyInheritance": false
   }
+- follow_up_context_applied:
+  null
 - target_game_id:
   null
 - target_player_id:
@@ -4319,11 +4407,11 @@
 - 許容した差分:
   日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
 - 実行ログパス:
-  [data/logs/qa-prod-1782616253204.json](../data/logs/qa-prod-1782616253204.json)
+  [data/logs/qa-prod-1782621039223.json](../data/logs/qa-prod-1782621039223.json)
 - 実行日時:
-  2026-06-28T03:20:06.820Z
+  2026-06-28T04:39:55.567Z
 - デプロイVersion ID:
-  e3dbb343-2a23-4604-98eb-d41fee485439
+  fe47706a-4f1c-441d-b90f-001488724ee8
 ### Q-45: 今シーズン完封勝利した投手をすべて教えてください
 
 - case_id:
@@ -4405,6 +4493,8 @@
     "inheritanceConfidence": 0.55,
     "shouldApplyInheritance": false
   }
+- follow_up_context_applied:
+  null
 - target_game_id:
   null
 - target_player_id:
@@ -4420,11 +4510,11 @@
 - 許容した差分:
   日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
 - 実行ログパス:
-  [data/logs/qa-prod-1782616253204.json](../data/logs/qa-prod-1782616253204.json)
+  [data/logs/qa-prod-1782621039223.json](../data/logs/qa-prod-1782621039223.json)
 - 実行日時:
-  2026-06-28T03:20:16.045Z
+  2026-06-28T04:40:04.683Z
 - デプロイVersion ID:
-  e3dbb343-2a23-4604-98eb-d41fee485439
+  fe47706a-4f1c-441d-b90f-001488724ee8
 ### Q-46: 今シーズンのセーブ数ランキングを教えてください
 
 - case_id:
@@ -4510,6 +4600,8 @@
     "inheritanceConfidence": 0.55,
     "shouldApplyInheritance": false
   }
+- follow_up_context_applied:
+  null
 - target_game_id:
   null
 - target_player_id:
@@ -4525,11 +4617,11 @@
 - 許容した差分:
   日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
 - 実行ログパス:
-  [data/logs/qa-prod-1782616253204.json](../data/logs/qa-prod-1782616253204.json)
+  [data/logs/qa-prod-1782621039223.json](../data/logs/qa-prod-1782621039223.json)
 - 実行日時:
-  2026-06-28T03:20:25.863Z
+  2026-06-28T04:40:13.685Z
 - デプロイVersion ID:
-  e3dbb343-2a23-4604-98eb-d41fee485439
+  fe47706a-4f1c-441d-b90f-001488724ee8
 ### Q-47: 今シーズン（2026年）のパ・リーグ各チームの勝敗を教えてください
 
 - case_id:
@@ -4609,6 +4701,8 @@
     "inheritanceConfidence": 0.55,
     "shouldApplyInheritance": false
   }
+- follow_up_context_applied:
+  null
 - target_game_id:
   null
 - target_player_id:
@@ -4624,11 +4718,11 @@
 - 許容した差分:
   日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
 - 実行ログパス:
-  [data/logs/qa-prod-1782616253204.json](../data/logs/qa-prod-1782616253204.json)
+  [data/logs/qa-prod-1782621039223.json](../data/logs/qa-prod-1782621039223.json)
 - 実行日時:
-  2026-06-28T03:20:34.877Z
+  2026-06-28T04:40:22.703Z
 - デプロイVersion ID:
-  e3dbb343-2a23-4604-98eb-d41fee485439
+  fe47706a-4f1c-441d-b90f-001488724ee8
 ### Q-48: 今シーズン阪神は何勝何敗ですか？
 
 - case_id:
@@ -4703,6 +4797,8 @@
     "inheritanceConfidence": 0.55,
     "shouldApplyInheritance": false
   }
+- follow_up_context_applied:
+  null
 - target_game_id:
   null
 - target_player_id:
@@ -4718,11 +4814,11 @@
 - 許容した差分:
   日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
 - 実行ログパス:
-  [data/logs/qa-prod-1782616253204.json](../data/logs/qa-prod-1782616253204.json)
+  [data/logs/qa-prod-1782621039223.json](../data/logs/qa-prod-1782621039223.json)
 - 実行日時:
-  2026-06-28T03:20:44.188Z
+  2026-06-28T04:40:32.738Z
 - デプロイVersion ID:
-  e3dbb343-2a23-4604-98eb-d41fee485439
+  fe47706a-4f1c-441d-b90f-001488724ee8
 ### Q-49: 今シーズンDeNAは勝ち越してますか？負け越してますか？
 
 - case_id:
@@ -4797,6 +4893,8 @@
     "inheritanceConfidence": 0.55,
     "shouldApplyInheritance": false
   }
+- follow_up_context_applied:
+  null
 - target_game_id:
   null
 - target_player_id:
@@ -4812,11 +4910,11 @@
 - 許容した差分:
   日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
 - 実行ログパス:
-  [data/logs/qa-prod-1782616253204.json](../data/logs/qa-prod-1782616253204.json)
+  [data/logs/qa-prod-1782621039223.json](../data/logs/qa-prod-1782621039223.json)
 - 実行日時:
-  2026-06-28T03:20:53.100Z
+  2026-06-28T04:40:41.151Z
 - デプロイVersion ID:
-  e3dbb343-2a23-4604-98eb-d41fee485439
+  fe47706a-4f1c-441d-b90f-001488724ee8
 ### Q-50: 2024年のセ・リーグで勝利数が最も多いチームはどこですか？
 
 - case_id:
@@ -4900,6 +4998,8 @@
     "inheritanceConfidence": 0.55,
     "shouldApplyInheritance": false
   }
+- follow_up_context_applied:
+  null
 - target_game_id:
   null
 - target_player_id:
@@ -4915,11 +5015,11 @@
 - 許容した差分:
   日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
 - 実行ログパス:
-  [data/logs/qa-prod-1782616253204.json](../data/logs/qa-prod-1782616253204.json)
+  [data/logs/qa-prod-1782621039223.json](../data/logs/qa-prod-1782621039223.json)
 - 実行日時:
-  2026-06-28T03:21:02.116Z
+  2026-06-28T04:40:49.943Z
 - デプロイVersion ID:
-  e3dbb343-2a23-4604-98eb-d41fee485439
+  fe47706a-4f1c-441d-b90f-001488724ee8
 ### Q-51: 牧秀悟の2023年から2025年の通算打率と本塁打数を教えてください
 
 - case_id:
@@ -4993,6 +5093,8 @@
     "inheritanceConfidence": 0.55,
     "shouldApplyInheritance": false
   }
+- follow_up_context_applied:
+  null
 - target_game_id:
   null
 - target_player_id:
@@ -5008,11 +5110,11 @@
 - 許容した差分:
   日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
 - 実行ログパス:
-  [data/logs/qa-prod-1782616253204.json](../data/logs/qa-prod-1782616253204.json)
+  [data/logs/qa-prod-1782621039223.json](../data/logs/qa-prod-1782621039223.json)
 - 実行日時:
-  2026-06-28T03:21:46.348Z
+  2026-06-28T04:41:31.107Z
 - デプロイVersion ID:
-  e3dbb343-2a23-4604-98eb-d41fee485439
+  fe47706a-4f1c-441d-b90f-001488724ee8
 ### Q-52: 村上宗隆の2019年から2025年の年別本塁打数を教えてください
 
 - case_id:
@@ -5088,6 +5190,8 @@
     "inheritanceConfidence": 0.55,
     "shouldApplyInheritance": false
   }
+- follow_up_context_applied:
+  null
 - target_game_id:
   null
 - target_player_id:
@@ -5103,11 +5207,11 @@
 - 許容した差分:
   日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
 - 実行ログパス:
-  [data/logs/qa-prod-1782616253204.json](../data/logs/qa-prod-1782616253204.json)
+  [data/logs/qa-prod-1782621039223.json](../data/logs/qa-prod-1782621039223.json)
 - 実行日時:
-  2026-06-28T03:22:02.954Z
+  2026-06-28T04:41:48.239Z
 - デプロイVersion ID:
-  e3dbb343-2a23-4604-98eb-d41fee485439
+  fe47706a-4f1c-441d-b90f-001488724ee8
 ### Q-53: 岡本和真の2016年以降の通算本塁打数を教えてください
 
 - case_id:
@@ -5181,6 +5285,8 @@
     "inheritanceConfidence": 0.55,
     "shouldApplyInheritance": false
   }
+- follow_up_context_applied:
+  null
 - target_game_id:
   null
 - target_player_id:
@@ -5196,11 +5302,11 @@
 - 許容した差分:
   日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
 - 実行ログパス:
-  [data/logs/qa-prod-1782616253204.json](../data/logs/qa-prod-1782616253204.json)
+  [data/logs/qa-prod-1782621039223.json](../data/logs/qa-prod-1782621039223.json)
 - 実行日時:
-  2026-06-28T03:22:15.695Z
+  2026-06-28T04:41:59.778Z
 - デプロイVersion ID:
-  e3dbb343-2a23-4604-98eb-d41fee485439
+  fe47706a-4f1c-441d-b90f-001488724ee8
 ### Q-54: 2019年のDeNA対阪神の対戦成績（勝敗）を教えてください
 
 - case_id:
@@ -5279,6 +5385,8 @@
     "inheritanceConfidence": 0.55,
     "shouldApplyInheritance": false
   }
+- follow_up_context_applied:
+  null
 - target_game_id:
   null
 - target_player_id:
@@ -5294,11 +5402,11 @@
 - 許容した差分:
   日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
 - 実行ログパス:
-  [data/logs/qa-prod-1782616253204.json](../data/logs/qa-prod-1782616253204.json)
+  [data/logs/qa-prod-1782621039223.json](../data/logs/qa-prod-1782621039223.json)
 - 実行日時:
-  2026-06-28T03:22:24.236Z
+  2026-06-28T04:42:08.480Z
 - デプロイVersion ID:
-  e3dbb343-2a23-4604-98eb-d41fee485439
+  fe47706a-4f1c-441d-b90f-001488724ee8
 ### Q-55: 今シーズン代打ホームランを打った選手は？
 
 - case_id:
@@ -5370,6 +5478,8 @@
     "inheritanceConfidence": 0.55,
     "shouldApplyInheritance": false
   }
+- follow_up_context_applied:
+  null
 - target_game_id:
   null
 - target_player_id:
@@ -5385,11 +5495,11 @@
 - 許容した差分:
   日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
 - 実行ログパス:
-  [data/logs/qa-prod-1782616253204.json](../data/logs/qa-prod-1782616253204.json)
+  [data/logs/qa-prod-1782621039223.json](../data/logs/qa-prod-1782621039223.json)
 - 実行日時:
-  2026-06-28T03:22:33.861Z
+  2026-06-28T04:42:18.029Z
 - デプロイVersion ID:
-  e3dbb343-2a23-4604-98eb-d41fee485439
+  fe47706a-4f1c-441d-b90f-001488724ee8
 ### Q-56: 今シーズン阪神のサヨナラ勝ちはいつ？
 
 - case_id:
@@ -5463,6 +5573,8 @@
     "inheritanceConfidence": 0.55,
     "shouldApplyInheritance": false
   }
+- follow_up_context_applied:
+  null
 - target_game_id:
   null
 - target_player_id:
@@ -5478,11 +5590,11 @@
 - 許容した差分:
   日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
 - 実行ログパス:
-  [data/logs/qa-prod-1782616253204.json](../data/logs/qa-prod-1782616253204.json)
+  [data/logs/qa-prod-1782621039223.json](../data/logs/qa-prod-1782621039223.json)
 - 実行日時:
-  2026-06-28T03:22:42.678Z
+  2026-06-28T04:42:26.610Z
 - デプロイVersion ID:
-  e3dbb343-2a23-4604-98eb-d41fee485439
+  fe47706a-4f1c-441d-b90f-001488724ee8
 ### Q-57: 今シーズン最も球数が多かった登板を教えてください
 
 - case_id:
@@ -5554,6 +5666,8 @@
     "inheritanceConfidence": 0.55,
     "shouldApplyInheritance": false
   }
+- follow_up_context_applied:
+  null
 - target_game_id:
   null
 - target_player_id:
@@ -5569,11 +5683,11 @@
 - 許容した差分:
   日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
 - 実行ログパス:
-  [data/logs/qa-prod-1782616253204.json](../data/logs/qa-prod-1782616253204.json)
+  [data/logs/qa-prod-1782621039223.json](../data/logs/qa-prod-1782621039223.json)
 - 実行日時:
-  2026-06-28T03:22:51.250Z
+  2026-06-28T04:42:35.118Z
 - デプロイVersion ID:
-  e3dbb343-2a23-4604-98eb-d41fee485439
+  fe47706a-4f1c-441d-b90f-001488724ee8
 ### Q-58: 今シーズン広島の先発投手で最も長く投げた登板は？
 
 - case_id:
@@ -5661,6 +5775,8 @@
     "inheritanceConfidence": 0.55,
     "shouldApplyInheritance": false
   }
+- follow_up_context_applied:
+  null
 - target_game_id:
   null
 - target_player_id:
@@ -5676,11 +5792,11 @@
 - 許容した差分:
   日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
 - 実行ログパス:
-  [data/logs/qa-prod-1782616253204.json](../data/logs/qa-prod-1782616253204.json)
+  [data/logs/qa-prod-1782621039223.json](../data/logs/qa-prod-1782621039223.json)
 - 実行日時:
-  2026-06-28T03:23:00.483Z
+  2026-06-28T04:42:44.838Z
 - デプロイVersion ID:
-  e3dbb343-2a23-4604-98eb-d41fee485439
+  fe47706a-4f1c-441d-b90f-001488724ee8
 ### Q-59: 今シーズン甲子園での阪神の成績を教えてください
 
 - case_id:
@@ -5755,6 +5871,8 @@
     "inheritanceConfidence": 0.55,
     "shouldApplyInheritance": false
   }
+- follow_up_context_applied:
+  null
 - target_game_id:
   null
 - target_player_id:
@@ -5770,11 +5888,11 @@
 - 許容した差分:
   日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
 - 実行ログパス:
-  [data/logs/qa-prod-1782616253204.json](../data/logs/qa-prod-1782616253204.json)
+  [data/logs/qa-prod-1782621039223.json](../data/logs/qa-prod-1782621039223.json)
 - 実行日時:
-  2026-06-28T03:23:14.308Z
+  2026-06-28T04:42:53.642Z
 - デプロイVersion ID:
-  e3dbb343-2a23-4604-98eb-d41fee485439
+  fe47706a-4f1c-441d-b90f-001488724ee8
 ### Q-60: 東京ドームでのDeNA対巨人の試合結果（今シーズン）
 
 - case_id:
@@ -5853,6 +5971,8 @@
     "inheritanceConfidence": 0.55,
     "shouldApplyInheritance": false
   }
+- follow_up_context_applied:
+  null
 - target_game_id:
   null
 - target_player_id:
@@ -5868,11 +5988,11 @@
 - 許容した差分:
   日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
 - 実行ログパス:
-  [data/logs/qa-prod-1782616253204.json](../data/logs/qa-prod-1782616253204.json)
+  [data/logs/qa-prod-1782621039223.json](../data/logs/qa-prod-1782621039223.json)
 - 実行日時:
-  2026-06-28T03:23:26.699Z
+  2026-06-28T04:43:06.235Z
 - デプロイVersion ID:
-  e3dbb343-2a23-4604-98eb-d41fee485439
+  fe47706a-4f1c-441d-b90f-001488724ee8
 ### Q-61: 今シーズンの田中の成績を教えてください。
 
 - case_id:
@@ -5946,6 +6066,8 @@
     "inheritanceConfidence": 0.55,
     "shouldApplyInheritance": false
   }
+- follow_up_context_applied:
+  null
 - target_game_id:
   null
 - target_player_id:
@@ -5961,11 +6083,11 @@
 - 許容した差分:
   日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
 - 実行ログパス:
-  [data/logs/qa-prod-1782616253204.json](../data/logs/qa-prod-1782616253204.json)
+  [data/logs/qa-prod-1782621039223.json](../data/logs/qa-prod-1782621039223.json)
 - 実行日時:
-  2026-06-28T03:23:35.301Z
+  2026-06-28T04:43:15.251Z
 - デプロイVersion ID:
-  e3dbb343-2a23-4604-98eb-d41fee485439
+  fe47706a-4f1c-441d-b90f-001488724ee8
 ### Q-62: 佐藤の今シーズン成績を教えて
 
 - case_id:
@@ -6039,6 +6161,8 @@
     "inheritanceConfidence": 0.55,
     "shouldApplyInheritance": false
   }
+- follow_up_context_applied:
+  null
 - target_game_id:
   null
 - target_player_id:
@@ -6054,11 +6178,11 @@
 - 許容した差分:
   日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
 - 実行ログパス:
-  [data/logs/qa-prod-1782616253204.json](../data/logs/qa-prod-1782616253204.json)
+  [data/logs/qa-prod-1782621039223.json](../data/logs/qa-prod-1782621039223.json)
 - 実行日時:
-  2026-06-28T03:23:44.339Z
+  2026-06-28T04:43:23.699Z
 - デプロイVersion ID:
-  e3dbb343-2a23-4604-98eb-d41fee485439
+  fe47706a-4f1c-441d-b90f-001488724ee8
 ### Q-63: 村上と青木の今シーズン成績を比べてください
 
 - case_id:
@@ -6138,6 +6262,8 @@
     "inheritanceConfidence": 0.55,
     "shouldApplyInheritance": false
   }
+- follow_up_context_applied:
+  null
 - target_game_id:
   null
 - target_player_id:
@@ -6153,11 +6279,11 @@
 - 許容した差分:
   日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
 - 実行ログパス:
-  [data/logs/qa-prod-1782616253204.json](../data/logs/qa-prod-1782616253204.json)
+  [data/logs/qa-prod-1782621039223.json](../data/logs/qa-prod-1782621039223.json)
 - 実行日時:
-  2026-06-28T03:23:53.149Z
+  2026-06-28T04:43:32.762Z
 - デプロイVersion ID:
-  e3dbb343-2a23-4604-98eb-d41fee485439
+  fe47706a-4f1c-441d-b90f-001488724ee8
 ### Q-64: 阪神の佐藤の成績を教えてください（今シーズン）
 
 - case_id:
@@ -6233,6 +6359,8 @@
     "inheritanceConfidence": 0.55,
     "shouldApplyInheritance": false
   }
+- follow_up_context_applied:
+  null
 - target_game_id:
   null
 - target_player_id:
@@ -6248,11 +6376,11 @@
 - 許容した差分:
   日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
 - 実行ログパス:
-  [data/logs/qa-prod-1782616253204.json](../data/logs/qa-prod-1782616253204.json)
+  [data/logs/qa-prod-1782621039223.json](../data/logs/qa-prod-1782621039223.json)
 - 実行日時:
-  2026-06-28T03:24:02.493Z
+  2026-06-28T04:43:42.591Z
 - デプロイVersion ID:
-  e3dbb343-2a23-4604-98eb-d41fee485439
+  fe47706a-4f1c-441d-b90f-001488724ee8
 ### Q-65: 田中将大の今シーズンの成績を教えてください
 
 - case_id:
@@ -6331,6 +6459,8 @@
     "inheritanceConfidence": 0.55,
     "shouldApplyInheritance": false
   }
+- follow_up_context_applied:
+  null
 - target_game_id:
   null
 - target_player_id:
@@ -6346,11 +6476,11 @@
 - 許容した差分:
   日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
 - 実行ログパス:
-  [data/logs/qa-prod-1782616253204.json](../data/logs/qa-prod-1782616253204.json)
+  [data/logs/qa-prod-1782621039223.json](../data/logs/qa-prod-1782621039223.json)
 - 実行日時:
-  2026-06-28T03:24:12.748Z
+  2026-06-28T04:43:51.191Z
 - デプロイVersion ID:
-  e3dbb343-2a23-4604-98eb-d41fee485439
+  fe47706a-4f1c-441d-b90f-001488724ee8
 ### Q-66: 2026年のBaystarsの打撃成績を教えてください
 
 - case_id:
@@ -6424,6 +6554,8 @@
     "inheritanceConfidence": 0.55,
     "shouldApplyInheritance": false
   }
+- follow_up_context_applied:
+  null
 - target_game_id:
   null
 - target_player_id:
@@ -6439,11 +6571,11 @@
 - 許容した差分:
   日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
 - 実行ログパス:
-  [data/logs/qa-prod-1782616253204.json](../data/logs/qa-prod-1782616253204.json)
+  [data/logs/qa-prod-1782621039223.json](../data/logs/qa-prod-1782621039223.json)
 - 実行日時:
-  2026-06-28T03:24:34.693Z
+  2026-06-28T04:44:14.553Z
 - デプロイVersion ID:
-  e3dbb343-2a23-4604-98eb-d41fee485439
+  fe47706a-4f1c-441d-b90f-001488724ee8
 ### Q-67: はんしんの成績を教えてください
 
 - case_id:
@@ -6527,6 +6659,8 @@
     "inheritanceConfidence": 0.55,
     "shouldApplyInheritance": false
   }
+- follow_up_context_applied:
+  null
 - target_game_id:
   null
 - target_player_id:
@@ -6542,11 +6676,11 @@
 - 許容した差分:
   日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
 - 実行ログパス:
-  [data/logs/qa-prod-1782616253204.json](../data/logs/qa-prod-1782616253204.json)
+  [data/logs/qa-prod-1782621039223.json](../data/logs/qa-prod-1782621039223.json)
 - 実行日時:
-  2026-06-28T03:24:45.344Z
+  2026-06-28T04:44:24.992Z
 - デプロイVersion ID:
-  e3dbb343-2a23-4604-98eb-d41fee485439
+  fe47706a-4f1c-441d-b90f-001488724ee8
 ### Q-68: ジャイアンツの今シーズン投手成績を教えてください
 
 - case_id:
@@ -6620,6 +6754,8 @@
     "inheritanceConfidence": 0.55,
     "shouldApplyInheritance": false
   }
+- follow_up_context_applied:
+  null
 - target_game_id:
   null
 - target_player_id:
@@ -6635,11 +6771,11 @@
 - 許容した差分:
   日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
 - 実行ログパス:
-  [data/logs/qa-prod-1782616253204.json](../data/logs/qa-prod-1782616253204.json)
+  [data/logs/qa-prod-1782621039223.json](../data/logs/qa-prod-1782621039223.json)
 - 実行日時:
-  2026-06-28T03:24:54.149Z
+  2026-06-28T04:44:33.795Z
 - デプロイVersion ID:
-  e3dbb343-2a23-4604-98eb-d41fee485439
+  fe47706a-4f1c-441d-b90f-001488724ee8
 ### Q-69: Carpの今シーズンの成績を教えてください
 
 - case_id:
@@ -6727,6 +6863,8 @@
     "inheritanceConfidence": 0.55,
     "shouldApplyInheritance": false
   }
+- follow_up_context_applied:
+  null
 - target_game_id:
   null
 - target_player_id:
@@ -6742,11 +6880,11 @@
 - 許容した差分:
   日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
 - 実行ログパス:
-  [data/logs/qa-prod-1782616253204.json](../data/logs/qa-prod-1782616253204.json)
+  [data/logs/qa-prod-1782621039223.json](../data/logs/qa-prod-1782621039223.json)
 - 実行日時:
-  2026-06-28T03:25:04.395Z
+  2026-06-28T04:44:44.646Z
 - デプロイVersion ID:
-  e3dbb343-2a23-4604-98eb-d41fee485439
+  fe47706a-4f1c-441d-b90f-001488724ee8
 ### Q-70: 今シーズンの得点圏打率が高い選手を3人教えてください
 
 - case_id:
@@ -6821,6 +6959,8 @@
     "inheritanceConfidence": 0.55,
     "shouldApplyInheritance": false
   }
+- follow_up_context_applied:
+  null
 - target_game_id:
   null
 - target_player_id:
@@ -6836,11 +6976,11 @@
 - 許容した差分:
   日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
 - 実行ログパス:
-  [data/logs/qa-prod-1782616253204.json](../data/logs/qa-prod-1782616253204.json)
+  [data/logs/qa-prod-1782621039223.json](../data/logs/qa-prod-1782621039223.json)
 - 実行日時:
-  2026-06-28T03:25:14.193Z
+  2026-06-28T04:44:53.251Z
 - デプロイVersion ID:
-  e3dbb343-2a23-4604-98eb-d41fee485439
+  fe47706a-4f1c-441d-b90f-001488724ee8
 ### Q-71: 今シーズンのパ・リーグでIsoP（長打率マイナス打率）が最も高い打者は？
 
 - case_id:
@@ -6919,6 +7059,8 @@
     "inheritanceConfidence": 0.55,
     "shouldApplyInheritance": false
   }
+- follow_up_context_applied:
+  null
 - target_game_id:
   null
 - target_player_id:
@@ -6934,11 +7076,11 @@
 - 許容した差分:
   日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
 - 実行ログパス:
-  [data/logs/qa-prod-1782616253204.json](../data/logs/qa-prod-1782616253204.json)
+  [data/logs/qa-prod-1782621039223.json](../data/logs/qa-prod-1782621039223.json)
 - 実行日時:
-  2026-06-28T03:26:55.393Z
+  2026-06-28T04:45:04.918Z
 - デプロイVersion ID:
-  e3dbb343-2a23-4604-98eb-d41fee485439
+  fe47706a-4f1c-441d-b90f-001488724ee8
 ### Q-72: 今シーズン四球率（BB%）が最も高い打者を教えてください
 
 - case_id:
@@ -7019,6 +7161,8 @@
     "inheritanceConfidence": 0.55,
     "shouldApplyInheritance": false
   }
+- follow_up_context_applied:
+  null
 - target_game_id:
   null
 - target_player_id:
@@ -7034,11 +7178,11 @@
 - 許容した差分:
   日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
 - 実行ログパス:
-  [data/logs/qa-prod-1782616253204.json](../data/logs/qa-prod-1782616253204.json)
+  [data/logs/qa-prod-1782621039223.json](../data/logs/qa-prod-1782621039223.json)
 - 実行日時:
-  2026-06-28T03:27:04.201Z
+  2026-06-28T04:45:13.521Z
 - デプロイVersion ID:
-  e3dbb343-2a23-4604-98eb-d41fee485439
+  fe47706a-4f1c-441d-b90f-001488724ee8
 ### Q-73: test
 
 - case_id:
@@ -7084,6 +7228,8 @@
   null
 - follow_up_context:
   null
+- follow_up_context_applied:
+  null
 - target_game_id:
   null
 - target_player_id:
@@ -7099,11 +7245,11 @@
 - 許容した差分:
   日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
 - 実行ログパス:
-  [data/logs/qa-prod-1782616253204.json](../data/logs/qa-prod-1782616253204.json)
+  [data/logs/qa-prod-1782621039223.json](../data/logs/qa-prod-1782621039223.json)
 - 実行日時:
-  2026-06-28T03:27:12.192Z
+  2026-06-28T04:45:21.205Z
 - デプロイVersion ID:
-  e3dbb343-2a23-4604-98eb-d41fee485439
+  fe47706a-4f1c-441d-b90f-001488724ee8
 ### Q-74: 今日の天気を教えてください
 
 - case_id:
@@ -7149,6 +7295,8 @@
   null
 - follow_up_context:
   null
+- follow_up_context_applied:
+  null
 - target_game_id:
   null
 - target_player_id:
@@ -7164,11 +7312,11 @@
 - 許容した差分:
   日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
 - 実行ログパス:
-  [data/logs/qa-prod-1782616253204.json](../data/logs/qa-prod-1782616253204.json)
+  [data/logs/qa-prod-1782621039223.json](../data/logs/qa-prod-1782621039223.json)
 - 実行日時:
-  2026-06-28T03:27:19.825Z
+  2026-06-28T04:45:29.564Z
 - デプロイVersion ID:
-  e3dbb343-2a23-4604-98eb-d41fee485439
+  fe47706a-4f1c-441d-b90f-001488724ee8
 ### Q-75: ChatGPTよりあなたの方が賢いですか？
 
 - case_id:
@@ -7218,6 +7366,8 @@
   null
 - follow_up_context:
   null
+- follow_up_context_applied:
+  null
 - target_game_id:
   null
 - target_player_id:
@@ -7233,11 +7383,11 @@
 - 許容した差分:
   日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
 - 実行ログパス:
-  [data/logs/qa-prod-1782616253204.json](../data/logs/qa-prod-1782616253204.json)
+  [data/logs/qa-prod-1782621039223.json](../data/logs/qa-prod-1782621039223.json)
 - 実行日時:
-  2026-06-28T03:27:27.623Z
+  2026-06-28T04:45:37.251Z
 - デプロイVersion ID:
-  e3dbb343-2a23-4604-98eb-d41fee485439
+  fe47706a-4f1c-441d-b90f-001488724ee8
 ### Q-76: 2016年の清原和博の成績を教えてください
 
 - case_id:
@@ -7311,6 +7461,8 @@
     "inheritanceConfidence": 0.55,
     "shouldApplyInheritance": false
   }
+- follow_up_context_applied:
+  null
 - target_game_id:
   null
 - target_player_id:
@@ -7326,11 +7478,11 @@
 - 許容した差分:
   日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
 - 実行ログパス:
-  [data/logs/qa-prod-1782616253204.json](../data/logs/qa-prod-1782616253204.json)
+  [data/logs/qa-prod-1782621039223.json](../data/logs/qa-prod-1782621039223.json)
 - 実行日時:
-  2026-06-28T03:27:38.528Z
+  2026-06-28T04:45:48.658Z
 - デプロイVersion ID:
-  e3dbb343-2a23-4604-98eb-d41fee485439
+  fe47706a-4f1c-441d-b90f-001488724ee8
 ### Q-77: 今シーズン（2026年）の村上宗隆の成績（データなし時の挙動確認）
 
 - case_id:
@@ -7408,6 +7560,8 @@
     "inheritanceConfidence": 0.55,
     "shouldApplyInheritance": false
   }
+- follow_up_context_applied:
+  null
 - target_game_id:
   null
 - target_player_id:
@@ -7423,11 +7577,11 @@
 - 許容した差分:
   日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
 - 実行ログパス:
-  [data/logs/qa-prod-1782616253204.json](../data/logs/qa-prod-1782616253204.json)
+  [data/logs/qa-prod-1782621039223.json](../data/logs/qa-prod-1782621039223.json)
 - 実行日時:
-  2026-06-28T03:27:49.545Z
+  2026-06-28T04:45:59.089Z
 - デプロイVersion ID:
-  e3dbb343-2a23-4604-98eb-d41fee485439
+  fe47706a-4f1c-441d-b90f-001488724ee8
 ### Q-78: 昨シーズン（2025年）の新人王は誰ですか？
 
 - case_id:
@@ -7499,6 +7653,8 @@
     "inheritanceConfidence": 0.55,
     "shouldApplyInheritance": false
   }
+- follow_up_context_applied:
+  null
 - target_game_id:
   null
 - target_player_id:
@@ -7514,11 +7670,11 @@
 - 許容した差分:
   日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
 - 実行ログパス:
-  [data/logs/qa-prod-1782616253204.json](../data/logs/qa-prod-1782616253204.json)
+  [data/logs/qa-prod-1782621039223.json](../data/logs/qa-prod-1782621039223.json)
 - 実行日時:
-  2026-06-28T03:27:58.267Z
+  2026-06-28T04:46:07.922Z
 - デプロイVersion ID:
-  e3dbb343-2a23-4604-98eb-d41fee485439
+  fe47706a-4f1c-441d-b90f-001488724ee8
 ### Q-79: 今シーズンのDeNAの外国人打者の中で最もOPSが高いのは誰ですか？
 
 - case_id:
@@ -7594,6 +7750,8 @@
     "inheritanceConfidence": 0.55,
     "shouldApplyInheritance": false
   }
+- follow_up_context_applied:
+  null
 - target_game_id:
   null
 - target_player_id:
@@ -7609,11 +7767,11 @@
 - 許容した差分:
   日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
 - 実行ログパス:
-  [data/logs/qa-prod-1782616253204.json](../data/logs/qa-prod-1782616253204.json)
+  [data/logs/qa-prod-1782621039223.json](../data/logs/qa-prod-1782621039223.json)
 - 実行日時:
-  2026-06-28T03:28:12.794Z
+  2026-06-28T04:46:21.965Z
 - デプロイVersion ID:
-  e3dbb343-2a23-4604-98eb-d41fee485439
+  fe47706a-4f1c-441d-b90f-001488724ee8
 ### Q-80: 2024年のDeNA日本一の最終戦の詳細を教えてください
 
 - case_id:
@@ -7748,6 +7906,8 @@
     "inheritanceConfidence": 0.55,
     "shouldApplyInheritance": false
   }
+- follow_up_context_applied:
+  null
 - target_game_id:
   null
 - target_player_id:
@@ -7763,11 +7923,11 @@
 - 許容した差分:
   日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
 - 実行ログパス:
-  [data/logs/qa-prod-1782616253204.json](../data/logs/qa-prod-1782616253204.json)
+  [data/logs/qa-prod-1782621039223.json](../data/logs/qa-prod-1782621039223.json)
 - 実行日時:
-  2026-06-28T03:28:21.630Z
+  2026-06-28T04:46:30.951Z
 - デプロイVersion ID:
-  e3dbb343-2a23-4604-98eb-d41fee485439
+  fe47706a-4f1c-441d-b90f-001488724ee8
 ### Q-81: 藤浪って最近何してんの
 
 - case_id:
@@ -7851,6 +8011,8 @@
     "inheritanceConfidence": 0.55,
     "shouldApplyInheritance": false
   }
+- follow_up_context_applied:
+  null
 - target_game_id:
   null
 - target_player_id:
@@ -7866,11 +8028,11 @@
 - 許容した差分:
   日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
 - 実行ログパス:
-  [data/logs/qa-prod-1782616253204.json](../data/logs/qa-prod-1782616253204.json)
+  [data/logs/qa-prod-1782621039223.json](../data/logs/qa-prod-1782621039223.json)
 - 実行日時:
-  2026-06-28T03:28:31.240Z
+  2026-06-28T04:46:40.560Z
 - デプロイVersion ID:
-  e3dbb343-2a23-4604-98eb-d41fee485439
+  fe47706a-4f1c-441d-b90f-001488724ee8
 ### Q-82: 藤浪近ごろ見ない気がするんだけど
 
 - case_id:
@@ -7954,6 +8116,8 @@
     "inheritanceConfidence": 0.55,
     "shouldApplyInheritance": false
   }
+- follow_up_context_applied:
+  null
 - target_game_id:
   null
 - target_player_id:
@@ -7969,11 +8133,11 @@
 - 許容した差分:
   日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
 - 実行ログパス:
-  [data/logs/qa-prod-1782616253204.json](../data/logs/qa-prod-1782616253204.json)
+  [data/logs/qa-prod-1782621039223.json](../data/logs/qa-prod-1782621039223.json)
 - 実行日時:
-  2026-06-28T03:28:40.903Z
+  2026-06-28T04:46:49.569Z
 - デプロイVersion ID:
-  e3dbb343-2a23-4604-98eb-d41fee485439
+  fe47706a-4f1c-441d-b90f-001488724ee8
 ### Q-83: 藤浪ってホームラン打ったことある？
 
 - case_id:
@@ -8051,6 +8215,8 @@
     "inheritanceConfidence": 0.55,
     "shouldApplyInheritance": false
   }
+- follow_up_context_applied:
+  null
 - target_game_id:
   null
 - target_player_id:
@@ -8066,11 +8232,11 @@
 - 許容した差分:
   日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
 - 実行ログパス:
-  [data/logs/qa-prod-1782616253204.json](../data/logs/qa-prod-1782616253204.json)
+  [data/logs/qa-prod-1782621039223.json](../data/logs/qa-prod-1782621039223.json)
 - 実行日時:
-  2026-06-28T03:28:50.317Z
+  2026-06-28T04:46:58.787Z
 - デプロイVersion ID:
-  e3dbb343-2a23-4604-98eb-d41fee485439
+  fe47706a-4f1c-441d-b90f-001488724ee8
 ### Q-84: （直前にQ-83の回答がある状態で）二つ目の試合についてもっと詳しく教えて
 
 - case_id:
@@ -8153,12 +8319,14 @@
     "inheritedPlayerId": null,
     "inheritedPlayerName": null,
     "inheritedTeam": "阪神",
-    "inheritedSeason": null,
-    "inheritedScope": "unspecified",
+    "inheritedSeason": 2018,
+    "inheritedScope": "historical",
     "inheritanceSource": "latest_assistant_entry",
     "inheritanceConfidence": 0.9,
     "shouldApplyInheritance": false
   }
+- follow_up_context_applied:
+  null
 - target_game_id:
   null
 - target_player_id:
@@ -8174,11 +8342,11 @@
 - 許容した差分:
   日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
 - 実行ログパス:
-  [data/logs/qa-prod-1782616253204.json](../data/logs/qa-prod-1782616253204.json)
+  [data/logs/qa-prod-1782621039223.json](../data/logs/qa-prod-1782621039223.json)
 - 実行日時:
-  2026-06-28T03:28:58.841Z
+  2026-06-28T04:47:07.396Z
 - デプロイVersion ID:
-  e3dbb343-2a23-4604-98eb-d41fee485439
+  fe47706a-4f1c-441d-b90f-001488724ee8
 ### Q-85: 阪神の藤浪の最近の成績は？
 
 - case_id:
@@ -8265,6 +8433,8 @@
     "inheritanceConfidence": 0.55,
     "shouldApplyInheritance": false
   }
+- follow_up_context_applied:
+  null
 - target_game_id:
   null
 - target_player_id:
@@ -8280,11 +8450,11 @@
 - 許容した差分:
   日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
 - 実行ログパス:
-  [data/logs/qa-prod-1782616253204.json](../data/logs/qa-prod-1782616253204.json)
+  [data/logs/qa-prod-1782621039223.json](../data/logs/qa-prod-1782621039223.json)
 - 実行日時:
-  2026-06-28T03:29:10.353Z
+  2026-06-28T04:47:16.810Z
 - デプロイVersion ID:
-  e3dbb343-2a23-4604-98eb-d41fee485439
+  fe47706a-4f1c-441d-b90f-001488724ee8
 ### Q-86: オリックスの西川龍馬とソフトバンクの上沢は対決したことがあるか
 
 - case_id:
@@ -8361,6 +8531,8 @@
     "inheritanceConfidence": 0.55,
     "shouldApplyInheritance": false
   }
+- follow_up_context_applied:
+  null
 - target_game_id:
   null
 - target_player_id:
@@ -8376,11 +8548,11 @@
 - 許容した差分:
   日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
 - 実行ログパス:
-  [data/logs/qa-prod-1782616253204.json](../data/logs/qa-prod-1782616253204.json)
+  [data/logs/qa-prod-1782621039223.json](../data/logs/qa-prod-1782621039223.json)
 - 実行日時:
-  2026-06-28T03:29:19.377Z
+  2026-06-28T04:47:25.108Z
 - デプロイVersion ID:
-  e3dbb343-2a23-4604-98eb-d41fee485439
+  fe47706a-4f1c-441d-b90f-001488724ee8
 ### Q-87: 西川龍馬と上沢は対決したことがあるか
 
 - case_id:
@@ -8455,6 +8627,8 @@
     "inheritanceConfidence": 0.55,
     "shouldApplyInheritance": false
   }
+- follow_up_context_applied:
+  null
 - target_game_id:
   null
 - target_player_id:
@@ -8470,11 +8644,11 @@
 - 許容した差分:
   日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
 - 実行ログパス:
-  [data/logs/qa-prod-1782616253204.json](../data/logs/qa-prod-1782616253204.json)
+  [data/logs/qa-prod-1782621039223.json](../data/logs/qa-prod-1782621039223.json)
 - 実行日時:
-  2026-06-28T03:29:27.969Z
+  2026-06-28T04:47:42.002Z
 - デプロイVersion ID:
-  e3dbb343-2a23-4604-98eb-d41fee485439
+  fe47706a-4f1c-441d-b90f-001488724ee8
 ### Q-88: 田中将大と柳は対決したことがあるか
 
 - case_id:
@@ -8549,6 +8723,8 @@
     "inheritanceConfidence": 0.55,
     "shouldApplyInheritance": false
   }
+- follow_up_context_applied:
+  null
 - target_game_id:
   null
 - target_player_id:
@@ -8564,11 +8740,11 @@
 - 許容した差分:
   日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
 - 実行ログパス:
-  [data/logs/qa-prod-1782616253204.json](../data/logs/qa-prod-1782616253204.json)
+  [data/logs/qa-prod-1782621039223.json](../data/logs/qa-prod-1782621039223.json)
 - 実行日時:
-  2026-06-28T03:29:36.189Z
+  2026-06-28T04:47:50.817Z
 - デプロイVersion ID:
-  e3dbb343-2a23-4604-98eb-d41fee485439
+  fe47706a-4f1c-441d-b90f-001488724ee8
 ### Q-89: 丸佳浩と戸根は対決したことがあるか
 
 - case_id:
@@ -8643,6 +8819,8 @@
     "inheritanceConfidence": 0.55,
     "shouldApplyInheritance": false
   }
+- follow_up_context_applied:
+  null
 - target_game_id:
   null
 - target_player_id:
@@ -8658,11 +8836,11 @@
 - 許容した差分:
   日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
 - 実行ログパス:
-  [data/logs/qa-prod-1782616253204.json](../data/logs/qa-prod-1782616253204.json)
+  [data/logs/qa-prod-1782621039223.json](../data/logs/qa-prod-1782621039223.json)
 - 実行日時:
-  2026-06-28T03:29:44.557Z
+  2026-06-28T04:47:59.616Z
 - デプロイVersion ID:
-  e3dbb343-2a23-4604-98eb-d41fee485439
+  fe47706a-4f1c-441d-b90f-001488724ee8
 ### Q-90: 近藤健介と藤原は対決したことがあるか？ 2026年4月16日のソフトバンク対楽天戦には中村晃も出場していた。
 
 - case_id:
@@ -8741,6 +8919,8 @@
     "inheritanceConfidence": 0.55,
     "shouldApplyInheritance": false
   }
+- follow_up_context_applied:
+  null
 - target_game_id:
   null
 - target_player_id:
@@ -8756,11 +8936,11 @@
 - 許容した差分:
   日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
 - 実行ログパス:
-  [data/logs/qa-prod-1782616253204.json](../data/logs/qa-prod-1782616253204.json)
+  [data/logs/qa-prod-1782621039223.json](../data/logs/qa-prod-1782621039223.json)
 - 実行日時:
-  2026-06-28T03:29:54.187Z
+  2026-06-28T04:48:08.592Z
 - デプロイVersion ID:
-  e3dbb343-2a23-4604-98eb-d41fee485439
+  fe47706a-4f1c-441d-b90f-001488724ee8
 ### Q-91: （直前にQ-83の回答がある状態で）それ詳しく
 
 - case_id:
@@ -8843,12 +9023,14 @@
     "inheritedPlayerId": null,
     "inheritedPlayerName": null,
     "inheritedTeam": "阪神",
-    "inheritedSeason": null,
-    "inheritedScope": "unspecified",
+    "inheritedSeason": 2018,
+    "inheritedScope": "historical",
     "inheritanceSource": "latest_assistant_entry",
     "inheritanceConfidence": 0.9,
     "shouldApplyInheritance": false
   }
+- follow_up_context_applied:
+  null
 - target_game_id:
   null
 - target_player_id:
@@ -8864,11 +9046,11 @@
 - 許容した差分:
   日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
 - 実行ログパス:
-  [data/logs/qa-prod-1782616253204.json](../data/logs/qa-prod-1782616253204.json)
+  [data/logs/qa-prod-1782621039223.json](../data/logs/qa-prod-1782621039223.json)
 - 実行日時:
-  2026-06-28T03:30:03.605Z
+  2026-06-28T04:48:18.054Z
 - デプロイVersion ID:
-  e3dbb343-2a23-4604-98eb-d41fee485439
+  fe47706a-4f1c-441d-b90f-001488724ee8
 ### Q-92: （直前にQ-83の回答がある状態で）なんで？
 
 - case_id:
@@ -8951,12 +9133,14 @@
     "inheritedPlayerId": null,
     "inheritedPlayerName": null,
     "inheritedTeam": "阪神",
-    "inheritedSeason": null,
-    "inheritedScope": "unspecified",
+    "inheritedSeason": 2018,
+    "inheritedScope": "historical",
     "inheritanceSource": "latest_assistant_entry",
     "inheritanceConfidence": 0.9,
     "shouldApplyInheritance": false
   }
+- follow_up_context_applied:
+  null
 - target_game_id:
   null
 - target_player_id:
@@ -8972,11 +9156,11 @@
 - 許容した差分:
   日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
 - 実行ログパス:
-  [data/logs/qa-prod-1782616253204.json](../data/logs/qa-prod-1782616253204.json)
+  [data/logs/qa-prod-1782621039223.json](../data/logs/qa-prod-1782621039223.json)
 - 実行日時:
-  2026-06-28T03:30:12.727Z
+  2026-06-28T04:48:26.672Z
 - デプロイVersion ID:
-  e3dbb343-2a23-4604-98eb-d41fee485439
+  fe47706a-4f1c-441d-b90f-001488724ee8
 ### Q-93: （直前にQ-83の回答がある状態で）つまり？
 
 - case_id:
@@ -9022,6 +9206,8 @@
   null
 - follow_up_context:
   null
+- follow_up_context_applied:
+  null
 - target_game_id:
   null
 - target_player_id:
@@ -9037,11 +9223,11 @@
 - 許容した差分:
   日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
 - 実行ログパス:
-  [data/logs/qa-prod-1782616253204.json](../data/logs/qa-prod-1782616253204.json)
+  [data/logs/qa-prod-1782621039223.json](../data/logs/qa-prod-1782621039223.json)
 - 実行日時:
-  2026-06-28T03:30:20.791Z
+  2026-06-28T04:48:34.070Z
 - デプロイVersion ID:
-  e3dbb343-2a23-4604-98eb-d41fee485439
+  fe47706a-4f1c-441d-b90f-001488724ee8
 ### Q-94: （直前にQ-77の回答がある状態で）違う、今年の話
 
 - case_id:
@@ -9087,6 +9273,8 @@
   null
 - follow_up_context:
   null
+- follow_up_context_applied:
+  null
 - target_game_id:
   null
 - target_player_id:
@@ -9102,11 +9290,11 @@
 - 許容した差分:
   日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
 - 実行ログパス:
-  [data/logs/qa-prod-1782616253204.json](../data/logs/qa-prod-1782616253204.json)
+  [data/logs/qa-prod-1782621039223.json](../data/logs/qa-prod-1782621039223.json)
 - 実行日時:
-  2026-06-28T03:30:28.543Z
+  2026-06-28T04:48:41.891Z
 - デプロイVersion ID:
-  e3dbb343-2a23-4604-98eb-d41fee485439
+  fe47706a-4f1c-441d-b90f-001488724ee8
 ### Q-95: （直前にQ-77の回答がある状態で）ちがうはずなんだけど、おかしくない？
 
 - case_id:
@@ -9152,6 +9340,8 @@
   null
 - follow_up_context:
   null
+- follow_up_context_applied:
+  null
 - target_game_id:
   null
 - target_player_id:
@@ -9167,11 +9357,11 @@
 - 許容した差分:
   日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
 - 実行ログパス:
-  [data/logs/qa-prod-1782616253204.json](../data/logs/qa-prod-1782616253204.json)
+  [data/logs/qa-prod-1782621039223.json](../data/logs/qa-prod-1782621039223.json)
 - 実行日時:
-  2026-06-28T03:30:36.169Z
+  2026-06-28T04:48:49.256Z
 - デプロイVersion ID:
-  e3dbb343-2a23-4604-98eb-d41fee485439
+  fe47706a-4f1c-441d-b90f-001488724ee8
 ### Q-96: （直前にQ-83の回答がある状態で）調べなおして
 
 - case_id:
@@ -9217,6 +9407,8 @@
   null
 - follow_up_context:
   null
+- follow_up_context_applied:
+  null
 - target_game_id:
   null
 - target_player_id:
@@ -9232,11 +9424,11 @@
 - 許容した差分:
   日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
 - 実行ログパス:
-  [data/logs/qa-prod-1782616253204.json](../data/logs/qa-prod-1782616253204.json)
+  [data/logs/qa-prod-1782621039223.json](../data/logs/qa-prod-1782621039223.json)
 - 実行日時:
-  2026-06-28T03:30:44.113Z
+  2026-06-28T04:48:57.123Z
 - デプロイVersion ID:
-  e3dbb343-2a23-4604-98eb-d41fee485439
+  fe47706a-4f1c-441d-b90f-001488724ee8
 ### Q-97: （直前にQ-81の回答がある状態で）去年と比べてどう？
 
 - case_id:
@@ -9282,6 +9474,8 @@
   null
 - follow_up_context:
   null
+- follow_up_context_applied:
+  null
 - target_game_id:
   null
 - target_player_id:
@@ -9297,11 +9491,11 @@
 - 許容した差分:
   日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
 - 実行ログパス:
-  [data/logs/qa-prod-1782616253204.json](../data/logs/qa-prod-1782616253204.json)
+  [data/logs/qa-prod-1782621039223.json](../data/logs/qa-prod-1782621039223.json)
 - 実行日時:
-  2026-06-28T03:30:51.738Z
+  2026-06-28T04:49:04.848Z
 - デプロイVersion ID:
-  e3dbb343-2a23-4604-98eb-d41fee485439
+  fe47706a-4f1c-441d-b90f-001488724ee8
 ### Q-98: 藤浪どう？
 
 - case_id:
@@ -9347,6 +9541,8 @@
   null
 - follow_up_context:
   null
+- follow_up_context_applied:
+  null
 - target_game_id:
   null
 - target_player_id:
@@ -9362,11 +9558,11 @@
 - 許容した差分:
   日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
 - 実行ログパス:
-  [data/logs/qa-prod-1782616253204.json](../data/logs/qa-prod-1782616253204.json)
+  [data/logs/qa-prod-1782621039223.json](../data/logs/qa-prod-1782621039223.json)
 - 実行日時:
-  2026-06-28T03:30:59.234Z
+  2026-06-28T04:49:12.456Z
 - デプロイVersion ID:
-  e3dbb343-2a23-4604-98eb-d41fee485439
+  fe47706a-4f1c-441d-b90f-001488724ee8
 ### Q-99: （直前にQ-83の回答がある状態で）さっきの二つ目
 
 - case_id:
@@ -9412,6 +9608,8 @@
   null
 - follow_up_context:
   null
+- follow_up_context_applied:
+  null
 - target_game_id:
   null
 - target_player_id:
@@ -9427,11 +9625,11 @@
 - 許容した差分:
   日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
 - 実行ログパス:
-  [data/logs/qa-prod-1782616253204.json](../data/logs/qa-prod-1782616253204.json)
+  [data/logs/qa-prod-1782621039223.json](../data/logs/qa-prod-1782621039223.json)
 - 実行日時:
-  2026-06-28T03:31:06.783Z
+  2026-06-28T04:49:19.902Z
 - デプロイVersion ID:
-  e3dbb343-2a23-4604-98eb-d41fee485439
+  fe47706a-4f1c-441d-b90f-001488724ee8
 ### Q-100: （直前にQ-83の回答がある状態で）これやばくない？
 
 - case_id:
@@ -9514,12 +9712,14 @@
     "inheritedPlayerId": null,
     "inheritedPlayerName": null,
     "inheritedTeam": "阪神",
-    "inheritedSeason": null,
-    "inheritedScope": "unspecified",
+    "inheritedSeason": 2018,
+    "inheritedScope": "historical",
     "inheritanceSource": "latest_assistant_entry",
     "inheritanceConfidence": 0.9,
     "shouldApplyInheritance": false
   }
+- follow_up_context_applied:
+  null
 - target_game_id:
   null
 - target_player_id:
@@ -9535,11 +9735,11 @@
 - 許容した差分:
   日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
 - 実行ログパス:
-  [data/logs/qa-prod-1782616253204.json](../data/logs/qa-prod-1782616253204.json)
+  [data/logs/qa-prod-1782621039223.json](../data/logs/qa-prod-1782621039223.json)
 - 実行日時:
-  2026-06-28T03:31:15.887Z
+  2026-06-28T04:49:28.705Z
 - デプロイVersion ID:
-  e3dbb343-2a23-4604-98eb-d41fee485439
+  fe47706a-4f1c-441d-b90f-001488724ee8
 ### Q-101: （直前にQ-84の回答がある状態で）それってどういう意味？
 
 - case_id:
@@ -9618,13 +9818,15 @@
     "contextKind": "game",
     "inheritedPlayerId": null,
     "inheritedPlayerName": null,
-    "inheritedTeam": null,
-    "inheritedSeason": null,
-    "inheritedScope": "unspecified",
+    "inheritedTeam": "阪神タイガース",
+    "inheritedSeason": 2021,
+    "inheritedScope": "historical",
     "inheritanceSource": "latest_assistant_entry",
     "inheritanceConfidence": 0.9,
     "shouldApplyInheritance": false
   }
+- follow_up_context_applied:
+  null
 - target_game_id:
   null
 - target_player_id:
@@ -9640,11 +9842,11 @@
 - 許容した差分:
   日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
 - 実行ログパス:
-  [data/logs/qa-prod-1782616253204.json](../data/logs/qa-prod-1782616253204.json)
+  [data/logs/qa-prod-1782621039223.json](../data/logs/qa-prod-1782621039223.json)
 - 実行日時:
-  2026-06-28T03:31:24.612Z
+  2026-06-28T04:49:37.613Z
 - デプロイVersion ID:
-  e3dbb343-2a23-4604-98eb-d41fee485439
+  fe47706a-4f1c-441d-b90f-001488724ee8
 ### Q-102: （直前にQ-98の回答がある状態で）一軍の話？
 
 - case_id:
@@ -9690,6 +9892,8 @@
   null
 - follow_up_context:
   null
+- follow_up_context_applied:
+  null
 - target_game_id:
   null
 - target_player_id:
@@ -9705,11 +9909,11 @@
 - 許容した差分:
   日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
 - 実行ログパス:
-  [data/logs/qa-prod-1782616253204.json](../data/logs/qa-prod-1782616253204.json)
+  [data/logs/qa-prod-1782621039223.json](../data/logs/qa-prod-1782621039223.json)
 - 実行日時:
-  2026-06-28T03:31:32.088Z
+  2026-06-28T04:49:45.275Z
 - デプロイVersion ID:
-  e3dbb343-2a23-4604-98eb-d41fee485439
+  fe47706a-4f1c-441d-b90f-001488724ee8
 ### Q-103: （直前にQ-77の回答がある状態で）今年じゃなくて去年
 
 - case_id:
@@ -9755,6 +9959,8 @@
   null
 - follow_up_context:
   null
+- follow_up_context_applied:
+  null
 - target_game_id:
   null
 - target_player_id:
@@ -9770,11 +9976,11 @@
 - 許容した差分:
   日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
 - 実行ログパス:
-  [data/logs/qa-prod-1782616253204.json](../data/logs/qa-prod-1782616253204.json)
+  [data/logs/qa-prod-1782621039223.json](../data/logs/qa-prod-1782621039223.json)
 - 実行日時:
-  2026-06-28T03:31:39.859Z
+  2026-06-28T04:49:52.968Z
 - デプロイVersion ID:
-  e3dbb343-2a23-4604-98eb-d41fee485439
+  fe47706a-4f1c-441d-b90f-001488724ee8
 ### Q-104: （直前にQ-23の回答がある状態で）なんで負けたん？
 
 - case_id:
@@ -9849,13 +10055,15 @@
     "contextKind": "game",
     "inheritedPlayerId": null,
     "inheritedPlayerName": null,
-    "inheritedTeam": null,
-    "inheritedSeason": null,
-    "inheritedScope": "unspecified",
+    "inheritedTeam": "広島",
+    "inheritedSeason": 2026,
+    "inheritedScope": "current",
     "inheritanceSource": "latest_assistant_entry",
     "inheritanceConfidence": 0.9,
     "shouldApplyInheritance": false
   }
+- follow_up_context_applied:
+  null
 - target_game_id:
   null
 - target_player_id:
@@ -9871,11 +10079,11 @@
 - 許容した差分:
   日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
 - 実行ログパス:
-  [data/logs/qa-prod-1782616253204.json](../data/logs/qa-prod-1782616253204.json)
+  [data/logs/qa-prod-1782621039223.json](../data/logs/qa-prod-1782621039223.json)
 - 実行日時:
-  2026-06-28T03:31:48.664Z
+  2026-06-28T04:50:01.894Z
 - デプロイVersion ID:
-  e3dbb343-2a23-4604-98eb-d41fee485439
+  fe47706a-4f1c-441d-b90f-001488724ee8
 ### Q-105: （直前にQ-98の回答がある状態で）どこがよかった？
 
 - case_id:
@@ -9954,6 +10162,8 @@
     "inheritanceConfidence": 0.62,
     "shouldApplyInheritance": false
   }
+- follow_up_context_applied:
+  null
 - target_game_id:
   null
 - target_player_id:
@@ -9969,11 +10179,11 @@
 - 許容した差分:
   日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
 - 実行ログパス:
-  [data/logs/qa-prod-1782616253204.json](../data/logs/qa-prod-1782616253204.json)
+  [data/logs/qa-prod-1782621039223.json](../data/logs/qa-prod-1782621039223.json)
 - 実行日時:
-  2026-06-28T03:31:59.007Z
+  2026-06-28T04:50:16.218Z
 - デプロイVersion ID:
-  e3dbb343-2a23-4604-98eb-d41fee485439
+  fe47706a-4f1c-441d-b90f-001488724ee8
 ### Q-106: （直前にQ-83の回答がある状態で）なんで勝てたん？
 
 - case_id:
@@ -10056,12 +10266,14 @@
     "inheritedPlayerId": null,
     "inheritedPlayerName": null,
     "inheritedTeam": "阪神",
-    "inheritedSeason": null,
-    "inheritedScope": "unspecified",
+    "inheritedSeason": 2018,
+    "inheritedScope": "historical",
     "inheritanceSource": "latest_assistant_entry",
     "inheritanceConfidence": 0.9,
     "shouldApplyInheritance": false
   }
+- follow_up_context_applied:
+  null
 - target_game_id:
   null
 - target_player_id:
@@ -10077,11 +10289,11 @@
 - 許容した差分:
   日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
 - 実行ログパス:
-  [data/logs/qa-prod-1782616253204.json](../data/logs/qa-prod-1782616253204.json)
+  [data/logs/qa-prod-1782621039223.json](../data/logs/qa-prod-1782621039223.json)
 - 実行日時:
-  2026-06-28T03:32:14.380Z
+  2026-06-28T04:50:24.820Z
 - デプロイVersion ID:
-  e3dbb343-2a23-4604-98eb-d41fee485439
+  fe47706a-4f1c-441d-b90f-001488724ee8
 ### Q-107: （直前にQ-81の回答がある状態で）いや藤浪じゃなくて村上
 
 - case_id:
@@ -10127,6 +10339,8 @@
   null
 - follow_up_context:
   null
+- follow_up_context_applied:
+  null
 - target_game_id:
   null
 - target_player_id:
@@ -10142,11 +10356,11 @@
 - 許容した差分:
   日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
 - 実行ログパス:
-  [data/logs/qa-prod-1782616253204.json](../data/logs/qa-prod-1782616253204.json)
+  [data/logs/qa-prod-1782621039223.json](../data/logs/qa-prod-1782621039223.json)
 - 実行日時:
-  2026-06-28T03:32:21.825Z
+  2026-06-28T04:50:32.289Z
 - デプロイVersion ID:
-  e3dbb343-2a23-4604-98eb-d41fee485439
+  fe47706a-4f1c-441d-b90f-001488724ee8
 ### Q-108: （直前にQ-83の回答がある状態で）違う、その前のやつ
 
 - case_id:
@@ -10192,6 +10406,8 @@
   null
 - follow_up_context:
   null
+- follow_up_context_applied:
+  null
 - target_game_id:
   null
 - target_player_id:
@@ -10207,8 +10423,8 @@
 - 許容した差分:
   日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
 - 実行ログパス:
-  [data/logs/qa-prod-1782616253204.json](../data/logs/qa-prod-1782616253204.json)
+  [data/logs/qa-prod-1782621039223.json](../data/logs/qa-prod-1782621039223.json)
 - 実行日時:
-  2026-06-28T03:32:29.532Z
+  2026-06-28T04:50:41.415Z
 - デプロイVersion ID:
-  e3dbb343-2a23-4604-98eb-d41fee485439
+  fe47706a-4f1c-441d-b90f-001488724ee8
