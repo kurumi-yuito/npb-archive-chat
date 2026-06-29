@@ -107,12 +107,16 @@ const coercedName = z.union([
   z.array(z.string().min(1)).min(1).transform((a) => a[0]!),
 ])
 const coercedText = coercedName
+const coercedId = z.union([
+  z.string().min(1),
+  z.number().int().transform((value) => String(value)),
+])
 
 export const searchEventsFiltersSchema = z.object({
   year: z.number().int().min(1936).optional(),
   year_from: z.number().int().min(1936).optional(),
   year_to: z.number().int().min(1936).optional(),
-  game_id: z.string().min(1).optional(),
+  game_id: coercedId.optional(),
   game_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   inning: z.number().int().positive().optional(),
   half: inningHalfSchema.optional(),
@@ -148,7 +152,7 @@ export const searchGamesFiltersSchema = z.object({
   year_from: z.number().int().min(1936).optional(),
   year_to: z.number().int().min(1936).optional(),
   game_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
-  game_id: z.string().min(1).optional(),
+  game_id: coercedId.optional(),
   team: coercedText.optional(),
   opponent: coercedText.optional(),
   venue: z.string().min(1).optional(),
@@ -163,7 +167,7 @@ export const searchPitchingLinesFiltersSchema = z.object({
   year_from: z.number().int().min(1936).optional(),
   year_to: z.number().int().min(1936).optional(),
   game_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
-  game_id: z.string().min(1).optional(),
+  game_id: coercedId.optional(),
   pitcher_name: coercedName.optional(),
   pitcher_player_id: z.string().min(1).optional(),
   team: coercedText.optional(),
@@ -177,7 +181,7 @@ export const searchBattingLinesFiltersSchema = z.object({
   year_from: z.number().int().min(1936).optional(),
   year_to: z.number().int().min(1936).optional(),
   game_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
-  game_id: z.string().min(1).optional(),
+  game_id: coercedId.optional(),
   player_name: coercedName.optional(),
   player_id: z.string().min(1).optional(),
   team: z.string().min(1).optional(),

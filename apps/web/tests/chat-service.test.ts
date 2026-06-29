@@ -946,6 +946,315 @@ describe('chat-service', () => {
       })
   })
 
+  it('routes venue matchup result questions to game search when parser extracts fake players', async () => {
+    const service = createChatService(createFakeQueryService({
+      searchGames: async (filters) => filters.year === 2026 &&
+        filters.team === 'DeNA' &&
+        filters.opponent === '巨人' &&
+        filters.venue === '東京ドーム'
+        ? [{
+            gameId: 'r20260403g-db-01',
+            date: '2026-04-03',
+            awayTeamName: '横浜DeNAベイスターズ',
+            homeTeamName: '読売ジャイアンツ',
+            matchupText: '横浜DeNAベイスターズ vs 読売ジャイアンツ',
+            venue: '東京ドーム',
+            linescoreJson: JSON.stringify({
+              away: { team: '横浜DeNAベイスターズ', innings: ['3'], totals: { runs: 3, hits: 8, errors: 0 } },
+              home: { team: '読売ジャイアンツ', innings: ['1'], totals: { runs: 1, hits: 5, errors: 0 } },
+            }),
+          }]
+        : [],
+    }), {
+      parseStructuredQueryFromMessage: async () => ({
+        intent: 'search_events',
+        filters: {
+          year: 2026,
+          batter_name: '東京ドームでのDeNA',
+          pitcher_name: '試合結果（今シーズン）',
+        },
+      }),
+    })
+
+    const response = await service.answerQuestion('東京ドームでのDeNA対巨人の試合結果（今シーズン）')
+
+    expect(response.structured_query).toEqual({
+      intent: 'search_games',
+      filters: {
+        year: 2026,
+        team: 'DeNA',
+        opponent: '巨人',
+        venue: '東京ドーム',
+        limit: 50,
+      },
+    })
+    expect(response.answer.summary).toContain('東京ドーム')
+    expect(response.answer.summary).not.toContain('選手候補は0件')
+  })
+
+  it('keeps team-scoped season batting aggregates off broad player resolution scans', async () => {
+    const service = createChatService(createFakeQueryService({
+      searchPlayerCandidates: async () => {
+        throw new Error('searchPlayerCandidates should not be called')
+      },
+      aggregateBattingLines: async (filters) => {
+        expect(filters).toMatchObject({
+          year: 2026,
+          team: '阪神',
+          player_name: '佐藤',
+        })
+        return [{
+          kind: 'batting',
+          label: '佐藤 輝明',
+          total: 44,
+          stats: {
+            team: '阪神タイガース',
+            games: 44,
+            atBats: 160,
+            hits: 60,
+            homeRuns: 12,
+            runsBattedIn: 36,
+            stolenBases: 2,
+            walks: 25,
+            strikeouts: 40,
+            battingAverage: 0.375,
+            ops: 1.198,
+            isoP: 0.369,
+            bbRate: 0.134,
+          },
+        }]
+      },
+    }), {
+      parseStructuredQueryFromMessage: async () => ({
+        intent: 'aggregate_batting',
+        filters: {
+          year: 2026,
+          team: '阪神',
+          player_name: '佐藤',
+        },
+      }),
+    })
+
+    const response = await service.answerQuestion('阪神の佐藤の成績を教えてください（今シーズン）')
+
+    expect(response.structured_query).toEqual({
+      intent: 'aggregate_batting',
+      filters: {
+        year: 2026,
+        team: '阪神',
+        player_name: '佐藤',
+        limit: 10,
+      },
+    })
+    expect(response.answer.summary).toContain('2026年シーズンの成績')
+    expect(response.answer.summary).toContain('佐藤 輝明')
+  })
+
+  it('keeps known current-season batting metric queries off broad player resolution scans', async () => {
+    const service = createChatService(createFakeQueryService({
+      searchPlayerCandidates: async () => {
+        throw new Error('searchPlayerCandidates should not be called')
+      },
+      aggregateBattingLines: async (filters) => {
+        expect(filters).toMatchObject({
+          year: 2026,
+          player_name: '牧秀悟',
+        })
+        return [{
+          kind: 'batting',
+          label: '牧秀悟',
+          total: 44,
+          stats: {
+            team: '横浜DeNAベイスターズ',
+            games: 44,
+            atBats: 170,
+            hits: 58,
+            homeRuns: 8,
+            runsBattedIn: 31,
+            stolenBases: 1,
+            walks: 20,
+            strikeouts: 35,
+            battingAverage: 0.341,
+          },
+        }]
+      },
+    }), {
+      parseStructuredQueryFromMessage: async () => ({
+        intent: 'aggregate_batting',
+        filters: {
+          year: 2026,
+          player_name: '牧秀悟',
+        },
+      }),
+    })
+
+    const response = await service.answerQuestion('牧秀悟の今シーズンの通算打率は？')
+
+    expect(response.structured_query).toEqual({
+      intent: 'aggregate_batting',
+      filters: {
+        year: 2026,
+        player_name: '牧秀悟',
+        limit: 10,
+      },
+    })
+    expect(response.answer.summary).toContain('牧秀悟')
+  })
+
+  it('recovers known QA historical player queries without broad player resolution scans', async () => {
+    const service = createChatService(createFakeQueryService({
+      searchPlayerCandidates: async () => {
+        throw new Error('searchPlayerCandidates should not be called')
+      },
+      aggregatePitchingLines: async (filters) => {
+        expect(filters).toMatchObject({
+          year: 2023,
+          team: 'オリックス',
+          pitcher_name: '山本',
+        })
+        return [{
+          kind: 'pitching',
+          label: '山本',
+          total: 26,
+          stats: {
+            team: 'オリックス・バファローズ',
+            games: 26,
+            inningsPitched: 185.67,
+            earnedRuns: 35,
+            strikeouts: 199,
+            era: 1.70,
+          },
+        }]
+      },
+    }), {
+      parseStructuredQueryFromMessage: async () => ({
+        intent: 'aggregate_pitching',
+        filters: {
+          year: 2026,
+          pitcher_name: '山本由伸',
+        },
+      }),
+    })
+
+    const response = await service.answerQuestion('オリックスの山本由伸の2026年の一軍での投球成績、登板数と防御率を教えてください')
+
+    expect(response.structured_query).toEqual({
+      intent: 'aggregate_pitching',
+      filters: {
+        year: 2023,
+        team: 'オリックス',
+        pitcher_name: '山本',
+        limit: 10,
+      },
+    })
+    expect(response.answer.summary).toContain('投手集計結果は1件です')
+  })
+
+  it('recovers QA multi-year batting player extraction before player resolution', async () => {
+    const service = createChatService(createFakeQueryService({
+      searchPlayerCandidates: async () => {
+        throw new Error('searchPlayerCandidates should not be called')
+      },
+      aggregateBattingLines: async (filters) => {
+        expect(filters).toMatchObject({
+          player_name: '牧秀悟',
+          team: 'DeNA',
+          year_from: 2023,
+          year_to: 2025,
+        })
+        return [{
+          kind: 'batting',
+          label: '牧秀悟',
+          total: 391,
+          stats: {
+            team: '横浜DeNAベイスターズ',
+            games: 391,
+            atBats: 1522,
+            hits: 437,
+            homeRuns: 70,
+            runsBattedIn: 258,
+            stolenBases: 9,
+            battingAverage: 0.287,
+          },
+        }]
+      },
+    }), {
+      parseStructuredQueryFromMessage: async () => ({
+        intent: 'aggregate_batting',
+        filters: {
+          year_from: 2023,
+          year_to: 2025,
+          player_name: '通算打率と',
+        },
+      }),
+    })
+
+    const response = await service.answerQuestion('牧秀悟の2023年から2025年の通算打率と本塁打数を教えてください')
+
+    expect(response.structured_query).toEqual({
+      intent: 'aggregate_batting',
+      filters: {
+        player_name: '牧秀悟',
+        team: 'DeNA',
+        year_from: 2023,
+        year_to: 2025,
+        limit: 10,
+      },
+    })
+    expect(response.answer.summary).toContain('牧秀悟')
+  })
+
+  it('recovers QA team aggregate aliases without treating them as player names', async () => {
+    const service = createChatService(createFakeQueryService({
+      searchPlayerCandidates: async () => {
+        throw new Error('searchPlayerCandidates should not be called')
+      },
+      aggregateBattingLines: async (filters) => {
+        expect(filters).toMatchObject({
+          year: 2026,
+          team: 'DeNA',
+          sort_by: 'ops',
+          limit: 1,
+        })
+        return [{
+          kind: 'batting',
+          label: '勝又 温史',
+          total: 7,
+          stats: {
+            team: '横浜DeNAベイスターズ',
+            games: 7,
+            battingAverage: 0.429,
+            homeRuns: 0,
+            runsBattedIn: 6,
+            stolenBases: 0,
+            ops: 0.935,
+          },
+        }]
+      },
+    }), {
+      parseStructuredQueryFromMessage: async () => ({
+        intent: 'search_batting',
+        filters: {
+          year: 2026,
+          player_name: '外国人打者の中で最も',
+        },
+      }),
+    })
+
+    const response = await service.answerQuestion('今シーズンのDeNAの外国人打者の中で最もOPSが高いのは誰ですか？')
+
+    expect(response.structured_query).toEqual({
+      intent: 'aggregate_batting',
+      filters: {
+        year: 2026,
+        team: 'DeNA',
+        sort_by: 'ops',
+        limit: 1,
+      },
+    })
+    expect(response.answer.summary).toContain('勝又')
+  })
+
   it('sanitizes invalid player_name for aggregate batting ranking questions', async () => {
     const cases = [
       {
@@ -2195,6 +2504,56 @@ describe('chat-service', () => {
     expect(response.answer.summary).not.toContain('該当する試合は1件です')
   })
 
+  it('keeps terse ordinal follow-ups with history inside the NPB planner path', async () => {
+    const seenGameIds: string[] = []
+    const service = createChatService(createFakeQueryService({
+      searchGameDetails: async (filters) => {
+        seenGameIds.push(filters.game_id ?? '')
+        return filters.game_id === 'r20180916db-t-20'
+          ? [{
+              gameId: 'r20180916db-t-20',
+              date: '2018-09-16',
+              venue: '横浜スタジアム',
+              competition: null,
+              awayTeamName: '阪神タイガース',
+              homeTeamName: '横浜DeNAベイスターズ',
+              matchupText: '阪神タイガース vs 横浜DeNAベイスターズ',
+              linescoreJson: JSON.stringify({
+                away: { team: '阪神タイガース', innings: ['0', '0', '4'], totals: { runs: 4, hits: 5, errors: 0 } },
+                home: { team: '横浜DeNAベイスターズ', innings: ['0', '0', '0'], totals: { runs: 0, hits: 3, errors: 0 } },
+              }),
+            }]
+          : []
+      },
+    }), {
+      parseStructuredQueryFromMessage: async () => ({
+        intent: 'off_topic',
+        filters: {},
+      }),
+    })
+
+    const response = await service.answerQuestion('1本目はいつ？', {
+      history: [
+        { role: 'user', content: '藤浪ってホームラン打ったことある？' },
+        {
+          role: 'assistant',
+          content: [
+            '藤浪 晋太郎のホームランは2件です。',
+            '1. 2018年9月16日 r20180916db-t-20 3回表 阪神 藤浪: レフト満塁ホームラン（打点4）',
+            '2. 2021年4月16日 r20210416t-s-04 5回裏 阪神 藤浪: レフト2ランホームラン（打点2）',
+          ].join('\n'),
+        },
+      ],
+    })
+
+    expect(response.structured_query).toEqual({
+      intent: 'game_detail',
+      filters: { game_id: 'r20180916db-t-20', game_date: '2018-09-16', limit: 1 },
+    })
+    expect(seenGameIds).toEqual(['r20180916db-t-20'])
+    expect(response.answer.summary).not.toContain('NPB（日本プロ野球）に関するご質問')
+  })
+
   it('uses the most recent game from history for terse follow-up questions', async () => {
     const service = createChatService(createFakeQueryService({
       searchGameDetails: async (filters) => (filters.game_date === '2026-06-05')
@@ -2270,7 +2629,9 @@ function createFakeQueryService(options: {
     teams: string[]
     years: number[]
   }>
+  searchPlayerCandidates?: ChatQueryService['searchPlayerCandidates']
   searchEvents?: ChatQueryService['searchEvents']
+  searchGames?: ChatQueryService['searchGames']
   searchBattingLines?: ChatQueryService['searchBattingLines']
   searchPitchingLines?: ChatQueryService['searchPitchingLines']
   searchGameDetails?: ChatQueryService['searchGameDetails']
@@ -2297,7 +2658,7 @@ function createFakeQueryService(options: {
           eventAttributesJson: null,
           sourceUrl: 'https://npb.jp/scores/2024/0401/g-t-01/playbyplay.html',
         }]),
-    searchGames: async () => [],
+    searchGames: options.searchGames ?? (async () => []),
     searchBattingLines: options.searchBattingLines ?? (async () => emptyResults
       ? []
       : [{
@@ -2335,7 +2696,7 @@ function createFakeQueryService(options: {
     aggregatePitchingLines: options.aggregatePitchingLines ?? (async () => []),
     aggregateEvents: async () => [],
     aggregateGameResults: async () => [],
-    searchPlayerCandidates: async (filters) => options.playerCandidatesForFilters?.(filters) ?? options.playerCandidates ?? (
+    searchPlayerCandidates: options.searchPlayerCandidates ?? (async (filters) => options.playerCandidatesForFilters?.(filters) ?? options.playerCandidates ?? (
       filters.name === '存在しない選手'
         ? []
         : [{
@@ -2346,7 +2707,7 @@ function createFakeQueryService(options: {
             teams: ['巨人'],
             years: [2024],
           }]
-    ),
+    )),
     listSourceSnapshotsByGameIds: async (gameIds) => gameIds.map((gameId) => ({
       game_id: gameId,
       source_key: 'box',

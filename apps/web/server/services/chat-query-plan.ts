@@ -720,6 +720,9 @@ function classifyFollowUpType(message: string, hasAssistantHistory: boolean): Ch
   if (/その前のやつ|その前|ひとつ前|一つ前|1つ前|前のやつ|前の試合/u.test(message)) {
     return 'context_reference'
   }
+  if (/(?:\d+|[一二三四五六七八九十]+|[１２３４５６７８９]+)(?:つ目|番目|件目|本目)/u.test(message)) {
+    return 'context_reference'
+  }
   if (/違う|通算じゃなくて|今年の話|最近の話|訂正|修正/u.test(message)) {
     return 'correction_request'
   }
@@ -907,7 +910,7 @@ function extractReferencedAssistantEntry(
   return {
     source: 'latest_assistant_entry',
     anchor: selectedEntry,
-    ordinal: ordinalIndex,
+    ordinal: ordinalIndex !== null ? ordinalIndex + 1 : null,
     summary: selectedEntry,
     gameId,
     gameDate,

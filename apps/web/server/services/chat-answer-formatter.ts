@@ -424,7 +424,7 @@ function formatAggregateSummary(
 ): string {
   if (structuredQuery.intent === 'aggregate_batting') {
     const filters = structuredQuery.filters as Record<string, unknown>
-    if (/本塁打|ホームラン|HR/iu.test(question) && (filters.player_name || filters.player_id)) {
+    if (/本塁打|ホームラン|HR/iu.test(question) && !/打率/u.test(question) && (filters.player_name || filters.player_id)) {
       return formatPlayerHomeRunAggregate(question, rows, filters, playerResolution)
     }
     if (filters.group_by === 'year') {
@@ -824,7 +824,13 @@ type LinescoreSide = {
 
 function formatSinglePlayerBattingAggregate(question: string, row: AggregateRow): string {
   const s = row.stats
-  const year = extractYearLabelFromQuestion(question)
+  const year = typeof s.year === 'number'
+    ? `${s.year}年`
+    : typeof s.year_from === 'number' && typeof s.year_to === 'number'
+      ? `${s.year_from}年から${s.year_to}年`
+      : typeof s.year_from === 'number'
+        ? `${s.year_from}年以降`
+        : extractYearLabelFromQuestion(question)
   const team = String(s.team ?? '')
   const player = String(s.playerName ?? row.label)
   const games = Number(s.games ?? row.total ?? 0)

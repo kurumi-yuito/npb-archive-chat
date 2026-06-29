@@ -12,6 +12,7 @@ import {
   richGameSchema,
   rawPageKeySchema,
   runnerEventAttributesSchema,
+  searchBattingLinesFiltersSchema,
   searchEventsFiltersSchema,
   searchGamesFiltersSchema,
   searchPitchingLinesFiltersSchema,
@@ -222,6 +223,13 @@ describe('@npb/schemas', () => {
       include_farm: true,
       limit: 50,
     })
+  })
+
+  it('coerces numeric game_id filters from LLM output', () => {
+    expect(searchEventsFiltersSchema.parse({ game_id: 123 }).game_id).toBe('123')
+    expect(searchGamesFiltersSchema.parse({ game_id: 123 }).game_id).toBe('123')
+    expect(searchPitchingLinesFiltersSchema.parse({ game_id: 123 }).game_id).toBe('123')
+    expect(searchBattingLinesFiltersSchema.parse({ game_id: 123 }).game_id).toBe('123')
   })
 
   it('parses search pitching filters', () => {
