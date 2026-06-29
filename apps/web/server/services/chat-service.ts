@@ -31,6 +31,7 @@ import {
   queryHasPlayerId,
   queryHasPlayerName,
   type ChatAppliedFollowUpContext,
+  type ChatCorrectionGuardReason,
   type ChatFollowUpType,
 } from './chat-query-plan'
 import {
@@ -860,6 +861,15 @@ const EXCLUDED_FOLLOW_UP_INHERITANCE_TYPES = new Set<ChatFollowUpType>([
   'casual_followup',
 ])
 
+const BLOCKED_CORRECTION_GUARD_REASONS = new Set<ChatCorrectionGuardReason>([
+  'ambiguous_correction',
+  'player_replacement',
+  'explicit_season_override',
+  'explicit_scope_override',
+  'game_context',
+  'follow_up_type_excluded',
+])
+
 function applyPlayerStatsFollowUpContext(
   message: string,
   structuredQuery: ChatStructuredQuery,
@@ -874,6 +884,13 @@ function applyPlayerStatsFollowUpContext(
     identityResolutionScope: null,
     metadata: { applied: false, fields: [], reason },
   })
+  const correctionGuard = plannerOutput.correctionGuard
+  if (correctionGuard.shouldBlockInheritance) {
+    return notApplied(`correction_guard_${correctionGuard.inheritanceBlockedReason}`)
+  }
+  if (BLOCKED_CORRECTION_GUARD_REASONS.has(correctionGuard.inheritanceBlockedReason)) {
+    return notApplied(`correction_guard_${correctionGuard.inheritanceBlockedReason}`)
+  }
   if (!PLAYER_STATS_FOLLOW_UP_INHERITANCE_TYPES.has(plannerOutput.followUpType)) {
     return notApplied('follow_up_type_not_allowed')
   }

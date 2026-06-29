@@ -540,6 +540,86 @@ describe('chat-service', () => {
     expect(response.answer.execution_metadata?.follow_up_context_applied).toBeUndefined()
   })
 
+  it('does not inherit player stats context for ambiguous correction guards', async () => {
+    const service = createChatService(createFakeQueryService(), {
+      parseStructuredQueryFromMessage: async () => ({
+        intent: 'search_batting',
+        filters: { recent: true },
+      }),
+      resolveStructuredQueryPlayer: async (_queryService, structuredQuery) => ({
+        structuredQuery,
+        resolution: null,
+      }),
+      resolveCurrentStructuredQueryPlayer: async (_queryService, structuredQuery) => ({
+        structuredQuery,
+        resolution: null,
+      }),
+      resolveHistoricalStructuredQueryPlayer: async (_queryService, structuredQuery) => ({
+        structuredQuery,
+        resolution: null,
+      }),
+    })
+
+    const response = await service.answerQuestion('いや、そうじゃなくて成績の話', {
+      history: [
+        { role: 'user', content: '藤浪の最近の打撃は？' },
+        { role: 'assistant', content: '横浜DeNAベイスターズ 藤浪 晋太郎の2026年の打撃成績です。' },
+      ],
+    })
+
+    expect(response.structured_query.filters).not.toMatchObject({
+      player_name: '藤浪 晋太郎',
+      team: '横浜DeNAベイスターズ',
+      year: 2026,
+    })
+    expect(response.answer.execution_metadata?.correction_guard).toMatchObject({
+      inheritanceBlockedReason: 'ambiguous_correction',
+      hasAmbiguousCorrection: true,
+      shouldBlockInheritance: true,
+    })
+    expect(response.answer.execution_metadata?.follow_up_context_applied).toBeUndefined()
+  })
+
+  it('does not inherit player stats context for explicit scope override guards', async () => {
+    const service = createChatService(createFakeQueryService(), {
+      parseStructuredQueryFromMessage: async () => ({
+        intent: 'search_pitching',
+        filters: { recent: true },
+      }),
+      resolveStructuredQueryPlayer: async (_queryService, structuredQuery) => ({
+        structuredQuery,
+        resolution: null,
+      }),
+      resolveCurrentStructuredQueryPlayer: async (_queryService, structuredQuery) => ({
+        structuredQuery,
+        resolution: null,
+      }),
+      resolveHistoricalStructuredQueryPlayer: async (_queryService, structuredQuery) => ({
+        structuredQuery,
+        resolution: null,
+      }),
+    })
+
+    const response = await service.answerQuestion('現所属ではどう？', {
+      history: [
+        { role: 'user', content: '藤浪の阪神時代の投球は？' },
+        { role: 'assistant', content: '阪神タイガース 藤浪 晋太郎の2018年の投球成績です。' },
+      ],
+    })
+
+    expect(response.structured_query.filters).not.toMatchObject({
+      pitcher_name: '藤浪 晋太郎',
+      team: '阪神タイガース',
+      year: 2018,
+    })
+    expect(response.answer.execution_metadata?.correction_guard).toMatchObject({
+      inheritanceBlockedReason: 'explicit_scope_override',
+      hasExplicitScopeOverride: true,
+      shouldBlockInheritance: true,
+    })
+    expect(response.answer.execution_metadata?.follow_up_context_applied).toBeUndefined()
+  })
+
   it('uses the current scoped resolver for current identity scope', async () => {
     const currentResolver = vi.fn(async (_queryService, structuredQuery) => ({
       structuredQuery: {
