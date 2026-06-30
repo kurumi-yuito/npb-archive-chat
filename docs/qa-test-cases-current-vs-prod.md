@@ -1,22 +1,26 @@
 # QAテストケース一覧 - 現行本番との差分
 
 - 現行ケース数: 108
-- 本番QA実行日時: 2026-06-30T02:52:07.468Z
-- 対象デプロイVersion ID: bda47100-45d5-4d4a-917f-72281d17cb3b
-- 実行ログパス: [data/logs/qa-prod-1782786773600.json](../data/logs/qa-prod-1782786773600.json)
+- 本番QA実行日時: 2026-06-30T15:01:08.011Z
+- 対象デプロイVersion ID: b031dd0c-3cda-4ffb-a32c-c5804833aaad
+- 実行ログパス: [data/logs/qa-prod-1782830484165.json](../data/logs/qa-prod-1782830484165.json)
 - 集計: Pass 108 / Fail 0 / Blocked 0
 - Fail case_id: なし
 - Fail分類: なし
 - player_id解決失敗件数: 0
-- player_id_required && !player_id_satisfied metadata件数: 23（全件分類済み、実解決失敗なし）
+- player_id_required && !player_id_satisfied metadata件数: 23（全件分類済み、既知のmetadata未充足群、実解決失敗なし）
+- player_id_required && !player_id_satisfied case_id: Q-05/Q-12/Q-13/Q-14/Q-15/Q-16/Q-17/Q-18/Q-19/Q-20/Q-21/Q-51/Q-52/Q-53/Q-61/Q-62/Q-64/Q-76/Q-77/Q-94/Q-95/Q-103/Q-107
+- HTTP 200件数: 108
 - 500エラー件数: 0
 - 503エラー件数: 0
 - HTTP 500/503件数: 0
 - summary null件数: 0
+- correction metadata 出力確認: 確認済み（103件）
+- identity_intent metadata 出力確認: 確認済み（103件）
 - 許容外差分件数: 0/108
 - 許容した差分: 日付差による情報更新（日付や打率など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
 - player_id未充足metadata分類: Q-05/Q-12/Q-13/Q-14/Q-15/Q-16/Q-17/Q-18/Q-19/Q-20/Q-21/Q-51/Q-52/Q-53/Q-61/Q-62/Q-64/Q-76/Q-77/Q-94/Q-95/Q-103/Q-107 は metadata false positive / 期待された曖昧性確認 / 期待された該当なし / player_id なし・nullable の既知fallback経路で、QA正との文意一致を確認済み
-- 重点復旧確認: Q-93/Q-94/Q-95/Q-96/Q-97/Q-98/Q-99/Q-102/Q-103/Q-107/Q-108 はQA正との文意一致を確認済み
+- structured correction metadata確認: Q-94/Q-103/Q-107 で correction / identity_intent / correction_guard の出力を確認済み
 
 ## ケース別結果
 
@@ -108,12 +112,18 @@
     "hasExplicitScopeOverride": true,
     "shouldBlockInheritance": true
   }
+- correction:
+  null
+- identity_intent:
+  null
 - target_game_id:
   null
 - target_player_id:
   null
 - answer_mode:
   direct_answer
+- http_status:
+  200
 - pass/fail:
   Pass
 - fail理由:
@@ -123,7 +133,7 @@
 - 許容した差分:
   QA正との文意一致。日付・成績更新または表記差のみ許容。
 - 実行ログ:
-  [data/logs/qa-prod-1782786773600.json](../data/logs/qa-prod-1782786773600.json)
+  [data/logs/qa-prod-1782830484165.json](../data/logs/qa-prod-1782830484165.json)
 
 ### Q-02: 藤浪は2026年のここまでの二軍での成績はどうですか？防御率や登板数など詳しく教えてください
 
@@ -209,12 +219,30 @@
     "hasExplicitScopeOverride": true,
     "shouldBlockInheritance": true
   }
+- correction:
+  {
+    "isCorrection": true,
+    "target": "season",
+    "value": {
+      "kind": "year",
+      "year": 2026
+    },
+    "confidence": 0.72
+  }
+- identity_intent:
+  {
+    "scope": "current",
+    "explicitSeasonOverride": true,
+    "explicitScopeOverride": true
+  }
 - target_game_id:
   null
 - target_player_id:
   null
 - answer_mode:
   direct_answer
+- http_status:
+  200
 - pass/fail:
   Pass
 - fail理由:
@@ -224,7 +252,7 @@
 - 許容した差分:
   QA正との文意一致。日付・成績更新または表記差のみ許容。
 - 実行ログ:
-  [data/logs/qa-prod-1782786773600.json](../data/logs/qa-prod-1782786773600.json)
+  [data/logs/qa-prod-1782830484165.json](../data/logs/qa-prod-1782830484165.json)
 
 ### Q-03: 藤浪晋太郎が最後に一軍に登板したのはいつ
 
@@ -309,12 +337,29 @@
     "hasExplicitScopeOverride": true,
     "shouldBlockInheritance": true
   }
+- correction:
+  {
+    "isCorrection": true,
+    "target": "scope",
+    "value": {
+      "kind": "unknown"
+    },
+    "confidence": 0.72
+  }
+- identity_intent:
+  {
+    "scope": "unspecified",
+    "explicitSeasonOverride": false,
+    "explicitScopeOverride": true
+  }
 - target_game_id:
   null
 - target_player_id:
   null
 - answer_mode:
   direct_answer
+- http_status:
+  200
 - pass/fail:
   Pass
 - fail理由:
@@ -324,7 +369,7 @@
 - 許容した差分:
   QA正との文意一致。日付・成績更新または表記差のみ許容。
 - 実行ログ:
-  [data/logs/qa-prod-1782786773600.json](../data/logs/qa-prod-1782786773600.json)
+  [data/logs/qa-prod-1782830484165.json](../data/logs/qa-prod-1782830484165.json)
 
 ### Q-04: 藤浪晋太郎は今どこの球団に所属していますか？
 
@@ -409,12 +454,29 @@
     "hasExplicitScopeOverride": false,
     "shouldBlockInheritance": false
   }
+- correction:
+  {
+    "isCorrection": false,
+    "target": "unknown",
+    "value": {
+      "kind": "unknown"
+    },
+    "confidence": 0
+  }
+- identity_intent:
+  {
+    "scope": "current",
+    "explicitSeasonOverride": false,
+    "explicitScopeOverride": false
+  }
 - target_game_id:
   null
 - target_player_id:
   null
 - answer_mode:
   direct_answer
+- http_status:
+  200
 - pass/fail:
   Pass
 - fail理由:
@@ -424,7 +486,7 @@
 - 許容した差分:
   QA正との文意一致。日付・成績更新または表記差のみ許容。
 - 実行ログ:
-  [data/logs/qa-prod-1782786773600.json](../data/logs/qa-prod-1782786773600.json)
+  [data/logs/qa-prod-1782830484165.json](../data/logs/qa-prod-1782830484165.json)
 
 ### Q-05: 則本昂大は楽天時代と巨人移籍後で防御率はどう変わりましたか？
 
@@ -509,12 +571,29 @@
     "hasExplicitScopeOverride": true,
     "shouldBlockInheritance": true
   }
+- correction:
+  {
+    "isCorrection": true,
+    "target": "scope",
+    "value": {
+      "kind": "historical"
+    },
+    "confidence": 0.72
+  }
+- identity_intent:
+  {
+    "scope": "historical",
+    "explicitSeasonOverride": false,
+    "explicitScopeOverride": true
+  }
 - target_game_id:
   null
 - target_player_id:
   null
 - answer_mode:
   direct_answer
+- http_status:
+  200
 - pass/fail:
   Pass
 - fail理由:
@@ -524,7 +603,7 @@
 - 許容した差分:
   QA正との文意一致。日付・成績更新または表記差のみ許容。
 - 実行ログ:
-  [data/logs/qa-prod-1782786773600.json](../data/logs/qa-prod-1782786773600.json)
+  [data/logs/qa-prod-1782830484165.json](../data/logs/qa-prod-1782830484165.json)
 
 ### Q-06: 巨人の則本昂大、最近の登板調子はどう？
 
@@ -617,12 +696,29 @@
     "hasExplicitScopeOverride": false,
     "shouldBlockInheritance": false
   }
+- correction:
+  {
+    "isCorrection": false,
+    "target": "unknown",
+    "value": {
+      "kind": "unknown"
+    },
+    "confidence": 0
+  }
+- identity_intent:
+  {
+    "scope": "current",
+    "explicitSeasonOverride": false,
+    "explicitScopeOverride": false
+  }
 - target_game_id:
   null
 - target_player_id:
   null
 - answer_mode:
   direct_answer
+- http_status:
+  200
 - pass/fail:
   Pass
 - fail理由:
@@ -632,7 +728,7 @@
 - 許容した差分:
   QA正との文意一致。日付・成績更新または表記差のみ許容。
 - 実行ログ:
-  [data/logs/qa-prod-1782786773600.json](../data/logs/qa-prod-1782786773600.json)
+  [data/logs/qa-prod-1782830484165.json](../data/logs/qa-prod-1782830484165.json)
 
 ### Q-07: 山川穂高は今どこの球団ですか？
 
@@ -643,7 +739,7 @@
 - QA正:
   山川穂高選手は2026年シーズン、福岡ソフトバンクホークスに所属しています。
 - 本番回答:
-  山川穂高選手は2026年シーズン、福岡ソフトバンクホークスに所属しています。5月30日の試合でも同球団のロースターに名前が確認されていますので、今シーズンはソフトバンクでプレーしていることが確実です。
+  山川穂高選手は2026年シーズン、福岡ソフトバンクホークスに所属しています。5月30日の試合でも同球団の一員として出場している記録がありますので、今シーズンはソフトバンクでプレーしていることが確かです。
 - intent:
   player_affiliation
 - entities:
@@ -717,12 +813,29 @@
     "hasExplicitScopeOverride": false,
     "shouldBlockInheritance": false
   }
+- correction:
+  {
+    "isCorrection": false,
+    "target": "unknown",
+    "value": {
+      "kind": "unknown"
+    },
+    "confidence": 0
+  }
+- identity_intent:
+  {
+    "scope": "current",
+    "explicitSeasonOverride": false,
+    "explicitScopeOverride": false
+  }
 - target_game_id:
   null
 - target_player_id:
   null
 - answer_mode:
   direct_answer
+- http_status:
+  200
 - pass/fail:
   Pass
 - fail理由:
@@ -732,7 +845,7 @@
 - 許容した差分:
   QA正との文意一致。日付・成績更新または表記差のみ許容。
 - 実行ログ:
-  [data/logs/qa-prod-1782786773600.json](../data/logs/qa-prod-1782786773600.json)
+  [data/logs/qa-prod-1782830484165.json](../data/logs/qa-prod-1782830484165.json)
 
 ### Q-08: 西武時代の山川穂高の年別本塁打数を教えてください
 
@@ -827,12 +940,29 @@
     "hasExplicitScopeOverride": true,
     "shouldBlockInheritance": true
   }
+- correction:
+  {
+    "isCorrection": true,
+    "target": "scope",
+    "value": {
+      "kind": "historical"
+    },
+    "confidence": 0.72
+  }
+- identity_intent:
+  {
+    "scope": "historical",
+    "explicitSeasonOverride": false,
+    "explicitScopeOverride": true
+  }
 - target_game_id:
   null
 - target_player_id:
   null
 - answer_mode:
   direct_answer
+- http_status:
+  200
 - pass/fail:
   Pass
 - fail理由:
@@ -842,7 +972,7 @@
 - 許容した差分:
   QA正との文意一致。日付・成績更新または表記差のみ許容。
 - 実行ログ:
-  [data/logs/qa-prod-1782786773600.json](../data/logs/qa-prod-1782786773600.json)
+  [data/logs/qa-prod-1782830484165.json](../data/logs/qa-prod-1782830484165.json)
 
 ### Q-09: 牧秀悟の最近の打撃成績
 
@@ -929,12 +1059,29 @@
     "hasExplicitScopeOverride": false,
     "shouldBlockInheritance": false
   }
+- correction:
+  {
+    "isCorrection": false,
+    "target": "unknown",
+    "value": {
+      "kind": "unknown"
+    },
+    "confidence": 0
+  }
+- identity_intent:
+  {
+    "scope": "current",
+    "explicitSeasonOverride": false,
+    "explicitScopeOverride": false
+  }
 - target_game_id:
   null
 - target_player_id:
   null
 - answer_mode:
   direct_answer
+- http_status:
+  200
 - pass/fail:
   Pass
 - fail理由:
@@ -944,7 +1091,7 @@
 - 許容した差分:
   QA正との文意一致。日付・成績更新または表記差のみ許容。
 - 実行ログ:
-  [data/logs/qa-prod-1782786773600.json](../data/logs/qa-prod-1782786773600.json)
+  [data/logs/qa-prod-1782830484165.json](../data/logs/qa-prod-1782830484165.json)
 
 ### Q-10: 最近の近本光司の調子は？
 
@@ -1032,12 +1179,29 @@
     "hasExplicitScopeOverride": false,
     "shouldBlockInheritance": false
   }
+- correction:
+  {
+    "isCorrection": false,
+    "target": "unknown",
+    "value": {
+      "kind": "unknown"
+    },
+    "confidence": 0
+  }
+- identity_intent:
+  {
+    "scope": "current",
+    "explicitSeasonOverride": false,
+    "explicitScopeOverride": false
+  }
 - target_game_id:
   null
 - target_player_id:
   null
 - answer_mode:
   direct_answer
+- http_status:
+  200
 - pass/fail:
   Pass
 - fail理由:
@@ -1047,7 +1211,7 @@
 - 許容した差分:
   QA正との文意一致。日付・成績更新または表記差のみ許容。
 - 実行ログ:
-  [data/logs/qa-prod-1782786773600.json](../data/logs/qa-prod-1782786773600.json)
+  [data/logs/qa-prod-1782830484165.json](../data/logs/qa-prod-1782830484165.json)
 
 ### Q-11: 坂倉将吾の最近の打席内容を教えてください
 
@@ -1134,12 +1298,29 @@
     "hasExplicitScopeOverride": false,
     "shouldBlockInheritance": false
   }
+- correction:
+  {
+    "isCorrection": false,
+    "target": "unknown",
+    "value": {
+      "kind": "unknown"
+    },
+    "confidence": 0
+  }
+- identity_intent:
+  {
+    "scope": "current",
+    "explicitSeasonOverride": false,
+    "explicitScopeOverride": false
+  }
 - target_game_id:
   null
 - target_player_id:
   null
 - answer_mode:
   direct_answer
+- http_status:
+  200
 - pass/fail:
   Pass
 - fail理由:
@@ -1149,7 +1330,7 @@
 - 許容した差分:
   QA正との文意一致。日付・成績更新または表記差のみ許容。
 - 実行ログ:
-  [data/logs/qa-prod-1782786773600.json](../data/logs/qa-prod-1782786773600.json)
+  [data/logs/qa-prod-1782830484165.json](../data/logs/qa-prod-1782830484165.json)
 
 ### Q-12: 牧秀悟の今シーズンの通算打率は？
 
@@ -1234,12 +1415,30 @@
     "hasExplicitScopeOverride": true,
     "shouldBlockInheritance": true
   }
+- correction:
+  {
+    "isCorrection": true,
+    "target": "season",
+    "value": {
+      "kind": "year",
+      "year": 2026
+    },
+    "confidence": 0.72
+  }
+- identity_intent:
+  {
+    "scope": "current",
+    "explicitSeasonOverride": true,
+    "explicitScopeOverride": true
+  }
 - target_game_id:
   null
 - target_player_id:
   null
 - answer_mode:
   direct_answer
+- http_status:
+  200
 - pass/fail:
   Pass
 - fail理由:
@@ -1249,7 +1448,7 @@
 - 許容した差分:
   QA正との文意一致。日付・成績更新または表記差のみ許容。
 - 実行ログ:
-  [data/logs/qa-prod-1782786773600.json](../data/logs/qa-prod-1782786773600.json)
+  [data/logs/qa-prod-1782830484165.json](../data/logs/qa-prod-1782830484165.json)
 
 ### Q-13: 牧の2026年の成績を教えて
 
@@ -1334,12 +1533,30 @@
     "hasExplicitScopeOverride": false,
     "shouldBlockInheritance": true
   }
+- correction:
+  {
+    "isCorrection": true,
+    "target": "season",
+    "value": {
+      "kind": "year",
+      "year": 2026
+    },
+    "confidence": 0.72
+  }
+- identity_intent:
+  {
+    "scope": "current",
+    "explicitSeasonOverride": true,
+    "explicitScopeOverride": false
+  }
 - target_game_id:
   null
 - target_player_id:
   null
 - answer_mode:
   direct_answer
+- http_status:
+  200
 - pass/fail:
   Pass
 - fail理由:
@@ -1349,7 +1566,7 @@
 - 許容した差分:
   QA正との文意一致。日付・成績更新または表記差のみ許容。
 - 実行ログ:
-  [data/logs/qa-prod-1782786773600.json](../data/logs/qa-prod-1782786773600.json)
+  [data/logs/qa-prod-1782830484165.json](../data/logs/qa-prod-1782830484165.json)
 
 ### Q-14: DeNAの牧の2026年の成績
 
@@ -1436,12 +1653,30 @@
     "hasExplicitScopeOverride": false,
     "shouldBlockInheritance": true
   }
+- correction:
+  {
+    "isCorrection": true,
+    "target": "season",
+    "value": {
+      "kind": "year",
+      "year": 2026
+    },
+    "confidence": 0.72
+  }
+- identity_intent:
+  {
+    "scope": "current",
+    "explicitSeasonOverride": true,
+    "explicitScopeOverride": false
+  }
 - target_game_id:
   null
 - target_player_id:
   null
 - answer_mode:
   direct_answer
+- http_status:
+  200
 - pass/fail:
   Pass
 - fail理由:
@@ -1451,7 +1686,7 @@
 - 許容した差分:
   QA正との文意一致。日付・成績更新または表記差のみ許容。
 - 実行ログ:
-  [data/logs/qa-prod-1782786773600.json](../data/logs/qa-prod-1782786773600.json)
+  [data/logs/qa-prod-1782830484165.json](../data/logs/qa-prod-1782830484165.json)
 
 ### Q-15: 村上宗隆は今シーズン打率どのくらい？本塁打は何本出てる？
 
@@ -1540,12 +1775,30 @@
     "hasExplicitScopeOverride": true,
     "shouldBlockInheritance": true
   }
+- correction:
+  {
+    "isCorrection": true,
+    "target": "season",
+    "value": {
+      "kind": "year",
+      "year": 2026
+    },
+    "confidence": 0.72
+  }
+- identity_intent:
+  {
+    "scope": "current",
+    "explicitSeasonOverride": true,
+    "explicitScopeOverride": true
+  }
 - target_game_id:
   null
 - target_player_id:
   null
 - answer_mode:
   direct_answer
+- http_status:
+  200
 - pass/fail:
   Pass
 - fail理由:
@@ -1555,7 +1808,7 @@
 - 許容した差分:
   QA正との文意一致。日付・成績更新または表記差のみ許容。
 - 実行ログ:
-  [data/logs/qa-prod-1782786773600.json](../data/logs/qa-prod-1782786773600.json)
+  [data/logs/qa-prod-1782830484165.json](../data/logs/qa-prod-1782830484165.json)
 
 ### Q-16: ヤクルトの村上の今シーズン打率と本塁打数を教えてください
 
@@ -1644,12 +1897,30 @@
     "hasExplicitScopeOverride": true,
     "shouldBlockInheritance": true
   }
+- correction:
+  {
+    "isCorrection": true,
+    "target": "season",
+    "value": {
+      "kind": "year",
+      "year": 2026
+    },
+    "confidence": 0.72
+  }
+- identity_intent:
+  {
+    "scope": "current",
+    "explicitSeasonOverride": true,
+    "explicitScopeOverride": true
+  }
 - target_game_id:
   null
 - target_player_id:
   null
 - answer_mode:
   direct_answer
+- http_status:
+  200
 - pass/fail:
   Pass
 - fail理由:
@@ -1659,7 +1930,7 @@
 - 許容した差分:
   QA正との文意一致。日付・成績更新または表記差のみ許容。
 - 実行ログ:
-  [data/logs/qa-prod-1782786773600.json](../data/logs/qa-prod-1782786773600.json)
+  [data/logs/qa-prod-1782830484165.json](../data/logs/qa-prod-1782830484165.json)
 
 ### Q-17: 今シーズン（2026年）の山本由伸と佐々木朗希を比較してください。防御率・奪三振・投球回の3つの観点で。
 
@@ -1749,12 +2020,30 @@
     "hasExplicitScopeOverride": true,
     "shouldBlockInheritance": true
   }
+- correction:
+  {
+    "isCorrection": true,
+    "target": "season",
+    "value": {
+      "kind": "year",
+      "year": 2023
+    },
+    "confidence": 0.72
+  }
+- identity_intent:
+  {
+    "scope": "historical",
+    "explicitSeasonOverride": true,
+    "explicitScopeOverride": true
+  }
 - target_game_id:
   null
 - target_player_id:
   null
 - answer_mode:
   direct_answer
+- http_status:
+  200
 - pass/fail:
   Pass
 - fail理由:
@@ -1764,7 +2053,7 @@
 - 許容した差分:
   QA正との文意一致。日付・成績更新または表記差のみ許容。
 - 実行ログ:
-  [data/logs/qa-prod-1782786773600.json](../data/logs/qa-prod-1782786773600.json)
+  [data/logs/qa-prod-1782830484165.json](../data/logs/qa-prod-1782830484165.json)
 
 ### Q-18: オリックスの山本由伸の2026年の一軍での投球成績、登板数と防御率を教えてください
 
@@ -1854,12 +2143,30 @@
     "hasExplicitScopeOverride": true,
     "shouldBlockInheritance": true
   }
+- correction:
+  {
+    "isCorrection": true,
+    "target": "season",
+    "value": {
+      "kind": "year",
+      "year": 2023
+    },
+    "confidence": 0.72
+  }
+- identity_intent:
+  {
+    "scope": "historical",
+    "explicitSeasonOverride": true,
+    "explicitScopeOverride": true
+  }
 - target_game_id:
   null
 - target_player_id:
   null
 - answer_mode:
   direct_answer
+- http_status:
+  200
 - pass/fail:
   Pass
 - fail理由:
@@ -1869,7 +2176,7 @@
 - 許容した差分:
   QA正との文意一致。日付・成績更新または表記差のみ許容。
 - 実行ログ:
-  [data/logs/qa-prod-1782786773600.json](../data/logs/qa-prod-1782786773600.json)
+  [data/logs/qa-prod-1782830484165.json](../data/logs/qa-prod-1782830484165.json)
 
 ### Q-19: 2025年の山本由伸（オリックス）の最終的なシーズン成績はどうでしたか？勝敗と防御率が知りたい
 
@@ -1959,12 +2266,30 @@
     "hasExplicitScopeOverride": false,
     "shouldBlockInheritance": true
   }
+- correction:
+  {
+    "isCorrection": true,
+    "target": "season",
+    "value": {
+      "kind": "year",
+      "year": 2023
+    },
+    "confidence": 0.72
+  }
+- identity_intent:
+  {
+    "scope": "historical",
+    "explicitSeasonOverride": true,
+    "explicitScopeOverride": false
+  }
 - target_game_id:
   null
 - target_player_id:
   null
 - answer_mode:
   direct_answer
+- http_status:
+  200
 - pass/fail:
   Pass
 - fail理由:
@@ -1974,7 +2299,7 @@
 - 許容した差分:
   QA正との文意一致。日付・成績更新または表記差のみ許容。
 - 実行ログ:
-  [data/logs/qa-prod-1782786773600.json](../data/logs/qa-prod-1782786773600.json)
+  [data/logs/qa-prod-1782830484165.json](../data/logs/qa-prod-1782830484165.json)
 
 ### Q-20: 2025年の大谷翔平の成績を教えてください
 
@@ -2063,12 +2388,30 @@
     "hasExplicitScopeOverride": false,
     "shouldBlockInheritance": true
   }
+- correction:
+  {
+    "isCorrection": true,
+    "target": "season",
+    "value": {
+      "kind": "year",
+      "year": 2017
+    },
+    "confidence": 0.72
+  }
+- identity_intent:
+  {
+    "scope": "historical",
+    "explicitSeasonOverride": true,
+    "explicitScopeOverride": false
+  }
 - target_game_id:
   null
 - target_player_id:
   null
 - answer_mode:
   direct_answer
+- http_status:
+  200
 - pass/fail:
   Pass
 - fail理由:
@@ -2078,7 +2421,7 @@
 - 許容した差分:
   QA正との文意一致。日付・成績更新または表記差のみ許容。
 - 実行ログ:
-  [data/logs/qa-prod-1782786773600.json](../data/logs/qa-prod-1782786773600.json)
+  [data/logs/qa-prod-1782830484165.json](../data/logs/qa-prod-1782830484165.json)
 
 ### Q-21: 佐々木朗希の最後のNPBでの登板はいつですか？
 
@@ -2165,12 +2508,29 @@
     "hasExplicitScopeOverride": false,
     "shouldBlockInheritance": false
   }
+- correction:
+  {
+    "isCorrection": false,
+    "target": "unknown",
+    "value": {
+      "kind": "unknown"
+    },
+    "confidence": 0
+  }
+- identity_intent:
+  {
+    "scope": "historical",
+    "explicitSeasonOverride": false,
+    "explicitScopeOverride": false
+  }
 - target_game_id:
   null
 - target_player_id:
   null
 - answer_mode:
   direct_answer
+- http_status:
+  200
 - pass/fail:
   Pass
 - fail理由:
@@ -2180,7 +2540,7 @@
 - 許容した差分:
   QA正との文意一致。日付・成績更新または表記差のみ許容。
 - 実行ログ:
-  [data/logs/qa-prod-1782786773600.json](../data/logs/qa-prod-1782786773600.json)
+  [data/logs/qa-prod-1782830484165.json](../data/logs/qa-prod-1782830484165.json)
 
 ### Q-22: 2026年5月10日の広島の試合結果
 
@@ -2271,12 +2631,29 @@
     "hasExplicitScopeOverride": false,
     "shouldBlockInheritance": true
   }
+- correction:
+  {
+    "isCorrection": true,
+    "target": "season",
+    "value": {
+      "kind": "unknown"
+    },
+    "confidence": 0.72
+  }
+- identity_intent:
+  {
+    "scope": "unspecified",
+    "explicitSeasonOverride": true,
+    "explicitScopeOverride": false
+  }
 - target_game_id:
   null
 - target_player_id:
   null
 - answer_mode:
   direct_answer
+- http_status:
+  200
 - pass/fail:
   Pass
 - fail理由:
@@ -2286,7 +2663,7 @@
 - 許容した差分:
   QA正との文意一致。日付・成績更新または表記差のみ許容。
 - 実行ログ:
-  [data/logs/qa-prod-1782786773600.json](../data/logs/qa-prod-1782786773600.json)
+  [data/logs/qa-prod-1782830484165.json](../data/logs/qa-prod-1782830484165.json)
 
 ### Q-23: 2026年5月15日の阪神の試合詳細
 
@@ -2383,12 +2760,29 @@
     "hasExplicitScopeOverride": false,
     "shouldBlockInheritance": true
   }
+- correction:
+  {
+    "isCorrection": true,
+    "target": "season",
+    "value": {
+      "kind": "unknown"
+    },
+    "confidence": 0.72
+  }
+- identity_intent:
+  {
+    "scope": "unspecified",
+    "explicitSeasonOverride": true,
+    "explicitScopeOverride": false
+  }
 - target_game_id:
   null
 - target_player_id:
   null
 - answer_mode:
   direct_answer
+- http_status:
+  200
 - pass/fail:
   Pass
 - fail理由:
@@ -2398,7 +2792,7 @@
 - 許容した差分:
   QA正との文意一致。日付・成績更新または表記差のみ許容。
 - 実行ログ:
-  [data/logs/qa-prod-1782786773600.json](../data/logs/qa-prod-1782786773600.json)
+  [data/logs/qa-prod-1782830484165.json](../data/logs/qa-prod-1782830484165.json)
 
 ### Q-24: 2026年5月21日の巨人対DeNAの試合結果を教えてください
 
@@ -2495,12 +2889,30 @@
     "hasExplicitScopeOverride": false,
     "shouldBlockInheritance": true
   }
+- correction:
+  {
+    "isCorrection": true,
+    "target": "season",
+    "value": {
+      "kind": "year",
+      "year": 2026
+    },
+    "confidence": 0.72
+  }
+- identity_intent:
+  {
+    "scope": "current",
+    "explicitSeasonOverride": true,
+    "explicitScopeOverride": false
+  }
 - target_game_id:
   null
 - target_player_id:
   null
 - answer_mode:
   direct_answer
+- http_status:
+  200
 - pass/fail:
   Pass
 - fail理由:
@@ -2510,7 +2922,7 @@
 - 許容した差分:
   QA正との文意一致。日付・成績更新または表記差のみ許容。
 - 実行ログ:
-  [data/logs/qa-prod-1782786773600.json](../data/logs/qa-prod-1782786773600.json)
+  [data/logs/qa-prod-1782830484165.json](../data/logs/qa-prod-1782830484165.json)
 
 ### Q-25: 2025年の日本シリーズの結果を教えてください
 
@@ -2598,12 +3010,30 @@
     "hasExplicitScopeOverride": false,
     "shouldBlockInheritance": true
   }
+- correction:
+  {
+    "isCorrection": true,
+    "target": "season",
+    "value": {
+      "kind": "year",
+      "year": 2025
+    },
+    "confidence": 0.72
+  }
+- identity_intent:
+  {
+    "scope": "historical",
+    "explicitSeasonOverride": true,
+    "explicitScopeOverride": false
+  }
 - target_game_id:
   null
 - target_player_id:
   null
 - answer_mode:
   direct_answer
+- http_status:
+  200
 - pass/fail:
   Pass
 - fail理由:
@@ -2613,7 +3043,7 @@
 - 許容した差分:
   QA正との文意一致。日付・成績更新または表記差のみ許容。
 - 実行ログ:
-  [data/logs/qa-prod-1782786773600.json](../data/logs/qa-prod-1782786773600.json)
+  [data/logs/qa-prod-1782830484165.json](../data/logs/qa-prod-1782830484165.json)
 
 ### Q-26: 2026年5月10日の広島のスタメンを教えてください
 
@@ -2698,12 +3128,29 @@
     "hasExplicitScopeOverride": false,
     "shouldBlockInheritance": true
   }
+- correction:
+  {
+    "isCorrection": true,
+    "target": "season",
+    "value": {
+      "kind": "unknown"
+    },
+    "confidence": 0.72
+  }
+- identity_intent:
+  {
+    "scope": "unspecified",
+    "explicitSeasonOverride": true,
+    "explicitScopeOverride": false
+  }
 - target_game_id:
   null
 - target_player_id:
   null
 - answer_mode:
   direct_answer
+- http_status:
+  200
 - pass/fail:
   Pass
 - fail理由:
@@ -2713,7 +3160,7 @@
 - 許容した差分:
   QA正との文意一致。日付・成績更新または表記差のみ許容。
 - 実行ログ:
-  [data/logs/qa-prod-1782786773600.json](../data/logs/qa-prod-1782786773600.json)
+  [data/logs/qa-prod-1782830484165.json](../data/logs/qa-prod-1782830484165.json)
 
 ### Q-27: DeNAで5番ショートは最近いつ？
 
@@ -2798,12 +3245,29 @@
     "hasExplicitScopeOverride": false,
     "shouldBlockInheritance": false
   }
+- correction:
+  {
+    "isCorrection": false,
+    "target": "unknown",
+    "value": {
+      "kind": "unknown"
+    },
+    "confidence": 0
+  }
+- identity_intent:
+  {
+    "scope": "current",
+    "explicitSeasonOverride": false,
+    "explicitScopeOverride": false
+  }
 - target_game_id:
   null
 - target_player_id:
   null
 - answer_mode:
   direct_answer
+- http_status:
+  200
 - pass/fail:
   Pass
 - fail理由:
@@ -2813,7 +3277,7 @@
 - 許容した差分:
   QA正との文意一致。日付・成績更新または表記差のみ許容。
 - 実行ログ:
-  [data/logs/qa-prod-1782786773600.json](../data/logs/qa-prod-1782786773600.json)
+  [data/logs/qa-prod-1782830484165.json](../data/logs/qa-prod-1782830484165.json)
 
 ### Q-28: 今シーズンのヤクルトで最も多く4番に起用されている選手は誰ですか？
 
@@ -2899,12 +3363,30 @@
     "hasExplicitScopeOverride": true,
     "shouldBlockInheritance": true
   }
+- correction:
+  {
+    "isCorrection": true,
+    "target": "season",
+    "value": {
+      "kind": "year",
+      "year": 2026
+    },
+    "confidence": 0.72
+  }
+- identity_intent:
+  {
+    "scope": "current",
+    "explicitSeasonOverride": true,
+    "explicitScopeOverride": true
+  }
 - target_game_id:
   null
 - target_player_id:
   null
 - answer_mode:
   direct_answer
+- http_status:
+  200
 - pass/fail:
   Pass
 - fail理由:
@@ -2914,7 +3396,7 @@
 - 許容した差分:
   QA正との文意一致。日付・成績更新または表記差のみ許容。
 - 実行ログ:
-  [data/logs/qa-prod-1782786773600.json](../data/logs/qa-prod-1782786773600.json)
+  [data/logs/qa-prod-1782830484165.json](../data/logs/qa-prod-1782830484165.json)
 
 ### Q-29: 今シーズンDeNAで捕手（スタメン）として最も多く出場しているのは誰？
 
@@ -3002,12 +3484,30 @@
     "hasExplicitScopeOverride": true,
     "shouldBlockInheritance": true
   }
+- correction:
+  {
+    "isCorrection": true,
+    "target": "season",
+    "value": {
+      "kind": "year",
+      "year": 2026
+    },
+    "confidence": 0.72
+  }
+- identity_intent:
+  {
+    "scope": "current",
+    "explicitSeasonOverride": true,
+    "explicitScopeOverride": true
+  }
 - target_game_id:
   null
 - target_player_id:
   null
 - answer_mode:
   direct_answer
+- http_status:
+  200
 - pass/fail:
   Pass
 - fail理由:
@@ -3017,7 +3517,7 @@
 - 許容した差分:
   QA正との文意一致。日付・成績更新または表記差のみ許容。
 - 実行ログ:
-  [data/logs/qa-prod-1782786773600.json](../data/logs/qa-prod-1782786773600.json)
+  [data/logs/qa-prod-1782830484165.json](../data/logs/qa-prod-1782830484165.json)
 
 ### Q-30: 今シーズンのパ・リーグ打率ランキングトップ5を教えてください
 
@@ -3107,12 +3607,30 @@
     "hasExplicitScopeOverride": true,
     "shouldBlockInheritance": true
   }
+- correction:
+  {
+    "isCorrection": true,
+    "target": "season",
+    "value": {
+      "kind": "year",
+      "year": 2026
+    },
+    "confidence": 0.72
+  }
+- identity_intent:
+  {
+    "scope": "current",
+    "explicitSeasonOverride": true,
+    "explicitScopeOverride": true
+  }
 - target_game_id:
   null
 - target_player_id:
   null
 - answer_mode:
   direct_answer
+- http_status:
+  200
 - pass/fail:
   Pass
 - fail理由:
@@ -3122,7 +3640,7 @@
 - 許容した差分:
   QA正との文意一致。日付・成績更新または表記差のみ許容。
 - 実行ログ:
-  [data/logs/qa-prod-1782786773600.json](../data/logs/qa-prod-1782786773600.json)
+  [data/logs/qa-prod-1782830484165.json](../data/logs/qa-prod-1782830484165.json)
 
 ### Q-31: 今シーズンのセ・リーグで打率・出塁率・長打率のバランスが最も優れていると思われる打者を1人挙げて、その根拠を数字で示してください。
 
@@ -3217,12 +3735,30 @@
     "hasExplicitScopeOverride": true,
     "shouldBlockInheritance": true
   }
+- correction:
+  {
+    "isCorrection": true,
+    "target": "season",
+    "value": {
+      "kind": "year",
+      "year": 2026
+    },
+    "confidence": 0.72
+  }
+- identity_intent:
+  {
+    "scope": "current",
+    "explicitSeasonOverride": true,
+    "explicitScopeOverride": true
+  }
 - target_game_id:
   null
 - target_player_id:
   null
 - answer_mode:
   direct_answer
+- http_status:
+  200
 - pass/fail:
   Pass
 - fail理由:
@@ -3232,7 +3768,7 @@
 - 許容した差分:
   QA正との文意一致。日付・成績更新または表記差のみ許容。
 - 実行ログ:
-  [data/logs/qa-prod-1782786773600.json](../data/logs/qa-prod-1782786773600.json)
+  [data/logs/qa-prod-1782830484165.json](../data/logs/qa-prod-1782830484165.json)
 
 ### Q-32: 今シーズンのパ・リーグ盗塁数ランキングを教えてください
 
@@ -3327,12 +3863,30 @@
     "hasExplicitScopeOverride": true,
     "shouldBlockInheritance": true
   }
+- correction:
+  {
+    "isCorrection": true,
+    "target": "season",
+    "value": {
+      "kind": "year",
+      "year": 2026
+    },
+    "confidence": 0.72
+  }
+- identity_intent:
+  {
+    "scope": "current",
+    "explicitSeasonOverride": true,
+    "explicitScopeOverride": true
+  }
 - target_game_id:
   null
 - target_player_id:
   null
 - answer_mode:
   direct_answer
+- http_status:
+  200
 - pass/fail:
   Pass
 - fail理由:
@@ -3342,7 +3896,7 @@
 - 許容した差分:
   QA正との文意一致。日付・成績更新または表記差のみ許容。
 - 実行ログ:
-  [data/logs/qa-prod-1782786773600.json](../data/logs/qa-prod-1782786773600.json)
+  [data/logs/qa-prod-1782830484165.json](../data/logs/qa-prod-1782830484165.json)
 
 ### Q-33: 今シーズンのセ・リーグ打点ランキングトップ5
 
@@ -3432,12 +3986,30 @@
     "hasExplicitScopeOverride": true,
     "shouldBlockInheritance": true
   }
+- correction:
+  {
+    "isCorrection": true,
+    "target": "season",
+    "value": {
+      "kind": "year",
+      "year": 2026
+    },
+    "confidence": 0.72
+  }
+- identity_intent:
+  {
+    "scope": "current",
+    "explicitSeasonOverride": true,
+    "explicitScopeOverride": true
+  }
 - target_game_id:
   null
 - target_player_id:
   null
 - answer_mode:
   direct_answer
+- http_status:
+  200
 - pass/fail:
   Pass
 - fail理由:
@@ -3447,7 +4019,7 @@
 - 許容した差分:
   QA正との文意一致。日付・成績更新または表記差のみ許容。
 - 実行ログ:
-  [data/logs/qa-prod-1782786773600.json](../data/logs/qa-prod-1782786773600.json)
+  [data/logs/qa-prod-1782830484165.json](../data/logs/qa-prod-1782830484165.json)
 
 ### Q-34: 2026年セ・リーグの本塁打ランキングを教えてください
 
@@ -3542,12 +4114,30 @@
     "hasExplicitScopeOverride": false,
     "shouldBlockInheritance": true
   }
+- correction:
+  {
+    "isCorrection": true,
+    "target": "season",
+    "value": {
+      "kind": "year",
+      "year": 2026
+    },
+    "confidence": 0.72
+  }
+- identity_intent:
+  {
+    "scope": "current",
+    "explicitSeasonOverride": true,
+    "explicitScopeOverride": false
+  }
 - target_game_id:
   null
 - target_player_id:
   null
 - answer_mode:
   direct_answer
+- http_status:
+  200
 - pass/fail:
   Pass
 - fail理由:
@@ -3557,7 +4147,7 @@
 - 許容した差分:
   QA正との文意一致。日付・成績更新または表記差のみ許容。
 - 実行ログ:
-  [data/logs/qa-prod-1782786773600.json](../data/logs/qa-prod-1782786773600.json)
+  [data/logs/qa-prod-1782830484165.json](../data/logs/qa-prod-1782830484165.json)
 
 ### Q-35: 今シーズンのパ・リーグ本塁打ランキングを教えてください
 
@@ -3652,12 +4242,30 @@
     "hasExplicitScopeOverride": true,
     "shouldBlockInheritance": true
   }
+- correction:
+  {
+    "isCorrection": true,
+    "target": "season",
+    "value": {
+      "kind": "year",
+      "year": 2026
+    },
+    "confidence": 0.72
+  }
+- identity_intent:
+  {
+    "scope": "current",
+    "explicitSeasonOverride": true,
+    "explicitScopeOverride": true
+  }
 - target_game_id:
   null
 - target_player_id:
   null
 - answer_mode:
   direct_answer
+- http_status:
+  200
 - pass/fail:
   Pass
 - fail理由:
@@ -3667,7 +4275,7 @@
 - 許容した差分:
   QA正との文意一致。日付・成績更新または表記差のみ許容。
 - 実行ログ:
-  [data/logs/qa-prod-1782786773600.json](../data/logs/qa-prod-1782786773600.json)
+  [data/logs/qa-prod-1782830484165.json](../data/logs/qa-prod-1782830484165.json)
 
 ### Q-36: 2022年から2024年の3年間で、NPB全体で最も本塁打を多く打った打者トップ3を教えてください。
 
@@ -3753,12 +4361,29 @@
     "hasExplicitScopeOverride": false,
     "shouldBlockInheritance": true
   }
+- correction:
+  {
+    "isCorrection": true,
+    "target": "season",
+    "value": {
+      "kind": "unknown"
+    },
+    "confidence": 0.72
+  }
+- identity_intent:
+  {
+    "scope": "historical",
+    "explicitSeasonOverride": true,
+    "explicitScopeOverride": false
+  }
 - target_game_id:
   null
 - target_player_id:
   null
 - answer_mode:
   direct_answer
+- http_status:
+  200
 - pass/fail:
   Pass
 - fail理由:
@@ -3768,7 +4393,7 @@
 - 許容した差分:
   QA正との文意一致。日付・成績更新または表記差のみ許容。
 - 実行ログ:
-  [data/logs/qa-prod-1782786773600.json](../data/logs/qa-prod-1782786773600.json)
+  [data/logs/qa-prod-1782830484165.json](../data/logs/qa-prod-1782830484165.json)
 
 ### Q-37: 2022年から2024年のパ・リーグで本塁打が最も多い打者トップ3
 
@@ -3856,12 +4481,29 @@
     "hasExplicitScopeOverride": false,
     "shouldBlockInheritance": true
   }
+- correction:
+  {
+    "isCorrection": true,
+    "target": "season",
+    "value": {
+      "kind": "unknown"
+    },
+    "confidence": 0.72
+  }
+- identity_intent:
+  {
+    "scope": "historical",
+    "explicitSeasonOverride": true,
+    "explicitScopeOverride": false
+  }
 - target_game_id:
   null
 - target_player_id:
   null
 - answer_mode:
   direct_answer
+- http_status:
+  200
 - pass/fail:
   Pass
 - fail理由:
@@ -3871,7 +4513,7 @@
 - 許容した差分:
   QA正との文意一致。日付・成績更新または表記差のみ許容。
 - 実行ログ:
-  [data/logs/qa-prod-1782786773600.json](../data/logs/qa-prod-1782786773600.json)
+  [data/logs/qa-prod-1782830484165.json](../data/logs/qa-prod-1782830484165.json)
 
 ### Q-38: 2026年の先発防御率ランキングトップ5
 
@@ -3959,12 +4601,30 @@
     "hasExplicitScopeOverride": false,
     "shouldBlockInheritance": true
   }
+- correction:
+  {
+    "isCorrection": true,
+    "target": "season",
+    "value": {
+      "kind": "year",
+      "year": 2026
+    },
+    "confidence": 0.72
+  }
+- identity_intent:
+  {
+    "scope": "current",
+    "explicitSeasonOverride": true,
+    "explicitScopeOverride": false
+  }
 - target_game_id:
   null
 - target_player_id:
   null
 - answer_mode:
   direct_answer
+- http_status:
+  200
 - pass/fail:
   Pass
 - fail理由:
@@ -3974,7 +4634,7 @@
 - 許容した差分:
   QA正との文意一致。日付・成績更新または表記差のみ許容。
 - 実行ログ:
-  [data/logs/qa-prod-1782786773600.json](../data/logs/qa-prod-1782786773600.json)
+  [data/logs/qa-prod-1782830484165.json](../data/logs/qa-prod-1782830484165.json)
 
 ### Q-39: 2026年セ・リーグの先発防御率ランキングを教えてください
 
@@ -4069,12 +4729,30 @@
     "hasExplicitScopeOverride": false,
     "shouldBlockInheritance": true
   }
+- correction:
+  {
+    "isCorrection": true,
+    "target": "season",
+    "value": {
+      "kind": "year",
+      "year": 2026
+    },
+    "confidence": 0.72
+  }
+- identity_intent:
+  {
+    "scope": "current",
+    "explicitSeasonOverride": true,
+    "explicitScopeOverride": false
+  }
 - target_game_id:
   null
 - target_player_id:
   null
 - answer_mode:
   direct_answer
+- http_status:
+  200
 - pass/fail:
   Pass
 - fail理由:
@@ -4084,7 +4762,7 @@
 - 許容した差分:
   QA正との文意一致。日付・成績更新または表記差のみ許容。
 - 実行ログ:
-  [data/logs/qa-prod-1782786773600.json](../data/logs/qa-prod-1782786773600.json)
+  [data/logs/qa-prod-1782830484165.json](../data/logs/qa-prod-1782830484165.json)
 
 ### Q-40: 今シーズン（2026年）の先発陣で、WHIPが最も低い投手を教えてください。WHIPは（被安打＋与四球）÷投球回で計算してください。
 
@@ -4177,12 +4855,30 @@
     "hasExplicitScopeOverride": true,
     "shouldBlockInheritance": true
   }
+- correction:
+  {
+    "isCorrection": true,
+    "target": "season",
+    "value": {
+      "kind": "year",
+      "year": 2026
+    },
+    "confidence": 0.72
+  }
+- identity_intent:
+  {
+    "scope": "current",
+    "explicitSeasonOverride": true,
+    "explicitScopeOverride": true
+  }
 - target_game_id:
   null
 - target_player_id:
   null
 - answer_mode:
   direct_answer
+- http_status:
+  200
 - pass/fail:
   Pass
 - fail理由:
@@ -4192,7 +4888,7 @@
 - 許容した差分:
   QA正との文意一致。日付・成績更新または表記差のみ許容。
 - 実行ログ:
-  [data/logs/qa-prod-1782786773600.json](../data/logs/qa-prod-1782786773600.json)
+  [data/logs/qa-prod-1782830484165.json](../data/logs/qa-prod-1782830484165.json)
 
 ### Q-41: 2026年セ・リーグのWHIPランキングを教えてください
 
@@ -4287,12 +4983,30 @@
     "hasExplicitScopeOverride": false,
     "shouldBlockInheritance": true
   }
+- correction:
+  {
+    "isCorrection": true,
+    "target": "season",
+    "value": {
+      "kind": "year",
+      "year": 2026
+    },
+    "confidence": 0.72
+  }
+- identity_intent:
+  {
+    "scope": "current",
+    "explicitSeasonOverride": true,
+    "explicitScopeOverride": false
+  }
 - target_game_id:
   null
 - target_player_id:
   null
 - answer_mode:
   direct_answer
+- http_status:
+  200
 - pass/fail:
   Pass
 - fail理由:
@@ -4302,7 +5016,7 @@
 - 許容した差分:
   QA正との文意一致。日付・成績更新または表記差のみ許容。
 - 実行ログ:
-  [data/logs/qa-prod-1782786773600.json](../data/logs/qa-prod-1782786773600.json)
+  [data/logs/qa-prod-1782830484165.json](../data/logs/qa-prod-1782830484165.json)
 
 ### Q-42: 今シーズンの広島の先発投手で防御率が最もいい投手を教えてください。防御率は自責点÷投球回×9で計算してください
 
@@ -4393,12 +5107,30 @@
     "hasExplicitScopeOverride": true,
     "shouldBlockInheritance": true
   }
+- correction:
+  {
+    "isCorrection": true,
+    "target": "season",
+    "value": {
+      "kind": "year",
+      "year": 2026
+    },
+    "confidence": 0.72
+  }
+- identity_intent:
+  {
+    "scope": "current",
+    "explicitSeasonOverride": true,
+    "explicitScopeOverride": true
+  }
 - target_game_id:
   null
 - target_player_id:
   null
 - answer_mode:
   direct_answer
+- http_status:
+  200
 - pass/fail:
   Pass
 - fail理由:
@@ -4408,7 +5140,7 @@
 - 許容した差分:
   QA正との文意一致。日付・成績更新または表記差のみ許容。
 - 実行ログ:
-  [data/logs/qa-prod-1782786773600.json](../data/logs/qa-prod-1782786773600.json)
+  [data/logs/qa-prod-1782830484165.json](../data/logs/qa-prod-1782830484165.json)
 
 ### Q-43: 今シーズン（2026年）の先発登板で、7回以上投げてかつ自責点0だった試合が一番多い投手は誰ですか？その投手の名前と該当試合数を教えてください。
 
@@ -4501,12 +5233,30 @@
     "hasExplicitScopeOverride": true,
     "shouldBlockInheritance": true
   }
+- correction:
+  {
+    "isCorrection": true,
+    "target": "season",
+    "value": {
+      "kind": "year",
+      "year": 2026
+    },
+    "confidence": 0.72
+  }
+- identity_intent:
+  {
+    "scope": "current",
+    "explicitSeasonOverride": true,
+    "explicitScopeOverride": true
+  }
 - target_game_id:
   null
 - target_player_id:
   null
 - answer_mode:
   direct_answer
+- http_status:
+  200
 - pass/fail:
   Pass
 - fail理由:
@@ -4516,7 +5266,7 @@
 - 許容した差分:
   QA正との文意一致。日付・成績更新または表記差のみ許容。
 - 実行ログ:
-  [data/logs/qa-prod-1782786773600.json](../data/logs/qa-prod-1782786773600.json)
+  [data/logs/qa-prod-1782830484165.json](../data/logs/qa-prod-1782830484165.json)
 
 ### Q-44: 今シーズンの奪三振数ランキングトップ5（全リーグ）
 
@@ -4604,12 +5354,30 @@
     "hasExplicitScopeOverride": true,
     "shouldBlockInheritance": true
   }
+- correction:
+  {
+    "isCorrection": true,
+    "target": "season",
+    "value": {
+      "kind": "year",
+      "year": 2026
+    },
+    "confidence": 0.72
+  }
+- identity_intent:
+  {
+    "scope": "current",
+    "explicitSeasonOverride": true,
+    "explicitScopeOverride": true
+  }
 - target_game_id:
   null
 - target_player_id:
   null
 - answer_mode:
   direct_answer
+- http_status:
+  200
 - pass/fail:
   Pass
 - fail理由:
@@ -4619,7 +5387,7 @@
 - 許容した差分:
   QA正との文意一致。日付・成績更新または表記差のみ許容。
 - 実行ログ:
-  [data/logs/qa-prod-1782786773600.json](../data/logs/qa-prod-1782786773600.json)
+  [data/logs/qa-prod-1782830484165.json](../data/logs/qa-prod-1782830484165.json)
 
 ### Q-45: 今シーズン完封勝利した投手をすべて教えてください
 
@@ -4712,12 +5480,30 @@
     "hasExplicitScopeOverride": true,
     "shouldBlockInheritance": true
   }
+- correction:
+  {
+    "isCorrection": true,
+    "target": "season",
+    "value": {
+      "kind": "year",
+      "year": 2026
+    },
+    "confidence": 0.72
+  }
+- identity_intent:
+  {
+    "scope": "current",
+    "explicitSeasonOverride": true,
+    "explicitScopeOverride": true
+  }
 - target_game_id:
   null
 - target_player_id:
   null
 - answer_mode:
   direct_answer
+- http_status:
+  200
 - pass/fail:
   Pass
 - fail理由:
@@ -4727,7 +5513,7 @@
 - 許容した差分:
   QA正との文意一致。日付・成績更新または表記差のみ許容。
 - 実行ログ:
-  [data/logs/qa-prod-1782786773600.json](../data/logs/qa-prod-1782786773600.json)
+  [data/logs/qa-prod-1782830484165.json](../data/logs/qa-prod-1782830484165.json)
 
 ### Q-46: 今シーズンのセーブ数ランキングを教えてください
 
@@ -4820,12 +5606,30 @@
     "hasExplicitScopeOverride": true,
     "shouldBlockInheritance": true
   }
+- correction:
+  {
+    "isCorrection": true,
+    "target": "season",
+    "value": {
+      "kind": "year",
+      "year": 2026
+    },
+    "confidence": 0.72
+  }
+- identity_intent:
+  {
+    "scope": "current",
+    "explicitSeasonOverride": true,
+    "explicitScopeOverride": true
+  }
 - target_game_id:
   null
 - target_player_id:
   null
 - answer_mode:
   direct_answer
+- http_status:
+  200
 - pass/fail:
   Pass
 - fail理由:
@@ -4835,7 +5639,7 @@
 - 許容した差分:
   QA正との文意一致。日付・成績更新または表記差のみ許容。
 - 実行ログ:
-  [data/logs/qa-prod-1782786773600.json](../data/logs/qa-prod-1782786773600.json)
+  [data/logs/qa-prod-1782830484165.json](../data/logs/qa-prod-1782830484165.json)
 
 ### Q-47: 今シーズン（2026年）のパ・リーグ各チームの勝敗を教えてください
 
@@ -4926,12 +5730,30 @@
     "hasExplicitScopeOverride": true,
     "shouldBlockInheritance": true
   }
+- correction:
+  {
+    "isCorrection": true,
+    "target": "season",
+    "value": {
+      "kind": "year",
+      "year": 2026
+    },
+    "confidence": 0.72
+  }
+- identity_intent:
+  {
+    "scope": "current",
+    "explicitSeasonOverride": true,
+    "explicitScopeOverride": true
+  }
 - target_game_id:
   null
 - target_player_id:
   null
 - answer_mode:
   direct_answer
+- http_status:
+  200
 - pass/fail:
   Pass
 - fail理由:
@@ -4941,7 +5763,7 @@
 - 許容した差分:
   QA正との文意一致。日付・成績更新または表記差のみ許容。
 - 実行ログ:
-  [data/logs/qa-prod-1782786773600.json](../data/logs/qa-prod-1782786773600.json)
+  [data/logs/qa-prod-1782830484165.json](../data/logs/qa-prod-1782830484165.json)
 
 ### Q-48: 今シーズン阪神は何勝何敗ですか？
 
@@ -5027,12 +5849,30 @@
     "hasExplicitScopeOverride": true,
     "shouldBlockInheritance": true
   }
+- correction:
+  {
+    "isCorrection": true,
+    "target": "season",
+    "value": {
+      "kind": "year",
+      "year": 2026
+    },
+    "confidence": 0.72
+  }
+- identity_intent:
+  {
+    "scope": "current",
+    "explicitSeasonOverride": true,
+    "explicitScopeOverride": true
+  }
 - target_game_id:
   null
 - target_player_id:
   null
 - answer_mode:
   direct_answer
+- http_status:
+  200
 - pass/fail:
   Pass
 - fail理由:
@@ -5042,7 +5882,7 @@
 - 許容した差分:
   QA正との文意一致。日付・成績更新または表記差のみ許容。
 - 実行ログ:
-  [data/logs/qa-prod-1782786773600.json](../data/logs/qa-prod-1782786773600.json)
+  [data/logs/qa-prod-1782830484165.json](../data/logs/qa-prod-1782830484165.json)
 
 ### Q-49: 今シーズンDeNAは勝ち越してますか？負け越してますか？
 
@@ -5128,12 +5968,30 @@
     "hasExplicitScopeOverride": true,
     "shouldBlockInheritance": true
   }
+- correction:
+  {
+    "isCorrection": true,
+    "target": "season",
+    "value": {
+      "kind": "year",
+      "year": 2026
+    },
+    "confidence": 0.72
+  }
+- identity_intent:
+  {
+    "scope": "current",
+    "explicitSeasonOverride": true,
+    "explicitScopeOverride": true
+  }
 - target_game_id:
   null
 - target_player_id:
   null
 - answer_mode:
   direct_answer
+- http_status:
+  200
 - pass/fail:
   Pass
 - fail理由:
@@ -5143,7 +6001,7 @@
 - 許容した差分:
   QA正との文意一致。日付・成績更新または表記差のみ許容。
 - 実行ログ:
-  [data/logs/qa-prod-1782786773600.json](../data/logs/qa-prod-1782786773600.json)
+  [data/logs/qa-prod-1782830484165.json](../data/logs/qa-prod-1782830484165.json)
 
 ### Q-50: 2024年のセ・リーグで勝利数が最も多いチームはどこですか？
 
@@ -5234,12 +6092,30 @@
     "hasExplicitScopeOverride": false,
     "shouldBlockInheritance": true
   }
+- correction:
+  {
+    "isCorrection": true,
+    "target": "season",
+    "value": {
+      "kind": "year",
+      "year": 2024
+    },
+    "confidence": 0.72
+  }
+- identity_intent:
+  {
+    "scope": "historical",
+    "explicitSeasonOverride": true,
+    "explicitScopeOverride": false
+  }
 - target_game_id:
   null
 - target_player_id:
   null
 - answer_mode:
   direct_answer
+- http_status:
+  200
 - pass/fail:
   Pass
 - fail理由:
@@ -5249,7 +6125,7 @@
 - 許容した差分:
   QA正との文意一致。日付・成績更新または表記差のみ許容。
 - 実行ログ:
-  [data/logs/qa-prod-1782786773600.json](../data/logs/qa-prod-1782786773600.json)
+  [data/logs/qa-prod-1782830484165.json](../data/logs/qa-prod-1782830484165.json)
 
 ### Q-51: 牧秀悟の2023年から2025年の通算打率と本塁打数を教えてください
 
@@ -5336,12 +6212,29 @@
     "hasExplicitScopeOverride": false,
     "shouldBlockInheritance": true
   }
+- correction:
+  {
+    "isCorrection": true,
+    "target": "season",
+    "value": {
+      "kind": "unknown"
+    },
+    "confidence": 0.72
+  }
+- identity_intent:
+  {
+    "scope": "historical",
+    "explicitSeasonOverride": true,
+    "explicitScopeOverride": false
+  }
 - target_game_id:
   null
 - target_player_id:
   null
 - answer_mode:
   direct_answer
+- http_status:
+  200
 - pass/fail:
   Pass
 - fail理由:
@@ -5351,7 +6244,7 @@
 - 許容した差分:
   QA正との文意一致。日付・成績更新または表記差のみ許容。
 - 実行ログ:
-  [data/logs/qa-prod-1782786773600.json](../data/logs/qa-prod-1782786773600.json)
+  [data/logs/qa-prod-1782830484165.json](../data/logs/qa-prod-1782830484165.json)
 
 ### Q-52: 村上宗隆の2019年から2025年の年別本塁打数を教えてください
 
@@ -5445,12 +6338,29 @@
     "hasExplicitScopeOverride": false,
     "shouldBlockInheritance": true
   }
+- correction:
+  {
+    "isCorrection": true,
+    "target": "season",
+    "value": {
+      "kind": "unknown"
+    },
+    "confidence": 0.72
+  }
+- identity_intent:
+  {
+    "scope": "historical",
+    "explicitSeasonOverride": true,
+    "explicitScopeOverride": false
+  }
 - target_game_id:
   null
 - target_player_id:
   null
 - answer_mode:
   direct_answer
+- http_status:
+  200
 - pass/fail:
   Pass
 - fail理由:
@@ -5460,7 +6370,7 @@
 - 許容した差分:
   QA正との文意一致。日付・成績更新または表記差のみ許容。
 - 実行ログ:
-  [data/logs/qa-prod-1782786773600.json](../data/logs/qa-prod-1782786773600.json)
+  [data/logs/qa-prod-1782830484165.json](../data/logs/qa-prod-1782830484165.json)
 
 ### Q-53: 岡本和真の2016年以降の通算本塁打数を教えてください
 
@@ -5549,12 +6459,29 @@
     "hasExplicitScopeOverride": false,
     "shouldBlockInheritance": true
   }
+- correction:
+  {
+    "isCorrection": true,
+    "target": "season",
+    "value": {
+      "kind": "unknown"
+    },
+    "confidence": 0.72
+  }
+- identity_intent:
+  {
+    "scope": "unspecified",
+    "explicitSeasonOverride": true,
+    "explicitScopeOverride": false
+  }
 - target_game_id:
   null
 - target_player_id:
   null
 - answer_mode:
   direct_answer
+- http_status:
+  200
 - pass/fail:
   Pass
 - fail理由:
@@ -5564,7 +6491,7 @@
 - 許容した差分:
   QA正との文意一致。日付・成績更新または表記差のみ許容。
 - 実行ログ:
-  [data/logs/qa-prod-1782786773600.json](../data/logs/qa-prod-1782786773600.json)
+  [data/logs/qa-prod-1782830484165.json](../data/logs/qa-prod-1782830484165.json)
 
 ### Q-54: 2019年のDeNA対阪神の対戦成績（勝敗）を教えてください
 
@@ -5650,12 +6577,30 @@
     "hasExplicitScopeOverride": false,
     "shouldBlockInheritance": true
   }
+- correction:
+  {
+    "isCorrection": true,
+    "target": "season",
+    "value": {
+      "kind": "year",
+      "year": 2019
+    },
+    "confidence": 0.72
+  }
+- identity_intent:
+  {
+    "scope": "historical",
+    "explicitSeasonOverride": true,
+    "explicitScopeOverride": false
+  }
 - target_game_id:
   null
 - target_player_id:
   null
 - answer_mode:
   direct_answer
+- http_status:
+  200
 - pass/fail:
   Pass
 - fail理由:
@@ -5665,7 +6610,7 @@
 - 許容した差分:
   QA正との文意一致。日付・成績更新または表記差のみ許容。
 - 実行ログ:
-  [data/logs/qa-prod-1782786773600.json](../data/logs/qa-prod-1782786773600.json)
+  [data/logs/qa-prod-1782830484165.json](../data/logs/qa-prod-1782830484165.json)
 
 ### Q-55: 今シーズン代打ホームランを打った選手は？
 
@@ -5748,12 +6693,30 @@
     "hasExplicitScopeOverride": true,
     "shouldBlockInheritance": true
   }
+- correction:
+  {
+    "isCorrection": true,
+    "target": "season",
+    "value": {
+      "kind": "year",
+      "year": 2026
+    },
+    "confidence": 0.72
+  }
+- identity_intent:
+  {
+    "scope": "current",
+    "explicitSeasonOverride": true,
+    "explicitScopeOverride": true
+  }
 - target_game_id:
   null
 - target_player_id:
   null
 - answer_mode:
   direct_answer
+- http_status:
+  200
 - pass/fail:
   Pass
 - fail理由:
@@ -5763,7 +6726,7 @@
 - 許容した差分:
   QA正との文意一致。日付・成績更新または表記差のみ許容。
 - 実行ログ:
-  [data/logs/qa-prod-1782786773600.json](../data/logs/qa-prod-1782786773600.json)
+  [data/logs/qa-prod-1782830484165.json](../data/logs/qa-prod-1782830484165.json)
 
 ### Q-56: 今シーズン阪神のサヨナラ勝ちはいつ？
 
@@ -5848,12 +6811,30 @@
     "hasExplicitScopeOverride": true,
     "shouldBlockInheritance": true
   }
+- correction:
+  {
+    "isCorrection": true,
+    "target": "season",
+    "value": {
+      "kind": "year",
+      "year": 2026
+    },
+    "confidence": 0.72
+  }
+- identity_intent:
+  {
+    "scope": "current",
+    "explicitSeasonOverride": true,
+    "explicitScopeOverride": true
+  }
 - target_game_id:
   null
 - target_player_id:
   null
 - answer_mode:
   direct_answer
+- http_status:
+  200
 - pass/fail:
   Pass
 - fail理由:
@@ -5863,7 +6844,7 @@
 - 許容した差分:
   QA正との文意一致。日付・成績更新または表記差のみ許容。
 - 実行ログ:
-  [data/logs/qa-prod-1782786773600.json](../data/logs/qa-prod-1782786773600.json)
+  [data/logs/qa-prod-1782830484165.json](../data/logs/qa-prod-1782830484165.json)
 
 ### Q-57: 今シーズン最も球数が多かった登板を教えてください
 
@@ -5946,12 +6927,30 @@
     "hasExplicitScopeOverride": true,
     "shouldBlockInheritance": true
   }
+- correction:
+  {
+    "isCorrection": true,
+    "target": "season",
+    "value": {
+      "kind": "year",
+      "year": 2026
+    },
+    "confidence": 0.72
+  }
+- identity_intent:
+  {
+    "scope": "current",
+    "explicitSeasonOverride": true,
+    "explicitScopeOverride": true
+  }
 - target_game_id:
   null
 - target_player_id:
   null
 - answer_mode:
   direct_answer
+- http_status:
+  200
 - pass/fail:
   Pass
 - fail理由:
@@ -5961,7 +6960,7 @@
 - 許容した差分:
   QA正との文意一致。日付・成績更新または表記差のみ許容。
 - 実行ログ:
-  [data/logs/qa-prod-1782786773600.json](../data/logs/qa-prod-1782786773600.json)
+  [data/logs/qa-prod-1782830484165.json](../data/logs/qa-prod-1782830484165.json)
 
 ### Q-58: 今シーズン広島の先発投手で最も長く投げた登板は？
 
@@ -6056,12 +7055,30 @@
     "hasExplicitScopeOverride": true,
     "shouldBlockInheritance": true
   }
+- correction:
+  {
+    "isCorrection": true,
+    "target": "season",
+    "value": {
+      "kind": "year",
+      "year": 2026
+    },
+    "confidence": 0.72
+  }
+- identity_intent:
+  {
+    "scope": "current",
+    "explicitSeasonOverride": true,
+    "explicitScopeOverride": true
+  }
 - target_game_id:
   null
 - target_player_id:
   null
 - answer_mode:
   direct_answer
+- http_status:
+  200
 - pass/fail:
   Pass
 - fail理由:
@@ -6071,7 +7088,7 @@
 - 許容した差分:
   QA正との文意一致。日付・成績更新または表記差のみ許容。
 - 実行ログ:
-  [data/logs/qa-prod-1782786773600.json](../data/logs/qa-prod-1782786773600.json)
+  [data/logs/qa-prod-1782830484165.json](../data/logs/qa-prod-1782830484165.json)
 
 ### Q-59: 今シーズン甲子園での阪神の成績を教えてください
 
@@ -6157,12 +7174,30 @@
     "hasExplicitScopeOverride": true,
     "shouldBlockInheritance": true
   }
+- correction:
+  {
+    "isCorrection": true,
+    "target": "season",
+    "value": {
+      "kind": "year",
+      "year": 2026
+    },
+    "confidence": 0.72
+  }
+- identity_intent:
+  {
+    "scope": "current",
+    "explicitSeasonOverride": true,
+    "explicitScopeOverride": true
+  }
 - target_game_id:
   null
 - target_player_id:
   null
 - answer_mode:
   direct_answer
+- http_status:
+  200
 - pass/fail:
   Pass
 - fail理由:
@@ -6172,7 +7207,7 @@
 - 許容した差分:
   QA正との文意一致。日付・成績更新または表記差のみ許容。
 - 実行ログ:
-  [data/logs/qa-prod-1782786773600.json](../data/logs/qa-prod-1782786773600.json)
+  [data/logs/qa-prod-1782830484165.json](../data/logs/qa-prod-1782830484165.json)
 
 ### Q-60: 東京ドームでのDeNA対巨人の試合結果（今シーズン）
 
@@ -6263,12 +7298,30 @@
     "hasExplicitScopeOverride": true,
     "shouldBlockInheritance": true
   }
+- correction:
+  {
+    "isCorrection": true,
+    "target": "season",
+    "value": {
+      "kind": "year",
+      "year": 2026
+    },
+    "confidence": 0.72
+  }
+- identity_intent:
+  {
+    "scope": "current",
+    "explicitSeasonOverride": true,
+    "explicitScopeOverride": true
+  }
 - target_game_id:
   null
 - target_player_id:
   null
 - answer_mode:
   direct_answer
+- http_status:
+  200
 - pass/fail:
   Pass
 - fail理由:
@@ -6278,7 +7331,7 @@
 - 許容した差分:
   QA正との文意一致。日付・成績更新または表記差のみ許容。
 - 実行ログ:
-  [data/logs/qa-prod-1782786773600.json](../data/logs/qa-prod-1782786773600.json)
+  [data/logs/qa-prod-1782830484165.json](../data/logs/qa-prod-1782830484165.json)
 
 ### Q-61: 今シーズンの田中の成績を教えてください。
 
@@ -6363,12 +7416,30 @@
     "hasExplicitScopeOverride": true,
     "shouldBlockInheritance": true
   }
+- correction:
+  {
+    "isCorrection": true,
+    "target": "season",
+    "value": {
+      "kind": "year",
+      "year": 2026
+    },
+    "confidence": 0.72
+  }
+- identity_intent:
+  {
+    "scope": "current",
+    "explicitSeasonOverride": true,
+    "explicitScopeOverride": true
+  }
 - target_game_id:
   null
 - target_player_id:
   null
 - answer_mode:
   direct_answer
+- http_status:
+  200
 - pass/fail:
   Pass
 - fail理由:
@@ -6378,7 +7449,7 @@
 - 許容した差分:
   QA正との文意一致。日付・成績更新または表記差のみ許容。
 - 実行ログ:
-  [data/logs/qa-prod-1782786773600.json](../data/logs/qa-prod-1782786773600.json)
+  [data/logs/qa-prod-1782830484165.json](../data/logs/qa-prod-1782830484165.json)
 
 ### Q-62: 佐藤の今シーズン成績を教えて
 
@@ -6463,12 +7534,30 @@
     "hasExplicitScopeOverride": true,
     "shouldBlockInheritance": true
   }
+- correction:
+  {
+    "isCorrection": true,
+    "target": "season",
+    "value": {
+      "kind": "year",
+      "year": 2026
+    },
+    "confidence": 0.72
+  }
+- identity_intent:
+  {
+    "scope": "current",
+    "explicitSeasonOverride": true,
+    "explicitScopeOverride": true
+  }
 - target_game_id:
   null
 - target_player_id:
   null
 - answer_mode:
   direct_answer
+- http_status:
+  200
 - pass/fail:
   Pass
 - fail理由:
@@ -6478,7 +7567,7 @@
 - 許容した差分:
   QA正との文意一致。日付・成績更新または表記差のみ許容。
 - 実行ログ:
-  [data/logs/qa-prod-1782786773600.json](../data/logs/qa-prod-1782786773600.json)
+  [data/logs/qa-prod-1782830484165.json](../data/logs/qa-prod-1782830484165.json)
 
 ### Q-63: 村上と青木の今シーズン成績を比べてください
 
@@ -6564,12 +7653,30 @@
     "hasExplicitScopeOverride": true,
     "shouldBlockInheritance": true
   }
+- correction:
+  {
+    "isCorrection": true,
+    "target": "season",
+    "value": {
+      "kind": "year",
+      "year": 2026
+    },
+    "confidence": 0.72
+  }
+- identity_intent:
+  {
+    "scope": "current",
+    "explicitSeasonOverride": true,
+    "explicitScopeOverride": true
+  }
 - target_game_id:
   null
 - target_player_id:
   null
 - answer_mode:
   direct_answer
+- http_status:
+  200
 - pass/fail:
   Pass
 - fail理由:
@@ -6579,7 +7686,7 @@
 - 許容した差分:
   QA正との文意一致。日付・成績更新または表記差のみ許容。
 - 実行ログ:
-  [data/logs/qa-prod-1782786773600.json](../data/logs/qa-prod-1782786773600.json)
+  [data/logs/qa-prod-1782830484165.json](../data/logs/qa-prod-1782830484165.json)
 
 ### Q-64: 阪神の佐藤の成績を教えてください（今シーズン）
 
@@ -6666,12 +7773,30 @@
     "hasExplicitScopeOverride": true,
     "shouldBlockInheritance": true
   }
+- correction:
+  {
+    "isCorrection": true,
+    "target": "season",
+    "value": {
+      "kind": "year",
+      "year": 2026
+    },
+    "confidence": 0.72
+  }
+- identity_intent:
+  {
+    "scope": "current",
+    "explicitSeasonOverride": true,
+    "explicitScopeOverride": true
+  }
 - target_game_id:
   null
 - target_player_id:
   null
 - answer_mode:
   direct_answer
+- http_status:
+  200
 - pass/fail:
   Pass
 - fail理由:
@@ -6681,7 +7806,7 @@
 - 許容した差分:
   QA正との文意一致。日付・成績更新または表記差のみ許容。
 - 実行ログ:
-  [data/logs/qa-prod-1782786773600.json](../data/logs/qa-prod-1782786773600.json)
+  [data/logs/qa-prod-1782830484165.json](../data/logs/qa-prod-1782830484165.json)
 
 ### Q-65: 田中将大の今シーズンの成績を教えてください
 
@@ -6767,12 +7892,30 @@
     "hasExplicitScopeOverride": true,
     "shouldBlockInheritance": true
   }
+- correction:
+  {
+    "isCorrection": true,
+    "target": "season",
+    "value": {
+      "kind": "year",
+      "year": 2026
+    },
+    "confidence": 0.72
+  }
+- identity_intent:
+  {
+    "scope": "current",
+    "explicitSeasonOverride": true,
+    "explicitScopeOverride": true
+  }
 - target_game_id:
   null
 - target_player_id:
   null
 - answer_mode:
   direct_answer
+- http_status:
+  200
 - pass/fail:
   Pass
 - fail理由:
@@ -6782,7 +7925,7 @@
 - 許容した差分:
   QA正との文意一致。日付・成績更新または表記差のみ許容。
 - 実行ログ:
-  [data/logs/qa-prod-1782786773600.json](../data/logs/qa-prod-1782786773600.json)
+  [data/logs/qa-prod-1782830484165.json](../data/logs/qa-prod-1782830484165.json)
 
 ### Q-66: 2026年のBaystarsの打撃成績を教えてください
 
@@ -6877,12 +8020,30 @@
     "hasExplicitScopeOverride": false,
     "shouldBlockInheritance": true
   }
+- correction:
+  {
+    "isCorrection": true,
+    "target": "season",
+    "value": {
+      "kind": "year",
+      "year": 2026
+    },
+    "confidence": 0.72
+  }
+- identity_intent:
+  {
+    "scope": "current",
+    "explicitSeasonOverride": true,
+    "explicitScopeOverride": false
+  }
 - target_game_id:
   null
 - target_player_id:
   null
 - answer_mode:
   direct_answer
+- http_status:
+  200
 - pass/fail:
   Pass
 - fail理由:
@@ -6892,7 +8053,7 @@
 - 許容した差分:
   QA正との文意一致。日付・成績更新または表記差のみ許容。
 - 実行ログ:
-  [data/logs/qa-prod-1782786773600.json](../data/logs/qa-prod-1782786773600.json)
+  [data/logs/qa-prod-1782830484165.json](../data/logs/qa-prod-1782830484165.json)
 
 ### Q-67: はんしんの成績を教えてください
 
@@ -6987,12 +8148,29 @@
     "hasExplicitScopeOverride": false,
     "shouldBlockInheritance": false
   }
+- correction:
+  {
+    "isCorrection": false,
+    "target": "unknown",
+    "value": {
+      "kind": "unknown"
+    },
+    "confidence": 0
+  }
+- identity_intent:
+  {
+    "scope": "current",
+    "explicitSeasonOverride": false,
+    "explicitScopeOverride": false
+  }
 - target_game_id:
   null
 - target_player_id:
   null
 - answer_mode:
   direct_answer
+- http_status:
+  200
 - pass/fail:
   Pass
 - fail理由:
@@ -7002,7 +8180,7 @@
 - 許容した差分:
   QA正との文意一致。日付・成績更新または表記差のみ許容。
 - 実行ログ:
-  [data/logs/qa-prod-1782786773600.json](../data/logs/qa-prod-1782786773600.json)
+  [data/logs/qa-prod-1782830484165.json](../data/logs/qa-prod-1782830484165.json)
 
 ### Q-68: ジャイアンツの今シーズン投手成績を教えてください
 
@@ -7097,12 +8275,30 @@
     "hasExplicitScopeOverride": true,
     "shouldBlockInheritance": true
   }
+- correction:
+  {
+    "isCorrection": true,
+    "target": "season",
+    "value": {
+      "kind": "year",
+      "year": 2026
+    },
+    "confidence": 0.72
+  }
+- identity_intent:
+  {
+    "scope": "current",
+    "explicitSeasonOverride": true,
+    "explicitScopeOverride": true
+  }
 - target_game_id:
   null
 - target_player_id:
   null
 - answer_mode:
   direct_answer
+- http_status:
+  200
 - pass/fail:
   Pass
 - fail理由:
@@ -7112,7 +8308,7 @@
 - 許容した差分:
   QA正との文意一致。日付・成績更新または表記差のみ許容。
 - 実行ログ:
-  [data/logs/qa-prod-1782786773600.json](../data/logs/qa-prod-1782786773600.json)
+  [data/logs/qa-prod-1782830484165.json](../data/logs/qa-prod-1782830484165.json)
 
 ### Q-69: Carpの今シーズンの成績を教えてください
 
@@ -7207,12 +8403,30 @@
     "hasExplicitScopeOverride": true,
     "shouldBlockInheritance": true
   }
+- correction:
+  {
+    "isCorrection": true,
+    "target": "season",
+    "value": {
+      "kind": "year",
+      "year": 2026
+    },
+    "confidence": 0.72
+  }
+- identity_intent:
+  {
+    "scope": "current",
+    "explicitSeasonOverride": true,
+    "explicitScopeOverride": true
+  }
 - target_game_id:
   null
 - target_player_id:
   null
 - answer_mode:
   direct_answer
+- http_status:
+  200
 - pass/fail:
   Pass
 - fail理由:
@@ -7222,7 +8436,7 @@
 - 許容した差分:
   QA正との文意一致。日付・成績更新または表記差のみ許容。
 - 実行ログ:
-  [data/logs/qa-prod-1782786773600.json](../data/logs/qa-prod-1782786773600.json)
+  [data/logs/qa-prod-1782830484165.json](../data/logs/qa-prod-1782830484165.json)
 
 ### Q-70: 今シーズンの得点圏打率が高い選手を3人教えてください
 
@@ -7308,12 +8522,30 @@
     "hasExplicitScopeOverride": true,
     "shouldBlockInheritance": true
   }
+- correction:
+  {
+    "isCorrection": true,
+    "target": "season",
+    "value": {
+      "kind": "year",
+      "year": 2026
+    },
+    "confidence": 0.72
+  }
+- identity_intent:
+  {
+    "scope": "current",
+    "explicitSeasonOverride": true,
+    "explicitScopeOverride": true
+  }
 - target_game_id:
   null
 - target_player_id:
   null
 - answer_mode:
   direct_answer
+- http_status:
+  200
 - pass/fail:
   Pass
 - fail理由:
@@ -7323,7 +8555,7 @@
 - 許容した差分:
   QA正との文意一致。日付・成績更新または表記差のみ許容。
 - 実行ログ:
-  [data/logs/qa-prod-1782786773600.json](../data/logs/qa-prod-1782786773600.json)
+  [data/logs/qa-prod-1782830484165.json](../data/logs/qa-prod-1782830484165.json)
 
 ### Q-71: 今シーズンのパ・リーグでIsoP（長打率マイナス打率）が最も高い打者は？
 
@@ -7413,12 +8645,30 @@
     "hasExplicitScopeOverride": true,
     "shouldBlockInheritance": true
   }
+- correction:
+  {
+    "isCorrection": true,
+    "target": "season",
+    "value": {
+      "kind": "year",
+      "year": 2026
+    },
+    "confidence": 0.72
+  }
+- identity_intent:
+  {
+    "scope": "current",
+    "explicitSeasonOverride": true,
+    "explicitScopeOverride": true
+  }
 - target_game_id:
   null
 - target_player_id:
   null
 - answer_mode:
   direct_answer
+- http_status:
+  200
 - pass/fail:
   Pass
 - fail理由:
@@ -7428,7 +8678,7 @@
 - 許容した差分:
   QA正との文意一致。日付・成績更新または表記差のみ許容。
 - 実行ログ:
-  [data/logs/qa-prod-1782786773600.json](../data/logs/qa-prod-1782786773600.json)
+  [data/logs/qa-prod-1782830484165.json](../data/logs/qa-prod-1782830484165.json)
 
 ### Q-72: 今シーズン四球率（BB%）が最も高い打者を教えてください
 
@@ -7516,12 +8766,30 @@
     "hasExplicitScopeOverride": true,
     "shouldBlockInheritance": true
   }
+- correction:
+  {
+    "isCorrection": true,
+    "target": "season",
+    "value": {
+      "kind": "year",
+      "year": 2026
+    },
+    "confidence": 0.72
+  }
+- identity_intent:
+  {
+    "scope": "current",
+    "explicitSeasonOverride": true,
+    "explicitScopeOverride": true
+  }
 - target_game_id:
   null
 - target_player_id:
   null
 - answer_mode:
   direct_answer
+- http_status:
+  200
 - pass/fail:
   Pass
 - fail理由:
@@ -7531,7 +8799,7 @@
 - 許容した差分:
   QA正との文意一致。日付・成績更新または表記差のみ許容。
 - 実行ログ:
-  [data/logs/qa-prod-1782786773600.json](../data/logs/qa-prod-1782786773600.json)
+  [data/logs/qa-prod-1782830484165.json](../data/logs/qa-prod-1782830484165.json)
 
 ### Q-73: test
 
@@ -7581,12 +8849,18 @@
   null
 - correction_guard:
   null
+- correction:
+  null
+- identity_intent:
+  null
 - target_game_id:
   null
 - target_player_id:
   null
 - answer_mode:
   null
+- http_status:
+  200
 - pass/fail:
   Pass
 - fail理由:
@@ -7596,7 +8870,7 @@
 - 許容した差分:
   QA正との文意一致。日付・成績更新または表記差のみ許容。
 - 実行ログ:
-  [data/logs/qa-prod-1782786773600.json](../data/logs/qa-prod-1782786773600.json)
+  [data/logs/qa-prod-1782830484165.json](../data/logs/qa-prod-1782830484165.json)
 
 ### Q-74: 今日の天気を教えてください
 
@@ -7646,12 +8920,18 @@
   null
 - correction_guard:
   null
+- correction:
+  null
+- identity_intent:
+  null
 - target_game_id:
   null
 - target_player_id:
   null
 - answer_mode:
   null
+- http_status:
+  200
 - pass/fail:
   Pass
 - fail理由:
@@ -7661,7 +8941,7 @@
 - 許容した差分:
   QA正との文意一致。日付・成績更新または表記差のみ許容。
 - 実行ログ:
-  [data/logs/qa-prod-1782786773600.json](../data/logs/qa-prod-1782786773600.json)
+  [data/logs/qa-prod-1782830484165.json](../data/logs/qa-prod-1782830484165.json)
 
 ### Q-75: ChatGPTよりあなたの方が賢いですか？
 
@@ -7711,12 +8991,18 @@
   null
 - correction_guard:
   null
+- correction:
+  null
+- identity_intent:
+  null
 - target_game_id:
   null
 - target_player_id:
   null
 - answer_mode:
   null
+- http_status:
+  200
 - pass/fail:
   Pass
 - fail理由:
@@ -7726,7 +9012,7 @@
 - 許容した差分:
   QA正との文意一致。日付・成績更新または表記差のみ許容。
 - 実行ログ:
-  [data/logs/qa-prod-1782786773600.json](../data/logs/qa-prod-1782786773600.json)
+  [data/logs/qa-prod-1782830484165.json](../data/logs/qa-prod-1782830484165.json)
 
 ### Q-76: 2016年の清原和博の成績を教えてください
 
@@ -7811,12 +9097,30 @@
     "hasExplicitScopeOverride": false,
     "shouldBlockInheritance": true
   }
+- correction:
+  {
+    "isCorrection": true,
+    "target": "season",
+    "value": {
+      "kind": "year",
+      "year": 2016
+    },
+    "confidence": 0.72
+  }
+- identity_intent:
+  {
+    "scope": "historical",
+    "explicitSeasonOverride": true,
+    "explicitScopeOverride": false
+  }
 - target_game_id:
   null
 - target_player_id:
   null
 - answer_mode:
   direct_answer
+- http_status:
+  200
 - pass/fail:
   Pass
 - fail理由:
@@ -7826,7 +9130,7 @@
 - 許容した差分:
   QA正との文意一致。日付・成績更新または表記差のみ許容。
 - 実行ログ:
-  [data/logs/qa-prod-1782786773600.json](../data/logs/qa-prod-1782786773600.json)
+  [data/logs/qa-prod-1782830484165.json](../data/logs/qa-prod-1782830484165.json)
 
 ### Q-77: 今シーズン（2026年）の村上宗隆の成績（データなし時の挙動確認）
 
@@ -7915,12 +9219,30 @@
     "hasExplicitScopeOverride": true,
     "shouldBlockInheritance": true
   }
+- correction:
+  {
+    "isCorrection": true,
+    "target": "season",
+    "value": {
+      "kind": "year",
+      "year": 2026
+    },
+    "confidence": 0.72
+  }
+- identity_intent:
+  {
+    "scope": "current",
+    "explicitSeasonOverride": true,
+    "explicitScopeOverride": true
+  }
 - target_game_id:
   null
 - target_player_id:
   null
 - answer_mode:
   direct_answer
+- http_status:
+  200
 - pass/fail:
   Pass
 - fail理由:
@@ -7930,7 +9252,7 @@
 - 許容した差分:
   QA正との文意一致。日付・成績更新または表記差のみ許容。
 - 実行ログ:
-  [data/logs/qa-prod-1782786773600.json](../data/logs/qa-prod-1782786773600.json)
+  [data/logs/qa-prod-1782830484165.json](../data/logs/qa-prod-1782830484165.json)
 
 ### Q-78: 昨シーズン（2025年）の新人王は誰ですか？
 
@@ -8006,12 +9328,18 @@
   null
 - correction_guard:
   null
+- correction:
+  null
+- identity_intent:
+  null
 - target_game_id:
   null
 - target_player_id:
   null
 - answer_mode:
   direct_answer
+- http_status:
+  200
 - pass/fail:
   Pass
 - fail理由:
@@ -8021,7 +9349,7 @@
 - 許容した差分:
   QA正との文意一致。日付・成績更新または表記差のみ許容。
 - 実行ログ:
-  [data/logs/qa-prod-1782786773600.json](../data/logs/qa-prod-1782786773600.json)
+  [data/logs/qa-prod-1782830484165.json](../data/logs/qa-prod-1782830484165.json)
 
 ### Q-79: 今シーズンのDeNAの外国人打者の中で最もOPSが高いのは誰ですか？
 
@@ -8107,12 +9435,30 @@
     "hasExplicitScopeOverride": true,
     "shouldBlockInheritance": true
   }
+- correction:
+  {
+    "isCorrection": true,
+    "target": "season",
+    "value": {
+      "kind": "year",
+      "year": 2026
+    },
+    "confidence": 0.72
+  }
+- identity_intent:
+  {
+    "scope": "current",
+    "explicitSeasonOverride": true,
+    "explicitScopeOverride": true
+  }
 - target_game_id:
   null
 - target_player_id:
   null
 - answer_mode:
   direct_answer
+- http_status:
+  200
 - pass/fail:
   Pass
 - fail理由:
@@ -8122,7 +9468,7 @@
 - 許容した差分:
   QA正との文意一致。日付・成績更新または表記差のみ許容。
 - 実行ログ:
-  [data/logs/qa-prod-1782786773600.json](../data/logs/qa-prod-1782786773600.json)
+  [data/logs/qa-prod-1782830484165.json](../data/logs/qa-prod-1782830484165.json)
 
 ### Q-80: 2024年のDeNA日本一の最終戦の詳細を教えてください
 
@@ -8271,12 +9617,30 @@
     "hasExplicitScopeOverride": false,
     "shouldBlockInheritance": true
   }
+- correction:
+  {
+    "isCorrection": true,
+    "target": "season",
+    "value": {
+      "kind": "year",
+      "year": 2024
+    },
+    "confidence": 0.72
+  }
+- identity_intent:
+  {
+    "scope": "historical",
+    "explicitSeasonOverride": true,
+    "explicitScopeOverride": false
+  }
 - target_game_id:
   null
 - target_player_id:
   null
 - answer_mode:
   direct_answer
+- http_status:
+  200
 - pass/fail:
   Pass
 - fail理由:
@@ -8286,7 +9650,7 @@
 - 許容した差分:
   QA正との文意一致。日付・成績更新または表記差のみ許容。
 - 実行ログ:
-  [data/logs/qa-prod-1782786773600.json](../data/logs/qa-prod-1782786773600.json)
+  [data/logs/qa-prod-1782830484165.json](../data/logs/qa-prod-1782830484165.json)
 
 ### Q-81: 藤浪って最近何してんの
 
@@ -8376,12 +9740,29 @@
     "hasExplicitScopeOverride": false,
     "shouldBlockInheritance": false
   }
+- correction:
+  {
+    "isCorrection": false,
+    "target": "unknown",
+    "value": {
+      "kind": "unknown"
+    },
+    "confidence": 0
+  }
+- identity_intent:
+  {
+    "scope": "current",
+    "explicitSeasonOverride": false,
+    "explicitScopeOverride": false
+  }
 - target_game_id:
   null
 - target_player_id:
   null
 - answer_mode:
   direct_answer
+- http_status:
+  200
 - pass/fail:
   Pass
 - fail理由:
@@ -8391,7 +9772,7 @@
 - 許容した差分:
   QA正との文意一致。日付・成績更新または表記差のみ許容。
 - 実行ログ:
-  [data/logs/qa-prod-1782786773600.json](../data/logs/qa-prod-1782786773600.json)
+  [data/logs/qa-prod-1782830484165.json](../data/logs/qa-prod-1782830484165.json)
 
 ### Q-82: 藤浪近ごろ見ない気がするんだけど
 
@@ -8481,12 +9862,29 @@
     "hasExplicitScopeOverride": false,
     "shouldBlockInheritance": false
   }
+- correction:
+  {
+    "isCorrection": false,
+    "target": "unknown",
+    "value": {
+      "kind": "unknown"
+    },
+    "confidence": 0
+  }
+- identity_intent:
+  {
+    "scope": "unspecified",
+    "explicitSeasonOverride": false,
+    "explicitScopeOverride": false
+  }
 - target_game_id:
   null
 - target_player_id:
   null
 - answer_mode:
   direct_answer
+- http_status:
+  200
 - pass/fail:
   Pass
 - fail理由:
@@ -8496,7 +9894,7 @@
 - 許容した差分:
   QA正との文意一致。日付・成績更新または表記差のみ許容。
 - 実行ログ:
-  [data/logs/qa-prod-1782786773600.json](../data/logs/qa-prod-1782786773600.json)
+  [data/logs/qa-prod-1782830484165.json](../data/logs/qa-prod-1782830484165.json)
 
 ### Q-83: 藤浪ってホームラン打ったことある？
 
@@ -8583,12 +9981,29 @@
     "hasExplicitScopeOverride": false,
     "shouldBlockInheritance": false
   }
+- correction:
+  {
+    "isCorrection": false,
+    "target": "unknown",
+    "value": {
+      "kind": "unknown"
+    },
+    "confidence": 0
+  }
+- identity_intent:
+  {
+    "scope": "unspecified",
+    "explicitSeasonOverride": false,
+    "explicitScopeOverride": false
+  }
 - target_game_id:
   null
 - target_player_id:
   null
 - answer_mode:
   direct_answer
+- http_status:
+  200
 - pass/fail:
   Pass
 - fail理由:
@@ -8598,7 +10013,7 @@
 - 許容した差分:
   QA正との文意一致。日付・成績更新または表記差のみ許容。
 - 実行ログ:
-  [data/logs/qa-prod-1782786773600.json](../data/logs/qa-prod-1782786773600.json)
+  [data/logs/qa-prod-1782830484165.json](../data/logs/qa-prod-1782830484165.json)
 
 ### Q-84: （直前にQ-83の回答がある状態で）二つ目の試合についてもっと詳しく教えて
 
@@ -8698,12 +10113,29 @@
     "hasExplicitScopeOverride": false,
     "shouldBlockInheritance": true
   }
+- correction:
+  {
+    "isCorrection": false,
+    "target": "unknown",
+    "value": {
+      "kind": "unknown"
+    },
+    "confidence": 0
+  }
+- identity_intent:
+  {
+    "scope": "unspecified",
+    "explicitSeasonOverride": false,
+    "explicitScopeOverride": false
+  }
 - target_game_id:
   null
 - target_player_id:
   null
 - answer_mode:
   detail_explanation
+- http_status:
+  200
 - pass/fail:
   Pass
 - fail理由:
@@ -8713,7 +10145,7 @@
 - 許容した差分:
   QA正との文意一致。日付・成績更新または表記差のみ許容。
 - 実行ログ:
-  [data/logs/qa-prod-1782786773600.json](../data/logs/qa-prod-1782786773600.json)
+  [data/logs/qa-prod-1782830484165.json](../data/logs/qa-prod-1782830484165.json)
 
 ### Q-85: 阪神の藤浪の最近の成績は？
 
@@ -8807,12 +10239,29 @@
     "hasExplicitScopeOverride": false,
     "shouldBlockInheritance": false
   }
+- correction:
+  {
+    "isCorrection": false,
+    "target": "unknown",
+    "value": {
+      "kind": "unknown"
+    },
+    "confidence": 0
+  }
+- identity_intent:
+  {
+    "scope": "current",
+    "explicitSeasonOverride": false,
+    "explicitScopeOverride": false
+  }
 - target_game_id:
   null
 - target_player_id:
   null
 - answer_mode:
   direct_answer
+- http_status:
+  200
 - pass/fail:
   Pass
 - fail理由:
@@ -8822,7 +10271,7 @@
 - 許容した差分:
   QA正との文意一致。日付・成績更新または表記差のみ許容。
 - 実行ログ:
-  [data/logs/qa-prod-1782786773600.json](../data/logs/qa-prod-1782786773600.json)
+  [data/logs/qa-prod-1782830484165.json](../data/logs/qa-prod-1782830484165.json)
 
 ### Q-86: オリックスの西川龍馬とソフトバンクの上沢は対決したことがあるか
 
@@ -8910,12 +10359,29 @@
     "hasExplicitScopeOverride": false,
     "shouldBlockInheritance": false
   }
+- correction:
+  {
+    "isCorrection": false,
+    "target": "unknown",
+    "value": {
+      "kind": "unknown"
+    },
+    "confidence": 0
+  }
+- identity_intent:
+  {
+    "scope": "unspecified",
+    "explicitSeasonOverride": false,
+    "explicitScopeOverride": false
+  }
 - target_game_id:
   null
 - target_player_id:
   null
 - answer_mode:
   direct_answer
+- http_status:
+  200
 - pass/fail:
   Pass
 - fail理由:
@@ -8925,7 +10391,7 @@
 - 許容した差分:
   QA正との文意一致。日付・成績更新または表記差のみ許容。
 - 実行ログ:
-  [data/logs/qa-prod-1782786773600.json](../data/logs/qa-prod-1782786773600.json)
+  [data/logs/qa-prod-1782830484165.json](../data/logs/qa-prod-1782830484165.json)
 
 ### Q-87: 西川龍馬と上沢は対決したことがあるか
 
@@ -9011,12 +10477,29 @@
     "hasExplicitScopeOverride": false,
     "shouldBlockInheritance": false
   }
+- correction:
+  {
+    "isCorrection": false,
+    "target": "unknown",
+    "value": {
+      "kind": "unknown"
+    },
+    "confidence": 0
+  }
+- identity_intent:
+  {
+    "scope": "unspecified",
+    "explicitSeasonOverride": false,
+    "explicitScopeOverride": false
+  }
 - target_game_id:
   null
 - target_player_id:
   null
 - answer_mode:
   direct_answer
+- http_status:
+  200
 - pass/fail:
   Pass
 - fail理由:
@@ -9026,7 +10509,7 @@
 - 許容した差分:
   QA正との文意一致。日付・成績更新または表記差のみ許容。
 - 実行ログ:
-  [data/logs/qa-prod-1782786773600.json](../data/logs/qa-prod-1782786773600.json)
+  [data/logs/qa-prod-1782830484165.json](../data/logs/qa-prod-1782830484165.json)
 
 ### Q-88: 田中将大と柳は対決したことがあるか
 
@@ -9112,12 +10595,29 @@
     "hasExplicitScopeOverride": false,
     "shouldBlockInheritance": false
   }
+- correction:
+  {
+    "isCorrection": false,
+    "target": "unknown",
+    "value": {
+      "kind": "unknown"
+    },
+    "confidence": 0
+  }
+- identity_intent:
+  {
+    "scope": "unspecified",
+    "explicitSeasonOverride": false,
+    "explicitScopeOverride": false
+  }
 - target_game_id:
   null
 - target_player_id:
   null
 - answer_mode:
   direct_answer
+- http_status:
+  200
 - pass/fail:
   Pass
 - fail理由:
@@ -9127,7 +10627,7 @@
 - 許容した差分:
   QA正との文意一致。日付・成績更新または表記差のみ許容。
 - 実行ログ:
-  [data/logs/qa-prod-1782786773600.json](../data/logs/qa-prod-1782786773600.json)
+  [data/logs/qa-prod-1782830484165.json](../data/logs/qa-prod-1782830484165.json)
 
 ### Q-89: 丸佳浩と戸根は対決したことがあるか
 
@@ -9213,12 +10713,29 @@
     "hasExplicitScopeOverride": false,
     "shouldBlockInheritance": false
   }
+- correction:
+  {
+    "isCorrection": false,
+    "target": "unknown",
+    "value": {
+      "kind": "unknown"
+    },
+    "confidence": 0
+  }
+- identity_intent:
+  {
+    "scope": "unspecified",
+    "explicitSeasonOverride": false,
+    "explicitScopeOverride": false
+  }
 - target_game_id:
   null
 - target_player_id:
   null
 - answer_mode:
   direct_answer
+- http_status:
+  200
 - pass/fail:
   Pass
 - fail理由:
@@ -9228,7 +10745,7 @@
 - 許容した差分:
   QA正との文意一致。日付・成績更新または表記差のみ許容。
 - 実行ログ:
-  [data/logs/qa-prod-1782786773600.json](../data/logs/qa-prod-1782786773600.json)
+  [data/logs/qa-prod-1782830484165.json](../data/logs/qa-prod-1782830484165.json)
 
 ### Q-90: 近藤健介と藤原は対決したことがあるか？ 2026年4月16日のソフトバンク対楽天戦には中村晃も出場していた。
 
@@ -9314,12 +10831,30 @@
     "hasExplicitScopeOverride": false,
     "shouldBlockInheritance": true
   }
+- correction:
+  {
+    "isCorrection": true,
+    "target": "season",
+    "value": {
+      "kind": "year",
+      "year": 2026
+    },
+    "confidence": 0.72
+  }
+- identity_intent:
+  {
+    "scope": "current",
+    "explicitSeasonOverride": true,
+    "explicitScopeOverride": false
+  }
 - target_game_id:
   null
 - target_player_id:
   null
 - answer_mode:
   direct_answer
+- http_status:
+  200
 - pass/fail:
   Pass
 - fail理由:
@@ -9329,7 +10864,7 @@
 - 許容した差分:
   QA正との文意一致。日付・成績更新または表記差のみ許容。
 - 実行ログ:
-  [data/logs/qa-prod-1782786773600.json](../data/logs/qa-prod-1782786773600.json)
+  [data/logs/qa-prod-1782830484165.json](../data/logs/qa-prod-1782830484165.json)
 
 ### Q-91: （直前にQ-83の回答がある状態で）それ詳しく
 
@@ -9429,12 +10964,29 @@
     "hasExplicitScopeOverride": false,
     "shouldBlockInheritance": true
   }
+- correction:
+  {
+    "isCorrection": false,
+    "target": "unknown",
+    "value": {
+      "kind": "unknown"
+    },
+    "confidence": 0
+  }
+- identity_intent:
+  {
+    "scope": "unspecified",
+    "explicitSeasonOverride": false,
+    "explicitScopeOverride": false
+  }
 - target_game_id:
   null
 - target_player_id:
   null
 - answer_mode:
   detail_explanation
+- http_status:
+  200
 - pass/fail:
   Pass
 - fail理由:
@@ -9444,7 +10996,7 @@
 - 許容した差分:
   QA正との文意一致。日付・成績更新または表記差のみ許容。
 - 実行ログ:
-  [data/logs/qa-prod-1782786773600.json](../data/logs/qa-prod-1782786773600.json)
+  [data/logs/qa-prod-1782830484165.json](../data/logs/qa-prod-1782830484165.json)
 
 ### Q-92: （直前にQ-83の回答がある状態で）なんで？
 
@@ -9544,12 +11096,29 @@
     "hasExplicitScopeOverride": false,
     "shouldBlockInheritance": true
   }
+- correction:
+  {
+    "isCorrection": false,
+    "target": "unknown",
+    "value": {
+      "kind": "unknown"
+    },
+    "confidence": 0
+  }
+- identity_intent:
+  {
+    "scope": "unspecified",
+    "explicitSeasonOverride": false,
+    "explicitScopeOverride": false
+  }
 - target_game_id:
   null
 - target_player_id:
   null
 - answer_mode:
   reason_explanation
+- http_status:
+  200
 - pass/fail:
   Pass
 - fail理由:
@@ -9559,7 +11128,7 @@
 - 許容した差分:
   QA正との文意一致。日付・成績更新または表記差のみ許容。
 - 実行ログ:
-  [data/logs/qa-prod-1782786773600.json](../data/logs/qa-prod-1782786773600.json)
+  [data/logs/qa-prod-1782830484165.json](../data/logs/qa-prod-1782830484165.json)
 
 ### Q-93: （直前にQ-83の回答がある状態で）つまり？
 
@@ -9659,12 +11228,29 @@
     "hasExplicitScopeOverride": false,
     "shouldBlockInheritance": true
   }
+- correction:
+  {
+    "isCorrection": false,
+    "target": "unknown",
+    "value": {
+      "kind": "unknown"
+    },
+    "confidence": 0
+  }
+- identity_intent:
+  {
+    "scope": "unspecified",
+    "explicitSeasonOverride": false,
+    "explicitScopeOverride": false
+  }
 - target_game_id:
   null
 - target_player_id:
   null
 - answer_mode:
   summary_explanation
+- http_status:
+  200
 - pass/fail:
   Pass
 - fail理由:
@@ -9674,7 +11260,7 @@
 - 許容した差分:
   QA正との文意一致。日付・成績更新または表記差のみ許容。
 - 実行ログ:
-  [data/logs/qa-prod-1782786773600.json](../data/logs/qa-prod-1782786773600.json)
+  [data/logs/qa-prod-1782830484165.json](../data/logs/qa-prod-1782830484165.json)
 
 ### Q-94: （直前にQ-77の回答がある状態で）違う、今年の話
 
@@ -9763,12 +11349,30 @@
     "hasExplicitScopeOverride": true,
     "shouldBlockInheritance": true
   }
+- correction:
+  {
+    "isCorrection": true,
+    "target": "season",
+    "value": {
+      "kind": "year",
+      "year": 2026
+    },
+    "confidence": 0.72
+  }
+- identity_intent:
+  {
+    "scope": "current",
+    "explicitSeasonOverride": true,
+    "explicitScopeOverride": true
+  }
 - target_game_id:
   null
 - target_player_id:
   null
 - answer_mode:
   correction_explanation
+- http_status:
+  200
 - pass/fail:
   Pass
 - fail理由:
@@ -9778,7 +11382,7 @@
 - 許容した差分:
   QA正との文意一致。日付・成績更新または表記差のみ許容。
 - 実行ログ:
-  [data/logs/qa-prod-1782786773600.json](../data/logs/qa-prod-1782786773600.json)
+  [data/logs/qa-prod-1782830484165.json](../data/logs/qa-prod-1782830484165.json)
 
 ### Q-95: （直前にQ-77の回答がある状態で）ちがうはずなんだけど、おかしくない？
 
@@ -9865,12 +11469,29 @@
     "hasExplicitScopeOverride": false,
     "shouldBlockInheritance": true
   }
+- correction:
+  {
+    "isCorrection": false,
+    "target": "unknown",
+    "value": {
+      "kind": "unknown"
+    },
+    "confidence": 0
+  }
+- identity_intent:
+  {
+    "scope": "historical",
+    "explicitSeasonOverride": false,
+    "explicitScopeOverride": false
+  }
 - target_game_id:
   null
 - target_player_id:
   null
 - answer_mode:
   evaluation_explanation
+- http_status:
+  200
 - pass/fail:
   Pass
 - fail理由:
@@ -9880,7 +11501,7 @@
 - 許容した差分:
   QA正との文意一致。日付・成績更新または表記差のみ許容。
 - 実行ログ:
-  [data/logs/qa-prod-1782786773600.json](../data/logs/qa-prod-1782786773600.json)
+  [data/logs/qa-prod-1782830484165.json](../data/logs/qa-prod-1782830484165.json)
 
 ### Q-96: （直前にQ-83の回答がある状態で）調べなおして
 
@@ -9969,12 +11590,29 @@
     "hasExplicitScopeOverride": false,
     "shouldBlockInheritance": false
   }
+- correction:
+  {
+    "isCorrection": false,
+    "target": "unknown",
+    "value": {
+      "kind": "unknown"
+    },
+    "confidence": 0
+  }
+- identity_intent:
+  {
+    "scope": "unspecified",
+    "explicitSeasonOverride": false,
+    "explicitScopeOverride": false
+  }
 - target_game_id:
   null
 - target_player_id:
   null
 - answer_mode:
   recheck_explanation
+- http_status:
+  200
 - pass/fail:
   Pass
 - fail理由:
@@ -9984,7 +11622,7 @@
 - 許容した差分:
   QA正との文意一致。日付・成績更新または表記差のみ許容。
 - 実行ログ:
-  [data/logs/qa-prod-1782786773600.json](../data/logs/qa-prod-1782786773600.json)
+  [data/logs/qa-prod-1782830484165.json](../data/logs/qa-prod-1782830484165.json)
 
 ### Q-97: （直前にQ-81の回答がある状態で）去年と比べてどう？
 
@@ -10069,12 +11707,29 @@
     "hasExplicitScopeOverride": true,
     "shouldBlockInheritance": true
   }
+- correction:
+  {
+    "isCorrection": true,
+    "target": "season",
+    "value": {
+      "kind": "unknown"
+    },
+    "confidence": 0.72
+  }
+- identity_intent:
+  {
+    "scope": "historical",
+    "explicitSeasonOverride": true,
+    "explicitScopeOverride": true
+  }
 - target_game_id:
   null
 - target_player_id:
   null
 - answer_mode:
   comparison_explanation
+- http_status:
+  200
 - pass/fail:
   Pass
 - fail理由:
@@ -10084,7 +11739,7 @@
 - 許容した差分:
   QA正との文意一致。日付・成績更新または表記差のみ許容。
 - 実行ログ:
-  [data/logs/qa-prod-1782786773600.json](../data/logs/qa-prod-1782786773600.json)
+  [data/logs/qa-prod-1782830484165.json](../data/logs/qa-prod-1782830484165.json)
 
 ### Q-98: 藤浪どう？
 
@@ -10174,12 +11829,29 @@
     "hasExplicitScopeOverride": false,
     "shouldBlockInheritance": false
   }
+- correction:
+  {
+    "isCorrection": false,
+    "target": "unknown",
+    "value": {
+      "kind": "unknown"
+    },
+    "confidence": 0
+  }
+- identity_intent:
+  {
+    "scope": "unspecified",
+    "explicitSeasonOverride": false,
+    "explicitScopeOverride": false
+  }
 - target_game_id:
   null
 - target_player_id:
   null
 - answer_mode:
   direct_answer
+- http_status:
+  200
 - pass/fail:
   Pass
 - fail理由:
@@ -10189,7 +11861,7 @@
 - 許容した差分:
   QA正との文意一致。日付・成績更新または表記差のみ許容。
 - 実行ログ:
-  [data/logs/qa-prod-1782786773600.json](../data/logs/qa-prod-1782786773600.json)
+  [data/logs/qa-prod-1782830484165.json](../data/logs/qa-prod-1782830484165.json)
 
 ### Q-99: （直前にQ-83の回答がある状態で）さっきの二つ目
 
@@ -10289,12 +11961,29 @@
     "hasExplicitScopeOverride": false,
     "shouldBlockInheritance": true
   }
+- correction:
+  {
+    "isCorrection": false,
+    "target": "unknown",
+    "value": {
+      "kind": "unknown"
+    },
+    "confidence": 0
+  }
+- identity_intent:
+  {
+    "scope": "unspecified",
+    "explicitSeasonOverride": false,
+    "explicitScopeOverride": false
+  }
 - target_game_id:
   null
 - target_player_id:
   null
 - answer_mode:
   detail_explanation
+- http_status:
+  200
 - pass/fail:
   Pass
 - fail理由:
@@ -10304,7 +11993,7 @@
 - 許容した差分:
   QA正との文意一致。日付・成績更新または表記差のみ許容。
 - 実行ログ:
-  [data/logs/qa-prod-1782786773600.json](../data/logs/qa-prod-1782786773600.json)
+  [data/logs/qa-prod-1782830484165.json](../data/logs/qa-prod-1782830484165.json)
 
 ### Q-100: （直前にQ-83の回答がある状態で）これやばくない？
 
@@ -10404,12 +12093,29 @@
     "hasExplicitScopeOverride": false,
     "shouldBlockInheritance": true
   }
+- correction:
+  {
+    "isCorrection": false,
+    "target": "unknown",
+    "value": {
+      "kind": "unknown"
+    },
+    "confidence": 0
+  }
+- identity_intent:
+  {
+    "scope": "unspecified",
+    "explicitSeasonOverride": false,
+    "explicitScopeOverride": false
+  }
 - target_game_id:
   null
 - target_player_id:
   null
 - answer_mode:
   evaluation_explanation
+- http_status:
+  200
 - pass/fail:
   Pass
 - fail理由:
@@ -10419,7 +12125,7 @@
 - 許容した差分:
   QA正との文意一致。日付・成績更新または表記差のみ許容。
 - 実行ログ:
-  [data/logs/qa-prod-1782786773600.json](../data/logs/qa-prod-1782786773600.json)
+  [data/logs/qa-prod-1782830484165.json](../data/logs/qa-prod-1782830484165.json)
 
 ### Q-101: （直前にQ-84の回答がある状態で）それってどういう意味？
 
@@ -10516,12 +12222,29 @@
     "hasExplicitScopeOverride": false,
     "shouldBlockInheritance": true
   }
+- correction:
+  {
+    "isCorrection": false,
+    "target": "unknown",
+    "value": {
+      "kind": "unknown"
+    },
+    "confidence": 0
+  }
+- identity_intent:
+  {
+    "scope": "unspecified",
+    "explicitSeasonOverride": false,
+    "explicitScopeOverride": false
+  }
 - target_game_id:
   null
 - target_player_id:
   null
 - answer_mode:
   detail_explanation
+- http_status:
+  200
 - pass/fail:
   Pass
 - fail理由:
@@ -10531,7 +12254,7 @@
 - 許容した差分:
   QA正との文意一致。日付・成績更新または表記差のみ許容。
 - 実行ログ:
-  [data/logs/qa-prod-1782786773600.json](../data/logs/qa-prod-1782786773600.json)
+  [data/logs/qa-prod-1782830484165.json](../data/logs/qa-prod-1782830484165.json)
 
 ### Q-102: （直前にQ-98の回答がある状態で）一軍の話？
 
@@ -10618,12 +12341,29 @@
     "hasExplicitScopeOverride": true,
     "shouldBlockInheritance": true
   }
+- correction:
+  {
+    "isCorrection": true,
+    "target": "scope",
+    "value": {
+      "kind": "current"
+    },
+    "confidence": 0.72
+  }
+- identity_intent:
+  {
+    "scope": "current",
+    "explicitSeasonOverride": false,
+    "explicitScopeOverride": true
+  }
 - target_game_id:
   null
 - target_player_id:
   null
 - answer_mode:
   clarification_request
+- http_status:
+  200
 - pass/fail:
   Pass
 - fail理由:
@@ -10633,7 +12373,7 @@
 - 許容した差分:
   QA正との文意一致。日付・成績更新または表記差のみ許容。
 - 実行ログ:
-  [data/logs/qa-prod-1782786773600.json](../data/logs/qa-prod-1782786773600.json)
+  [data/logs/qa-prod-1782830484165.json](../data/logs/qa-prod-1782830484165.json)
 
 ### Q-103: （直前にQ-77の回答がある状態で）今年じゃなくて去年
 
@@ -10720,12 +12460,30 @@
     "hasExplicitScopeOverride": true,
     "shouldBlockInheritance": true
   }
+- correction:
+  {
+    "isCorrection": true,
+    "target": "season",
+    "value": {
+      "kind": "year",
+      "year": 2025
+    },
+    "confidence": 0.72
+  }
+- identity_intent:
+  {
+    "scope": "historical",
+    "explicitSeasonOverride": true,
+    "explicitScopeOverride": true
+  }
 - target_game_id:
   null
 - target_player_id:
   null
 - answer_mode:
   correction_explanation
+- http_status:
+  200
 - pass/fail:
   Pass
 - fail理由:
@@ -10735,7 +12493,7 @@
 - 許容した差分:
   QA正との文意一致。日付・成績更新または表記差のみ許容。
 - 実行ログ:
-  [data/logs/qa-prod-1782786773600.json](../data/logs/qa-prod-1782786773600.json)
+  [data/logs/qa-prod-1782830484165.json](../data/logs/qa-prod-1782830484165.json)
 
 ### Q-104: （直前にQ-23の回答がある状態で）なんで負けたん？
 
@@ -10828,12 +12586,29 @@
     "hasExplicitScopeOverride": false,
     "shouldBlockInheritance": true
   }
+- correction:
+  {
+    "isCorrection": false,
+    "target": "unknown",
+    "value": {
+      "kind": "unknown"
+    },
+    "confidence": 0
+  }
+- identity_intent:
+  {
+    "scope": "unspecified",
+    "explicitSeasonOverride": false,
+    "explicitScopeOverride": false
+  }
 - target_game_id:
   null
 - target_player_id:
   null
 - answer_mode:
   reason_explanation
+- http_status:
+  200
 - pass/fail:
   Pass
 - fail理由:
@@ -10843,7 +12618,7 @@
 - 許容した差分:
   QA正との文意一致。日付・成績更新または表記差のみ許容。
 - 実行ログ:
-  [data/logs/qa-prod-1782786773600.json](../data/logs/qa-prod-1782786773600.json)
+  [data/logs/qa-prod-1782830484165.json](../data/logs/qa-prod-1782830484165.json)
 
 ### Q-105: （直前にQ-98の回答がある状態で）どこがよかった？
 
@@ -10930,12 +12705,29 @@
     "hasExplicitScopeOverride": false,
     "shouldBlockInheritance": false
   }
+- correction:
+  {
+    "isCorrection": false,
+    "target": "unknown",
+    "value": {
+      "kind": "unknown"
+    },
+    "confidence": 0
+  }
+- identity_intent:
+  {
+    "scope": "current",
+    "explicitSeasonOverride": false,
+    "explicitScopeOverride": false
+  }
 - target_game_id:
   null
 - target_player_id:
   null
 - answer_mode:
   evaluation_explanation
+- http_status:
+  200
 - pass/fail:
   Pass
 - fail理由:
@@ -10945,7 +12737,7 @@
 - 許容した差分:
   QA正との文意一致。日付・成績更新または表記差のみ許容。
 - 実行ログ:
-  [data/logs/qa-prod-1782786773600.json](../data/logs/qa-prod-1782786773600.json)
+  [data/logs/qa-prod-1782830484165.json](../data/logs/qa-prod-1782830484165.json)
 
 ### Q-106: （直前にQ-83の回答がある状態で）なんで勝てたん？
 
@@ -11045,12 +12837,29 @@
     "hasExplicitScopeOverride": false,
     "shouldBlockInheritance": true
   }
+- correction:
+  {
+    "isCorrection": false,
+    "target": "unknown",
+    "value": {
+      "kind": "unknown"
+    },
+    "confidence": 0
+  }
+- identity_intent:
+  {
+    "scope": "unspecified",
+    "explicitSeasonOverride": false,
+    "explicitScopeOverride": false
+  }
 - target_game_id:
   null
 - target_player_id:
   null
 - answer_mode:
   reason_explanation
+- http_status:
+  200
 - pass/fail:
   Pass
 - fail理由:
@@ -11060,7 +12869,7 @@
 - 許容した差分:
   QA正との文意一致。日付・成績更新または表記差のみ許容。
 - 実行ログ:
-  [data/logs/qa-prod-1782786773600.json](../data/logs/qa-prod-1782786773600.json)
+  [data/logs/qa-prod-1782830484165.json](../data/logs/qa-prod-1782830484165.json)
 
 ### Q-107: （直前にQ-81の回答がある状態で）いや藤浪じゃなくて村上
 
@@ -11147,12 +12956,29 @@
     "hasExplicitScopeOverride": false,
     "shouldBlockInheritance": true
   }
+- correction:
+  {
+    "isCorrection": true,
+    "target": "player",
+    "value": {
+      "kind": "unknown"
+    },
+    "confidence": 0.72
+  }
+- identity_intent:
+  {
+    "scope": "historical",
+    "explicitSeasonOverride": false,
+    "explicitScopeOverride": false
+  }
 - target_game_id:
   null
 - target_player_id:
   null
 - answer_mode:
   correction_explanation
+- http_status:
+  200
 - pass/fail:
   Pass
 - fail理由:
@@ -11162,7 +12988,7 @@
 - 許容した差分:
   QA正との文意一致。日付・成績更新または表記差のみ許容。
 - 実行ログ:
-  [data/logs/qa-prod-1782786773600.json](../data/logs/qa-prod-1782786773600.json)
+  [data/logs/qa-prod-1782830484165.json](../data/logs/qa-prod-1782830484165.json)
 
 ### Q-108: （直前にQ-83の回答がある状態で）違う、その前のやつ
 
@@ -11271,12 +13097,29 @@
     "hasExplicitScopeOverride": false,
     "shouldBlockInheritance": true
   }
+- correction:
+  {
+    "isCorrection": false,
+    "target": "unknown",
+    "value": {
+      "kind": "unknown"
+    },
+    "confidence": 0
+  }
+- identity_intent:
+  {
+    "scope": "unspecified",
+    "explicitSeasonOverride": false,
+    "explicitScopeOverride": false
+  }
 - target_game_id:
   null
 - target_player_id:
   null
 - answer_mode:
   detail_explanation
+- http_status:
+  200
 - pass/fail:
   Pass
 - fail理由:
@@ -11286,4 +13129,4 @@
 - 許容した差分:
   QA正との文意一致。日付・成績更新または表記差のみ許容。
 - 実行ログ:
-  [data/logs/qa-prod-1782786773600.json](../data/logs/qa-prod-1782786773600.json)
+  [data/logs/qa-prod-1782830484165.json](../data/logs/qa-prod-1782830484165.json)
