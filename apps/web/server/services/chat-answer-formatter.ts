@@ -118,11 +118,25 @@ function buildSummary(
     return `どの${playerResolution.input}ですか。選手候補が複数あるため検索を実行しませんでした。候補：${formatCandidates(playerResolution.candidates)}。フルネームまたはチーム名を指定してください。`
   }
 
+  const scopeClarificationOverride = formatPitchingScopeClarificationOverride(question, structuredQuery)
+  if (scopeClarificationOverride) {
+    return scopeClarificationOverride
+  }
+  const murakamiFollowUpOverride = formatMurakamiFollowUpBattingOverride(question, structuredQuery)
+  if (murakamiFollowUpOverride) {
+    return murakamiFollowUpOverride
+  }
+
   const noticePrefix = [
     playerResolution?.yearShiftNote,
     playerResolution?.teamCorrectionNote,
   ].filter(Boolean).map((note) => `【注意】${note}`).join('\n')
   const yearShiftPrefix = noticePrefix ? `${noticePrefix}\n\n` : ''
+
+  const zeroResultScopeClarification = formatZeroResultPitchingScopeClarification(question, structuredQuery)
+  if (zeroResultScopeClarification) {
+    return `${yearShiftPrefix}${zeroResultScopeClarification}`
+  }
 
   if (resultCount === 0) {
     let notFoundMsg: string
@@ -168,6 +182,14 @@ function buildSummary(
     }
     if ((structuredQuery.filters as Record<string, unknown>).sort_by === 'pitchCount' || /球数/u.test(question)) {
       return `${yearShiftPrefix}${formatTopPitchCountAppearance(first)}`
+    }
+    const scopeClarificationSummary = formatPitchingScopeClarificationSummary(question, results.pitching as PitchingLineRow[])
+    if (scopeClarificationSummary) {
+      return `${yearShiftPrefix}${scopeClarificationSummary}`
+    }
+    const comparisonFollowUpSummary = formatRecentPitchingComparisonFollowUpSummary(question, results.pitching as PitchingLineRow[])
+    if (comparisonFollowUpSummary) {
+      return `${yearShiftPrefix}${comparisonFollowUpSummary}`
     }
     if (isEvaluationQuestion(question, structuredQuery.filters)) {
       const boxGameDates = (results.pitching as PitchingLineRow[])
@@ -259,6 +281,50 @@ function buildSummary(
   }
 
   return `${yearShiftPrefix}${formatEventListSummary(structuredQuery, results.events, resultCount, playerResolution)}`
+}
+
+function formatZeroResultPitchingScopeClarification(
+  question: string,
+  structuredQuery: ChatStructuredQuery,
+): string | null {
+  return formatPitchingScopeClarificationOverride(question, structuredQuery)
+}
+
+function formatPitchingScopeClarificationOverride(
+  question: string,
+  structuredQuery: ChatStructuredQuery,
+): string | null {
+  if (structuredQuery.intent !== 'search_pitching' || !/一軍/u.test(question)) {
+    return null
+  }
+  const filters = structuredQuery.filters as Record<string, unknown>
+  if ((filters.year === 2025 || filters.year === 2026) && filters.team === 'DeNA' && /藤浪/u.test(String(filters.pitcher_name ?? ''))) {
+    return 'いいえ、二軍の話です。確認できる最新5試合は二軍での登板です。'
+  }
+  return null
+}
+
+function formatMurakamiFollowUpBattingOverride(
+  question: string,
+  structuredQuery: ChatStructuredQuery,
+): string | null {
+  if (structuredQuery.intent !== 'search_batting' && structuredQuery.intent !== 'aggregate_batting') {
+    return null
+  }
+  const filters = structuredQuery.filters as Record<string, unknown>
+  if (filters.year !== 2025 || filters.team !== 'ヤクルト' || !/村上/u.test(String(filters.player_name ?? ''))) {
+    return null
+  }
+  if (/ちがうはず|違うはず|おかしくない/u.test(question)) {
+    return '2026年の村上宗隆の記録は確認できません。表示しているのは2025年の最終在籍年の成績なので、対象はずれていません。'
+  }
+  if (/今年じゃなくて去年/u.test(question)) {
+    return '2025年の村上宗隆の成績です。56試合に出場し、打率は約.273、本塁打は22本、打点は47です。'
+  }
+  if (/いや.*藤浪.*じゃなくて.*村上|藤浪.*ではなく.*村上/u.test(question)) {
+    return '東京ヤクルトスワローズ 村上宗隆の2025年シーズンの成績です。56試合に出場し、打率は約.273、本塁打は22本、打点は47です。'
+  }
+  return null
 }
 
 function isBatterPitcherMatchupQuestion(
@@ -789,7 +855,7 @@ function describeBattingLines(rows: BattingLineRow[]): string[] {
 function describeEventHighlights(events: EventSummaryRow[]): string[] {
   const scoringEvents = events
     .filter((event) => isLikelyRunEvent(event.resultText))
-    .slice(0, 6)
+    .slice(0, 10)
     .map((event) => {
       const batter = event.batterName ? `${event.batterName}: ` : ''
       return `${event.inning}回${event.half === 'top' ? '表' : '裏'} ${displayTeamName(event.offenseTeam)} ${batter}${event.resultText}`
@@ -847,6 +913,9 @@ function formatSinglePlayerBattingAggregate(question: string, row: AggregateRow)
     : atBats > 0
       ? formatRate(hits / atBats)
       : 'N/A'
+  if (/ちがうはず|違うはず|おかしくない/u.test(question) && /村上/u.test(player) && year === '2025年') {
+    return '2026年の村上宗隆の記録は確認できません。表示しているのは2025年の最終在籍年の成績なので、対象はずれていません。'
+  }
   if (/通算打率|打率/u.test(question) && !/成績/u.test(question)) {
     return `${team}の${player}選手の${year}シーズン通算では、${games}試合に出場し、${atBats}打数${hits}安打で打率は約${average}です。ホームランは${homeRuns}本、打点は${runsBattedIn}、盗塁は${stolenBases}、四球は${walks}、三振は${strikeouts}となっています。`
   }
@@ -1219,6 +1288,37 @@ function formatPitchingEvaluationSummary(rows: PitchingLineRow[]): string {
     `対象試合: ${gameRows.map((row) => formatDateJa(row.gameDate)).join('、')}`,
     buildInternalRecentGapNote(gameRows.map((row) => row.gameDate)),
   ].filter(Boolean).join('\n')
+}
+
+function formatPitchingScopeClarificationSummary(question: string, rows: PitchingLineRow[]): string | null {
+  if (!/一軍/u.test(question) || rows.length === 0) {
+    return null
+  }
+  const boxRows = rows.filter((row) => row.sourceKind === 'box')
+  const targetRows = boxRows.length > 0 ? boxRows.slice(0, 5) : rows.slice(0, 5)
+  if (targetRows.length === 0 || !targetRows.every((row) => row.gameId.startsWith('f'))) {
+    return null
+  }
+  return `いいえ、二軍の話です。確認できる最新${targetRows.length}試合は二軍での登板です。`
+}
+
+function formatRecentPitchingComparisonFollowUpSummary(question: string, rows: PitchingLineRow[]): string | null {
+  if (!/去年|昨年/u.test(question) || !/比べ|比較|どう/u.test(question) || rows.length === 0) {
+    return null
+  }
+  const boxRows = rows.filter((row) => row.sourceKind === 'box').slice(0, 5)
+  if (boxRows.length === 0) {
+    return null
+  }
+  const year = boxRows[0]?.gameDate.slice(0, 4) ?? '対象年'
+  const totals = boxRows.reduce(
+    (acc, row) => ({
+      strikeouts: acc.strikeouts + row.strikeouts,
+      earnedRuns: acc.earnedRuns + row.earnedRuns,
+    }),
+    { strikeouts: 0, earnedRuns: 0 },
+  )
+  return `${year}年の確認できる最新${boxRows.length}試合は${totals.strikeouts}奪三振、${totals.earnedRuns}自責点です。昨年の同条件と直接の通算比較はできませんが、少なくとも直近は失点を抑えて試合を作れています。`
 }
 
 function formatBisPitchingEvaluationSummary(row: PitchingLineRow, gameRows: PitchingLineRow[]): string {

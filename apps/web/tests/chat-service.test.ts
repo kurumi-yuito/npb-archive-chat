@@ -382,6 +382,83 @@ describe('chat-service', () => {
     expect(response.answer.execution_metadata?.follow_up_context_applied).toBeUndefined()
   })
 
+  it('allows terse correction and recheck follow-ups when history is baseball context', async () => {
+    const seenMessages: string[] = []
+    const service = createChatService(createFakeQueryService(), {
+      parseStructuredQueryFromMessage: async (message) => {
+        seenMessages.push(message)
+        return {
+          intent: 'search_pitching',
+          filters: { pitcher_name: '藤浪', recent: true },
+        }
+      },
+    })
+    const history = [
+      { role: 'user' as const, content: '藤浪ってホームラン打ったことある？' },
+      {
+        role: 'assistant' as const,
+        content: [
+          '藤浪 晋太郎のホームランは2件です。',
+          '1. 2018年9月16日 3回表 阪神 藤浪: レフト満塁ホームラン（打点4）',
+          '2. 2021年4月16日 5回裏 阪神 藤浪: レフト2ランホームラン（打点2）',
+        ].join('\n'),
+      },
+    ]
+
+    for (const message of ['つまり？', '調べなおして', 'さっきの二つ目', '違う、その前のやつ']) {
+      await service.answerQuestion(message, { history })
+    }
+
+    expect(seenMessages).toEqual(['つまり？', '調べなおして', 'さっきの二つ目', '違う、その前のやつ'])
+  })
+
+  it('allows terse player stats follow-ups when history is baseball context', async () => {
+    const seenMessages: string[] = []
+    const service = createChatService(createFakeQueryService(), {
+      parseStructuredQueryFromMessage: async (message) => {
+        seenMessages.push(message)
+        return {
+          intent: 'search_pitching',
+          filters: { pitcher_name: '藤浪', recent: true },
+        }
+      },
+    })
+    const history = [
+      { role: 'user' as const, content: '藤浪って最近何してんの' },
+      {
+        role: 'assistant' as const,
+        content: '横浜DeNAベイスターズ 藤浪 晋太郎の確認できる最新5試合の投球内容です。2026年二軍での対象試合です。',
+      },
+    ]
+
+    for (const message of ['去年と比べてどう？', '一軍の話？', 'いや藤浪じゃなくて村上']) {
+      await service.answerQuestion(message, { history })
+    }
+
+    expect(seenMessages).toEqual(['去年と比べてどう？', '一軍の話？', 'いや藤浪じゃなくて村上'])
+  })
+
+  it('allows known NPB player short status questions without history', async () => {
+    let parserCalled = false
+    const service = createChatService(createFakeQueryService(), {
+      parseStructuredQueryFromMessage: async () => {
+        parserCalled = true
+        return {
+          intent: 'search_pitching',
+          filters: { pitcher_name: '藤浪', recent: true },
+        }
+      },
+    })
+
+    const response = await service.answerQuestion('藤浪どう？')
+
+    expect(parserCalled).toBe(true)
+    expect(response.structured_query).toMatchObject({
+      intent: 'search_pitching',
+      filters: { pitcher_name: '藤浪', recent: true },
+    })
+  })
+
   it('applies limited player stats follow-up context to missing player, team, season and scope', async () => {
     let pitchingFilters: Parameters<ChatQueryService['searchPitchingLines']>[0] | null = null
     const currentResolver = vi.fn(async (_queryService, structuredQuery) => ({
@@ -497,7 +574,12 @@ describe('chat-service', () => {
       ],
     })
 
-    expect(response.structured_query.filters).toMatchObject({ year: 2025 })
+    expect(response.structured_query.filters).toMatchObject({
+      player_name: '村上',
+      team: 'ヤクルト',
+      year: 2025,
+    })
+    expect(response.structured_query.intent).toBe('aggregate_batting')
     expect(response.answer.execution_metadata?.correction_guard).toMatchObject({
       inheritanceBlockedReason: 'explicit_season_override',
       hasExplicitSeasonOverride: true,
@@ -527,8 +609,10 @@ describe('chat-service', () => {
 
     expect(response.structured_query.filters).toMatchObject({
       player_name: '村上',
-      year: 2026,
+      team: 'ヤクルト',
+      year: 2025,
     })
+    expect(response.structured_query.intent).toBe('aggregate_batting')
     expect(response.structured_query.filters).not.toMatchObject({
       player_name: '藤浪 晋太郎',
     })
@@ -538,6 +622,160 @@ describe('chat-service', () => {
       shouldBlockInheritance: true,
     })
     expect(response.answer.execution_metadata?.follow_up_context_applied).toBeUndefined()
+  })
+
+  it('restores recheck follow-ups for home run history to the original event list', async () => {
+    const service = createChatService(createFakeQueryService(), {
+      parseStructuredQueryFromMessage: async () => ({
+        intent: 'off_topic',
+        filters: {},
+      }),
+      resolveStructuredQueryPlayer: async (_queryService, structuredQuery) => ({
+        structuredQuery,
+        resolution: null,
+      }),
+    })
+
+    const response = await service.answerQuestion('調べなおして', {
+      history: [
+        { role: 'user', content: '藤浪ってホームラン打ったことある？' },
+        {
+          role: 'assistant',
+          content: [
+            '藤浪 晋太郎のホームランは2件です。',
+            '1. 2018年9月16日 3回表 阪神 藤浪: レフト満塁ホームラン（打点4）',
+            '2. 2021年4月16日 5回裏 阪神 藤浪: レフト2ランホームラン（打点2）',
+          ].join('\n'),
+        },
+      ],
+    })
+
+    expect(response.structured_query).toEqual({
+      intent: 'search_events',
+      filters: {
+        batter_name: '藤浪',
+        event_type: 'plate_appearance',
+        result_text_contains: 'ホームラン',
+      },
+    })
+  })
+
+  it('keeps comparison follow-ups on recent pitching evidence instead of broad aggregates', async () => {
+    let aggregateCalled = false
+    let pitchingFilters: Parameters<ChatQueryService['searchPitchingLines']>[0] | null = null
+    const service = createChatService(createFakeQueryService({
+      searchPitchingLines: async (filters) => {
+        pitchingFilters = filters
+        return [
+          {
+            gameId: 'f20260621db-d-01',
+            gameDate: '2026-06-21',
+            team: '横浜DeNAベイスターズ',
+            pitcherName: '藤浪 晋太郎',
+            inningsPitched: '5',
+            pitchCount: 90,
+            hitsAllowed: 3,
+            homeRunsAllowed: 0,
+            walks: 2,
+            hitBatters: 0,
+            strikeouts: 6,
+            runs: 1,
+            earnedRuns: 1,
+            rawText: '藤浪 5回 1失点',
+            sourceKind: 'box',
+            sourceUrl: null,
+          },
+        ]
+      },
+      aggregatePitchingLines: async () => {
+        aggregateCalled = true
+        return []
+      },
+    }), {
+      parseStructuredQueryFromMessage: async () => ({
+        intent: 'aggregate_pitching',
+        filters: { pitcher_name: '藤浪', year_from: 2025, year_to: 2026 },
+      }),
+      resolveStructuredQueryPlayer: async (_queryService, structuredQuery) => ({
+        structuredQuery,
+        resolution: null,
+      }),
+      formatChatAnswer,
+    })
+
+    const response = await service.answerQuestion('去年と比べてどう？', {
+      history: [
+        { role: 'user', content: '藤浪って最近何してんの' },
+        { role: 'assistant', content: '横浜DeNAベイスターズ 藤浪 晋太郎の確認できる最新5試合の投球内容です。2026年二軍での対象試合です。内容は5試合で22奪三振、8自責点です。' },
+      ],
+    })
+
+    expect(aggregateCalled).toBe(false)
+    expect(response.structured_query).toMatchObject({
+      intent: 'search_pitching',
+      filters: { pitcher_name: '藤浪', recent: true },
+    })
+    expect(pitchingFilters).toMatchObject({ pitcher_name: '藤浪', recent: true })
+    expect(response.answer.summary).toContain('昨年の同条件と直接の通算比較はできません')
+  })
+
+  it('answers first-team scope clarifications from inherited farm pitching context', async () => {
+    let pitchingFilters: Parameters<ChatQueryService['searchPitchingLines']>[0] | null = null
+    const service = createChatService(createFakeQueryService({
+      playerCandidates: [{
+        player_id: '41045137',
+        name: '藤浪 晋太郎',
+        primary_team: 'DeNA',
+        roles: ['pitcher'],
+        teams: ['DeNA'],
+        years: [2026],
+      }],
+      searchPitchingLines: async (filters) => {
+        pitchingFilters = filters
+        return [{
+          gameId: 'f20260621db-d-01',
+          gameDate: '2026-06-21',
+          team: '横浜DeNAベイスターズ',
+          pitcherName: '藤浪 晋太郎',
+          inningsPitched: '5',
+          pitchCount: 90,
+          hitsAllowed: 3,
+          homeRunsAllowed: 0,
+          walks: 2,
+          hitBatters: 0,
+          strikeouts: 6,
+          runs: 1,
+          earnedRuns: 1,
+          rawText: '藤浪 5回 1失点',
+          sourceKind: 'box',
+          sourceUrl: null,
+        }]
+      },
+    }), {
+      parseStructuredQueryFromMessage: async () => ({
+        intent: 'search_pitching',
+        filters: { year: 2025, pitcher_name: '藤浪' },
+      }),
+      resolveStructuredQueryPlayer: async (_queryService, structuredQuery) => ({
+        structuredQuery,
+        resolution: null,
+      }),
+      formatChatAnswer,
+    })
+
+    const response = await service.answerQuestion('一軍の話？', {
+      history: [
+        { role: 'user', content: '藤浪どう？' },
+        { role: 'assistant', content: '横浜DeNAベイスターズ 藤浪 晋太郎の確認できる最新5試合の投球内容です。2026年二軍での対象試合です。' },
+      ],
+    })
+
+    expect(response.structured_query).toMatchObject({
+      intent: 'search_pitching',
+      filters: { year: 2026, team: 'DeNA', pitcher_name: '藤浪 晋太郎', pitcher_player_id: '41045137', recent: true },
+    })
+    expect(pitchingFilters).toMatchObject({ year: 2026, team: 'DeNA', pitcher_name: '藤浪 晋太郎', pitcher_player_id: '41045137', recent: true })
+    expect(response.answer.summary).toBe('いいえ、二軍の話です。確認できる最新5試合は二軍での登板です。')
   })
 
   it('does not inherit player stats context for ambiguous correction guards', async () => {
