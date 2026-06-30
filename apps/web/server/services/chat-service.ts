@@ -110,7 +110,6 @@ export function createChatService(
         history: options.history,
       })
       const followUpContextApplication = applyPlayerStatsFollowUpContext(
-        message,
         parsedQuery,
         effectivePlan,
       )
@@ -871,7 +870,6 @@ const BLOCKED_CORRECTION_GUARD_REASONS = new Set<ChatCorrectionGuardReason>([
 ])
 
 function applyPlayerStatsFollowUpContext(
-  message: string,
   structuredQuery: ChatStructuredQuery,
   plannerOutput: ChatPlannerOutput,
 ): {
@@ -910,7 +908,10 @@ function applyPlayerStatsFollowUpContext(
   if (plannerOutput.followUpContext.inheritanceConfidence < 0.6) {
     return notApplied('inheritance_confidence_too_low')
   }
-  if (isPlayerReplacementFollowUp(message, structuredQuery)) {
+  if (
+    plannerOutput.correctionGuard.hasPlayerReplacement ||
+    plannerOutput.correction.target === 'player'
+  ) {
     return notApplied('player_replacement_excluded')
   }
 
@@ -932,7 +933,11 @@ function applyPlayerStatsFollowUpContext(
     nextFilters.team = inherited.inheritedTeam
     fields.push('team')
   }
-  if (!hasSeasonFilter(filters) && !hasExplicitSeasonOverride(message) && inherited.inheritedSeason !== null) {
+  if (
+    !hasSeasonFilter(filters) &&
+    !plannerOutput.identityIntent.explicitSeasonOverride &&
+    inherited.inheritedSeason !== null
+  ) {
     nextFilters.year = inherited.inheritedSeason
     fields.push('season')
   }
@@ -940,7 +945,7 @@ function applyPlayerStatsFollowUpContext(
   const identityResolutionScope =
     plannerOutput.identityResolutionScope === 'unspecified' &&
     inherited.inheritedScope !== 'unspecified' &&
-    !hasExplicitScopeOverride(message)
+    !plannerOutput.identityIntent.explicitScopeOverride
       ? inherited.inheritedScope
       : null
   if (identityResolutionScope) {
@@ -977,19 +982,6 @@ function hasSeasonFilter(filters: Record<string, unknown>): boolean {
   return typeof filters.year === 'number' ||
     typeof filters.year_from === 'number' ||
     typeof filters.year_to === 'number'
-}
-
-function hasExplicitSeasonOverride(message: string): boolean {
-  return /20\d{2}年|今年|今シーズン|今季|去年|昨年|昨シーズン|前シーズン|通算/u.test(message)
-}
-
-function hasExplicitScopeOverride(message: string): boolean {
-  return /現在|今の|現所属|今年|今シーズン|今季|去年|昨年|昨シーズン|時代|在籍時|移籍前|移籍後/u.test(message)
-}
-
-function isPlayerReplacementFollowUp(message: string, structuredQuery: ChatStructuredQuery): boolean {
-  return /じゃなくて|ではなく|違って|別の選手/u.test(message) &&
-    (queryHasPlayerName(structuredQuery) || queryHasPlayerId(structuredQuery))
 }
 
 function applyCurrentTeamCorrection(
