@@ -291,6 +291,21 @@ describe('chat-planner follow-up classification', () => {
       ...expected,
       shouldBlockInheritance: true,
     })
+    expect(planner.correction).toMatchObject({
+      isCorrection: expected.inheritanceBlockedReason !== 'game_context',
+      target: expected.hasPlayerReplacement
+        ? 'player'
+        : expected.hasExplicitSeasonOverride
+          ? 'season'
+          : expected.hasExplicitScopeOverride
+            ? 'scope'
+            : 'unknown',
+    })
+    expect(planner.identityIntent).toMatchObject({
+      scope: planner.identityResolutionScope,
+      explicitSeasonOverride: Boolean(expected.hasExplicitSeasonOverride),
+      explicitScopeOverride: Boolean(expected.hasExplicitScopeOverride),
+    })
     expect(planner.structuredQuery).toEqual(query)
   })
 })

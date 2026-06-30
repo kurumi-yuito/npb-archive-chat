@@ -485,6 +485,20 @@ export const chatResponseSchema = z.object({
         hasExplicitScopeOverride: z.boolean(),
         shouldBlockInheritance: z.boolean(),
       }).optional(),
+      correction: z.object({
+        isCorrection: z.boolean(),
+        target: z.enum(['season', 'scope', 'player', 'team', 'unknown']),
+        value: z.object({
+          kind: z.enum(['year', 'career', 'current', 'historical', 'farm', 'first_team', 'unknown']),
+          year: z.number().int().optional(),
+        }),
+        confidence: z.number().min(0).max(1),
+      }).optional(),
+      identity_intent: z.object({
+        scope: z.enum(['unspecified', 'current', 'historical']),
+        explicitSeasonOverride: z.boolean(),
+        explicitScopeOverride: z.boolean(),
+      }).optional(),
       target_game_id: z.string().min(1).nullable(),
       target_player_id: z.string().min(1).nullable(),
       answer_mode: z.string().min(1),

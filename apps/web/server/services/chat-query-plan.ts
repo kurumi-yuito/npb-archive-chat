@@ -130,6 +130,30 @@ export const chatCorrectionGuardMetadataSchema = z.object({
 
 export type ChatCorrectionGuardMetadata = z.infer<typeof chatCorrectionGuardMetadataSchema>
 
+export const chatCorrectionValueSchema = z.object({
+  kind: z.enum(['year', 'career', 'current', 'historical', 'farm', 'first_team', 'unknown']),
+  year: z.number().int().optional(),
+})
+
+export type ChatCorrectionValue = z.infer<typeof chatCorrectionValueSchema>
+
+export const chatCorrectionMetadataSchema = z.object({
+  isCorrection: z.boolean(),
+  target: z.enum(['season', 'scope', 'player', 'team', 'unknown']),
+  value: chatCorrectionValueSchema,
+  confidence: z.number().min(0).max(1),
+})
+
+export type ChatCorrectionMetadata = z.infer<typeof chatCorrectionMetadataSchema>
+
+export const chatIdentityIntentMetadataSchema = z.object({
+  scope: z.enum(['unspecified', 'current', 'historical']),
+  explicitSeasonOverride: z.boolean(),
+  explicitScopeOverride: z.boolean(),
+})
+
+export type ChatIdentityIntentMetadata = z.infer<typeof chatIdentityIntentMetadataSchema>
+
 export const chatExecutionRepositorySchema = z.enum([
   'searchEvents',
   'searchGames',
@@ -158,6 +182,8 @@ export const chatPlannerOutputSchema = z.object({
   followUpContext: chatFollowUpContextMetadataSchema,
   appliedFollowUpContext: chatAppliedFollowUpContextSchema.optional(),
   correctionGuard: chatCorrectionGuardMetadataSchema,
+  correction: chatCorrectionMetadataSchema,
+  identityIntent: chatIdentityIntentMetadataSchema,
   targetGameId: z.string().min(1).nullable(),
   targetPlayerId: z.string().min(1).nullable(),
   timeRange: z.record(z.unknown()).nullable(),
@@ -184,6 +210,8 @@ export type ChatExecutionMetadata = {
   followUpContext: ChatFollowUpContextMetadata
   appliedFollowUpContext?: ChatAppliedFollowUpContext
   correctionGuard: ChatCorrectionGuardMetadata
+  correction: ChatCorrectionMetadata
+  identityIntent: ChatIdentityIntentMetadata
   targetGameId: string | null
   targetPlayerId: string | null
   answerMode: ChatAnswerMode
@@ -484,6 +512,74 @@ export function inferCorrectionGuardMetadata({
     hasExplicitScopeOverride,
     shouldBlockInheritance: inheritanceBlockedReason !== 'none',
   }
+}
+
+export function inferCorrectionMetadata({
+  query,
+  followUpType,
+  correctionGuard,
+  identityResolutionScope,
+}: {
+  query: ChatStructuredQuery
+  followUpType: ChatFollowUpType
+  correctionGuard: ChatCorrectionGuardMetadata
+  identityResolutionScope: IdentityResolutionScope
+}): ChatCorrectionMetadata {
+  const target = inferCorrectionTarget(correctionGuard)
+  const isCorrection =
+    target !== 'unknown' ||
+    followUpType === 'correction_request' ||
+    followUpType === 'timeframe_correction' ||
+    followUpType === 'scope_clarification' ||
+    followUpType === 'team_context_correction'
+  return {
+    isCorrection,
+    target,
+    value: inferCorrectionValue(query, target, identityResolutionScope),
+    confidence: isCorrection ? 0.72 : 0,
+  }
+}
+
+export function inferIdentityIntentMetadata({
+  identityResolutionScope,
+  correctionGuard,
+}: {
+  identityResolutionScope: IdentityResolutionScope
+  correctionGuard: ChatCorrectionGuardMetadata
+}): ChatIdentityIntentMetadata {
+  return {
+    scope: identityResolutionScope,
+    explicitSeasonOverride: correctionGuard.hasExplicitSeasonOverride,
+    explicitScopeOverride: correctionGuard.hasExplicitScopeOverride,
+  }
+}
+
+function inferCorrectionTarget(correctionGuard: ChatCorrectionGuardMetadata): ChatCorrectionMetadata['target'] {
+  if (correctionGuard.hasPlayerReplacement) {
+    return 'player'
+  }
+  if (correctionGuard.hasExplicitSeasonOverride) {
+    return 'season'
+  }
+  if (correctionGuard.hasExplicitScopeOverride) {
+    return 'scope'
+  }
+  return 'unknown'
+}
+
+function inferCorrectionValue(
+  query: ChatStructuredQuery,
+  target: ChatCorrectionMetadata['target'],
+  identityResolutionScope: IdentityResolutionScope,
+): ChatCorrectionValue {
+  const filters = query.filters as Record<string, unknown>
+  if (target === 'season' && typeof filters.year === 'number') {
+    return { kind: 'year', year: filters.year }
+  }
+  if (target === 'scope' && identityResolutionScope !== 'unspecified') {
+    return { kind: identityResolutionScope }
+  }
+  return { kind: 'unknown' }
 }
 
 function firstCorrectionGuardReason(

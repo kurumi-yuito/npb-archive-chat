@@ -88,6 +88,8 @@ export function formatChatAnswer({
             ? { follow_up_context_applied: executionMetadata.appliedFollowUpContext }
             : {}),
           correction_guard: executionMetadata.correctionGuard,
+          correction: executionMetadata.correction,
+          identity_intent: executionMetadata.identityIntent,
           target_game_id: executionMetadata.targetGameId,
           target_player_id: executionMetadata.targetPlayerId,
           answer_mode: executionMetadata.answerMode,

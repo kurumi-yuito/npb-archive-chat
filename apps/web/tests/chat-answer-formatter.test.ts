@@ -120,6 +120,17 @@ describe('chat-answer-formatter', () => {
           hasExplicitScopeOverride: false,
           shouldBlockInheritance: true,
         },
+        correction: {
+          isCorrection: false,
+          target: 'unknown',
+          value: { kind: 'unknown' },
+          confidence: 0,
+        },
+        identityIntent: {
+          scope: 'unspecified',
+          explicitSeasonOverride: false,
+          explicitScopeOverride: false,
+        },
         targetGameId: 'r20210416t-s-01',
         targetPlayerId: null,
         answerMode: 'reason_explanation',
@@ -139,6 +150,17 @@ describe('chat-answer-formatter', () => {
     expect(answer.execution_metadata?.correction_guard).toMatchObject({
       inheritanceBlockedReason: 'game_context',
       shouldBlockInheritance: true,
+    })
+    expect(answer.execution_metadata?.correction).toMatchObject({
+      isCorrection: false,
+      target: 'unknown',
+      value: { kind: 'unknown' },
+      confidence: 0,
+    })
+    expect(answer.execution_metadata?.identity_intent).toMatchObject({
+      scope: 'unspecified',
+      explicitSeasonOverride: false,
+      explicitScopeOverride: false,
     })
   })
 

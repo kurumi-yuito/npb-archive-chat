@@ -52,6 +52,17 @@ export function buildChatExecutionMetadata(
       hasExplicitScopeOverride: false,
       shouldBlockInheritance: false,
     },
+    correction: plannerOutput?.correction ?? {
+      isCorrection: false,
+      target: 'unknown',
+      value: { kind: 'unknown' },
+      confidence: 0,
+    },
+    identityIntent: plannerOutput?.identityIntent ?? {
+      scope: plannerOutput?.identityResolutionScope ?? 'unspecified',
+      explicitSeasonOverride: false,
+      explicitScopeOverride: false,
+    },
     targetGameId: plannerOutput?.targetGameId ?? null,
     targetPlayerId: plannerOutput?.targetPlayerId ?? null,
     answerMode: plannerOutput?.answerMode ?? 'direct_answer',
