@@ -65,12 +65,41 @@ export function buildPlannerOutput(
     targetGameId: classification.targetGameId,
     history: context.history,
   })
+  const initialCorrectionGuard = inferCorrectionGuardMetadata({
+    message: context.message ?? '',
+    query: structuredQuery,
+    followUpType: classification.followUpType,
+    followUpContext,
+    targetGameId: classification.targetGameId,
+  })
+  const initialCorrection = inferCorrectionMetadata({
+    query: structuredQuery,
+    followUpType: classification.followUpType,
+    correctionGuard: initialCorrectionGuard,
+    identityResolutionScope,
+  })
+  const initialIdentityIntent = inferIdentityIntentMetadata({
+    identityResolutionScope,
+    correctionGuard: initialCorrectionGuard,
+  })
   const correctionGuard = inferCorrectionGuardMetadata({
     message: context.message ?? '',
     query: structuredQuery,
     followUpType: classification.followUpType,
     followUpContext,
     targetGameId: classification.targetGameId,
+    correction: initialCorrection,
+    identityIntent: initialIdentityIntent,
+  })
+  const correction = inferCorrectionMetadata({
+    query: structuredQuery,
+    followUpType: classification.followUpType,
+    correctionGuard,
+    identityResolutionScope,
+  })
+  const identityIntent = inferIdentityIntentMetadata({
+    identityResolutionScope,
+    correctionGuard,
   })
   return chatPlannerOutputSchema.parse({
     intent: structuredQuery.intent,
@@ -81,16 +110,8 @@ export function buildPlannerOutput(
     targetEntity: classification.targetEntity,
     followUpContext,
     correctionGuard,
-    correction: inferCorrectionMetadata({
-      query: structuredQuery,
-      followUpType: classification.followUpType,
-      correctionGuard,
-      identityResolutionScope,
-    }),
-    identityIntent: inferIdentityIntentMetadata({
-      identityResolutionScope,
-      correctionGuard,
-    }),
+    correction,
+    identityIntent,
     targetGameId: classification.targetGameId,
     targetPlayerId: classification.targetPlayerId,
     timeRange: extractPlannerTimeRange(structuredQuery),

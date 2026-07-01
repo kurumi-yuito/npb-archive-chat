@@ -470,17 +470,30 @@ export function inferCorrectionGuardMetadata({
   followUpType,
   followUpContext,
   targetGameId,
+  correction,
+  identityIntent,
 }: {
   message: string
   query: ChatStructuredQuery
   followUpType: ChatFollowUpType
   followUpContext: ChatFollowUpContextMetadata
   targetGameId: string | null
+  correction?: ChatCorrectionMetadata | null
+  identityIntent?: ChatIdentityIntentMetadata | null
 }): ChatCorrectionGuardMetadata {
   const normalizedMessage = normalizeMessageForClassification(message)
-  const hasPlayerReplacement = isPlayerReplacementFollowUp(normalizedMessage, query)
-  const hasExplicitSeasonOverride = hasExplicitSeasonOverrideInMessage(normalizedMessage)
-  const hasExplicitScopeOverride = hasExplicitScopeOverrideInMessage(normalizedMessage)
+  const fallbackHasPlayerReplacement = isPlayerReplacementFollowUp(normalizedMessage, query)
+  const fallbackHasExplicitSeasonOverride = hasExplicitSeasonOverrideInMessage(normalizedMessage)
+  const fallbackHasExplicitScopeOverride = hasExplicitScopeOverrideInMessage(normalizedMessage)
+  const hasPlayerReplacement = correction?.target === 'player' || fallbackHasPlayerReplacement
+  const hasExplicitSeasonOverride =
+    correction?.target === 'season' ||
+    identityIntent?.explicitSeasonOverride === true ||
+    fallbackHasExplicitSeasonOverride
+  const hasExplicitScopeOverride =
+    correction?.target === 'scope' ||
+    identityIntent?.explicitScopeOverride === true ||
+    fallbackHasExplicitScopeOverride
   const hasAmbiguousCorrection =
     (followUpType === 'correction_request' || /いや|違う|ちがう|そうじゃなくて|そうではなく|訂正|修正/u.test(normalizedMessage)) &&
     /いや|違う|ちがう|そうじゃなくて|そうではなく|訂正|修正/u.test(normalizedMessage) &&

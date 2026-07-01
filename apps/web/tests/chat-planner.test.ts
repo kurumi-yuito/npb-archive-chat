@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { ChatStructuredQuery } from '@npb/schemas'
 import { buildPlannerOutput } from '../server/services/chat-planner'
+import { inferCorrectionGuardMetadata } from '../server/services/chat-query-plan'
 
 function baseGameQuery(overrides: Partial<ChatStructuredQuery['filters']> = {}): ChatStructuredQuery {
   return {
@@ -237,6 +238,82 @@ describe('chat-planner follow-up classification', () => {
       shouldApplyInheritance: false,
     })
     expect(planner.structuredQuery).toEqual(query)
+  })
+
+  it.each([
+    {
+      target: 'player' as const,
+      identityIntent: { explicitSeasonOverride: false, explicitScopeOverride: false },
+      expected: {
+        inheritanceBlockedReason: 'player_replacement',
+        hasPlayerReplacement: true,
+        hasExplicitSeasonOverride: false,
+        hasExplicitScopeOverride: false,
+      },
+    },
+    {
+      target: 'season' as const,
+      identityIntent: { explicitSeasonOverride: false, explicitScopeOverride: false },
+      expected: {
+        inheritanceBlockedReason: 'explicit_season_override',
+        hasPlayerReplacement: false,
+        hasExplicitSeasonOverride: true,
+        hasExplicitScopeOverride: false,
+      },
+    },
+    {
+      target: 'scope' as const,
+      identityIntent: { explicitSeasonOverride: false, explicitScopeOverride: false },
+      expected: {
+        inheritanceBlockedReason: 'explicit_scope_override',
+        hasPlayerReplacement: false,
+        hasExplicitSeasonOverride: false,
+        hasExplicitScopeOverride: true,
+      },
+    },
+    {
+      target: 'unknown' as const,
+      identityIntent: { explicitSeasonOverride: true, explicitScopeOverride: true },
+      expected: {
+        inheritanceBlockedReason: 'explicit_season_override',
+        hasPlayerReplacement: false,
+        hasExplicitSeasonOverride: true,
+        hasExplicitScopeOverride: true,
+      },
+    },
+  ])('prioritizes structured correction guard metadata for $target', ({ target, identityIntent, expected }) => {
+    const guard = inferCorrectionGuardMetadata({
+      message: 'plain follow up',
+      query: basePitchingQuery({ pitcher_player_id: '41045137' }),
+      followUpType: 'target_omission',
+      followUpContext: {
+        contextKind: 'player_stats',
+        inheritedPlayerId: '41045137',
+        inheritedPlayerName: '藤浪',
+        inheritedTeam: 'DeNA',
+        inheritedSeason: 2026,
+        inheritedScope: 'current',
+        inheritanceSource: 'latest_assistant_entry',
+        inheritanceConfidence: 0.9,
+        shouldApplyInheritance: false,
+      },
+      targetGameId: null,
+      correction: {
+        isCorrection: target !== 'unknown',
+        target,
+        value: { kind: 'unknown' },
+        confidence: target !== 'unknown' ? 0.9 : 0,
+      },
+      identityIntent: {
+        scope: 'unspecified',
+        ...identityIntent,
+      },
+    })
+
+    expect(guard).toMatchObject({
+      ...expected,
+      shouldBlockInheritance: true,
+    })
   })
 
   it.each([
