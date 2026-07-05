@@ -109,6 +109,24 @@ export function createChatService(
         message,
         history: options.history,
       })
+      if (effectivePlan.followUpType === 'evaluation_request' && parsedQuery.intent === 'search_events') {
+        const filters = parsedQuery.filters as Record<string, unknown>
+        if (typeof filters.result_text_contains === 'string') {
+          const nextFilters = { ...filters }
+          delete nextFilters.result_text_contains
+          if (typeof nextFilters.limit !== 'number') {
+            nextFilters.limit = 5
+          }
+          parsedQuery = {
+            ...parsedQuery,
+            filters: nextFilters,
+          } as ChatStructuredQuery
+          effectivePlan = buildPlannerOutput(parsedQuery, true, {
+            message,
+            history: options.history,
+          })
+        }
+      }
       const followUpContextApplication = applyPlayerStatsFollowUpContext(
         parsedQuery,
         effectivePlan,
@@ -298,6 +316,26 @@ export function createChatService(
             },
           } as ChatStructuredQuery
         }
+        if (playerResolution?.status === 'resolved') {
+          playerResolution = {
+            ...playerResolution,
+            yearShiftNote: undefined,
+          }
+        }
+      }
+      if (
+        followUpContextApplication.metadata.applied &&
+        followUpContextApplication.metadata.fields.includes('season') &&
+        typeof effectivePlan.followUpContext.inheritedSeason === 'number' &&
+        !effectivePlan.identityIntent.explicitSeasonOverride
+      ) {
+        structuredQuery = {
+          ...structuredQuery,
+          filters: {
+            ...structuredQuery.filters,
+            year: effectivePlan.followUpContext.inheritedSeason,
+          },
+        } as ChatStructuredQuery
         if (playerResolution?.status === 'resolved') {
           playerResolution = {
             ...playerResolution,
@@ -933,11 +971,16 @@ function applyPlayerStatsFollowUpContext(
     nextFilters.team = inherited.inheritedTeam
     fields.push('team')
   }
-  if (
-    !hasSeasonFilter(filters) &&
+  const shouldApplyInheritedSeason =
     !plannerOutput.identityIntent.explicitSeasonOverride &&
-    inherited.inheritedSeason !== null
-  ) {
+    inherited.inheritedSeason !== null &&
+    typeof filters.year_from !== 'number' &&
+    typeof filters.year_to !== 'number' &&
+    (
+      typeof filters.year !== 'number' ||
+      plannerOutput.followUpType === 'evaluation_request'
+    )
+  if (shouldApplyInheritedSeason && filters.year !== inherited.inheritedSeason) {
     nextFilters.year = inherited.inheritedSeason
     fields.push('season')
   }
@@ -976,12 +1019,6 @@ function playerNameFieldForStatsIntent(intent: ChatStructuredQuery['intent']): '
     return 'player_name'
   }
   return null
-}
-
-function hasSeasonFilter(filters: Record<string, unknown>): boolean {
-  return typeof filters.year === 'number' ||
-    typeof filters.year_from === 'number' ||
-    typeof filters.year_to === 'number'
 }
 
 function applyCurrentTeamCorrection(

@@ -415,7 +415,13 @@ export function extractFollowUpContextMetadata({
   const inheritedTeam = typeof filters.team === 'string'
     ? filters.team
     : targetEntity?.teams[0] ?? historyCandidate?.team ?? null
-  const inheritedSeason = extractPlannerSeason(filters) ?? historyCandidate?.season ?? null
+  const querySeason = extractPlannerSeason(filters)
+  const shouldPreferHistoryStatsContext =
+    followUpType === 'evaluation_request' &&
+    historyCandidate !== null
+  const inheritedSeason = shouldPreferHistoryStatsContext
+    ? historyCandidate.season ?? querySeason ?? null
+    : querySeason ?? historyCandidate?.season ?? null
   const contextKind = inferFollowUpContextKind(query, {
     targetGameId,
     inheritedPlayerId,
@@ -439,9 +445,11 @@ export function extractFollowUpContextMetadata({
     inheritedPlayerName,
     inheritedTeam,
     inheritedSeason,
-    inheritedScope: identityResolutionScope === 'unspecified'
-      ? historyCandidate?.scope ?? identityResolutionScope
-      : identityResolutionScope,
+    inheritedScope: shouldPreferHistoryStatsContext && historyCandidate.scope !== 'unspecified'
+      ? historyCandidate.scope
+      : identityResolutionScope === 'unspecified'
+        ? historyCandidate?.scope ?? identityResolutionScope
+        : identityResolutionScope,
     inheritanceSource,
     inheritanceConfidence: inferInheritanceConfidence(inheritanceSource, contextKind),
     shouldApplyInheritance: false,

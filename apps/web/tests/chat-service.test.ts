@@ -467,6 +467,7 @@ describe('chat-service', () => {
         filters: {
           ...structuredQuery.filters,
           pitcher_player_id: '41045137',
+          year: 2025,
         },
       },
       resolution: {
@@ -474,6 +475,7 @@ describe('chat-service', () => {
         input: '藤浪 晋太郎',
         name: '藤浪 晋太郎',
         primary_team: '横浜DeNAベイスターズ',
+        yearShiftNote: '2026年の記録は確認できないため、代わりに最終確認年（2025年）のデータを表示します。',
       },
     }))
     const service = createChatService(createFakeQueryService({
@@ -501,7 +503,7 @@ describe('chat-service', () => {
     }), {
       parseStructuredQueryFromMessage: async () => ({
         intent: 'search_pitching',
-        filters: { recent: true, limit: 5 },
+        filters: { year: 2025, recent: true, limit: 5 },
       }),
       resolveCurrentStructuredQueryPlayer: currentResolver,
     })
@@ -538,13 +540,76 @@ describe('chat-service', () => {
     })
     expect(response.answer.execution_metadata?.follow_up_context_applied).toEqual({
       applied: true,
-      fields: ['player', 'team', 'season', 'scope'],
+      fields: ['player', 'team', 'season'],
       reason: 'player_stats_follow_up_context',
     })
     expect(response.answer.execution_metadata?.correction_guard).toMatchObject({
       inheritanceBlockedReason: 'none',
       shouldBlockInheritance: false,
     })
+    expect(response.answer.summary).toContain('良かった点です')
+  })
+
+  it('keeps evaluation follow-up event context without parser text-search noise', async () => {
+    let eventFilters: Parameters<ChatQueryService['searchEvents']>[0] | null = null
+    const service = createChatService(createFakeQueryService({
+      searchEvents: async (filters) => {
+        eventFilters = filters
+        return filters.result_text_contains
+          ? []
+          : [{
+              gameId: 'r20250401db-s-01',
+              gameDate: '2025-04-01',
+              sequence: 1,
+              inning: 1,
+              half: 'top',
+              offenseTeam: 'ヤクルト',
+              eventType: 'plate_appearance',
+              eventSubtype: 'standard',
+              batterName: '村上',
+              pitcherName: '藤浪 晋太郎',
+              runnerName: null,
+              resultText: 'ライト前ヒット',
+              eventAttributesJson: null,
+              sourceUrl: 'https://npb.jp/scores/2025/0401/db-s-01/playbyplay.html',
+            }]
+      },
+    }), {
+      parseStructuredQueryFromMessage: async () => ({
+        intent: 'search_events',
+        filters: {
+          year: 2025,
+          pitcher_name: '藤浪 晋太郎',
+          pitcher_player_id: '41045137',
+          result_text_contains: '良かった',
+        },
+      }),
+    })
+
+    const response = await service.answerQuestion('どこがよかった？', {
+      history: [
+        { role: 'user', content: '藤浪どう？' },
+        { role: 'assistant', content: '横浜DeNAベイスターズ 藤浪 晋太郎の確認できる最新5試合の投球内容です。' },
+      ],
+    })
+
+    expect(response.structured_query).toMatchObject({
+      intent: 'search_events',
+      filters: {
+        year: 2025,
+        pitcher_player_id: '41045137',
+      },
+    })
+    expect(response.structured_query.filters).not.toHaveProperty('result_text_contains')
+    expect(response.structured_query.filters).toMatchObject({ limit: 5 })
+    expect(eventFilters).toMatchObject({
+      year: 2025,
+      pitcher_player_id: '41045137',
+      limit: 5,
+    })
+    expect(eventFilters).not.toHaveProperty('result_text_contains')
+    expect(response.answer.summary).toContain('2025年藤浪晋太郎から打ったイベントは1件です')
+    expect(response.answer.execution_metadata?.follow_up_type).toBe('evaluation_request')
   })
 
   it('keeps explicit season correction ahead of inherited player stats season', async () => {

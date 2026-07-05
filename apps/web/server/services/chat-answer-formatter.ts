@@ -193,6 +193,9 @@ function buildSummary(
     if (comparisonFollowUpSummary) {
       return `${yearShiftPrefix}${comparisonFollowUpSummary}`
     }
+    if (executionMetadata?.answerMode === 'evaluation_explanation') {
+      return `${yearShiftPrefix}${formatPitchingGoodPointSummary(results.pitching as PitchingLineRow[])}`
+    }
     if (isEvaluationQuestion(question, structuredQuery.filters)) {
       const boxGameDates = (results.pitching as PitchingLineRow[])
         .filter((r) => r.sourceKind === 'box')
@@ -1290,6 +1293,25 @@ function formatPitchingEvaluationSummary(rows: PitchingLineRow[]): string {
     `対象試合: ${gameRows.map((row) => formatDateJa(row.gameDate)).join('、')}`,
     buildInternalRecentGapNote(gameRows.map((row) => row.gameDate)),
   ].filter(Boolean).join('\n')
+}
+
+function formatPitchingGoodPointSummary(rows: PitchingLineRow[]): string {
+  const gameRows = rows
+    .filter((row) => row.sourceKind !== 'bis_pitching' && row.sourceKind !== 'bis_pitching_farm')
+    .slice(0, 5)
+  if (gameRows.length === 0) {
+    return formatPitchingEvaluationSummary(rows)
+  }
+  const totals = gameRows.reduce(
+    (acc, row) => ({
+      strikeouts: acc.strikeouts + row.strikeouts,
+      earnedRuns: acc.earnedRuns + row.earnedRuns,
+    }),
+    { strikeouts: 0, earnedRuns: 0 },
+  )
+  const latest = gameRows[0]
+  const latestRunsText = latest.earnedRuns === 0 ? '無失点' : `${latest.earnedRuns}失点`
+  return `${gameRows.length}試合で${totals.strikeouts}奪三振、${totals.earnedRuns}自責点です。直近登板でも${formatInningsForDisplay(latest.inningsPitched)}、${latest.strikeouts}奪三振、${latestRunsText}でした。奪三振を取れていて、直近登板で失点を抑えられているのが良かった点です。`
 }
 
 function formatPitchingScopeClarificationSummary(question: string, rows: PitchingLineRow[]): string | null {
