@@ -202,7 +202,7 @@ function buildSummary(
     if (executionMetadata?.answerMode === 'evaluation_explanation') {
       return `${yearShiftPrefix}${formatPitchingGoodPointSummary(results.pitching as PitchingLineRow[])}`
     }
-    if (isEvaluationQuestion(question, structuredQuery.filters)) {
+    if (isEvaluationQuestion(question, structuredQuery.filters, executionMetadata)) {
       const boxGameDates = (results.pitching as PitchingLineRow[])
         .filter((r) => r.sourceKind === 'box')
         .map((r) => r.gameDate)
@@ -221,7 +221,7 @@ function buildSummary(
 
   if (structuredQuery.intent === 'search_batting') {
     const first = results.batting[0] as BattingLineRow
-    if (isEvaluationQuestion(question, structuredQuery.filters)) {
+    if (isEvaluationQuestion(question, structuredQuery.filters, executionMetadata)) {
       const boxGameDates = (results.batting as BattingLineRow[])
         .filter((r) => r.sourceKind !== 'bis_batting')
         .map((r) => r.gameDate)
@@ -1378,8 +1378,14 @@ function formatBisPitchingEvaluationSummary(row: PitchingLineRow, gameRows: Pitc
   ].join('\n')
 }
 
-function isEvaluationQuestion(question: string, filters: Record<string, unknown>): boolean {
-  return Boolean(filters.recent) || /評価|調子|状態|最近どう|直近|最新|最後|最終|どう思/u.test(question)
+function isEvaluationQuestion(
+  question: string,
+  filters: Record<string, unknown>,
+  executionMetadata?: ChatExecutionMetadata,
+): boolean {
+  return executionMetadata?.answerMode === 'evaluation_explanation' ||
+    Boolean(filters.recent) ||
+    /評価|調子|状態|最近どう|直近|最新|最後|最終|どう思/u.test(question)
 }
 
 function buildRecentGapNote(gameDates: string[], filters: Record<string, unknown>): string {

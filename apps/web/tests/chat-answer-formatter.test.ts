@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { ChatResponse, ChatStructuredQuery } from '@npb/schemas'
 import type { EventRow } from '@npb/db'
 import { formatChatAnswer } from '../server/services/chat-answer-formatter'
+import type { ChatExecutionMetadata } from '../server/services/chat-query-plan'
 
 describe('chat-answer-formatter', () => {
   it('formats all search_events rows up to 20 and reports the remaining count', () => {
@@ -277,6 +278,45 @@ describe('chat-answer-formatter', () => {
     expect(answer.summary).toContain('2試合で3安打')
     expect(answer.summary).toContain('打点')
     expect(answer.summary).toContain('打率.429')
+  })
+
+  it('formats batting evaluation from execution metadata instead of question text', () => {
+    const results = emptyResults()
+    results.batting = [
+      battingRow('2026-05-16', 4, 2, 1, 0),
+      battingRow('2026-05-15', 3, 1, 0, 1),
+    ]
+
+    const answer = formatChatAnswer({
+      question: '前の条件で見て',
+      structuredQuery: { intent: 'search_batting', filters: { player_name: '村上' } },
+      results,
+      sources: [],
+      executionMetadata: evaluationMetadata(),
+    })
+
+    expect(answer.summary).toContain('ヤクルト 村上の確認できる最新2出場の打撃内容です。')
+    expect(answer.summary).toContain('2試合で3安打')
+    expect(answer.summary).toContain('打率.429')
+  })
+
+  it('formats pitching evaluation from execution metadata instead of question text', () => {
+    const results = emptyResults()
+    results.pitching = [
+      farmBoxRow('2026-05-22', 'f20260522db-d-05', '横浜DeNAベイスターズ', '藤浪', '5', 8, 1),
+      farmBoxRow('2026-05-13', 'f20260513g-db-07', '横浜DeNAベイスターズ', '藤浪', '4', 3, 1),
+    ]
+
+    const answer = formatChatAnswer({
+      question: '前の条件で見て',
+      structuredQuery: { intent: 'search_pitching', filters: { pitcher_name: '藤浪' } },
+      results,
+      sources: [],
+      executionMetadata: evaluationMetadata(),
+    })
+
+    expect(answer.summary).toContain('2試合で11奪三振、2自責点です。')
+    expect(answer.summary).toContain('良かった点です')
   })
 
   it('pitching evaluation with only a BIS farm row shows current season farm stats cleanly', () => {
@@ -823,6 +863,63 @@ function emptyResults(): ChatResponse['results'] {
     affiliations: [],
     gameDetails: [],
     aggregates: [],
+  }
+}
+
+function evaluationMetadata(): ChatExecutionMetadata {
+  return {
+    dataRequirements: ['batting_lines'],
+    repositories: ['searchBattingLines'],
+    playerResolution: null,
+    playerIdRequired: true,
+    playerIdSatisfied: true,
+    followUpType: 'evaluation_request',
+    referencedContext: {
+      source: 'latest_assistant_entry',
+      anchor: null,
+      ordinal: null,
+      summary: null,
+    },
+    targetEntity: {
+      kind: 'player',
+      label: '対象選手',
+      players: ['対象選手'],
+      teams: [],
+    },
+    followUpContext: {
+      contextKind: 'player_stats',
+      inheritedPlayerId: null,
+      inheritedPlayerName: '対象選手',
+      inheritedTeam: null,
+      inheritedSeason: 2026,
+      inheritedScope: 'current',
+      inheritanceSource: 'conversation_history',
+      inheritanceConfidence: 0.62,
+      shouldApplyInheritance: false,
+    },
+    correctionGuard: {
+      inheritanceBlockedReason: 'none',
+      hasAmbiguousCorrection: false,
+      hasPlayerReplacement: false,
+      hasExplicitSeasonOverride: false,
+      hasExplicitScopeOverride: false,
+      shouldBlockInheritance: false,
+    },
+    correction: {
+      isCorrection: false,
+      target: 'unknown',
+      value: { kind: 'unknown' },
+      confidence: 0,
+    },
+    identityIntent: {
+      scope: 'current',
+      explicitSeasonOverride: false,
+      explicitScopeOverride: false,
+    },
+    targetGameId: null,
+    targetPlayerId: null,
+    answerMode: 'evaluation_explanation',
+    identityResolutionScope: 'current',
   }
 }
 
