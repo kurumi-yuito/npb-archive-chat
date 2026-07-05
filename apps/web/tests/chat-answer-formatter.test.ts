@@ -345,6 +345,78 @@ describe('chat-answer-formatter', () => {
     expect(answer.summary).toContain('5回')
   })
 
+  it('formats pitching comparison follow-ups from execution metadata instead of question text', () => {
+    const results = emptyResults()
+    results.pitching = [
+      regularBoxRow('2026-06-01', 'r20260601db-g-01', '横浜DeNAベイスターズ', '藤浪 晋太郎', '6', 7, 1),
+      regularBoxRow('2026-05-25', 'r20260525db-g-01', '横浜DeNAベイスターズ', '藤浪 晋太郎', '5', 4, 0),
+    ]
+
+    const answer = formatChatAnswer({
+      question: '前の条件で見て',
+      structuredQuery: { intent: 'search_pitching', filters: { pitcher_name: '藤浪 晋太郎', recent: true } },
+      results,
+      sources: [],
+      executionMetadata: {
+        dataRequirements: ['pitching_lines'],
+        repositories: ['searchPitchingLines'],
+        playerResolution: null,
+        playerIdRequired: true,
+        playerIdSatisfied: true,
+        followUpType: 'comparison_request',
+        referencedContext: {
+          source: 'latest_assistant_entry',
+          anchor: null,
+          ordinal: null,
+          summary: null,
+        },
+        targetEntity: {
+          kind: 'player',
+          label: '藤浪 晋太郎',
+          players: ['藤浪 晋太郎'],
+          teams: [],
+        },
+        followUpContext: {
+          contextKind: 'player_stats',
+          inheritedPlayerId: null,
+          inheritedPlayerName: '藤浪 晋太郎',
+          inheritedTeam: null,
+          inheritedSeason: 2026,
+          inheritedScope: 'current',
+          inheritanceSource: 'conversation_history',
+          inheritanceConfidence: 0.62,
+          shouldApplyInheritance: false,
+        },
+        correctionGuard: {
+          inheritanceBlockedReason: 'explicit_season_override',
+          hasAmbiguousCorrection: false,
+          hasPlayerReplacement: false,
+          hasExplicitSeasonOverride: true,
+          hasExplicitScopeOverride: false,
+          shouldBlockInheritance: true,
+        },
+        correction: {
+          isCorrection: true,
+          target: 'season',
+          value: { kind: 'year', year: 2026 },
+          confidence: 0.8,
+        },
+        identityIntent: {
+          scope: 'current',
+          explicitSeasonOverride: true,
+          explicitScopeOverride: false,
+        },
+        targetGameId: null,
+        targetPlayerId: null,
+        answerMode: 'comparison_explanation',
+        identityResolutionScope: 'current',
+      },
+    })
+
+    expect(answer.summary).toContain('2026年の確認できる最新2試合は11奪三振、1自責点です。')
+    expect(answer.summary).toContain('昨年の同条件と直接の通算比較はできません')
+  })
+
   it('pitching evaluation with BIS regular row + regular box scores labels all games as 一軍', () => {
     const results = emptyResults()
     results.pitching = [

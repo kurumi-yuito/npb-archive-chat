@@ -189,7 +189,13 @@ function buildSummary(
     if (scopeClarificationSummary) {
       return `${yearShiftPrefix}${scopeClarificationSummary}`
     }
-    const comparisonFollowUpSummary = formatRecentPitchingComparisonFollowUpSummary(question, results.pitching as PitchingLineRow[])
+    const comparisonFollowUpSummary = (
+      executionMetadata?.followUpType === 'comparison_request' &&
+      executionMetadata.answerMode === 'comparison_explanation' &&
+      results.pitching.length > 0
+    )
+      ? formatRecentPitchingComparisonFollowUpSummary(results.pitching as PitchingLineRow[])
+      : null
     if (comparisonFollowUpSummary) {
       return `${yearShiftPrefix}${comparisonFollowUpSummary}`
     }
@@ -1326,10 +1332,7 @@ function formatPitchingScopeClarificationSummary(question: string, rows: Pitchin
   return `いいえ、二軍の話です。確認できる最新${targetRows.length}試合は二軍での登板です。`
 }
 
-function formatRecentPitchingComparisonFollowUpSummary(question: string, rows: PitchingLineRow[]): string | null {
-  if (!/去年|昨年/u.test(question) || !/比べ|比較|どう/u.test(question) || rows.length === 0) {
-    return null
-  }
+function formatRecentPitchingComparisonFollowUpSummary(rows: PitchingLineRow[]): string | null {
   const boxRows = rows.filter((row) => row.sourceKind === 'box').slice(0, 5)
   if (boxRows.length === 0) {
     return null
