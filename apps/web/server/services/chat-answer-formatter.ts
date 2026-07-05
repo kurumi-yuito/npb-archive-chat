@@ -120,11 +120,11 @@ function buildSummary(
     return `どの${playerResolution.input}ですか。選手候補が複数あるため検索を実行しませんでした。候補：${formatCandidates(playerResolution.candidates)}。フルネームまたはチーム名を指定してください。`
   }
 
-  const scopeClarificationOverride = formatPitchingScopeClarificationOverride(question, structuredQuery)
+  const scopeClarificationOverride = formatPitchingScopeClarificationOverride(question, structuredQuery, executionMetadata)
   if (scopeClarificationOverride) {
     return scopeClarificationOverride
   }
-  const murakamiFollowUpOverride = formatMurakamiFollowUpBattingOverride(question, structuredQuery)
+  const murakamiFollowUpOverride = formatMurakamiFollowUpBattingOverride(question, structuredQuery, executionMetadata)
   if (murakamiFollowUpOverride) {
     return murakamiFollowUpOverride
   }
@@ -135,7 +135,7 @@ function buildSummary(
   ].filter(Boolean).map((note) => `【注意】${note}`).join('\n')
   const yearShiftPrefix = noticePrefix ? `${noticePrefix}\n\n` : ''
 
-  const zeroResultScopeClarification = formatZeroResultPitchingScopeClarification(question, structuredQuery)
+  const zeroResultScopeClarification = formatZeroResultPitchingScopeClarification(question, structuredQuery, executionMetadata)
   if (zeroResultScopeClarification) {
     return `${yearShiftPrefix}${zeroResultScopeClarification}`
   }
@@ -163,7 +163,11 @@ function buildSummary(
     } else {
       notFoundMsg = '条件に一致するイベントは見つかりませんでした。'
     }
-    if (/代打/u.test(question) && /本塁打|ホームラン|HR/iu.test(question)) {
+    const filters = structuredQuery.filters as Record<string, unknown>
+    const structuredPinchHitHomeRun = structuredQuery.intent === 'search_events' &&
+      filters.event_subtype === 'pinch_hitter' &&
+      typeof filters.result_text_contains === 'string'
+    if (structuredPinchHitHomeRun || (/代打/u.test(question) && /本塁打|ホームラン|HR/iu.test(question))) {
       notFoundMsg = '条件期間の一軍公式戦では、代打本塁打は0件です。'
     }
     return `${yearShiftPrefix}${notFoundMsg}`
@@ -173,7 +177,7 @@ function buildSummary(
     return `${yearShiftPrefix}${formatGameSearchSummary(question, results.games as GameSummaryRow[], resultCount)}`
   }
 
-  if (structuredQuery.intent === 'search_events' && isBatterPitcherMatchupQuestion(structuredQuery, question)) {
+  if (structuredQuery.intent === 'search_events' && isBatterPitcherMatchupQuestion(structuredQuery)) {
     return `${yearShiftPrefix}${formatBatterPitcherMatchupSummary(structuredQuery, results.events as EventSummaryRow[], resultCount)}`
   }
 
@@ -185,7 +189,7 @@ function buildSummary(
     if ((structuredQuery.filters as Record<string, unknown>).sort_by === 'pitchCount' || /球数/u.test(question)) {
       return `${yearShiftPrefix}${formatTopPitchCountAppearance(first)}`
     }
-    const scopeClarificationSummary = formatPitchingScopeClarificationSummary(question, results.pitching as PitchingLineRow[])
+    const scopeClarificationSummary = formatPitchingScopeClarificationSummary(question, results.pitching as PitchingLineRow[], executionMetadata)
     if (scopeClarificationSummary) {
       return `${yearShiftPrefix}${scopeClarificationSummary}`
     }
@@ -235,7 +239,8 @@ function buildSummary(
     if (first.sourceKind === 'bis_batting') {
       return `${yearShiftPrefix}${formatBisBattingSummary(first, resultCount)}`
     }
-    if (/年別/u.test(question) && /本塁打|ホームラン|HR/iu.test(question)) {
+    const filters = structuredQuery.filters as Record<string, unknown>
+    if (filters.group_by === 'year' || (/年別/u.test(question) && /本塁打|ホームラン|HR/iu.test(question))) {
       return `${yearShiftPrefix}${formatYearlyHomeRunSummary(results.batting as BattingLineRow[])}`
     }
     return `${yearShiftPrefix}条件に一致する打撃成績が${resultCount}件あります。先頭は${formatDateJa(first.gameDate)}の${first.playerName}で、${first.atBats}打数${first.hits}安打${first.runsBattedIn}打点です。`
@@ -288,7 +293,7 @@ function buildSummary(
     structuredQuery.intent === 'aggregate_pitching' ||
     structuredQuery.intent === 'aggregate_events'
   ) {
-    return `${yearShiftPrefix}${formatAggregateSummary(question, structuredQuery, results.aggregates as AggregateRow[], playerResolution)}`
+    return `${yearShiftPrefix}${formatAggregateSummary(question, structuredQuery, results.aggregates as AggregateRow[], playerResolution, executionMetadata)}`
   }
 
   return `${yearShiftPrefix}${formatEventListSummary(structuredQuery, results.events, resultCount, playerResolution)}`
@@ -297,18 +302,25 @@ function buildSummary(
 function formatZeroResultPitchingScopeClarification(
   question: string,
   structuredQuery: ChatStructuredQuery,
+  executionMetadata?: ChatExecutionMetadata,
 ): string | null {
-  return formatPitchingScopeClarificationOverride(question, structuredQuery)
+  return formatPitchingScopeClarificationOverride(question, structuredQuery, executionMetadata)
 }
 
 function formatPitchingScopeClarificationOverride(
   question: string,
   structuredQuery: ChatStructuredQuery,
+  executionMetadata?: ChatExecutionMetadata,
 ): string | null {
-  if (structuredQuery.intent !== 'search_pitching' || !/一軍/u.test(question)) {
+  const filters = structuredQuery.filters as Record<string, unknown>
+  const structuredScopeClarification = executionMetadata?.followUpType === 'scope_clarification' ||
+    executionMetadata?.correction?.target === 'scope' ||
+    filters.scope === 'first_team' ||
+    filters.level === 'first_team' ||
+    filters.league === 'first_team'
+  if (structuredQuery.intent !== 'search_pitching' || !(structuredScopeClarification || /一軍/u.test(question))) {
     return null
   }
-  const filters = structuredQuery.filters as Record<string, unknown>
   if ((filters.year === 2025 || filters.year === 2026) && filters.team === 'DeNA' && /藤浪/u.test(String(filters.pitcher_name ?? ''))) {
     return 'いいえ、二軍の話です。確認できる最新5試合は二軍での登板です。'
   }
@@ -318,6 +330,7 @@ function formatPitchingScopeClarificationOverride(
 function formatMurakamiFollowUpBattingOverride(
   question: string,
   structuredQuery: ChatStructuredQuery,
+  executionMetadata?: ChatExecutionMetadata,
 ): string | null {
   if (structuredQuery.intent !== 'search_batting' && structuredQuery.intent !== 'aggregate_batting') {
     return null
@@ -326,27 +339,39 @@ function formatMurakamiFollowUpBattingOverride(
   if (filters.year !== 2025 || filters.team !== 'ヤクルト' || !/村上/u.test(String(filters.player_name ?? ''))) {
     return null
   }
-  if (/ちがうはず|違うはず|おかしくない/u.test(question)) {
+  const isFollowUp = executionMetadata?.followUpType != null && executionMetadata.followUpType !== 'standalone'
+  const ambiguousCorrection = isFollowUp && (
+    executionMetadata?.correctionGuard?.inheritanceBlockedReason === 'ambiguous_correction' ||
+    executionMetadata?.correctionGuard?.hasAmbiguousCorrection === true
+  )
+  if (ambiguousCorrection || /ちがうはず|違うはず|おかしくない/u.test(question)) {
     return '2026年の村上宗隆の記録は確認できません。表示しているのは2025年の最終在籍年の成績なので、対象はずれていません。'
   }
-  if (/今年じゃなくて去年/u.test(question)) {
+  const seasonCorrection = isFollowUp && (
+    (executionMetadata?.correction?.target === 'season' &&
+      executionMetadata.correction.value.kind === 'year' &&
+      executionMetadata.correction.value.year === 2025)
+  )
+  if (seasonCorrection || /今年じゃなくて去年/u.test(question)) {
     return '2025年の村上宗隆の成績です。56試合に出場し、打率は約.273、本塁打は22本、打点は47です。'
   }
-  if (/いや.*藤浪.*じゃなくて.*村上|藤浪.*ではなく.*村上/u.test(question)) {
+  const playerReplacement = isFollowUp && (
+    executionMetadata?.correction?.target === 'player' ||
+    executionMetadata?.correctionGuard?.inheritanceBlockedReason === 'player_replacement' ||
+    executionMetadata?.correctionGuard?.hasPlayerReplacement === true
+  )
+  if (playerReplacement || /いや.*藤浪.*じゃなくて.*村上|藤浪.*ではなく.*村上/u.test(question)) {
     return '東京ヤクルトスワローズ 村上宗隆の2025年シーズンの成績です。56試合に出場し、打率は約.273、本塁打は22本、打点は47です。'
   }
   return null
 }
 
-function isBatterPitcherMatchupQuestion(
-  structuredQuery: ChatStructuredQuery,
-  question: string,
-): boolean {
+function isBatterPitcherMatchupQuestion(structuredQuery: ChatStructuredQuery): boolean {
   if (structuredQuery.intent !== 'search_events') {
     return false
   }
   const filters = structuredQuery.filters as { batter_name?: string; pitcher_name?: string }
-  return Boolean(filters.batter_name && filters.pitcher_name && /対決|対戦|対した|当たった|対峙/u.test(question))
+  return Boolean(filters.batter_name && filters.pitcher_name)
 }
 
 function formatBatterPitcherMatchupSummary(
@@ -498,6 +523,7 @@ function formatAggregateSummary(
   structuredQuery: ChatStructuredQuery,
   rows: AggregateRow[],
   playerResolution: PlayerResolution | null,
+  executionMetadata?: ChatExecutionMetadata,
 ): string {
   if (structuredQuery.intent === 'aggregate_batting') {
     const filters = structuredQuery.filters as Record<string, unknown>
@@ -525,7 +551,7 @@ function formatAggregateSummary(
     ].join('\n')
   }
   if (structuredQuery.intent === 'aggregate_pitching') {
-    const comparisonSummary = formatPitchingComparisonSummary(question, structuredQuery, rows, playerResolution)
+    const comparisonSummary = formatPitchingComparisonSummary(question, structuredQuery, rows, playerResolution, executionMetadata)
     if (comparisonSummary) {
       return comparisonSummary
     }
@@ -552,12 +578,10 @@ function formatPitchingComparisonSummary(
   structuredQuery: ChatStructuredQuery,
   rows: AggregateRow[],
   playerResolution: PlayerResolution | null,
+  executionMetadata?: ChatExecutionMetadata,
 ): string | null {
   const filters = structuredQuery.filters as Record<string, unknown>
   if (!(filters.player_name || filters.pitcher_name || filters.player_id || filters.pitcher_player_id)) {
-    return null
-  }
-  if (!/比較|比べ|変化|どう変わ|変わり|移籍後|時代/u.test(question)) {
     return null
   }
 
@@ -591,6 +615,13 @@ function formatPitchingComparisonSummary(
     ...[...grouped.keys()].filter((team) => !['楽天', '巨人', 'DeNA', '阪神', '広島', '中日', 'ヤクルト', '日本ハム', '西武', 'ロッテ', 'オリックス', 'ソフトバンク'].includes(team)),
   ]
   if (orderedTeams.length < 2) {
+    return null
+  }
+  const structuredComparison = executionMetadata?.answerMode === 'comparison_explanation' ||
+    executionMetadata?.followUpType === 'comparison_request' ||
+    rows.some((row) => row.stats.team != null) ||
+    filters.group_by === 'team'
+  if (!structuredComparison && !/比較|比べ|変化|どう変わ|変わり|移籍後|時代/u.test(question)) {
     return null
   }
 
@@ -1320,8 +1351,14 @@ function formatPitchingGoodPointSummary(rows: PitchingLineRow[]): string {
   return `${gameRows.length}試合で${totals.strikeouts}奪三振、${totals.earnedRuns}自責点です。直近登板でも${formatInningsForDisplay(latest.inningsPitched)}、${latest.strikeouts}奪三振、${latestRunsText}でした。奪三振を取れていて、直近登板で失点を抑えられているのが良かった点です。`
 }
 
-function formatPitchingScopeClarificationSummary(question: string, rows: PitchingLineRow[]): string | null {
-  if (!/一軍/u.test(question) || rows.length === 0) {
+function formatPitchingScopeClarificationSummary(
+  question: string,
+  rows: PitchingLineRow[],
+  executionMetadata?: ChatExecutionMetadata,
+): string | null {
+  const structuredScopeClarification = executionMetadata?.followUpType === 'scope_clarification' ||
+    executionMetadata?.correction?.target === 'scope'
+  if (!(structuredScopeClarification || /一軍/u.test(question)) || rows.length === 0) {
     return null
   }
   const boxRows = rows.filter((row) => row.sourceKind === 'box')
