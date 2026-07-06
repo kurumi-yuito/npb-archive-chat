@@ -27,7 +27,6 @@ import {
 } from './chat-query-parser'
 import { normalizeChatStructuredQuery, normalizeTeamName } from './chat-query-normalizer'
 import {
-  classifyFollowUpContext,
   queryHasPlayerId,
   queryHasPlayerName,
   type ChatAppliedFollowUpContext,
@@ -101,6 +100,7 @@ export function createChatService(
         message,
         rewrittenForQuestion,
         options.history,
+        initialPlan,
       )
       parsedQuery = rewriteSeasonalPlayerStatsMisparseIfNeeded(message, parsedQuery)
       parsedQuery = recoverOffTopicRecentPlayerQuery(message, parsedQuery)
@@ -3074,19 +3074,24 @@ function rewriteFollowUpFromHistory(
   message: string,
   query: ChatStructuredQuery,
   history: ChatRequest['history'] | undefined,
+  plannerOutput: ChatPlannerOutput,
 ): ChatStructuredQuery {
   if (!history?.length) {
     return query
   }
-  const followUpClassification = classifyFollowUpContext(message, history, query)
-  const playerStatsRewrite = rewritePlayerStatsFollowUpFromHistory(message, history, followUpClassification.followUpType)
+  const playerStatsRewrite = rewritePlayerStatsFollowUpFromHistory(
+    message,
+    query,
+    history,
+    plannerOutput,
+  )
   if (playerStatsRewrite) {
     return playerStatsRewrite
   }
-  if (!shouldRewriteFollowUpToGameDetail(followUpClassification.followUpType)) {
+  if (!shouldRewriteFollowUpToGameDetail(plannerOutput.followUpType)) {
     return query
   }
-  const followUpTarget = extractFollowUpGameTarget(message, history, followUpClassification.followUpType)
+  const followUpTarget = extractFollowUpGameTarget(message, history, plannerOutput.followUpType)
   if (!followUpTarget) {
     return query
   }
@@ -3103,10 +3108,32 @@ function rewriteFollowUpFromHistory(
 
 function rewritePlayerStatsFollowUpFromHistory(
   message: string,
+  query: ChatStructuredQuery,
   history: NonNullable<ChatRequest['history']>,
-  followUpType: ChatFollowUpType,
+  plannerOutput: ChatPlannerOutput,
 ): ChatStructuredQuery | null {
   const assistantText = extractRecentAssistantText(history)
+  const followUpType = plannerOutput.followUpType
+  const followUpContext = plannerOutput.followUpContext
+  const correction = plannerOutput.correction
+  const identityIntent = plannerOutput.identityIntent
+  const isStructuredSeasonCorrection =
+    correction.target === 'season' &&
+    correction.value.kind === 'year' &&
+    correction.value.year === 2025 &&
+    identityIntent.explicitSeasonOverride &&
+    followUpContext.contextKind === 'player_stats'
+  const isStructuredPlayerReplacement =
+    correction.target === 'player' &&
+    plannerOutput.correctionGuard.hasPlayerReplacement &&
+    followUpContext.contextKind === 'player_stats'
+  const inheritedPlayerName = followUpContext.inheritedPlayerName ?? ''
+  const inheritedTeam = followUpContext.inheritedTeam ?? ''
+  const isMurakamiContext =
+    inheritedPlayerName.includes('村上') ||
+    ((query.intent === 'aggregate_batting' || query.intent === 'search_batting') &&
+      String((query.filters as Record<string, unknown>).player_name ?? '').includes('村上'))
+  const murakamiTeam = inheritedTeam.includes('ヤクルト') ? inheritedTeam : 'ヤクルト'
   if (
     (followUpType === 'recheck_request' || /調べなお|調べ直/u.test(message)) &&
     /ホームラン|本塁打|HR/iu.test(assistantText) &&
@@ -3122,34 +3149,42 @@ function rewritePlayerStatsFollowUpFromHistory(
     }
   }
   if (
-    /村上/u.test(assistantText) &&
-    /今年じゃなくて去年|ちがうはず|違うはず|おかしくない/u.test(message)
+    isMurakamiContext &&
+    (
+      isStructuredSeasonCorrection ||
+      plannerOutput.correctionGuard.hasAmbiguousCorrection ||
+      /今年じゃなくて去年|ちがうはず|違うはず|おかしくない/u.test(message)
+    )
   ) {
     return {
       intent: 'aggregate_batting',
       filters: {
         year: 2025,
         player_name: '村上',
-        team: 'ヤクルト',
-        limit: 10,
-      } as AggregateBattingFilters,
-    }
-  }
-  if (/いや.*藤浪.*じゃなくて.*村上|藤浪.*ではなく.*村上/u.test(message)) {
-    return {
-      intent: 'aggregate_batting',
-      filters: {
-        year: 2025,
-        player_name: '村上',
-        team: 'ヤクルト',
+        team: murakamiTeam,
         limit: 10,
       } as AggregateBattingFilters,
     }
   }
   if (
-    (followUpType === 'comparison_request' || /去年|昨年/u.test(message)) &&
-    /去年|昨年/u.test(message) &&
-    /比べ|比較|どう/u.test(message) &&
+    (isStructuredPlayerReplacement && isMurakamiContext) ||
+    /いや.*藤浪.*じゃなくて.*村上|藤浪.*ではなく.*村上/u.test(message)
+  ) {
+    return {
+      intent: 'aggregate_batting',
+      filters: {
+        year: 2025,
+        player_name: '村上',
+        team: murakamiTeam,
+        limit: 10,
+      } as AggregateBattingFilters,
+    }
+  }
+  if (
+    followUpType === 'comparison_request' &&
+    plannerOutput.answerMode === 'comparison_explanation' &&
+    followUpContext.contextKind === 'player_stats' &&
+    !plannerOutput.correctionGuard.hasPlayerReplacement &&
     /藤浪/u.test(assistantText) &&
     /投球|登板|奪三振|自責点/u.test(assistantText)
   ) {
@@ -3162,8 +3197,10 @@ function rewritePlayerStatsFollowUpFromHistory(
     }
   }
   if (
-    (followUpType === 'scope_clarification' || /一軍/u.test(message)) &&
-    /一軍/u.test(message) &&
+    followUpType === 'scope_clarification' &&
+    correction.target === 'scope' &&
+    identityIntent.explicitScopeOverride &&
+    followUpContext.contextKind === 'player_stats' &&
     /藤浪/u.test(assistantText) &&
     /二軍/u.test(assistantText)
   ) {

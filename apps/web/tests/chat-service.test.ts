@@ -784,6 +784,62 @@ describe('chat-service', () => {
     expect(response.answer.summary).toContain('昨年の同条件と直接の通算比較はできません')
   })
 
+  it('uses planner comparison metadata for player stats follow-up rewrite without comparison wording fallback', async () => {
+    let aggregateCalled = false
+    let pitchingFilters: Parameters<ChatQueryService['searchPitchingLines']>[0] | null = null
+    const service = createChatService(createFakeQueryService({
+      searchPitchingLines: async (filters) => {
+        pitchingFilters = filters
+        return [{
+          gameId: 'f20260621db-d-01',
+          gameDate: '2026-06-21',
+          team: '横浜DeNAベイスターズ',
+          pitcherName: '藤浪 晋太郎',
+          inningsPitched: '5',
+          pitchCount: 90,
+          hitsAllowed: 3,
+          homeRunsAllowed: 0,
+          walks: 2,
+          hitBatters: 0,
+          strikeouts: 6,
+          runs: 1,
+          earnedRuns: 1,
+          rawText: '藤浪 5回 1失点',
+          sourceKind: 'box',
+          sourceUrl: null,
+        }]
+      },
+      aggregatePitchingLines: async () => {
+        aggregateCalled = true
+        return []
+      },
+    }), {
+      parseStructuredQueryFromMessage: async () => ({
+        intent: 'aggregate_pitching',
+        filters: { pitcher_name: '藤浪', year_from: 2025, year_to: 2026 },
+      }),
+      resolveStructuredQueryPlayer: async (_queryService, structuredQuery) => ({
+        structuredQuery,
+        resolution: null,
+      }),
+      formatChatAnswer,
+    })
+
+    const response = await service.answerQuestion('藤浪の投球、移籍後は？', {
+      history: [
+        { role: 'user', content: '藤浪って最近何してんの' },
+        { role: 'assistant', content: '横浜DeNAベイスターズ 藤浪 晋太郎の確認できる最新5試合の投球内容です。2026年二軍での対象試合です。内容は5試合で22奪三振、8自責点です。' },
+      ],
+    })
+
+    expect(aggregateCalled).toBe(false)
+    expect(response.structured_query).toMatchObject({
+      intent: 'search_pitching',
+      filters: { pitcher_name: '藤浪', recent: true },
+    })
+    expect(pitchingFilters).toMatchObject({ pitcher_name: '藤浪', recent: true })
+  })
+
   it('answers first-team scope clarifications from inherited farm pitching context', async () => {
     let pitchingFilters: Parameters<ChatQueryService['searchPitchingLines']>[0] | null = null
     const service = createChatService(createFakeQueryService({
@@ -841,6 +897,64 @@ describe('chat-service', () => {
     })
     expect(pitchingFilters).toMatchObject({ year: 2026, team: 'DeNA', pitcher_name: '藤浪 晋太郎', pitcher_player_id: '41045137', recent: true })
     expect(response.answer.summary).toBe('いいえ、二軍の話です。確認できる最新5試合は二軍での登板です。')
+  })
+
+  it('uses planner scope metadata for inherited farm pitching clarification without first-team wording fallback', async () => {
+    let pitchingFilters: Parameters<ChatQueryService['searchPitchingLines']>[0] | null = null
+    const service = createChatService(createFakeQueryService({
+      playerCandidates: [{
+        player_id: '41045137',
+        name: '藤浪 晋太郎',
+        primary_team: 'DeNA',
+        roles: ['pitcher'],
+        teams: ['DeNA'],
+        years: [2026],
+      }],
+      searchPitchingLines: async (filters) => {
+        pitchingFilters = filters
+        return [{
+          gameId: 'f20260621db-d-01',
+          gameDate: '2026-06-21',
+          team: '横浜DeNAベイスターズ',
+          pitcherName: '藤浪 晋太郎',
+          inningsPitched: '5',
+          pitchCount: 90,
+          hitsAllowed: 3,
+          homeRunsAllowed: 0,
+          walks: 2,
+          hitBatters: 0,
+          strikeouts: 6,
+          runs: 1,
+          earnedRuns: 1,
+          rawText: '藤浪 5回 1失点',
+          sourceKind: 'box',
+          sourceUrl: null,
+        }]
+      },
+    }), {
+      parseStructuredQueryFromMessage: async () => ({
+        intent: 'search_pitching',
+        filters: { year: 2025, pitcher_name: '藤浪' },
+      }),
+      resolveStructuredQueryPlayer: async (_queryService, structuredQuery) => ({
+        structuredQuery,
+        resolution: null,
+      }),
+      formatChatAnswer,
+    })
+
+    const response = await service.answerQuestion('今の所属で見て', {
+      history: [
+        { role: 'user', content: '藤浪どう？' },
+        { role: 'assistant', content: '横浜DeNAベイスターズ 藤浪 晋太郎の確認できる最新5試合の投球内容です。2026年二軍での対象試合です。' },
+      ],
+    })
+
+    expect(response.structured_query).toMatchObject({
+      intent: 'search_pitching',
+      filters: { year: 2026, team: 'DeNA', pitcher_name: '藤浪 晋太郎', pitcher_player_id: '41045137', recent: true },
+    })
+    expect(pitchingFilters).toMatchObject({ year: 2026, team: 'DeNA', pitcher_name: '藤浪 晋太郎', pitcher_player_id: '41045137', recent: true })
   })
 
   it('does not inherit player stats context for ambiguous correction guards', async () => {
