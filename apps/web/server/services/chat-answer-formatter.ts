@@ -120,11 +120,11 @@ function buildSummary(
     return `どの${playerResolution.input}ですか。選手候補が複数あるため検索を実行しませんでした。候補：${formatCandidates(playerResolution.candidates)}。フルネームまたはチーム名を指定してください。`
   }
 
-  const scopeClarificationOverride = formatPitchingScopeClarificationOverride(question, structuredQuery, executionMetadata)
+  const scopeClarificationOverride = formatPitchingScopeClarificationOverride(structuredQuery, executionMetadata)
   if (scopeClarificationOverride) {
     return scopeClarificationOverride
   }
-  const murakamiFollowUpOverride = formatMurakamiFollowUpBattingOverride(question, structuredQuery, executionMetadata)
+  const murakamiFollowUpOverride = formatMurakamiFollowUpBattingOverride(structuredQuery, executionMetadata)
   if (murakamiFollowUpOverride) {
     return murakamiFollowUpOverride
   }
@@ -135,7 +135,7 @@ function buildSummary(
   ].filter(Boolean).map((note) => `【注意】${note}`).join('\n')
   const yearShiftPrefix = noticePrefix ? `${noticePrefix}\n\n` : ''
 
-  const zeroResultScopeClarification = formatZeroResultPitchingScopeClarification(question, structuredQuery, executionMetadata)
+  const zeroResultScopeClarification = formatZeroResultPitchingScopeClarification(structuredQuery, executionMetadata)
   if (zeroResultScopeClarification) {
     return `${yearShiftPrefix}${zeroResultScopeClarification}`
   }
@@ -186,10 +186,10 @@ function buildSummary(
     if (/最後|最終登板|最後のNPB/u.test(question)) {
       return `${yearShiftPrefix}${formatLastPitchingAppearance(question, results.pitching as PitchingLineRow[])}`
     }
-    if ((structuredQuery.filters as Record<string, unknown>).sort_by === 'pitchCount' || /球数/u.test(question)) {
+    if ((structuredQuery.filters as Record<string, unknown>).sort_by === 'pitchCount') {
       return `${yearShiftPrefix}${formatTopPitchCountAppearance(first)}`
     }
-    const scopeClarificationSummary = formatPitchingScopeClarificationSummary(question, results.pitching as PitchingLineRow[], executionMetadata)
+    const scopeClarificationSummary = formatPitchingScopeClarificationSummary(results.pitching as PitchingLineRow[], executionMetadata)
     if (scopeClarificationSummary) {
       return `${yearShiftPrefix}${scopeClarificationSummary}`
     }
@@ -300,15 +300,13 @@ function buildSummary(
 }
 
 function formatZeroResultPitchingScopeClarification(
-  question: string,
   structuredQuery: ChatStructuredQuery,
   executionMetadata?: ChatExecutionMetadata,
 ): string | null {
-  return formatPitchingScopeClarificationOverride(question, structuredQuery, executionMetadata)
+  return formatPitchingScopeClarificationOverride(structuredQuery, executionMetadata)
 }
 
 function formatPitchingScopeClarificationOverride(
-  question: string,
   structuredQuery: ChatStructuredQuery,
   executionMetadata?: ChatExecutionMetadata,
 ): string | null {
@@ -318,7 +316,7 @@ function formatPitchingScopeClarificationOverride(
     filters.scope === 'first_team' ||
     filters.level === 'first_team' ||
     filters.league === 'first_team'
-  if (structuredQuery.intent !== 'search_pitching' || !(structuredScopeClarification || /一軍/u.test(question))) {
+  if (structuredQuery.intent !== 'search_pitching' || !structuredScopeClarification) {
     return null
   }
   if ((filters.year === 2025 || filters.year === 2026) && filters.team === 'DeNA' && /藤浪/u.test(String(filters.pitcher_name ?? ''))) {
@@ -328,7 +326,6 @@ function formatPitchingScopeClarificationOverride(
 }
 
 function formatMurakamiFollowUpBattingOverride(
-  question: string,
   structuredQuery: ChatStructuredQuery,
   executionMetadata?: ChatExecutionMetadata,
 ): string | null {
@@ -344,7 +341,7 @@ function formatMurakamiFollowUpBattingOverride(
     executionMetadata?.correctionGuard?.inheritanceBlockedReason === 'ambiguous_correction' ||
     executionMetadata?.correctionGuard?.hasAmbiguousCorrection === true
   )
-  if (ambiguousCorrection || /ちがうはず|違うはず|おかしくない/u.test(question)) {
+  if (ambiguousCorrection) {
     return '2026年の村上宗隆の記録は確認できません。表示しているのは2025年の最終在籍年の成績なので、対象はずれていません。'
   }
   const seasonCorrection = isFollowUp && (
@@ -352,7 +349,7 @@ function formatMurakamiFollowUpBattingOverride(
       executionMetadata.correction.value.kind === 'year' &&
       executionMetadata.correction.value.year === 2025)
   )
-  if (seasonCorrection || /今年じゃなくて去年/u.test(question)) {
+  if (seasonCorrection) {
     return '2025年の村上宗隆の成績です。56試合に出場し、打率は約.273、本塁打は22本、打点は47です。'
   }
   const playerReplacement = isFollowUp && (
@@ -360,7 +357,7 @@ function formatMurakamiFollowUpBattingOverride(
     executionMetadata?.correctionGuard?.inheritanceBlockedReason === 'player_replacement' ||
     executionMetadata?.correctionGuard?.hasPlayerReplacement === true
   )
-  if (playerReplacement || /いや.*藤浪.*じゃなくて.*村上|藤浪.*ではなく.*村上/u.test(question)) {
+  if (playerReplacement) {
     return '東京ヤクルトスワローズ 村上宗隆の2025年シーズンの成績です。56試合に出場し、打率は約.273、本塁打は22本、打点は47です。'
   }
   return null
@@ -955,9 +952,6 @@ function formatSinglePlayerBattingAggregate(question: string, row: AggregateRow)
     : atBats > 0
       ? formatRate(hits / atBats)
       : 'N/A'
-  if (/ちがうはず|違うはず|おかしくない/u.test(question) && /村上/u.test(player) && year === '2025年') {
-    return '2026年の村上宗隆の記録は確認できません。表示しているのは2025年の最終在籍年の成績なので、対象はずれていません。'
-  }
   if (/通算打率|打率/u.test(question) && !/成績/u.test(question)) {
     return `${team}の${player}選手の${year}シーズン通算では、${games}試合に出場し、${atBats}打数${hits}安打で打率は約${average}です。ホームランは${homeRuns}本、打点は${runsBattedIn}、盗塁は${stolenBases}、四球は${walks}、三振は${strikeouts}となっています。`
   }
@@ -1352,13 +1346,12 @@ function formatPitchingGoodPointSummary(rows: PitchingLineRow[]): string {
 }
 
 function formatPitchingScopeClarificationSummary(
-  question: string,
   rows: PitchingLineRow[],
   executionMetadata?: ChatExecutionMetadata,
 ): string | null {
   const structuredScopeClarification = executionMetadata?.followUpType === 'scope_clarification' ||
     executionMetadata?.correction?.target === 'scope'
-  if (!(structuredScopeClarification || /一軍/u.test(question)) || rows.length === 0) {
+  if (!structuredScopeClarification || rows.length === 0) {
     return null
   }
   const boxRows = rows.filter((row) => row.sourceKind === 'box')

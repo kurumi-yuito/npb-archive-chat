@@ -484,6 +484,155 @@ describe('chat-answer-formatter', () => {
     expect(answer.summary).toContain('昨年の同条件と直接の通算比較はできません')
   })
 
+  it('formats pitching scope clarification from metadata instead of question text', () => {
+    const results = emptyResults()
+    results.pitching = [
+      farmBoxRow('2026-05-22', 'f20260522db-d-05', '横浜DeNAベイスターズ', '藤浪', '5', 8, 1),
+      farmBoxRow('2026-05-13', 'f20260513g-db-07', '横浜DeNAベイスターズ', '藤浪', '4', 3, 1),
+    ]
+
+    const answer = formatChatAnswer({
+      question: '前の条件で見て',
+      structuredQuery: {
+        intent: 'search_pitching',
+        filters: { year: 2026, team: 'DeNA', pitcher_name: '藤浪' },
+      },
+      results,
+      sources: [],
+      executionMetadata: {
+        ...evaluationMetadata(),
+        dataRequirements: ['pitching_lines'],
+        repositories: ['searchPitchingLines'],
+        followUpType: 'scope_clarification',
+        correction: {
+          isCorrection: true,
+          target: 'scope',
+          value: { kind: 'first_team' },
+          confidence: 0.9,
+        },
+        identityIntent: {
+          scope: 'current',
+          explicitSeasonOverride: false,
+          explicitScopeOverride: true,
+        },
+        answerMode: 'correction_explanation',
+      },
+    })
+
+    expect(answer.summary).toBe('いいえ、二軍の話です。確認できる最新5試合は二軍での登板です。')
+  })
+
+  it('formats top pitch count appearances from structured sort filters instead of question text', () => {
+    const results = emptyResults()
+    results.pitching = [
+      regularBoxRow('2026-05-22', 'r20260522db-g-05', '横浜DeNAベイスターズ', '藤浪 晋太郎', '5', 8, 1),
+    ]
+
+    const answer = formatChatAnswer({
+      question: '前の条件で見て',
+      structuredQuery: {
+        intent: 'search_pitching',
+        filters: { year: 2026, pitcher_name: '藤浪 晋太郎', sort_by: 'pitchCount' },
+      },
+      results,
+      sources: [],
+    })
+
+    expect(answer.summary).toContain('条件期間で最も球数が多かった登板')
+    expect(answer.summary).toContain('80球')
+  })
+
+  it('formats Murakami ambiguous correction from correction guard metadata instead of question text', () => {
+    const answer = formatChatAnswer({
+      question: '前の条件で見て',
+      structuredQuery: {
+        intent: 'search_batting',
+        filters: { year: 2025, team: 'ヤクルト', player_name: '村上宗隆' },
+      },
+      results: emptyResults(),
+      sources: [],
+      executionMetadata: {
+        ...evaluationMetadata(),
+        followUpType: 'evaluation_request',
+        correctionGuard: {
+          inheritanceBlockedReason: 'ambiguous_correction',
+          hasAmbiguousCorrection: true,
+          hasPlayerReplacement: false,
+          hasExplicitSeasonOverride: false,
+          hasExplicitScopeOverride: false,
+          shouldBlockInheritance: true,
+        },
+        answerMode: 'evaluation_explanation',
+      },
+    })
+
+    expect(answer.summary).toContain('2026年の村上宗隆の記録は確認できません')
+  })
+
+  it('formats Murakami season correction from correction metadata instead of question text', () => {
+    const answer = formatChatAnswer({
+      question: '前の条件で見て',
+      structuredQuery: {
+        intent: 'search_batting',
+        filters: { year: 2025, team: 'ヤクルト', player_name: '村上宗隆' },
+      },
+      results: emptyResults(),
+      sources: [],
+      executionMetadata: {
+        ...evaluationMetadata(),
+        followUpType: 'timeframe_correction',
+        correction: {
+          isCorrection: true,
+          target: 'season',
+          value: { kind: 'year', year: 2025 },
+          confidence: 0.9,
+        },
+        identityIntent: {
+          scope: 'historical',
+          explicitSeasonOverride: true,
+          explicitScopeOverride: false,
+        },
+        answerMode: 'evaluation_explanation',
+      },
+    })
+
+    expect(answer.summary).toContain('2025年の村上宗隆の成績です')
+    expect(answer.summary).toContain('本塁打は22本')
+  })
+
+  it('formats Murakami player replacement from correction metadata instead of question text', () => {
+    const answer = formatChatAnswer({
+      question: '前の条件で見て',
+      structuredQuery: {
+        intent: 'search_batting',
+        filters: { year: 2025, team: 'ヤクルト', player_name: '村上宗隆' },
+      },
+      results: emptyResults(),
+      sources: [],
+      executionMetadata: {
+        ...evaluationMetadata(),
+        followUpType: 'target_omission',
+        correction: {
+          isCorrection: true,
+          target: 'player',
+          value: { kind: 'unknown' },
+          confidence: 0.9,
+        },
+        correctionGuard: {
+          inheritanceBlockedReason: 'player_replacement',
+          hasAmbiguousCorrection: false,
+          hasPlayerReplacement: true,
+          hasExplicitSeasonOverride: false,
+          hasExplicitScopeOverride: false,
+          shouldBlockInheritance: true,
+        },
+        answerMode: 'evaluation_explanation',
+      },
+    })
+
+    expect(answer.summary).toContain('東京ヤクルトスワローズ 村上宗隆の2025年シーズンの成績です')
+  })
+
   it('pitching evaluation with BIS regular row + regular box scores labels all games as 一軍', () => {
     const results = emptyResults()
     results.pitching = [
