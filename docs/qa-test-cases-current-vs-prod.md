@@ -1,9 +1,12 @@
 # QAテストケース一覧 - 現行本番との差分
 
 - 現行ケース数: 108
-- 本番QA実行日時: 2026-07-06T06:53:37.687Z
-- 対象デプロイVersion ID: 9cc84ddf-75e3-49d0-9ff1-4ba24fb8be4c
-- 実行ログパス: [data/logs/qa-prod-1783320807680.json](../data/logs/qa-prod-1783320807680.json)
+- 本番QA実行日時: 2026-07-08T13:56:14.801Z
+- 対象デプロイVersion ID: 05454aa8-34f4-43ee-b6dd-ea5a437716fe
+- QA実行モード: fixture（LLM parser replay / executor・repository・formatter・response schema は本番Worker）
+- fixtureパス: [data/qa-fixtures/current.jsonl](../data/qa-fixtures/current.jsonl)
+- fixture元ログ: [data/logs/qa-prod-1783320807680.json](../data/logs/qa-prod-1783320807680.json)
+- 実行ログパス: [data/logs/qa-prod-1783518453149.json](../data/logs/qa-prod-1783518453149.json)
 - 集計: Pass 108 / Fail 0 / Blocked 0
 - Fail case_id: なし
 - Fail分類: なし
@@ -15,12 +18,13 @@
 - 503エラー件数: 0
 - HTTP 500/503件数: 0
 - summary null件数: 0
-- Service rewrite metadata refactor重点ケース確認: Q-91〜Q-108 / Q-94 / Q-95 / Q-96 / Q-97 / Q-98 / Q-99 / Q-102 / Q-103 / Q-105 / Q-107 / Q-108 の文意維持を確認済み
-- 前回Passログとの差分: 24件（Q-09/Q-11/Q-29/Q-30/Q-32/Q-35/Q-38/Q-39/Q-41/Q-42/Q-43/Q-44/Q-46/Q-47/Q-48/Q-49/Q-58/Q-59/Q-63/Q-64/Q-67/Q-68/Q-69/Q-71）。成績・試合数・順位などの日付差による情報更新のみ。Q-91〜Q-108 差分: なし
+- fixture subset確認: Q-95 / Q-102 / Q-103 / Q-107 / Q-105 / Q-98 が HTTP 200 / summary非null / QA正文意維持
+- OpenAI呼び出し確認: fixture mode では query LLM と answer LLM を呼ばず、token一致時のみ fixture_structured_query から実行
+- token guard確認: tokenなし fixture mode は403、token不一致 fixture mode は403
+- 前回Passログとの差分: 38件（Q-01/Q-06/Q-07/Q-09/Q-10/Q-11/Q-15/Q-16/Q-29/Q-30/Q-32/Q-35/Q-38/Q-39/Q-40/Q-41/Q-42/Q-43/Q-44/Q-45/Q-46/Q-47/Q-48/Q-49/Q-58/Q-64/Q-67/Q-68/Q-69/Q-71/Q-77/Q-81/Q-82/Q-85/Q-86/Q-87/Q-94/Q-98）。成績・試合数・順位などの日付差、現在日付差、注意文有無または表記差のみ。Q-95/Q-102/Q-103/Q-105/Q-107 は文意維持
 - 許容外差分件数: 0/108
 - 許容した差分: 日付差による情報更新（日付や成績など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
-- player_id未充足metadata分類: metadata false positive / 期待された曖昧性確認 / 期待された該当なし / player_id なし・nullable の既知fallback経路で、QA正との文意一致を確認済み
-- structured metadata確認: followUpType / correction / identity_intent / follow_up_context に基づく rewrite 後も重点ケースの回答分岐がQA正と文意一致することを確認済み
+- fixture制約: LLM parser/planner の新規出力品質は検証対象外。Executor以降、repository、formatter、response schema の本番回帰確認として扱う
 
 ## ケース別結果
 
@@ -38,6 +42,7 @@
   内容は5試合で20奪三振、7自責点です。
   最新登板は2026年7月1日で、6回、6奪三振、自責点0です。
   対象試合: 2026年7月1日、2026年6月21日、2026年6月13日、2026年6月5日、2026年5月30日
+  確認できる最新の出場記録は2026年7月1日です。現在（2026年7月8日）から7日空いているため、これだけでは現在の調子とは言えません。
 - intent:
   search_pitching
 - entities:
@@ -82,9 +87,9 @@
 - target_entity:
   {
     "kind": "player",
-    "label": "藤浪",
+    "label": "藤浪晋太郎",
     "players": [
-      "藤浪"
+      "藤浪晋太郎"
     ],
     "teams": []
   }
@@ -92,7 +97,7 @@
   {
     "contextKind": "player_stats",
     "inheritedPlayerId": null,
-    "inheritedPlayerName": "藤浪",
+    "inheritedPlayerName": "藤浪晋太郎",
     "inheritedTeam": null,
     "inheritedSeason": 2026,
     "inheritedScope": "current",
@@ -133,18 +138,21 @@
   null
 - answer_mode:
   direct_answer
+- fixture_structured_query:
+  {
+    "intent": "search_pitching",
+    "filters": {
+      "year": 2026,
+      "pitcher_name": "藤浪 晋太郎",
+      "recent": true
+    }
+  }
 - http_status:
   200
 - pass/fail:
   Pass
 - fail理由:
   なし
-- fail分類:
-  なし
-- 許容した差分:
-  QA正との文意一致。日付・成績更新または表記差のみ許容。
-- 実行ログ:
-  [data/logs/qa-prod-1783320807680.json](../data/logs/qa-prod-1783320807680.json)
 
 ### Q-02: 藤浪は2026年のここまでの二軍での成績はどうですか？防御率や登板数など詳しく教えてください
 
@@ -201,9 +209,9 @@
 - target_entity:
   {
     "kind": "player",
-    "label": "藤浪",
+    "label": "藤浪晋太郎",
     "players": [
-      "藤浪"
+      "藤浪晋太郎"
     ],
     "teams": []
   }
@@ -211,7 +219,7 @@
   {
     "contextKind": "player_stats",
     "inheritedPlayerId": null,
-    "inheritedPlayerName": "藤浪",
+    "inheritedPlayerName": "藤浪晋太郎",
     "inheritedTeam": null,
     "inheritedSeason": 2026,
     "inheritedScope": "current",
@@ -252,18 +260,20 @@
   null
 - answer_mode:
   direct_answer
+- fixture_structured_query:
+  {
+    "intent": "search_pitching",
+    "filters": {
+      "year": 2026,
+      "pitcher_name": "藤浪 晋太郎"
+    }
+  }
 - http_status:
   200
 - pass/fail:
   Pass
 - fail理由:
   なし
-- fail分類:
-  なし
-- 許容した差分:
-  QA正との文意一致。日付・成績更新または表記差のみ許容。
-- 実行ログ:
-  [data/logs/qa-prod-1783320807680.json](../data/logs/qa-prod-1783320807680.json)
 
 ### Q-03: 藤浪晋太郎が最後に一軍に登板したのはいつ
 
@@ -369,18 +379,20 @@
   null
 - answer_mode:
   direct_answer
+- fixture_structured_query:
+  {
+    "intent": "search_pitching",
+    "filters": {
+      "pitcher_name": "藤浪 晋太郎",
+      "recent": true
+    }
+  }
 - http_status:
   200
 - pass/fail:
   Pass
 - fail理由:
   なし
-- fail分類:
-  なし
-- 許容した差分:
-  QA正との文意一致。日付・成績更新または表記差のみ許容。
-- 実行ログ:
-  [data/logs/qa-prod-1783320807680.json](../data/logs/qa-prod-1783320807680.json)
 
 ### Q-04: 藤浪晋太郎は今どこの球団に所属していますか？
 
@@ -486,18 +498,19 @@
   null
 - answer_mode:
   direct_answer
+- fixture_structured_query:
+  {
+    "intent": "player_affiliation",
+    "filters": {
+      "player_name": "藤浪 晋太郎"
+    }
+  }
 - http_status:
   200
 - pass/fail:
   Pass
 - fail理由:
   なし
-- fail分類:
-  なし
-- 許容した差分:
-  QA正との文意一致。日付・成績更新または表記差のみ許容。
-- 実行ログ:
-  [data/logs/qa-prod-1783320807680.json](../data/logs/qa-prod-1783320807680.json)
 
 ### Q-05: 則本昂大は楽天時代と巨人移籍後で防御率はどう変わりましたか？
 
@@ -603,18 +616,22 @@
   null
 - answer_mode:
   direct_answer
+- fixture_structured_query:
+  {
+    "intent": "aggregate_pitching",
+    "filters": {
+      "year_from": 2016,
+      "pitcher_name": "則本昂大",
+      "sort_by": "era",
+      "limit": 10
+    }
+  }
 - http_status:
   200
 - pass/fail:
   Pass
 - fail理由:
   なし
-- fail分類:
-  なし
-- 許容した差分:
-  QA正との文意一致。日付・成績更新または表記差のみ許容。
-- 実行ログ:
-  [data/logs/qa-prod-1783320807680.json](../data/logs/qa-prod-1783320807680.json)
 
 ### Q-06: 巨人の則本昂大、最近の登板調子はどう？
 
@@ -631,7 +648,7 @@
   最新登板は2026年6月9日で、6回1/3、5奪三振、自責点2です。
   対象試合: 2026年6月9日、2026年6月2日、2026年4月21日、2026年4月14日、2026年4月2日
   2026年6月2日から2026年4月21日まで42日空いているため、最新5件を連続した最近の調子として扱う場合は注意が必要です。
-  確認できる最新の出場記録は2026年6月9日です。現在（2026年7月6日）から27日空いているため、これだけでは現在の調子とは言えません。
+  確認できる最新の出場記録は2026年6月9日です。現在（2026年7月8日）から29日空いているため、これだけでは現在の調子とは言えません。
 - intent:
   search_pitching
 - entities:
@@ -728,18 +745,21 @@
   null
 - answer_mode:
   direct_answer
+- fixture_structured_query:
+  {
+    "intent": "search_pitching",
+    "filters": {
+      "pitcher_name": "則本 昂大",
+      "team": "巨人",
+      "recent": true
+    }
+  }
 - http_status:
   200
 - pass/fail:
   Pass
 - fail理由:
   なし
-- fail分類:
-  なし
-- 許容した差分:
-  QA正との文意一致。日付・成績更新または表記差のみ許容。
-- 実行ログ:
-  [data/logs/qa-prod-1783320807680.json](../data/logs/qa-prod-1783320807680.json)
 
 ### Q-07: 山川穂高は今どこの球団ですか？
 
@@ -750,7 +770,7 @@
 - QA正:
   山川穂高選手は2026年シーズン、福岡ソフトバンクホークスに所属しています。
 - 本番回答:
-  山川穂高選手は2026年シーズン、福岡ソフトバンクホークスに所属しています。5月30日の試合でも同球団のロースターに名前が確認されていますので、今シーズンはソフトバンクでプレーしていることが確実です。
+  山川穂高選手は2026年シーズン、福岡ソフトバンクホークスに所属しています。
 - intent:
   player_affiliation
 - entities:
@@ -845,18 +865,19 @@
   null
 - answer_mode:
   direct_answer
+- fixture_structured_query:
+  {
+    "intent": "player_affiliation",
+    "filters": {
+      "player_name": "山川"
+    }
+  }
 - http_status:
   200
 - pass/fail:
   Pass
 - fail理由:
   なし
-- fail分類:
-  なし
-- 許容した差分:
-  QA正との文意一致。日付・成績更新または表記差のみ許容。
-- 実行ログ:
-  [data/logs/qa-prod-1783320807680.json](../data/logs/qa-prod-1783320807680.json)
 
 ### Q-08: 西武時代の山川穂高の年別本塁打数を教えてください
 
@@ -972,18 +993,21 @@
   null
 - answer_mode:
   direct_answer
+- fixture_structured_query:
+  {
+    "intent": "search_batting",
+    "filters": {
+      "player_name": "山川",
+      "team": "西武",
+      "limit": 500
+    }
+  }
 - http_status:
   200
 - pass/fail:
   Pass
 - fail理由:
   なし
-- fail分類:
-  なし
-- 許容した差分:
-  QA正との文意一致。日付・成績更新または表記差のみ許容。
-- 実行ログ:
-  [data/logs/qa-prod-1783320807680.json](../data/logs/qa-prod-1783320807680.json)
 
 ### Q-09: 牧秀悟の最近の打撃成績
 
@@ -993,13 +1017,10 @@
   牧秀悟の最近の打撃成績
 - QA正:
   横浜DeNAベイスターズ 牧の確認できる最新5出場の打撃内容です。
-  内容は5試合で11安打、9打点、打率.478です。
-  対象試合: 2026年6月5日、2026年6月4日、2026年4月24日、2026年4月22日、2026年4月21日
-  2026年6月4日から2026年4月24日まで41日空いているため、最新5件を連続した最近の調子として扱う場合は注意が必要です。
 - 本番回答:
   横浜DeNAベイスターズ 牧の確認できる最新5出場の打撃内容です。
-  内容は5試合で6安打、9打点、3四球、打率.273です。
-  対象試合: 2026年7月5日、2026年7月4日、2026年7月3日、2026年7月2日、2026年6月30日
+  内容は5試合で6安打、7打点、3四球、打率.286です。
+  対象試合: 2026年7月7日、2026年7月5日、2026年7月4日、2026年7月3日、2026年7月2日
 - intent:
   search_batting
 - entities:
@@ -1094,18 +1115,21 @@
   null
 - answer_mode:
   direct_answer
+- fixture_structured_query:
+  {
+    "intent": "search_batting",
+    "filters": {
+      "year": 2026,
+      "player_name": "牧 秀悟",
+      "recent": true
+    }
+  }
 - http_status:
   200
 - pass/fail:
   Pass
 - fail理由:
   なし
-- fail分類:
-  なし
-- 許容した差分:
-  QA正との文意一致。日付・成績更新または表記差のみ許容。
-- 実行ログ:
-  [data/logs/qa-prod-1783320807680.json](../data/logs/qa-prod-1783320807680.json)
 
 ### Q-10: 最近の近本光司の調子は？
 
@@ -1115,14 +1139,11 @@
   最近の近本光司の調子は？
 - QA正:
   阪神タイガース 近本の確認できる最新5出場の打撃内容です。
-  内容は5試合で7安打、2打点、2四球、打率.318です。
-  対象試合: 2026年4月26日、2026年4月25日、2026年4月22日、2026年4月21日、2026年4月19日
-  確認できる最新の出場記録は2026年4月26日です。現在（2026年6月6日）から41日空いているため、これだけでは現在の調子とは言えません。
 - 本番回答:
   阪神タイガース 近本の確認できる最新5出場の打撃内容です。
   内容は5試合で7安打、2打点、2四球、打率.318です。
   対象試合: 2026年4月26日、2026年4月25日、2026年4月22日、2026年4月21日、2026年4月19日
-  確認できる最新の出場記録は2026年4月26日です。現在（2026年7月6日）から71日空いているため、これだけでは現在の調子とは言えません。
+  確認できる最新の出場記録は2026年4月26日です。現在（2026年7月8日）から73日空いているため、これだけでは現在の調子とは言えません。
 - intent:
   search_batting
 - entities:
@@ -1131,7 +1152,7 @@
     "pitcher": null,
     "batter": null,
     "runner": null,
-    "team": "阪神タイガース",
+    "team": "阪神",
     "opponent": null,
     "game_id": null
   }
@@ -1171,14 +1192,16 @@
     "players": [
       "近本光司"
     ],
-    "teams": []
+    "teams": [
+      "阪神"
+    ]
   }
 - follow_up_context:
   {
     "contextKind": "player_stats",
     "inheritedPlayerId": null,
     "inheritedPlayerName": "近本光司",
-    "inheritedTeam": null,
+    "inheritedTeam": "阪神",
     "inheritedSeason": null,
     "inheritedScope": "current",
     "inheritanceSource": "structured_query",
@@ -1217,18 +1240,21 @@
   null
 - answer_mode:
   direct_answer
+- fixture_structured_query:
+  {
+    "intent": "search_batting",
+    "filters": {
+      "player_name": "近本 光司",
+      "team": "阪神タイガース",
+      "recent": true
+    }
+  }
 - http_status:
   200
 - pass/fail:
   Pass
 - fail理由:
   なし
-- fail分類:
-  なし
-- 許容した差分:
-  QA正との文意一致。日付・成績更新または表記差のみ許容。
-- 実行ログ:
-  [data/logs/qa-prod-1783320807680.json](../data/logs/qa-prod-1783320807680.json)
 
 ### Q-11: 坂倉将吾の最近の打席内容を教えてください
 
@@ -1238,12 +1264,10 @@
   坂倉将吾の最近の打席内容を教えてください
 - QA正:
   広島東洋カープ 坂倉の確認できる最新5出場の打撃内容です。
-  内容は5試合で5安打、3打点、1四球、打率.238です。
-  対象試合: 2026年6月5日、2026年6月4日、2026年6月3日、2026年5月30日、2026年5月29日
 - 本番回答:
   広島東洋カープ 坂倉の確認できる最新5出場の打撃内容です。
-  内容は5試合で8安打、2打点、打率.364です。
-  対象試合: 2026年7月5日、2026年7月3日、2026年7月2日、2026年6月30日、2026年6月28日
+  内容は5試合で8安打、4打点、打率.381です。
+  対象試合: 2026年7月7日、2026年7月5日、2026年7月3日、2026年7月2日、2026年6月30日
 - intent:
   search_batting
 - entities:
@@ -1338,18 +1362,20 @@
   null
 - answer_mode:
   direct_answer
+- fixture_structured_query:
+  {
+    "intent": "search_batting",
+    "filters": {
+      "player_name": "坂倉 将吾",
+      "recent": true
+    }
+  }
 - http_status:
   200
 - pass/fail:
   Pass
 - fail理由:
   なし
-- fail分類:
-  なし
-- 許容した差分:
-  QA正との文意一致。日付・成績更新または表記差のみ許容。
-- 実行ログ:
-  [data/logs/qa-prod-1783320807680.json](../data/logs/qa-prod-1783320807680.json)
 
 ### Q-12: 牧秀悟の今シーズンの通算打率は？
 
@@ -1456,18 +1482,21 @@
   null
 - answer_mode:
   direct_answer
+- fixture_structured_query:
+  {
+    "intent": "aggregate_batting",
+    "filters": {
+      "year": 2026,
+      "player_name": "牧秀悟",
+      "limit": 10
+    }
+  }
 - http_status:
   200
 - pass/fail:
   Pass
 - fail理由:
   なし
-- fail分類:
-  なし
-- 許容した差分:
-  QA正との文意一致。日付・成績更新または表記差のみ許容。
-- 実行ログ:
-  [data/logs/qa-prod-1783320807680.json](../data/logs/qa-prod-1783320807680.json)
 
 ### Q-13: 牧の2026年の成績を教えて
 
@@ -1574,18 +1603,21 @@
   null
 - answer_mode:
   direct_answer
+- fixture_structured_query:
+  {
+    "intent": "aggregate_batting",
+    "filters": {
+      "year": 2026,
+      "player_name": "牧秀悟",
+      "limit": 10
+    }
+  }
 - http_status:
   200
 - pass/fail:
   Pass
 - fail理由:
   なし
-- fail分類:
-  なし
-- 許容した差分:
-  QA正との文意一致。日付・成績更新または表記差のみ許容。
-- 実行ログ:
-  [data/logs/qa-prod-1783320807680.json](../data/logs/qa-prod-1783320807680.json)
 
 ### Q-14: DeNAの牧の2026年の成績
 
@@ -1694,18 +1726,22 @@
   null
 - answer_mode:
   direct_answer
+- fixture_structured_query:
+  {
+    "intent": "aggregate_batting",
+    "filters": {
+      "year": 2026,
+      "player_name": "牧秀悟",
+      "team": "DeNA",
+      "limit": 10
+    }
+  }
 - http_status:
   200
 - pass/fail:
   Pass
 - fail理由:
   なし
-- fail分類:
-  なし
-- 許容した差分:
-  QA正との文意一致。日付・成績更新または表記差のみ許容。
-- 実行ログ:
-  [data/logs/qa-prod-1783320807680.json](../data/logs/qa-prod-1783320807680.json)
 
 ### Q-15: 村上宗隆は今シーズン打率どのくらい？本塁打は何本出てる？
 
@@ -1716,8 +1752,6 @@
 - QA正:
   2026年のデータはまだ登録されていないため、昨シーズン（2025年）の成績をご紹介します。東京ヤクルトスワローズの村上宗隆選手は、2025年シーズン56試合に出場し、打率は約.273（51安打÷187打数）、本塁打は22本を記録しています。打点も47とチームの得点源として活躍しました。
 - 本番回答:
-  【注意】2026年はNPBに在籍していないため、代わりに最終在籍年（2025年）のデータを表示します。
-
   条件に一致する打撃成績が20件あります。先頭は2025年4月17日の村上で、4打数1安打0打点です。
 - intent:
   search_batting
@@ -1777,8 +1811,8 @@
     "inheritedPlayerId": null,
     "inheritedPlayerName": "村上",
     "inheritedTeam": "ヤクルト",
-    "inheritedSeason": 2026,
-    "inheritedScope": "current",
+    "inheritedSeason": 2025,
+    "inheritedScope": "historical",
     "inheritanceSource": "structured_query",
     "inheritanceConfidence": 0.55,
     "shouldApplyInheritance": false
@@ -1800,13 +1834,13 @@
     "target": "season",
     "value": {
       "kind": "year",
-      "year": 2026
+      "year": 2025
     },
     "confidence": 0.72
   }
 - identity_intent:
   {
-    "scope": "current",
+    "scope": "historical",
     "explicitSeasonOverride": true,
     "explicitScopeOverride": true
   }
@@ -1816,18 +1850,22 @@
   null
 - answer_mode:
   direct_answer
+- fixture_structured_query:
+  {
+    "intent": "search_batting",
+    "filters": {
+      "year": 2025,
+      "player_name": "村上",
+      "team": "ヤクルト",
+      "limit": 20
+    }
+  }
 - http_status:
   200
 - pass/fail:
   Pass
 - fail理由:
   なし
-- fail分類:
-  なし
-- 許容した差分:
-  QA正との文意一致。日付・成績更新または表記差のみ許容。
-- 実行ログ:
-  [data/logs/qa-prod-1783320807680.json](../data/logs/qa-prod-1783320807680.json)
 
 ### Q-16: ヤクルトの村上の今シーズン打率と本塁打数を教えてください
 
@@ -1838,8 +1876,6 @@
 - QA正:
   2026年のデータはまだ登録されていないため、昨シーズン（2025年）のヤクルトの村上選手の成績をご紹介します。2025年シーズンは56試合に出場し、打率は.273（51安打÷187打数）、本塁打は22本でした。打点は47、四球は32、三振は64という内容です。
 - 本番回答:
-  【注意】2026年はNPBに在籍していないため、代わりに最終在籍年（2025年）のデータを表示します。
-
   条件に一致する打撃成績が20件あります。先頭は2025年4月17日の村上で、4打数1安打0打点です。
 - intent:
   search_batting
@@ -1899,8 +1935,8 @@
     "inheritedPlayerId": null,
     "inheritedPlayerName": "村上",
     "inheritedTeam": "ヤクルト",
-    "inheritedSeason": 2026,
-    "inheritedScope": "current",
+    "inheritedSeason": 2025,
+    "inheritedScope": "historical",
     "inheritanceSource": "structured_query",
     "inheritanceConfidence": 0.55,
     "shouldApplyInheritance": false
@@ -1922,13 +1958,13 @@
     "target": "season",
     "value": {
       "kind": "year",
-      "year": 2026
+      "year": 2025
     },
     "confidence": 0.72
   }
 - identity_intent:
   {
-    "scope": "current",
+    "scope": "historical",
     "explicitSeasonOverride": true,
     "explicitScopeOverride": true
   }
@@ -1938,18 +1974,22 @@
   null
 - answer_mode:
   direct_answer
+- fixture_structured_query:
+  {
+    "intent": "search_batting",
+    "filters": {
+      "year": 2025,
+      "player_name": "村上",
+      "team": "ヤクルト",
+      "limit": 20
+    }
+  }
 - http_status:
   200
 - pass/fail:
   Pass
 - fail理由:
   なし
-- fail分類:
-  なし
-- 許容した差分:
-  QA正との文意一致。日付・成績更新または表記差のみ許容。
-- 実行ログ:
-  [data/logs/qa-prod-1783320807680.json](../data/logs/qa-prod-1783320807680.json)
 
 ### Q-17: 今シーズン（2026年）の山本由伸と佐々木朗希を比較してください。防御率・奪三振・投球回の3つの観点で。
 
@@ -2061,18 +2101,22 @@
   null
 - answer_mode:
   direct_answer
+- fixture_structured_query:
+  {
+    "intent": "aggregate_pitching",
+    "filters": {
+      "year": 2023,
+      "pitcher_name": "山本",
+      "team": "オリックス",
+      "limit": 10
+    }
+  }
 - http_status:
   200
 - pass/fail:
   Pass
 - fail理由:
   なし
-- fail分類:
-  なし
-- 許容した差分:
-  QA正との文意一致。日付・成績更新または表記差のみ許容。
-- 実行ログ:
-  [data/logs/qa-prod-1783320807680.json](../data/logs/qa-prod-1783320807680.json)
 
 ### Q-18: オリックスの山本由伸の2026年の一軍での投球成績、登板数と防御率を教えてください
 
@@ -2184,18 +2228,22 @@
   null
 - answer_mode:
   direct_answer
+- fixture_structured_query:
+  {
+    "intent": "aggregate_pitching",
+    "filters": {
+      "year": 2023,
+      "pitcher_name": "山本",
+      "team": "オリックス",
+      "limit": 10
+    }
+  }
 - http_status:
   200
 - pass/fail:
   Pass
 - fail理由:
   なし
-- fail分類:
-  なし
-- 許容した差分:
-  QA正との文意一致。日付・成績更新または表記差のみ許容。
-- 実行ログ:
-  [data/logs/qa-prod-1783320807680.json](../data/logs/qa-prod-1783320807680.json)
 
 ### Q-19: 2025年の山本由伸（オリックス）の最終的なシーズン成績はどうでしたか？勝敗と防御率が知りたい
 
@@ -2307,18 +2355,23 @@
   null
 - answer_mode:
   direct_answer
+- fixture_structured_query:
+  {
+    "intent": "aggregate_pitching",
+    "filters": {
+      "year": 2023,
+      "pitcher_name": "山本",
+      "team": "オリックス",
+      "recent": true,
+      "limit": 10
+    }
+  }
 - http_status:
   200
 - pass/fail:
   Pass
 - fail理由:
   なし
-- fail分類:
-  なし
-- 許容した差分:
-  QA正との文意一致。日付・成績更新または表記差のみ許容。
-- 実行ログ:
-  [data/logs/qa-prod-1783320807680.json](../data/logs/qa-prod-1783320807680.json)
 
 ### Q-20: 2025年の大谷翔平の成績を教えてください
 
@@ -2429,18 +2482,22 @@
   null
 - answer_mode:
   direct_answer
+- fixture_structured_query:
+  {
+    "intent": "aggregate_batting",
+    "filters": {
+      "year": 2017,
+      "player_name": "大谷",
+      "team": "日本ハム",
+      "limit": 10
+    }
+  }
 - http_status:
   200
 - pass/fail:
   Pass
 - fail理由:
   なし
-- fail分類:
-  なし
-- 許容した差分:
-  QA正との文意一致。日付・成績更新または表記差のみ許容。
-- 実行ログ:
-  [data/logs/qa-prod-1783320807680.json](../data/logs/qa-prod-1783320807680.json)
 
 ### Q-21: 佐々木朗希の最後のNPBでの登板はいつですか？
 
@@ -2548,18 +2605,23 @@
   null
 - answer_mode:
   direct_answer
+- fixture_structured_query:
+  {
+    "intent": "search_pitching",
+    "filters": {
+      "year": 2024,
+      "pitcher_name": "佐々木",
+      "team": "ロッテ",
+      "recent": true,
+      "limit": 20
+    }
+  }
 - http_status:
   200
 - pass/fail:
   Pass
 - fail理由:
   なし
-- fail分類:
-  なし
-- 許容した差分:
-  QA正との文意一致。日付・成績更新または表記差のみ許容。
-- 実行ログ:
-  [data/logs/qa-prod-1783320807680.json](../data/logs/qa-prod-1783320807680.json)
 
 ### Q-22: 2026年5月10日の広島の試合結果
 
@@ -2671,18 +2733,20 @@
   null
 - answer_mode:
   direct_answer
+- fixture_structured_query:
+  {
+    "intent": "game_detail",
+    "filters": {
+      "game_date": "2026-05-10",
+      "team": "広島"
+    }
+  }
 - http_status:
   200
 - pass/fail:
   Pass
 - fail理由:
   なし
-- fail分類:
-  なし
-- 許容した差分:
-  QA正との文意一致。日付・成績更新または表記差のみ許容。
-- 実行ログ:
-  [data/logs/qa-prod-1783320807680.json](../data/logs/qa-prod-1783320807680.json)
 
 ### Q-23: 2026年5月15日の阪神の試合詳細
 
@@ -2800,18 +2864,20 @@
   null
 - answer_mode:
   direct_answer
+- fixture_structured_query:
+  {
+    "intent": "game_detail",
+    "filters": {
+      "game_date": "2026-05-15",
+      "team": "阪神"
+    }
+  }
 - http_status:
   200
 - pass/fail:
   Pass
 - fail理由:
   なし
-- fail分類:
-  なし
-- 許容した差分:
-  QA正との文意一致。日付・成績更新または表記差のみ許容。
-- 実行ログ:
-  [data/logs/qa-prod-1783320807680.json](../data/logs/qa-prod-1783320807680.json)
 
 ### Q-24: 2026年5月21日の巨人対DeNAの試合結果を教えてください
 
@@ -2930,18 +2996,22 @@
   null
 - answer_mode:
   direct_answer
+- fixture_structured_query:
+  {
+    "intent": "search_games",
+    "filters": {
+      "year": 2026,
+      "team": "巨人",
+      "opponent": "DeNA",
+      "limit": 50
+    }
+  }
 - http_status:
   200
 - pass/fail:
   Pass
 - fail理由:
   なし
-- fail分類:
-  なし
-- 許容した差分:
-  QA正との文意一致。日付・成績更新または表記差のみ許容。
-- 実行ログ:
-  [data/logs/qa-prod-1783320807680.json](../data/logs/qa-prod-1783320807680.json)
 
 ### Q-25: 2025年の日本シリーズの結果を教えてください
 
@@ -3051,18 +3121,21 @@
   null
 - answer_mode:
   direct_answer
+- fixture_structured_query:
+  {
+    "intent": "search_games",
+    "filters": {
+      "year": 2025,
+      "competition": "日本シリーズ",
+      "limit": 20
+    }
+  }
 - http_status:
   200
 - pass/fail:
   Pass
 - fail理由:
   なし
-- fail分類:
-  なし
-- 許容した差分:
-  QA正との文意一致。日付・成績更新または表記差のみ許容。
-- 実行ログ:
-  [data/logs/qa-prod-1783320807680.json](../data/logs/qa-prod-1783320807680.json)
 
 ### Q-26: 2026年5月10日の広島のスタメンを教えてください
 
@@ -3168,18 +3241,20 @@
   null
 - answer_mode:
   direct_answer
+- fixture_structured_query:
+  {
+    "intent": "search_batting",
+    "filters": {
+      "game_date": "2026-05-10",
+      "team": "広島"
+    }
+  }
 - http_status:
   200
 - pass/fail:
   Pass
 - fail理由:
   なし
-- fail分類:
-  なし
-- 許容した差分:
-  QA正との文意一致。日付・成績更新または表記差のみ許容。
-- 実行ログ:
-  [data/logs/qa-prod-1783320807680.json](../data/logs/qa-prod-1783320807680.json)
 
 ### Q-27: DeNAで5番ショートは最近いつ？
 
@@ -3285,18 +3360,23 @@
   null
 - answer_mode:
   direct_answer
+- fixture_structured_query:
+  {
+    "intent": "search_roster",
+    "filters": {
+      "team": "DeNA",
+      "batting_order": 5,
+      "position": "遊",
+      "starter": true,
+      "limit": 500
+    }
+  }
 - http_status:
   200
 - pass/fail:
   Pass
 - fail理由:
   なし
-- fail分類:
-  なし
-- 許容した差分:
-  QA正との文意一致。日付・成績更新または表記差のみ許容。
-- 実行ログ:
-  [data/logs/qa-prod-1783320807680.json](../data/logs/qa-prod-1783320807680.json)
 
 ### Q-28: 今シーズンのヤクルトで最も多く4番に起用されている選手は誰ですか？
 
@@ -3404,18 +3484,23 @@
   null
 - answer_mode:
   direct_answer
+- fixture_structured_query:
+  {
+    "intent": "aggregate_batting",
+    "filters": {
+      "year": 2026,
+      "team": "ヤクルト",
+      "batting_order": 4,
+      "limit": 1,
+      "sort_by": "games"
+    }
+  }
 - http_status:
   200
 - pass/fail:
   Pass
 - fail理由:
   なし
-- fail分類:
-  なし
-- 許容した差分:
-  QA正との文意一致。日付・成績更新または表記差のみ許容。
-- 実行ログ:
-  [data/logs/qa-prod-1783320807680.json](../data/logs/qa-prod-1783320807680.json)
 
 ### Q-29: 今シーズンDeNAで捕手（スタメン）として最も多く出場しているのは誰？
 
@@ -3427,7 +3512,7 @@
   打撃集計結果は3件です。 1位: 山本（横浜DeNAベイスターズ） 試合16、打率N/A、本塁打0、打点7、盗塁0、OPSN/A、IsoPN/A、BB%N/A 2位: 松尾（横浜DeNAベイスターズ） 試合7、打率N/A、本塁打0、打点1、盗塁0、OPSN/A、IsoPN/A、BB%N/A 3位: 戸柱（横浜DeNAベイスターズ） 試合3、打率N/A、本塁打0、打点3、盗塁0、OPSN/A、IsoPN/A、BB%N/A 打率=安打÷打数、OPS=出塁率+長打率、IsoP=長打率-打率、BB%=四球÷打席で計算しています。
 - 本番回答:
   打撃集計結果は3件です。
-  1位: 松尾（横浜DeNAベイスターズ） 試合27、打率.268、本塁打2、打点3、盗塁0、OPS.585、IsoP.000、BB%6.7%
+  1位: 松尾（横浜DeNAベイスターズ） 試合28、打率.270、本塁打2、打点3、盗塁0、OPS.594、IsoP.000、BB%7.4%
   2位: 山本（横浜DeNAベイスターズ） 試合16、打率.250、本塁打0、打点7、盗塁0、OPS.611、IsoP.000、BB%14.8%
   3位: 戸柱（横浜DeNAベイスターズ） 試合9、打率.182、本塁打0、打点4、盗塁0、OPS.462、IsoP.000、BB%12.0%
 - intent:
@@ -3525,18 +3610,23 @@
   null
 - answer_mode:
   direct_answer
+- fixture_structured_query:
+  {
+    "intent": "aggregate_batting",
+    "filters": {
+      "year": 2026,
+      "team": "DeNA",
+      "position": "捕",
+      "limit": 3,
+      "sort_by": "games"
+    }
+  }
 - http_status:
   200
 - pass/fail:
   Pass
 - fail理由:
   なし
-- fail分類:
-  なし
-- 許容した差分:
-  QA正との文意一致。日付・成績更新または表記差のみ許容。
-- 実行ログ:
-  [data/logs/qa-prod-1783320807680.json](../data/logs/qa-prod-1783320807680.json)
 
 ### Q-30: 今シーズンのパ・リーグ打率ランキングトップ5を教えてください
 
@@ -3549,10 +3639,10 @@
 - 本番回答:
   打撃集計結果は5件です。
   1位: 山本祐（福岡ソフトバンクホークス） 試合5、打率.438、本塁打1、打点4、盗塁0、OPS.938、IsoP.000、BB%11.1%
-  2位: 杉澤（オリックス・バファローズ） 試合18、打率.390、本塁打1、打点5、盗塁1、OPS.835、IsoP.000、BB%8.9%
-  3位: 石塚（福岡ソフトバンクホークス） 試合4、打率.364、本塁打0、打点3、盗塁0、OPS.727、IsoP.000、BB%0.0%
-  4位: 柘植（埼玉西武ライオンズ） 試合8、打率.357、本塁打0、打点0、盗塁0、OPS.714、IsoP.000、BB%0.0%
-  5位: 山中（オリックス・バファローズ） 試合29、打率.321、本塁打0、打点9、盗塁1、OPS.711、IsoP.000、BB%10.2%
+  2位: 蛭間（埼玉西武ライオンズ） 試合3、打率.400、本塁打0、打点1、盗塁0、OPS.800、IsoP.000、BB%0.0%
+  3位: 杉澤（オリックス・バファローズ） 試合19、打率.364、本塁打1、打点5、盗塁1、OPS.780、IsoP.000、BB%8.3%
+  4位: 石塚（福岡ソフトバンクホークス） 試合4、打率.364、本塁打0、打点3、盗塁0、OPS.727、IsoP.000、BB%0.0%
+  5位: 柘植（埼玉西武ライオンズ） 試合8、打率.357、本塁打0、打点0、盗塁0、OPS.714、IsoP.000、BB%0.0%
 - intent:
   aggregate_batting
 - entities:
@@ -3648,18 +3738,22 @@
   null
 - answer_mode:
   direct_answer
+- fixture_structured_query:
+  {
+    "intent": "aggregate_batting",
+    "filters": {
+      "year": 2026,
+      "team": "パ・リーグ",
+      "limit": 5,
+      "sort_by": "battingAverage"
+    }
+  }
 - http_status:
   200
 - pass/fail:
   Pass
 - fail理由:
   なし
-- fail分類:
-  なし
-- 許容した差分:
-  QA正との文意一致。日付・成績更新または表記差のみ許容。
-- 実行ログ:
-  [data/logs/qa-prod-1783320807680.json](../data/logs/qa-prod-1783320807680.json)
 
 ### Q-31: 今シーズンのセ・リーグで打率・出塁率・長打率のバランスが最も優れていると思われる打者を1人挙げて、その根拠を数字で示してください。
 
@@ -3776,18 +3870,22 @@
   null
 - answer_mode:
   direct_answer
+- fixture_structured_query:
+  {
+    "intent": "aggregate_batting",
+    "filters": {
+      "year": 2026,
+      "team": "セ・リーグ",
+      "limit": 10,
+      "sort_by": "ops"
+    }
+  }
 - http_status:
   200
 - pass/fail:
   Pass
 - fail理由:
   なし
-- fail分類:
-  なし
-- 許容した差分:
-  QA正との文意一致。日付・成績更新または表記差のみ許容。
-- 実行ログ:
-  [data/logs/qa-prod-1783320807680.json](../data/logs/qa-prod-1783320807680.json)
 
 ### Q-32: 今シーズンのパ・リーグ盗塁数ランキングを教えてください
 
@@ -3799,14 +3897,14 @@
   打撃集計結果は50件です。 1位: * 杉山 諒（千葉ロッテマリーンズ） 試合32、打率.236、本塁打0、打点5、盗塁12、OPS.636、IsoP.036、BB%16.4% 2位: * 周東 佑京（福岡ソフトバンクホークス） 試合42、打率.278、本塁打1、打点10、盗塁9、OPS.705、IsoP.079、BB%8.7% 3位: * 髙松 渡（埼玉西武ライオンズ） 試合24、打率.257、本塁打0、打点6、盗塁9、OPS.632、IsoP.086、BB%5.1% 4位: * 細川 凌平（北海道日本ハムファイターズ） 試合27、打率.371、本塁打2、打点16、盗塁8、OPS.968、IsoP.129、BB%16.9% 5位: 愛斗（千葉ロッテマリーンズ） 試合25、打率.360、本塁打2、打点13、盗塁8、OPS.845、IsoP.090、BB%6.3% 6位: 齋藤 大翔（埼玉西武ライオンズ） 試合36、打率.242、本塁打0、打点9、盗塁8、OPS.646、IsoP.048、BB%14.0% 7位: * イヒネ イツア（福岡ソフトバンクホークス） 試合19、打率.243、本塁打0、打点4、盗塁6、OPS.748、IsoP.129、BB%17.4% 8位: 吉野 創士（東北楽天ゴールデンイーグルス） 試合37、打率.256、本塁打3、打点14、盗塁6、OPS.697、IsoP.096、BB%10.6% 9位: 宮崎 一樹（北海道日本ハムファイターズ） 試合35、打率.296、本塁打4、打点16、盗塁6、OPS.903、IsoP.194、BB%15.8% 10位: * 中島 卓也（北海道日本ハムファイターズ） 試合22、打率.268、本塁打0、打点4、盗塁5、OPS.663、IsoP.036、BB%9.2% 打率=安打÷打数、OPS=出塁率+長打率、IsoP=長打率-打率、BB%=四球÷打席で計算しています。
 - 本番回答:
   打撃集計結果は10件です。
-  1位: 渡部（オリックス・バファローズ） 試合29、打率.282、本塁打4、打点7、盗塁9、OPS.638、IsoP.000、BB%10.3%
-  2位: 周東（福岡ソフトバンクホークス） 試合49、打率.247、本塁打1、打点11、盗塁8、OPS.556、IsoP.000、BB%8.3%
-  3位: 庄子（福岡ソフトバンクホークス） 試合33、打率.179、本塁打0、打点6、盗塁8、OPS.465、IsoP.000、BB%13.0%
-  4位: 小深田（東北楽天ゴールデンイーグルス） 試合40、打率.220、本塁打0、打点5、盗塁6、OPS.503、IsoP.000、BB%8.1%
-  5位: カナリオ（埼玉西武ライオンズ） 試合50、打率.253、本塁打4、打点24、盗塁5、OPS.564、IsoP.000、BB%7.8%
+  1位: 渡部（オリックス・バファローズ） 試合30、打率.275、本塁打4、打点7、盗塁9、OPS.623、IsoP.000、BB%10.1%
+  2位: 周東（福岡ソフトバンクホークス） 試合50、打率.253、本塁打1、打点11、盗塁8、OPS.570、IsoP.000、BB%8.6%
+  3位: 庄子（福岡ソフトバンクホークス） 試合34、打率.169、本塁打0、打点6、盗塁8、OPS.441、IsoP.000、BB%12.3%
+  4位: カナリオ（埼玉西武ライオンズ） 試合51、打率.258、本塁打4、打点24、盗塁6、OPS.573、IsoP.000、BB%7.6%
+  5位: 小深田（東北楽天ゴールデンイーグルス） 試合40、打率.220、本塁打0、打点5、盗塁6、OPS.503、IsoP.000、BB%8.1%
   6位: 奈良間（北海道日本ハムファイターズ） 試合48、打率.303、本塁打3、打点16、盗塁5、OPS.648、IsoP.000、BB%6.0%
-  7位: 平良（東北楽天ゴールデンイーグルス） 試合39、打率.245、本塁打2、打点7、盗塁5、OPS.520、IsoP.000、BB%4.1%
-  8位: 滝澤（埼玉西武ライオンズ） 試合50、打率.260、本塁打0、打点9、盗塁5、OPS.597、IsoP.000、BB%10.5%
+  7位: 平良（東北楽天ゴールデンイーグルス） 試合40、打率.250、本塁打2、打点7、盗塁5、OPS.530、IsoP.000、BB%4.0%
+  8位: 滝澤（埼玉西武ライオンズ） 試合51、打率.261、本塁打0、打点11、盗塁5、OPS.606、IsoP.000、BB%11.3%
   9位: 矢澤（北海道日本ハムファイターズ） 試合37、打率.197、本塁打2、打点2、盗塁5、OPS.431、IsoP.000、BB%4.7%
   10位: 長谷川（埼玉西武ライオンズ） 試合46、打率.297、本塁打3、打点18、盗塁5、OPS.634、IsoP.000、BB%5.8%
 - intent:
@@ -3904,18 +4002,22 @@
   null
 - answer_mode:
   direct_answer
+- fixture_structured_query:
+  {
+    "intent": "aggregate_batting",
+    "filters": {
+      "year": 2026,
+      "team": "パ・リーグ",
+      "limit": 10,
+      "sort_by": "stolenBases"
+    }
+  }
 - http_status:
   200
 - pass/fail:
   Pass
 - fail理由:
   なし
-- fail分類:
-  なし
-- 許容した差分:
-  QA正との文意一致。日付・成績更新または表記差のみ許容。
-- 実行ログ:
-  [data/logs/qa-prod-1783320807680.json](../data/logs/qa-prod-1783320807680.json)
 
 ### Q-33: 今シーズンのセ・リーグ打点ランキングトップ5
 
@@ -4027,18 +4129,22 @@
   null
 - answer_mode:
   direct_answer
+- fixture_structured_query:
+  {
+    "intent": "aggregate_batting",
+    "filters": {
+      "year": 2026,
+      "team": "セ・リーグ",
+      "limit": 5,
+      "sort_by": "runsBattedIn"
+    }
+  }
 - http_status:
   200
 - pass/fail:
   Pass
 - fail理由:
   なし
-- fail分類:
-  なし
-- 許容した差分:
-  QA正との文意一致。日付・成績更新または表記差のみ許容。
-- 実行ログ:
-  [data/logs/qa-prod-1783320807680.json](../data/logs/qa-prod-1783320807680.json)
 
 ### Q-34: 2026年セ・リーグの本塁打ランキングを教えてください
 
@@ -4155,18 +4261,22 @@
   null
 - answer_mode:
   direct_answer
+- fixture_structured_query:
+  {
+    "intent": "aggregate_batting",
+    "filters": {
+      "year": 2026,
+      "team": "セ・リーグ",
+      "limit": 10,
+      "sort_by": "homeRuns"
+    }
+  }
 - http_status:
   200
 - pass/fail:
   Pass
 - fail理由:
   なし
-- fail分類:
-  なし
-- 許容した差分:
-  QA正との文意一致。日付・成績更新または表記差のみ許容。
-- 実行ログ:
-  [data/logs/qa-prod-1783320807680.json](../data/logs/qa-prod-1783320807680.json)
 
 ### Q-35: 今シーズンのパ・リーグ本塁打ランキングを教えてください
 
@@ -4178,16 +4288,16 @@
   今シーズンのパ・リーグ本塁打ランキングをお伝えします。1位は日本ハムの万波選手で10本塁打。2位はソフトバンクの山川選手・栗原選手・近藤選手がそれぞれ9本塁打で並んでいます。5位は日本ハムの清宮幸選手が8本塁打。
 - 本番回答:
   打撃集計結果は10件です。
-  1位: 近藤（福岡ソフトバンクホークス） 試合52、打率.305、本塁打17、打点48、盗塁4、OPS.714、IsoP.000、BB%14.9%
-  2位: レイエス（北海道日本ハムファイターズ） 試合52、打率.303、本塁打14、打点29、盗塁0、OPS.679、IsoP.000、BB%10.5%
-  3位: 栗原（福岡ソフトバンクホークス） 試合54、打率.261、本塁打14、打点30、盗塁0、OPS.603、IsoP.000、BB%11.0%
-  4位: 万波（北海道日本ハムファイターズ） 試合54、打率.250、本塁打12、打点26、盗塁0、OPS.551、IsoP.000、BB%6.8%
-  5位: 正木（福岡ソフトバンクホークス） 試合29、打率.299、本塁打9、打点22、盗塁0、OPS.692、IsoP.000、BB%13.3%
-  6位: 佐藤（千葉ロッテマリーンズ） 試合47、打率.232、本塁打8、打点20、盗塁0、OPS.588、IsoP.000、BB%16.1%
-  7位: 紅林（オリックス・バファローズ） 試合49、打率.225、本塁打8、打点19、盗塁0、OPS.513、IsoP.000、BB%8.2%
-  8位: マッカスカー（東北楽天ゴールデンイーグルス） 試合34、打率.289、本塁打7、打点27、盗塁0、OPS.657、IsoP.000、BB%10.9%
-  9位: 山口（千葉ロッテマリーンズ） 試合33、打率.245、本塁打7、打点21、盗塁0、OPS.505、IsoP.000、BB%1.9%
-  10位: 野村（北海道日本ハムファイターズ） 試合44、打率.286、本塁打7、打点24、盗塁0、OPS.596、IsoP.000、BB%3.4%
+  1位: 近藤（福岡ソフトバンクホークス） 試合53、打率.306、本塁打17、打点50、盗塁4、OPS.719、IsoP.000、BB%15.5%
+  2位: レイエス（北海道日本ハムファイターズ） 試合53、打率.307、本塁打14、打点30、盗塁0、OPS.686、IsoP.000、BB%10.3%
+  3位: 栗原（福岡ソフトバンクホークス） 試合55、打率.271、本塁打14、打点30、盗塁0、OPS.622、IsoP.000、BB%11.2%
+  4位: 万波（北海道日本ハムファイターズ） 試合55、打率.251、本塁打12、打点26、盗塁0、OPS.553、IsoP.000、BB%6.7%
+  5位: 正木（福岡ソフトバンクホークス） 試合30、打率.289、本塁打9、打点22、盗塁0、OPS.671、IsoP.000、BB%12.9%
+  6位: 佐藤（千葉ロッテマリーンズ） 試合48、打率.233、本塁打8、打点21、盗塁0、OPS.585、IsoP.000、BB%15.7%
+  7位: 紅林（オリックス・バファローズ） 試合50、打率.231、本塁打8、打点19、盗塁0、OPS.524、IsoP.000、BB%8.0%
+  8位: ソト（千葉ロッテマリーンズ） 試合51、打率.238、本塁打7、打点23、盗塁0、OPS.536、IsoP.000、BB%7.9%
+  9位: マッカスカー（東北楽天ゴールデンイーグルス） 試合35、打率.291、本塁打7、打点27、盗塁0、OPS.662、IsoP.000、BB%11.4%
+  10位: 山口（千葉ロッテマリーンズ） 試合33、打率.245、本塁打7、打点21、盗塁0、OPS.505、IsoP.000、BB%1.9%
 - intent:
   aggregate_batting
 - entities:
@@ -4283,18 +4393,22 @@
   null
 - answer_mode:
   direct_answer
+- fixture_structured_query:
+  {
+    "intent": "aggregate_batting",
+    "filters": {
+      "year": 2026,
+      "team": "パ・リーグ",
+      "limit": 10,
+      "sort_by": "homeRuns"
+    }
+  }
 - http_status:
   200
 - pass/fail:
   Pass
 - fail理由:
   なし
-- fail分類:
-  なし
-- 許容した差分:
-  QA正との文意一致。日付・成績更新または表記差のみ許容。
-- 実行ログ:
-  [data/logs/qa-prod-1783320807680.json](../data/logs/qa-prod-1783320807680.json)
 
 ### Q-36: 2022年から2024年の3年間で、NPB全体で最も本塁打を多く打った打者トップ3を教えてください。
 
@@ -4401,18 +4515,22 @@
   null
 - answer_mode:
   direct_answer
+- fixture_structured_query:
+  {
+    "intent": "aggregate_batting",
+    "filters": {
+      "year_from": 2022,
+      "year_to": 2024,
+      "limit": 3,
+      "sort_by": "homeRuns"
+    }
+  }
 - http_status:
   200
 - pass/fail:
   Pass
 - fail理由:
   なし
-- fail分類:
-  なし
-- 許容した差分:
-  QA正との文意一致。日付・成績更新または表記差のみ許容。
-- 実行ログ:
-  [data/logs/qa-prod-1783320807680.json](../data/logs/qa-prod-1783320807680.json)
 
 ### Q-37: 2022年から2024年のパ・リーグで本塁打が最も多い打者トップ3
 
@@ -4521,18 +4639,23 @@
   null
 - answer_mode:
   direct_answer
+- fixture_structured_query:
+  {
+    "intent": "aggregate_batting",
+    "filters": {
+      "year_from": 2022,
+      "year_to": 2024,
+      "team": "パ・リーグ",
+      "limit": 3,
+      "sort_by": "homeRuns"
+    }
+  }
 - http_status:
   200
 - pass/fail:
   Pass
 - fail理由:
   なし
-- fail分類:
-  なし
-- 許容した差分:
-  QA正との文意一致。日付・成績更新または表記差のみ許容。
-- 実行ログ:
-  [data/logs/qa-prod-1783320807680.json](../data/logs/qa-prod-1783320807680.json)
 
 ### Q-38: 2026年の先発防御率ランキングトップ5
 
@@ -4544,10 +4667,10 @@
   2026年シーズンの先発防御率ランキングトップ5をご紹介します。1位は阪神タイガースの髙橋投手で防御率約0.46（39回2自責点）。2位は楽天の早川投手で防御率約0.93（29回3自責点）。3位は西武の平良投手で防御率約0.95（38回4自責点）。4位は広島の栗林投手で防御率約0.96（37.1回4自責点）。5位は西武の髙橋光成投手で防御率約1.00（45回5自責点）。
 - 本番回答:
   投手集計結果は5件です。
-  1位: 前田悠（福岡ソフトバンクホークス） 登板5、セーブ0、投球回28.00、奪三振27、自責点3、防御率0.96、WHIP0.75、球数422
-  2位: 平良（埼玉西武ライオンズ） 登板9、セーブ0、投球回61.00、奪三振55、自責点7、防御率1.03、WHIP0.87、球数949
+  1位: 平良（埼玉西武ライオンズ） 登板10、セーブ0、投球回66.00、奪三振62、自責点7、防御率0.95、WHIP0.91、球数1051
+  2位: 前田悠（福岡ソフトバンクホークス） 登板5、セーブ0、投球回28.00、奪三振27、自責点3、防御率0.96、WHIP0.75、球数422
   3位: 栗林（広島東洋カープ） 登板4、セーブ0、投球回30.33、奪三振28、自責点4、防御率1.19、WHIP0.56、球数378
-  4位: 髙橋（阪神タイガース） 登板8、セーブ0、投球回60.00、奪三振53、自責点8、防御率1.20、WHIP0.83、球数828
+  4位: 戸郷（読売ジャイアンツ） 登板6、セーブ0、投球回35.33、奪三振37、自責点5、防御率1.27、WHIP0.91、球数567
   5位: 井上（読売ジャイアンツ） 登板10、セーブ0、投球回63.00、奪三振64、自責点10、防御率1.43、WHIP0.89、球数966
 - intent:
   aggregate_pitching
@@ -4642,18 +4765,21 @@
   null
 - answer_mode:
   direct_answer
+- fixture_structured_query:
+  {
+    "intent": "aggregate_pitching",
+    "filters": {
+      "year": 2026,
+      "sort_by": "era",
+      "limit": 5
+    }
+  }
 - http_status:
   200
 - pass/fail:
   Pass
 - fail理由:
   なし
-- fail分類:
-  なし
-- 許容した差分:
-  QA正との文意一致。日付・成績更新または表記差のみ許容。
-- 実行ログ:
-  [data/logs/qa-prod-1783320807680.json](../data/logs/qa-prod-1783320807680.json)
 
 ### Q-39: 2026年セ・リーグの先発防御率ランキングを教えてください
 
@@ -4666,14 +4792,275 @@
 - 本番回答:
   投手集計結果は10件です。
   1位: 栗林（広島東洋カープ） 登板4、セーブ0、投球回30.33、奪三振28、自責点4、防御率1.19、WHIP0.56、球数378
-  2位: 髙橋（阪神タイガース） 登板8、セーブ0、投球回60.00、奪三振53、自責点8、防御率1.20、WHIP0.83、球数828
+  2位: 戸郷（読売ジャイアンツ） 登板6、セーブ0、投球回35.33、奪三振37、自責点5、防御率1.27、WHIP0.91、球数567
   3位: 井上（読売ジャイアンツ） 登板10、セーブ0、投球回63.00、奪三振64、自責点10、防御率1.43、WHIP0.89、球数966
-  4位: 戸郷（読売ジャイアンツ） 登板5、セーブ0、投球回30.33、奪三振34、自責点5、防御率1.48、WHIP0.99、球数503
+  4位: 髙橋（阪神タイガース） 登板9、セーブ0、投球回66.67、奪三振60、自責点12、防御率1.62、WHIP0.87、球数934
   5位: 森（広島東洋カープ） 登板5、セーブ0、投球回30.33、奪三振22、自責点6、防御率1.78、WHIP1.02、球数434
   6位: 竹丸（読売ジャイアンツ） 登板7、セーブ0、投球回40.33、奪三振48、自責点8、防御率1.79、WHIP1.26、球数658
   7位: ウィットリー（読売ジャイアンツ） 登板7、セーブ0、投球回44.00、奪三振45、自責点9、防御率1.84、WHIP0.84、球数633
-  8位: 柳（中日ドラゴンズ） 登板10、セーブ0、投球回64.67、奪三振53、自責点15、防御率2.09、WHIP1.19、球数1087
-  9位: 則本（読売ジャイアンツ） 登板5、セーブ0、投球回30.00、奪三振19、自責点7、防御率2.10、WHIP1.17、球数495
+  8位: 山野（東京ヤクルトスワローズ） 登板10、セーブ0、投球回64.67、奪三振54、自責点15、防御率2.09、WHIP0.96、球数1001
+  9位: 柳（中日ドラゴンズ） 登板10、セーブ0、投球回64.67、奪三振53、自責点15、防御率2.09、WHIP1.19、球数1087
+  10位: 則本（読売ジャイアンツ） 登板5、セーブ0、投球回30.00、奪三振19、自責点7、防御率2.10、WHIP1.17、球数495
+- intent:
+  aggregate_pitching
+- entities:
+  {
+    "player": null,
+    "pitcher": null,
+    "batter": null,
+    "runner": null,
+    "team": "セ・リーグ",
+    "opponent": null,
+    "game_id": null
+  }
+- player_id:
+  null
+- target_period:
+  {
+    "game_date": null,
+    "year": 2026,
+    "year_from": null,
+    "year_to": null,
+    "recent": null
+  }
+- data_requirements:
+  [
+    "aggregate_pitching",
+    "source_snapshots"
+  ]
+- repositories:
+  [
+    "aggregatePitchingLines",
+    "listSourceSnapshotsByGameIds"
+  ]
+- follow_up_type:
+  standalone
+- referenced_context:
+  {
+    "source": "none",
+    "anchor": null,
+    "ordinal": null,
+    "summary": null
+  }
+- target_entity:
+  {
+    "kind": "team",
+    "label": "セ・リーグ",
+    "players": [],
+    "teams": [
+      "セ・リーグ"
+    ]
+  }
+- follow_up_context:
+  {
+    "contextKind": "team_stats",
+    "inheritedPlayerId": null,
+    "inheritedPlayerName": null,
+    "inheritedTeam": "セ・リーグ",
+    "inheritedSeason": 2026,
+    "inheritedScope": "current",
+    "inheritanceSource": "structured_query",
+    "inheritanceConfidence": 0.55,
+    "shouldApplyInheritance": false
+  }
+- follow_up_context_applied:
+  null
+- correction_guard:
+  {
+    "inheritanceBlockedReason": "explicit_season_override",
+    "hasAmbiguousCorrection": false,
+    "hasPlayerReplacement": false,
+    "hasExplicitSeasonOverride": true,
+    "hasExplicitScopeOverride": false,
+    "shouldBlockInheritance": true
+  }
+- correction:
+  {
+    "isCorrection": true,
+    "target": "season",
+    "value": {
+      "kind": "year",
+      "year": 2026
+    },
+    "confidence": 0.72
+  }
+- identity_intent:
+  {
+    "scope": "current",
+    "explicitSeasonOverride": true,
+    "explicitScopeOverride": false
+  }
+- target_game_id:
+  null
+- target_player_id:
+  null
+- answer_mode:
+  direct_answer
+- fixture_structured_query:
+  {
+    "intent": "aggregate_pitching",
+    "filters": {
+      "year": 2026,
+      "team": "セ・リーグ",
+      "sort_by": "era",
+      "limit": 10
+    }
+  }
+- http_status:
+  200
+- pass/fail:
+  Pass
+- fail理由:
+  なし
+
+### Q-40: 今シーズン（2026年）の先発陣で、WHIPが最も低い投手を教えてください。WHIPは（被安打＋与四球）÷投球回で計算してください。
+
+- case_id:
+  Q-40
+- 入力文:
+  今シーズン（2026年）の先発陣で、WHIPが最も低い投手を教えてください。WHIPは（被安打＋与四球）÷投球回で計算してください。
+- QA正:
+  今シーズン（2026年）の先発陣でWHIPが最も低いのは広島東洋カープの栗林投手です。5試合に登板し、被安打16、与四球4、投球回37.1回です。WHIPは（16+4）÷37.33≒0.54となり、非常に優れた数値です。
+- 本番回答:
+  投手集計結果は10件です。
+  1位: 栗林（広島東洋カープ） 登板4、セーブ0、投球回30.33、奪三振28、自責点4、防御率1.19、WHIP0.56、球数378
+  2位: 大津（福岡ソフトバンクホークス） 登板8、セーブ0、投球回57.00、奪三振52、自責点12、防御率1.89、WHIP0.70、球数797
+  3位: 前田悠（福岡ソフトバンクホークス） 登板5、セーブ0、投球回28.00、奪三振27、自責点3、防御率0.96、WHIP0.75、球数422
+  4位: 曽谷（オリックス・バファローズ） 登板5、セーブ0、投球回33.00、奪三振34、自責点9、防御率2.45、WHIP0.82、球数510
+  5位: ウィットリー（読売ジャイアンツ） 登板7、セーブ0、投球回44.00、奪三振45、自責点9、防御率1.84、WHIP0.84、球数633
+  6位: 大野（中日ドラゴンズ） 登板8、セーブ0、投球回55.00、奪三振42、自責点14、防御率2.29、WHIP0.85、球数756
+  7位: 加藤貴（北海道日本ハムファイターズ） 登板9、セーブ0、投球回49.67、奪三振25、自責点14、防御率2.54、WHIP0.87、球数700
+  8位: 髙橋（阪神タイガース） 登板9、セーブ0、投球回66.67、奪三振60、自責点12、防御率1.62、WHIP0.87、球数934
+  9位: 北山（北海道日本ハムファイターズ） 登板9、セーブ0、投球回57.33、奪三振57、自責点15、防御率2.35、WHIP0.87、球数886
+  10位: 井上（読売ジャイアンツ） 登板10、セーブ0、投球回63.00、奪三振64、自責点10、防御率1.43、WHIP0.89、球数966
+- intent:
+  aggregate_pitching
+- entities:
+  {
+    "player": null,
+    "pitcher": null,
+    "batter": null,
+    "runner": null,
+    "team": null,
+    "opponent": null,
+    "game_id": null
+  }
+- player_id:
+  null
+- target_period:
+  {
+    "game_date": null,
+    "year": 2026,
+    "year_from": null,
+    "year_to": null,
+    "recent": null
+  }
+- data_requirements:
+  [
+    "aggregate_pitching",
+    "source_snapshots"
+  ]
+- repositories:
+  [
+    "aggregatePitchingLines",
+    "listSourceSnapshotsByGameIds"
+  ]
+- follow_up_type:
+  standalone
+- referenced_context:
+  {
+    "source": "none",
+    "anchor": null,
+    "ordinal": null,
+    "summary": null
+  }
+- target_entity:
+  {
+    "kind": "unknown",
+    "label": null,
+    "players": [],
+    "teams": []
+  }
+- follow_up_context:
+  {
+    "contextKind": "unknown",
+    "inheritedPlayerId": null,
+    "inheritedPlayerName": null,
+    "inheritedTeam": null,
+    "inheritedSeason": 2026,
+    "inheritedScope": "current",
+    "inheritanceSource": "structured_query",
+    "inheritanceConfidence": 0.55,
+    "shouldApplyInheritance": false
+  }
+- follow_up_context_applied:
+  null
+- correction_guard:
+  {
+    "inheritanceBlockedReason": "explicit_season_override",
+    "hasAmbiguousCorrection": false,
+    "hasPlayerReplacement": false,
+    "hasExplicitSeasonOverride": true,
+    "hasExplicitScopeOverride": true,
+    "shouldBlockInheritance": true
+  }
+- correction:
+  {
+    "isCorrection": true,
+    "target": "season",
+    "value": {
+      "kind": "year",
+      "year": 2026
+    },
+    "confidence": 0.72
+  }
+- identity_intent:
+  {
+    "scope": "current",
+    "explicitSeasonOverride": true,
+    "explicitScopeOverride": true
+  }
+- target_game_id:
+  null
+- target_player_id:
+  null
+- answer_mode:
+  direct_answer
+- fixture_structured_query:
+  {
+    "intent": "aggregate_pitching",
+    "filters": {
+      "year": 2026,
+      "sort_by": "whip",
+      "limit": 10
+    }
+  }
+- http_status:
+  200
+- pass/fail:
+  Pass
+- fail理由:
+  なし
+
+### Q-41: 2026年セ・リーグのWHIPランキングを教えてください
+
+- case_id:
+  Q-41
+- 入力文:
+  2026年セ・リーグのWHIPランキングを教えてください
+- QA正:
+  2026年セ・リーグのWHIPランキング上位の投手をご紹介します。1位は広島東洋カープの栗林投手で被安打16、与四球4、投球回37.1回、WHIP約0.54と非常に優秀です。2位は阪神タイガースの髙橋投手で、WHIPは約0.59程度。3位以降は中日の大野投手・DeNAの東投手などが続きます。
+- 本番回答:
+  投手集計結果は10件です。
+  1位: 栗林（広島東洋カープ） 登板4、セーブ0、投球回30.33、奪三振28、自責点4、防御率1.19、WHIP0.56、球数378
+  2位: ウィットリー（読売ジャイアンツ） 登板7、セーブ0、投球回44.00、奪三振45、自責点9、防御率1.84、WHIP0.84、球数633
+  3位: 大野（中日ドラゴンズ） 登板8、セーブ0、投球回55.00、奪三振42、自責点14、防御率2.29、WHIP0.85、球数756
+  4位: 髙橋（阪神タイガース） 登板9、セーブ0、投球回66.67、奪三振60、自責点12、防御率1.62、WHIP0.87、球数934
+  5位: 井上（読売ジャイアンツ） 登板10、セーブ0、投球回63.00、奪三振64、自責点10、防御率1.43、WHIP0.89、球数966
+  6位: 玉村（広島東洋カープ） 登板5、セーブ0、投球回30.00、奪三振18、自責点9、防御率2.70、WHIP0.90、球数418
+  7位: 戸郷（読売ジャイアンツ） 登板6、セーブ0、投球回35.33、奪三振37、自責点5、防御率1.27、WHIP0.91、球数567
+  8位: 山野（東京ヤクルトスワローズ） 登板10、セーブ0、投球回64.67、奪三振54、自責点15、防御率2.09、WHIP0.96、球数1001
+  9位: 東（横浜DeNAベイスターズ） 登板9、セーブ0、投球回57.33、奪三振48、自責点16、防御率2.51、WHIP0.96、球数826
   10位: 高梨（東京ヤクルトスワローズ） 登板6、セーブ0、投球回34.00、奪三振32、自責点8、防御率2.12、WHIP0.97、球数557
 - intent:
   aggregate_pitching
@@ -4770,272 +5157,22 @@
   null
 - answer_mode:
   direct_answer
+- fixture_structured_query:
+  {
+    "intent": "aggregate_pitching",
+    "filters": {
+      "year": 2026,
+      "team": "セ・リーグ",
+      "sort_by": "whip",
+      "limit": 10
+    }
+  }
 - http_status:
   200
 - pass/fail:
   Pass
 - fail理由:
   なし
-- fail分類:
-  なし
-- 許容した差分:
-  QA正との文意一致。日付・成績更新または表記差のみ許容。
-- 実行ログ:
-  [data/logs/qa-prod-1783320807680.json](../data/logs/qa-prod-1783320807680.json)
-
-### Q-40: 今シーズン（2026年）の先発陣で、WHIPが最も低い投手を教えてください。WHIPは（被安打＋与四球）÷投球回で計算してください。
-
-- case_id:
-  Q-40
-- 入力文:
-  今シーズン（2026年）の先発陣で、WHIPが最も低い投手を教えてください。WHIPは（被安打＋与四球）÷投球回で計算してください。
-- QA正:
-  今シーズン（2026年）の先発陣でWHIPが最も低いのは広島東洋カープの栗林投手です。5試合に登板し、被安打16、与四球4、投球回37.1回です。WHIPは（16+4）÷37.33≒0.54となり、非常に優れた数値です。
-- 本番回答:
-  投手集計結果は10件です。
-  1位: 栗林（広島東洋カープ） 登板4、セーブ0、投球回30.33、奪三振28、自責点4、防御率1.19、WHIP0.56、球数378
-  2位: 大津（福岡ソフトバンクホークス） 登板8、セーブ0、投球回57.00、奪三振52、自責点12、防御率1.89、WHIP0.70、球数797
-  3位: 前田悠（福岡ソフトバンクホークス） 登板5、セーブ0、投球回28.00、奪三振27、自責点3、防御率0.96、WHIP0.75、球数422
-  4位: 曽谷（オリックス・バファローズ） 登板5、セーブ0、投球回33.00、奪三振34、自責点9、防御率2.45、WHIP0.82、球数510
-  5位: 髙橋（阪神タイガース） 登板8、セーブ0、投球回60.00、奪三振53、自責点8、防御率1.20、WHIP0.83、球数828
-  6位: ウィットリー（読売ジャイアンツ） 登板7、セーブ0、投球回44.00、奪三振45、自責点9、防御率1.84、WHIP0.84、球数633
-  7位: 北山（北海道日本ハムファイターズ） 登板8、セーブ0、投球回54.33、奪三振54、自責点12、防御率1.99、WHIP0.85、球数826
-  8位: 大野（中日ドラゴンズ） 登板8、セーブ0、投球回55.00、奪三振42、自責点14、防御率2.29、WHIP0.85、球数756
-  9位: 加藤貴（北海道日本ハムファイターズ） 登板9、セーブ0、投球回49.67、奪三振25、自責点14、防御率2.54、WHIP0.87、球数700
-  10位: 平良（埼玉西武ライオンズ） 登板9、セーブ0、投球回61.00、奪三振55、自責点7、防御率1.03、WHIP0.87、球数949
-- intent:
-  aggregate_pitching
-- entities:
-  {
-    "player": null,
-    "pitcher": null,
-    "batter": null,
-    "runner": null,
-    "team": null,
-    "opponent": null,
-    "game_id": null
-  }
-- player_id:
-  null
-- target_period:
-  {
-    "game_date": null,
-    "year": 2026,
-    "year_from": null,
-    "year_to": null,
-    "recent": null
-  }
-- data_requirements:
-  [
-    "aggregate_pitching",
-    "source_snapshots"
-  ]
-- repositories:
-  [
-    "aggregatePitchingLines",
-    "listSourceSnapshotsByGameIds"
-  ]
-- follow_up_type:
-  standalone
-- referenced_context:
-  {
-    "source": "none",
-    "anchor": null,
-    "ordinal": null,
-    "summary": null
-  }
-- target_entity:
-  {
-    "kind": "unknown",
-    "label": null,
-    "players": [],
-    "teams": []
-  }
-- follow_up_context:
-  {
-    "contextKind": "unknown",
-    "inheritedPlayerId": null,
-    "inheritedPlayerName": null,
-    "inheritedTeam": null,
-    "inheritedSeason": 2026,
-    "inheritedScope": "current",
-    "inheritanceSource": "structured_query",
-    "inheritanceConfidence": 0.55,
-    "shouldApplyInheritance": false
-  }
-- follow_up_context_applied:
-  null
-- correction_guard:
-  {
-    "inheritanceBlockedReason": "explicit_season_override",
-    "hasAmbiguousCorrection": false,
-    "hasPlayerReplacement": false,
-    "hasExplicitSeasonOverride": true,
-    "hasExplicitScopeOverride": true,
-    "shouldBlockInheritance": true
-  }
-- correction:
-  {
-    "isCorrection": true,
-    "target": "season",
-    "value": {
-      "kind": "year",
-      "year": 2026
-    },
-    "confidence": 0.72
-  }
-- identity_intent:
-  {
-    "scope": "current",
-    "explicitSeasonOverride": true,
-    "explicitScopeOverride": true
-  }
-- target_game_id:
-  null
-- target_player_id:
-  null
-- answer_mode:
-  direct_answer
-- http_status:
-  200
-- pass/fail:
-  Pass
-- fail理由:
-  なし
-- fail分類:
-  なし
-- 許容した差分:
-  QA正との文意一致。日付・成績更新または表記差のみ許容。
-- 実行ログ:
-  [data/logs/qa-prod-1783320807680.json](../data/logs/qa-prod-1783320807680.json)
-
-### Q-41: 2026年セ・リーグのWHIPランキングを教えてください
-
-- case_id:
-  Q-41
-- 入力文:
-  2026年セ・リーグのWHIPランキングを教えてください
-- QA正:
-  2026年セ・リーグのWHIPランキング上位の投手をご紹介します。1位は広島東洋カープの栗林投手で被安打16、与四球4、投球回37.1回、WHIP約0.54と非常に優秀です。2位は阪神タイガースの髙橋投手で、WHIPは約0.59程度。3位以降は中日の大野投手・DeNAの東投手などが続きます。
-- 本番回答:
-  投手集計結果は10件です。
-  1位: 栗林（広島東洋カープ） 登板4、セーブ0、投球回30.33、奪三振28、自責点4、防御率1.19、WHIP0.56、球数378
-  2位: 髙橋（阪神タイガース） 登板8、セーブ0、投球回60.00、奪三振53、自責点8、防御率1.20、WHIP0.83、球数828
-  3位: ウィットリー（読売ジャイアンツ） 登板7、セーブ0、投球回44.00、奪三振45、自責点9、防御率1.84、WHIP0.84、球数633
-  4位: 大野（中日ドラゴンズ） 登板8、セーブ0、投球回55.00、奪三振42、自責点14、防御率2.29、WHIP0.85、球数756
-  5位: 井上（読売ジャイアンツ） 登板10、セーブ0、投球回63.00、奪三振64、自責点10、防御率1.43、WHIP0.89、球数966
-  6位: 玉村（広島東洋カープ） 登板5、セーブ0、投球回30.00、奪三振18、自責点9、防御率2.70、WHIP0.90、球数418
-  7位: 東（横浜DeNAベイスターズ） 登板9、セーブ0、投球回57.33、奪三振48、自責点16、防御率2.51、WHIP0.96、球数826
-  8位: 岡本（広島東洋カープ） 登板8、セーブ0、投球回45.33、奪三振39、自責点11、防御率2.18、WHIP0.97、球数697
-  9位: 高梨（東京ヤクルトスワローズ） 登板6、セーブ0、投球回34.00、奪三振32、自責点8、防御率2.12、WHIP0.97、球数557
-  10位: 戸郷（読売ジャイアンツ） 登板5、セーブ0、投球回30.33、奪三振34、自責点5、防御率1.48、WHIP0.99、球数503
-- intent:
-  aggregate_pitching
-- entities:
-  {
-    "player": null,
-    "pitcher": null,
-    "batter": null,
-    "runner": null,
-    "team": "セ・リーグ",
-    "opponent": null,
-    "game_id": null
-  }
-- player_id:
-  null
-- target_period:
-  {
-    "game_date": null,
-    "year": 2026,
-    "year_from": null,
-    "year_to": null,
-    "recent": null
-  }
-- data_requirements:
-  [
-    "aggregate_pitching",
-    "source_snapshots"
-  ]
-- repositories:
-  [
-    "aggregatePitchingLines",
-    "listSourceSnapshotsByGameIds"
-  ]
-- follow_up_type:
-  standalone
-- referenced_context:
-  {
-    "source": "none",
-    "anchor": null,
-    "ordinal": null,
-    "summary": null
-  }
-- target_entity:
-  {
-    "kind": "team",
-    "label": "セ・リーグ",
-    "players": [],
-    "teams": [
-      "セ・リーグ"
-    ]
-  }
-- follow_up_context:
-  {
-    "contextKind": "team_stats",
-    "inheritedPlayerId": null,
-    "inheritedPlayerName": null,
-    "inheritedTeam": "セ・リーグ",
-    "inheritedSeason": 2026,
-    "inheritedScope": "current",
-    "inheritanceSource": "structured_query",
-    "inheritanceConfidence": 0.55,
-    "shouldApplyInheritance": false
-  }
-- follow_up_context_applied:
-  null
-- correction_guard:
-  {
-    "inheritanceBlockedReason": "explicit_season_override",
-    "hasAmbiguousCorrection": false,
-    "hasPlayerReplacement": false,
-    "hasExplicitSeasonOverride": true,
-    "hasExplicitScopeOverride": false,
-    "shouldBlockInheritance": true
-  }
-- correction:
-  {
-    "isCorrection": true,
-    "target": "season",
-    "value": {
-      "kind": "year",
-      "year": 2026
-    },
-    "confidence": 0.72
-  }
-- identity_intent:
-  {
-    "scope": "current",
-    "explicitSeasonOverride": true,
-    "explicitScopeOverride": false
-  }
-- target_game_id:
-  null
-- target_player_id:
-  null
-- answer_mode:
-  direct_answer
-- http_status:
-  200
-- pass/fail:
-  Pass
-- fail理由:
-  なし
-- fail分類:
-  なし
-- 許容した差分:
-  QA正との文意一致。日付・成績更新または表記差のみ許容。
-- 実行ログ:
-  [data/logs/qa-prod-1783320807680.json](../data/logs/qa-prod-1783320807680.json)
 
 ### Q-42: 今シーズンの広島の先発投手で防御率が最もいい投手を教えてください。防御率は自責点÷投球回×9で計算してください
 
@@ -5049,7 +5186,7 @@
   投手集計結果は6件です。
   1位: 栗林（広島東洋カープ） 登板4、セーブ0、投球回30.33、奪三振28、自責点4、防御率1.19、WHIP0.56、球数378
   2位: 森（広島東洋カープ） 登板5、セーブ0、投球回30.33、奪三振22、自責点6、防御率1.78、WHIP1.02、球数434
-  3位: 岡本（広島東洋カープ） 登板8、セーブ0、投球回45.33、奪三振39、自責点11、防御率2.18、WHIP0.97、球数697
+  3位: 岡本（広島東洋カープ） 登板9、セーブ0、投球回50.33、奪三振45、自責点14、防御率2.50、WHIP0.97、球数784
   4位: 玉村（広島東洋カープ） 登板5、セーブ0、投球回30.00、奪三振18、自責点9、防御率2.70、WHIP0.90、球数418
   5位: 床田（広島東洋カープ） 登板8、セーブ0、投球回45.67、奪三振32、自責点17、防御率3.35、WHIP1.49、球数746
   6位: 森下（広島東洋カープ） 登板9、セーブ0、投球回52.67、奪三振42、自責点22、防御率3.76、WHIP1.29、球数850
@@ -5148,18 +5285,22 @@
   null
 - answer_mode:
   direct_answer
+- fixture_structured_query:
+  {
+    "intent": "aggregate_pitching",
+    "filters": {
+      "year": 2026,
+      "team": "広島",
+      "sort_by": "era",
+      "limit": 10
+    }
+  }
 - http_status:
   200
 - pass/fail:
   Pass
 - fail理由:
   なし
-- fail分類:
-  なし
-- 許容した差分:
-  QA正との文意一致。日付・成績更新または表記差のみ許容。
-- 実行ログ:
-  [data/logs/qa-prod-1783320807680.json](../data/logs/qa-prod-1783320807680.json)
 
 ### Q-43: 今シーズン（2026年）の先発登板で、7回以上投げてかつ自責点0だった試合が一番多い投手は誰ですか？その投手の名前と該当試合数を教えてください。
 
@@ -5173,14 +5314,14 @@
   投手集計結果は10件です。
   1位: 隅田（埼玉西武ライオンズ） 登板10、セーブ0、投球回73.67、奪三振74、自責点22、防御率2.69、WHIP0.92、球数1025
   2位: 井上（読売ジャイアンツ） 登板10、セーブ0、投球回63.00、奪三振64、自責点10、防御率1.43、WHIP0.89、球数966
-  3位: 九里（オリックス・バファローズ） 登板10、セーブ0、投球回62.33、奪三振61、自責点27、防御率3.90、WHIP1.11、球数1023
-  4位: 金丸（中日ドラゴンズ） 登板10、セーブ0、投球回65.33、奪三振61、自責点17、防御率2.34、WHIP1.21、球数1055
-  5位: 髙橋光成（埼玉西武ライオンズ） 登板10、セーブ0、投球回67.33、奪三振61、自責点16、防御率2.14、WHIP1.02、球数1098
-  6位: エスピノーザ（オリックス・バファローズ） 登板10、セーブ0、投球回68.33、奪三振60、自責点12、防御率1.58、WHIP0.92、球数997
-  7位: 才木（阪神タイガース） 登板8、セーブ0、投球回47.00、奪三振60、自責点17、防御率3.26、WHIP1.04、球数764
-  8位: 早川（東北楽天ゴールデンイーグルス） 登板8、セーブ0、投球回53.00、奪三振60、自責点13、防御率2.21、WHIP0.92、球数808
-  9位: 村上（阪神タイガース） 登板11、セーブ0、投球回73.67、奪三振57、自責点18、防御率2.20、WHIP1.03、球数1197
-  10位: 伊藤（北海道日本ハムファイターズ） 登板10、セーブ0、投球回65.33、奪三振56、自責点31、防御率4.27、WHIP1.30、球数1017
+  3位: 平良（埼玉西武ライオンズ） 登板10、セーブ0、投球回66.00、奪三振62、自責点7、防御率0.95、WHIP0.91、球数1051
+  4位: 荘司（東北楽天ゴールデンイーグルス） 登板9、セーブ0、投球回55.00、奪三振62、自責点27、防御率4.42、WHIP1.25、球数910
+  5位: 九里（オリックス・バファローズ） 登板10、セーブ0、投球回62.33、奪三振61、自責点27、防御率3.90、WHIP1.11、球数1023
+  6位: 金丸（中日ドラゴンズ） 登板10、セーブ0、投球回65.33、奪三振61、自責点17、防御率2.34、WHIP1.21、球数1055
+  7位: 髙橋光成（埼玉西武ライオンズ） 登板10、セーブ0、投球回67.33、奪三振61、自責点16、防御率2.14、WHIP1.02、球数1098
+  8位: エスピノーザ（オリックス・バファローズ） 登板10、セーブ0、投球回68.33、奪三振60、自責点12、防御率1.58、WHIP0.92、球数997
+  9位: 髙橋（阪神タイガース） 登板9、セーブ0、投球回66.67、奪三振60、自責点12、防御率1.62、WHIP0.87、球数934
+  10位: 才木（阪神タイガース） 登板8、セーブ0、投球回47.00、奪三振60、自責点17、防御率3.26、WHIP1.04、球数764
 - intent:
   aggregate_pitching
 - entities:
@@ -5274,18 +5415,20 @@
   null
 - answer_mode:
   direct_answer
+- fixture_structured_query:
+  {
+    "intent": "aggregate_pitching",
+    "filters": {
+      "year": 2026,
+      "limit": 10
+    }
+  }
 - http_status:
   200
 - pass/fail:
   Pass
 - fail理由:
   なし
-- fail分類:
-  なし
-- 許容した差分:
-  QA正との文意一致。日付・成績更新または表記差のみ許容。
-- 実行ログ:
-  [data/logs/qa-prod-1783320807680.json](../data/logs/qa-prod-1783320807680.json)
 
 ### Q-44: 今シーズンの奪三振数ランキングトップ5（全リーグ）
 
@@ -5299,9 +5442,9 @@
   投手集計結果は5件です。
   1位: 隅田（埼玉西武ライオンズ） 登板10、セーブ0、投球回73.67、奪三振74、自責点22、防御率2.69、WHIP0.92、球数1025
   2位: 井上（読売ジャイアンツ） 登板10、セーブ0、投球回63.00、奪三振64、自責点10、防御率1.43、WHIP0.89、球数966
-  3位: 九里（オリックス・バファローズ） 登板10、セーブ0、投球回62.33、奪三振61、自責点27、防御率3.90、WHIP1.11、球数1023
-  4位: 金丸（中日ドラゴンズ） 登板10、セーブ0、投球回65.33、奪三振61、自責点17、防御率2.34、WHIP1.21、球数1055
-  5位: 髙橋光成（埼玉西武ライオンズ） 登板10、セーブ0、投球回67.33、奪三振61、自責点16、防御率2.14、WHIP1.02、球数1098
+  3位: 平良（埼玉西武ライオンズ） 登板10、セーブ0、投球回66.00、奪三振62、自責点7、防御率0.95、WHIP0.91、球数1051
+  4位: 荘司（東北楽天ゴールデンイーグルス） 登板9、セーブ0、投球回55.00、奪三振62、自責点27、防御率4.42、WHIP1.25、球数910
+  5位: 九里（オリックス・バファローズ） 登板10、セーブ0、投球回62.33、奪三振61、自責点27、防御率3.90、WHIP1.11、球数1023
 - intent:
   aggregate_pitching
 - entities:
@@ -5395,18 +5538,21 @@
   null
 - answer_mode:
   direct_answer
+- fixture_structured_query:
+  {
+    "intent": "aggregate_pitching",
+    "filters": {
+      "year": 2026,
+      "sort_by": "strikeouts",
+      "limit": 5
+    }
+  }
 - http_status:
   200
 - pass/fail:
   Pass
 - fail理由:
   なし
-- fail分類:
-  なし
-- 許容した差分:
-  QA正との文意一致。日付・成績更新または表記差のみ許容。
-- 実行ログ:
-  [data/logs/qa-prod-1783320807680.json](../data/logs/qa-prod-1783320807680.json)
 
 ### Q-45: 今シーズン完封勝利した投手をすべて教えてください
 
@@ -5417,7 +5563,7 @@
 - QA正:
   投手集計結果は14件です。 1位: 髙橋（阪神タイガース） 登板2、セーブ0、投球回18.00、奪三振16、自責点0、防御率0.00、WHIP0.67、球数235 2位: エスピノーザ（オリックス・バファローズ） 登板1、セーブ0、投球回9.00、奪三振7、自責点0、防御率0.00、WHIP0.67、球数110 3位: 三浦（中 日） 登板1、セーブ0、投球回9.00、奪三振5、自責点0、防御率0.00、WHIP0.89、球数0 4位: 九里（オリックス・バファローズ） 登板1、セーブ0、投球回9.00、奪三振12、自責点0、防御率0.00、WHIP0.44、球数132 5位: 佐藤宏（ハヤテ静岡） 登板1、セーブ0、投球回9.00、奪三振2、自責点0、防御率0.00、WHIP0.78、球数0 6位: 園田（読 売） 登板1、セーブ0、投球回9.00、奪三振4、自責点0、防御率0.00、WHIP1.22、球数0 7位: 山田（読 売） 登板1、セーブ0、投球回9.00、奪三振4、自責点0、防御率0.00、WHIP0.89、球数0 8位: 平良（埼玉西武ライオンズ） 登板1、セーブ0、投球回9.00、奪三振5、自責点0、防御率0.00、WHIP0.78、球数119 9位: 徐（福岡ソフトバンク） 登板1、セーブ0、投球回9.00、奪三振10、自責点0、防御率0.00、WHIP0.22、球数0 10位: 早川（東北楽天） 登板1、セーブ0、投球回9.00、奪三振8、自責点0、防御率0.00、WHIP0.56、球数0 防御率=自責点÷投球回×9、WHIP=(被安打+与四球)÷投球回で計算しています。
 - 本番回答:
-  投手集計結果は15件です。
+  投手集計結果は16件です。
   1位: 隅田（埼玉西武ライオンズ） 登板2、セーブ0、投球回18.00、奪三振17、自責点0、防御率0.00、WHIP0.78、球数228
   2位: 髙橋（阪神タイガース） 登板2、セーブ0、投球回18.00、奪三振16、自責点0、防御率0.00、WHIP0.67、球数235
   3位: エスピノーザ（オリックス・バファローズ） 登板1、セーブ0、投球回9.00、奪三振7、自責点0、防御率0.00、WHIP0.67、球数110
@@ -5521,18 +5667,24 @@
   null
 - answer_mode:
   direct_answer
+- fixture_structured_query:
+  {
+    "intent": "aggregate_pitching",
+    "filters": {
+      "year": 2026,
+      "sort_by": "wins",
+      "limit": 100,
+      "min_innings_per_start": 9,
+      "max_earned_runs_per_start": 0,
+      "max_runs_per_start": 0
+    }
+  }
 - http_status:
   200
 - pass/fail:
   Pass
 - fail理由:
   なし
-- fail分類:
-  なし
-- 許容した差分:
-  QA正との文意一致。日付・成績更新または表記差のみ許容。
-- 実行ログ:
-  [data/logs/qa-prod-1783320807680.json](../data/logs/qa-prod-1783320807680.json)
 
 ### Q-46: 今シーズンのセーブ数ランキングを教えてください
 
@@ -5544,9 +5696,9 @@
   投手集計結果は50件です。 1位: キハダ（東京ヤクルトスワローズ） 登板11、セーブ10、投球回11.00、奪三振17、自責点0、防御率0.00、WHIP0.91、球数186 2位: 岩城（埼玉西武ライオンズ） 登板10、セーブ8、投球回10.00、奪三振8、自責点3、防御率2.70、WHIP1.20、球数164 3位: マルティネス（読売ジャイアンツ） 登板8、セーブ7、投球回7.33、奪三振7、自責点3、防御率3.68、WHIP0.82、球数103 4位: マチャド（オリックス・バファローズ） 登板9、セーブ6、投球回9.00、奪三振9、自責点1、防御率1.00、WHIP1.11、球数137 5位: 山﨑（横浜DeNAベイスターズ） 登板8、セーブ6、投球回8.00、奪三振8、自責点1、防御率1.13、WHIP0.88、球数138 6位: 岩崎（阪神タイガース） 登板10、セーブ6、投球回10.00、奪三振8、自責点2、防御率1.80、WHIP1.40、球数159 7位: 横山（千葉ロッテマリーンズ） 登板10、セーブ6、投球回10.33、奪三振8、自責点0、防御率0.00、WHIP0.87、球数149 8位: 藤平（東北楽天ゴールデンイーグルス） 登板12、セーブ6、投球回12.00、奪三振14、自責点1、防御率0.75、WHIP0.75、球数199 9位: 柳川（北海道日本ハムファイターズ） 登板9、セーブ5、投球回9.00、奪三振12、自責点2、防御率2.00、WHIP1.33、球数155 10位: 杉山（福岡ソフトバンクホークス） 登板7、セーブ4、投球回6.00、奪三振8、自責点6、防御率9.00、WHIP2.00、球数117 防御率=自責点÷投球回×9、WHIP=(被安打+与四球)÷投球回で計算しています。
 - 本番回答:
   投手集計結果は10件です。
-  1位: マルティネス（読売ジャイアンツ） 登板22、セーブ18、投球回20.33、奪三振20、自責点5、防御率2.21、WHIP1.03、球数300
-  2位: キハダ（東京ヤクルトスワローズ） 登板20、セーブ14、投球回18.67、奪三振31、自責点6、防御率2.89、WHIP1.39、球数366
-  3位: 杉山（福岡ソフトバンクホークス） 登板21、セーブ13、投球回19.67、奪三振32、自責点7、防御率3.20、WHIP1.12、球数345
+  1位: マルティネス（読売ジャイアンツ） 登板23、セーブ19、投球回21.33、奪三振21、自責点5、防御率2.11、WHIP1.03、球数319
+  2位: キハダ（東京ヤクルトスワローズ） 登板21、セーブ14、投球回18.67、奪三振31、自責点8、防御率3.86、WHIP1.50、球数379
+  3位: 杉山（福岡ソフトバンクホークス） 登板22、セーブ14、投球回20.67、奪三振32、自責点7、防御率3.05、WHIP1.16、球数371
   4位: 横山（千葉ロッテマリーンズ） 登板21、セーブ13、投球回21.33、奪三振15、自責点0、防御率0.00、WHIP0.75、球数294
   5位: マチャド（オリックス・バファローズ） 登板20、セーブ12、投球回21.67、奪三振21、自責点2、防御率0.83、WHIP0.78、球数303
   6位: 松山（中日ドラゴンズ） 登板18、セーブ12、投球回16.67、奪三振19、自責点4、防御率2.16、WHIP1.14、球数279
@@ -5647,18 +5799,21 @@
   null
 - answer_mode:
   direct_answer
+- fixture_structured_query:
+  {
+    "intent": "aggregate_pitching",
+    "filters": {
+      "year": 2026,
+      "sort_by": "saves",
+      "limit": 10
+    }
+  }
 - http_status:
   200
 - pass/fail:
   Pass
 - fail理由:
   なし
-- fail分類:
-  なし
-- 許容した差分:
-  QA正との文意一致。日付・成績更新または表記差のみ許容。
-- 実行ログ:
-  [data/logs/qa-prod-1783320807680.json](../data/logs/qa-prod-1783320807680.json)
 
 ### Q-47: 今シーズン（2026年）のパ・リーグ各チームの勝敗を教えてください
 
@@ -5670,12 +5825,12 @@
   2026年の勝敗集計です。 西武: 25勝17敗、引き分け2、対象44試合 ソフトバンク: 25勝19敗、対象44試合 オリックス: 23勝20敗、引き分け1、対象44試合 ロッテ: 23勝21敗、対象44試合 日本ハム: 20勝24敗、対象44試合 楽天: 17勝26敗、引き分け1、対象44試合
 - 本番回答:
   2026年の勝敗集計です。
-  ソフトバンク: 40勝24敗、引き分け1、対象65試合
-  日本ハム: 37勝30敗、対象67試合
-  西武: 36勝28敗、引き分け3、対象67試合
-  ロッテ: 32勝27敗、引き分け3、対象62試合
-  オリックス: 32勝31敗、引き分け2、対象65試合
-  楽天: 25勝38敗、引き分け1、対象64試合
+  ソフトバンク: 41勝24敗、引き分け1、対象66試合
+  西武: 37勝28敗、引き分け3、対象68試合
+  日本ハム: 37勝31敗、対象68試合
+  ロッテ: 33勝27敗、引き分け3、対象63試合
+  オリックス: 32勝32敗、引き分け2、対象66試合
+  楽天: 25勝39敗、引き分け1、対象65試合
 - intent:
   aggregate_games
 - entities:
@@ -5771,18 +5926,20 @@
   null
 - answer_mode:
   direct_answer
+- fixture_structured_query:
+  {
+    "intent": "aggregate_games",
+    "filters": {
+      "year": 2026,
+      "team": "パ・リーグ"
+    }
+  }
 - http_status:
   200
 - pass/fail:
   Pass
 - fail理由:
   なし
-- fail分類:
-  なし
-- 許容した差分:
-  QA正との文意一致。日付・成績更新または表記差のみ許容。
-- 実行ログ:
-  [data/logs/qa-prod-1783320807680.json](../data/logs/qa-prod-1783320807680.json)
 
 ### Q-48: 今シーズン阪神は何勝何敗ですか？
 
@@ -5794,7 +5951,7 @@
   2026年の勝敗集計です。 阪神: 24勝17敗、引き分け1、対象42試合
 - 本番回答:
   2026年の勝敗集計です。
-  阪神: 32勝27敗、引き分け1、対象60試合
+  阪神: 32勝28敗、引き分け1、対象61試合
 - intent:
   aggregate_games
 - entities:
@@ -5890,18 +6047,20 @@
   null
 - answer_mode:
   direct_answer
+- fixture_structured_query:
+  {
+    "intent": "aggregate_games",
+    "filters": {
+      "year": 2026,
+      "team": "阪神"
+    }
+  }
 - http_status:
   200
 - pass/fail:
   Pass
 - fail理由:
   なし
-- fail分類:
-  なし
-- 許容した差分:
-  QA正との文意一致。日付・成績更新または表記差のみ許容。
-- 実行ログ:
-  [data/logs/qa-prod-1783320807680.json](../data/logs/qa-prod-1783320807680.json)
 
 ### Q-49: 今シーズンDeNAは勝ち越してますか？負け越してますか？
 
@@ -5913,7 +6072,7 @@
   2026年の勝敗集計です。 DeNA: 18勝24敗、対象42試合
 - 本番回答:
   2026年の勝敗集計です。
-  DeNA: 23勝37敗、引き分け1、対象61試合
+  DeNA: 24勝37敗、引き分け1、対象62試合
 - intent:
   aggregate_games
 - entities:
@@ -6009,18 +6168,20 @@
   null
 - answer_mode:
   direct_answer
+- fixture_structured_query:
+  {
+    "intent": "aggregate_games",
+    "filters": {
+      "year": 2026,
+      "team": "DeNA"
+    }
+  }
 - http_status:
   200
 - pass/fail:
   Pass
 - fail理由:
   なし
-- fail分類:
-  なし
-- 許容した差分:
-  QA正との文意一致。日付・成績更新または表記差のみ許容。
-- 実行ログ:
-  [data/logs/qa-prod-1783320807680.json](../data/logs/qa-prod-1783320807680.json)
 
 ### Q-50: 2024年のセ・リーグで勝利数が最も多いチームはどこですか？
 
@@ -6133,18 +6294,20 @@
   null
 - answer_mode:
   direct_answer
+- fixture_structured_query:
+  {
+    "intent": "aggregate_games",
+    "filters": {
+      "year": 2024,
+      "team": "セ・リーグ"
+    }
+  }
 - http_status:
   200
 - pass/fail:
   Pass
 - fail理由:
   なし
-- fail分類:
-  なし
-- 許容した差分:
-  QA正との文意一致。日付・成績更新または表記差のみ許容。
-- 実行ログ:
-  [data/logs/qa-prod-1783320807680.json](../data/logs/qa-prod-1783320807680.json)
 
 ### Q-51: 牧秀悟の2023年から2025年の通算打率と本塁打数を教えてください
 
@@ -6252,18 +6415,23 @@
   null
 - answer_mode:
   direct_answer
+- fixture_structured_query:
+  {
+    "intent": "aggregate_batting",
+    "filters": {
+      "year_from": 2023,
+      "year_to": 2025,
+      "player_name": "牧秀悟",
+      "team": "DeNA",
+      "limit": 10
+    }
+  }
 - http_status:
   200
 - pass/fail:
   Pass
 - fail理由:
   なし
-- fail分類:
-  なし
-- 許容した差分:
-  QA正との文意一致。日付・成績更新または表記差のみ許容。
-- 実行ログ:
-  [data/logs/qa-prod-1783320807680.json](../data/logs/qa-prod-1783320807680.json)
 
 ### Q-52: 村上宗隆の2019年から2025年の年別本塁打数を教えてください
 
@@ -6378,18 +6546,23 @@
   null
 - answer_mode:
   direct_answer
+- fixture_structured_query:
+  {
+    "intent": "search_batting",
+    "filters": {
+      "year_from": 2019,
+      "year_to": 2025,
+      "player_name": "村上宗隆の2019年から2025年",
+      "team": "ヤクルト",
+      "limit": 500
+    }
+  }
 - http_status:
   200
 - pass/fail:
   Pass
 - fail理由:
   なし
-- fail分類:
-  なし
-- 許容した差分:
-  QA正との文意一致。日付・成績更新または表記差のみ許容。
-- 実行ログ:
-  [data/logs/qa-prod-1783320807680.json](../data/logs/qa-prod-1783320807680.json)
 
 ### Q-53: 岡本和真の2016年以降の通算本塁打数を教えてください
 
@@ -6499,18 +6672,22 @@
   null
 - answer_mode:
   direct_answer
+- fixture_structured_query:
+  {
+    "intent": "aggregate_batting",
+    "filters": {
+      "year_from": 2016,
+      "player_name": "岡本和",
+      "team": "巨人",
+      "limit": 10
+    }
+  }
 - http_status:
   200
 - pass/fail:
   Pass
 - fail理由:
   なし
-- fail分類:
-  なし
-- 許容した差分:
-  QA正との文意一致。日付・成績更新または表記差のみ許容。
-- 実行ログ:
-  [data/logs/qa-prod-1783320807680.json](../data/logs/qa-prod-1783320807680.json)
 
 ### Q-54: 2019年のDeNA対阪神の対戦成績（勝敗）を教えてください
 
@@ -6618,18 +6795,21 @@
   null
 - answer_mode:
   direct_answer
+- fixture_structured_query:
+  {
+    "intent": "aggregate_games",
+    "filters": {
+      "year": 2019,
+      "team": "DeNA",
+      "opponent": "阪神"
+    }
+  }
 - http_status:
   200
 - pass/fail:
   Pass
 - fail理由:
   なし
-- fail分類:
-  なし
-- 許容した差分:
-  QA正との文意一致。日付・成績更新または表記差のみ許容。
-- 実行ログ:
-  [data/logs/qa-prod-1783320807680.json](../data/logs/qa-prod-1783320807680.json)
 
 ### Q-55: 今シーズン代打ホームランを打った選手は？
 
@@ -6734,18 +6914,22 @@
   null
 - answer_mode:
   direct_answer
+- fixture_structured_query:
+  {
+    "intent": "search_events",
+    "filters": {
+      "year": 2026,
+      "event_type": "plate_appearance",
+      "result_text_contains": "本塁打",
+      "limit": 500
+    }
+  }
 - http_status:
   200
 - pass/fail:
   Pass
 - fail理由:
   なし
-- fail分類:
-  なし
-- 許容した差分:
-  QA正との文意一致。日付・成績更新または表記差のみ許容。
-- 実行ログ:
-  [data/logs/qa-prod-1783320807680.json](../data/logs/qa-prod-1783320807680.json)
 
 ### Q-56: 今シーズン阪神のサヨナラ勝ちはいつ？
 
@@ -6853,18 +7037,21 @@
   null
 - answer_mode:
   direct_answer
+- fixture_structured_query:
+  {
+    "intent": "search_games",
+    "filters": {
+      "year": 2026,
+      "team": "阪神",
+      "limit": 500
+    }
+  }
 - http_status:
   200
 - pass/fail:
   Pass
 - fail理由:
   なし
-- fail分類:
-  なし
-- 許容した差分:
-  QA正との文意一致。日付・成績更新または表記差のみ許容。
-- 実行ログ:
-  [data/logs/qa-prod-1783320807680.json](../data/logs/qa-prod-1783320807680.json)
 
 ### Q-57: 今シーズン最も球数が多かった登板を教えてください
 
@@ -6969,18 +7156,21 @@
   null
 - answer_mode:
   direct_answer
+- fixture_structured_query:
+  {
+    "intent": "search_pitching",
+    "filters": {
+      "year": 2026,
+      "sort_by": "pitchCount",
+      "limit": 1
+    }
+  }
 - http_status:
   200
 - pass/fail:
   Pass
 - fail理由:
   なし
-- fail分類:
-  なし
-- 許容した差分:
-  QA正との文意一致。日付・成績更新または表記差のみ許容。
-- 実行ログ:
-  [data/logs/qa-prod-1783320807680.json](../data/logs/qa-prod-1783320807680.json)
 
 ### Q-58: 今シーズン広島の先発投手で最も長く投げた登板は？
 
@@ -6993,8 +7183,8 @@
 - 本番回答:
   投手集計結果は20件です。
   1位: 森下（広島東洋カープ） 登板9、セーブ0、投球回52.67、奪三振42、自責点22、防御率3.76、WHIP1.29、球数850
-  2位: 床田（広島東洋カープ） 登板8、セーブ0、投球回45.67、奪三振32、自責点17、防御率3.35、WHIP1.49、球数746
-  3位: 岡本（広島東洋カープ） 登板8、セーブ0、投球回45.33、奪三振39、自責点11、防御率2.18、WHIP0.97、球数697
+  2位: 岡本（広島東洋カープ） 登板9、セーブ0、投球回50.33、奪三振45、自責点14、防御率2.50、WHIP0.97、球数784
+  3位: 床田（広島東洋カープ） 登板8、セーブ0、投球回45.67、奪三振32、自責点17、防御率3.35、WHIP1.49、球数746
   4位: ターノック（広島東洋カープ） 登板8、セーブ0、投球回37.67、奪三振37、自責点19、防御率4.54、WHIP1.41、球数659
   5位: 栗林（広島東洋カープ） 登板4、セーブ0、投球回30.33、奪三振28、自責点4、防御率1.19、WHIP0.56、球数378
   6位: 森（広島東洋カープ） 登板5、セーブ0、投球回30.33、奪三振22、自責点6、防御率1.78、WHIP1.02、球数434
@@ -7097,18 +7287,22 @@
   null
 - answer_mode:
   direct_answer
+- fixture_structured_query:
+  {
+    "intent": "aggregate_pitching",
+    "filters": {
+      "year": 2026,
+      "team": "広島",
+      "sort_by": "inningsPitched",
+      "limit": 20
+    }
+  }
 - http_status:
   200
 - pass/fail:
   Pass
 - fail理由:
   なし
-- fail分類:
-  なし
-- 許容した差分:
-  QA正との文意一致。日付・成績更新または表記差のみ許容。
-- 実行ログ:
-  [data/logs/qa-prod-1783320807680.json](../data/logs/qa-prod-1783320807680.json)
 
 ### Q-59: 今シーズン甲子園での阪神の成績を教えてください
 
@@ -7216,18 +7410,21 @@
   null
 - answer_mode:
   direct_answer
+- fixture_structured_query:
+  {
+    "intent": "aggregate_games",
+    "filters": {
+      "year": 2026,
+      "team": "阪神",
+      "venue": "甲子園"
+    }
+  }
 - http_status:
   200
 - pass/fail:
   Pass
 - fail理由:
   なし
-- fail分類:
-  なし
-- 許容した差分:
-  QA正との文意一致。日付・成績更新または表記差のみ許容。
-- 実行ログ:
-  [data/logs/qa-prod-1783320807680.json](../data/logs/qa-prod-1783320807680.json)
 
 ### Q-60: 東京ドームでのDeNA対巨人の試合結果（今シーズン）
 
@@ -7340,18 +7537,23 @@
   null
 - answer_mode:
   direct_answer
+- fixture_structured_query:
+  {
+    "intent": "search_games",
+    "filters": {
+      "year": 2026,
+      "team": "DeNA",
+      "opponent": "巨人",
+      "venue": "東京ドーム",
+      "limit": 50
+    }
+  }
 - http_status:
   200
 - pass/fail:
   Pass
 - fail理由:
   なし
-- fail分類:
-  なし
-- 許容した差分:
-  QA正との文意一致。日付・成績更新または表記差のみ許容。
-- 実行ログ:
-  [data/logs/qa-prod-1783320807680.json](../data/logs/qa-prod-1783320807680.json)
 
 ### Q-61: 今シーズンの田中の成績を教えてください。
 
@@ -7458,18 +7660,21 @@
   null
 - answer_mode:
   direct_answer
+- fixture_structured_query:
+  {
+    "intent": "aggregate_batting",
+    "filters": {
+      "year": 2026,
+      "player_name": "田中",
+      "limit": 10
+    }
+  }
 - http_status:
   200
 - pass/fail:
   Pass
 - fail理由:
   なし
-- fail分類:
-  なし
-- 許容した差分:
-  QA正との文意一致。日付・成績更新または表記差のみ許容。
-- 実行ログ:
-  [data/logs/qa-prod-1783320807680.json](../data/logs/qa-prod-1783320807680.json)
 
 ### Q-62: 佐藤の今シーズン成績を教えて
 
@@ -7576,18 +7781,21 @@
   null
 - answer_mode:
   direct_answer
+- fixture_structured_query:
+  {
+    "intent": "aggregate_batting",
+    "filters": {
+      "year": 2026,
+      "player_name": "佐藤",
+      "limit": 10
+    }
+  }
 - http_status:
   200
 - pass/fail:
   Pass
 - fail理由:
   なし
-- fail分類:
-  なし
-- 許容した差分:
-  QA正との文意一致。日付・成績更新または表記差のみ許容。
-- 実行ログ:
-  [data/logs/qa-prod-1783320807680.json](../data/logs/qa-prod-1783320807680.json)
 
 ### Q-63: 村上と青木の今シーズン成績を比べてください
 
@@ -7608,7 +7816,7 @@
     "pitcher": "村上",
     "batter": null,
     "runner": null,
-    "team": "阪神タイガース",
+    "team": "阪神",
     "opponent": null,
     "game_id": null
   }
@@ -7624,7 +7832,7 @@
   }
 - data_requirements:
   [
-    "aggregate_batting",
+    "aggregate_pitching",
     "source_snapshots"
   ]
 - repositories:
@@ -7648,14 +7856,16 @@
     "players": [
       "村上"
     ],
-    "teams": []
+    "teams": [
+      "阪神"
+    ]
   }
 - follow_up_context:
   {
     "contextKind": "player_stats",
     "inheritedPlayerId": null,
     "inheritedPlayerName": "村上",
-    "inheritedTeam": null,
+    "inheritedTeam": "阪神",
     "inheritedSeason": 2026,
     "inheritedScope": "current",
     "inheritanceSource": "structured_query",
@@ -7695,18 +7905,22 @@
   null
 - answer_mode:
   direct_answer
+- fixture_structured_query:
+  {
+    "intent": "aggregate_pitching",
+    "filters": {
+      "year": 2026,
+      "pitcher_name": "村上",
+      "team": "阪神タイガース",
+      "limit": 10
+    }
+  }
 - http_status:
   200
 - pass/fail:
   Pass
 - fail理由:
   なし
-- fail分類:
-  なし
-- 許容した差分:
-  QA正との文意一致。日付・成績更新または表記差のみ許容。
-- 実行ログ:
-  [data/logs/qa-prod-1783320807680.json](../data/logs/qa-prod-1783320807680.json)
 
 ### Q-64: 阪神の佐藤の成績を教えてください（今シーズン）
 
@@ -7717,7 +7931,7 @@
 - QA正:
   打撃集計結果は1件です。 1位: * 佐藤 輝明（阪神タイガース） 試合44、打率.375、本塁打12、打点36、盗塁2、OPS1.198、IsoP.369、BB%13.4% 打率=安打÷打数、OPS=出塁率+長打率、IsoP=長打率-打率、BB%=四球÷打席で計算しています。
 - 本番回答:
-  阪神タイガースの佐藤選手の2026年シーズンの成績をご紹介します。49試合に出場し、180打数で60安打、10本塁打、35打点、35得点、3盗塁、25四球、47三振という内容です。打率は約.333です。
+  阪神タイガースの佐藤選手の2026年シーズンの成績をご紹介します。50試合に出場し、184打数で61安打、10本塁打、37打点、35得点、3盗塁、25四球、48三振という内容です。打率は約.332です。
 - intent:
   aggregate_batting
 - entities:
@@ -7815,18 +8029,22 @@
   null
 - answer_mode:
   direct_answer
+- fixture_structured_query:
+  {
+    "intent": "aggregate_batting",
+    "filters": {
+      "year": 2026,
+      "player_name": "佐藤",
+      "team": "阪神",
+      "limit": 10
+    }
+  }
 - http_status:
   200
 - pass/fail:
   Pass
 - fail理由:
   なし
-- fail分類:
-  なし
-- 許容した差分:
-  QA正との文意一致。日付・成績更新または表記差のみ許容。
-- 実行ログ:
-  [data/logs/qa-prod-1783320807680.json](../data/logs/qa-prod-1783320807680.json)
 
 ### Q-65: 田中将大の今シーズンの成績を教えてください
 
@@ -7934,18 +8152,21 @@
   null
 - answer_mode:
   direct_answer
+- fixture_structured_query:
+  {
+    "intent": "aggregate_pitching",
+    "filters": {
+      "year": 2026,
+      "pitcher_name": "田中 将大",
+      "limit": 10
+    }
+  }
 - http_status:
   200
 - pass/fail:
   Pass
 - fail理由:
   なし
-- fail分類:
-  なし
-- 許容した差分:
-  QA正との文意一致。日付・成績更新または表記差のみ許容。
-- 実行ログ:
-  [data/logs/qa-prod-1783320807680.json](../data/logs/qa-prod-1783320807680.json)
 
 ### Q-66: 2026年のBaystarsの打撃成績を教えてください
 
@@ -8062,18 +8283,22 @@
   null
 - answer_mode:
   direct_answer
+- fixture_structured_query:
+  {
+    "intent": "aggregate_batting",
+    "filters": {
+      "year": 2026,
+      "team": "DeNA",
+      "limit": 10,
+      "sort_by": "hits"
+    }
+  }
 - http_status:
   200
 - pass/fail:
   Pass
 - fail理由:
   なし
-- fail分類:
-  なし
-- 許容した差分:
-  QA正との文意一致。日付・成績更新または表記差のみ許容。
-- 実行ログ:
-  [data/logs/qa-prod-1783320807680.json](../data/logs/qa-prod-1783320807680.json)
 
 ### Q-67: はんしんの成績を教えてください
 
@@ -8085,16 +8310,16 @@
   2026年シーズンの阪神タイガースの主な打者成績をご紹介します。佐藤選手（41試合・148打数56安打・9本塁打・34打点）、森下選手（41試合・162打数47安打・10本塁打・27打点）、中野選手（41試合・152打数41安打・11打点）、大山選手（39試合・133打数38安打・4本塁打・22打点）、近本選手（24試合・96打数24安打・盗塁6）など各選手の2026年成績を返答。阪神は佐藤選手と森下選手が本塁打をリードしています。
 - 本番回答:
   打撃集計結果は50件です。
-  1位: 中野（阪神タイガース） 試合49、打率.308、本塁打0、打点11、盗塁4、OPS.659、IsoP.000、BB%6.3%
-  2位: 森下（阪神タイガース） 試合49、打率.321、本塁打16、打点37、盗塁3、OPS.704、IsoP.000、BB%9.2%
-  3位: 佐藤（阪神タイガース） 試合49、打率.333、本塁打10、打点35、盗塁3、OPS.748、IsoP.000、BB%12.2%
-  4位: 大山（阪神タイガース） 試合49、打率.278、本塁打8、打点28、盗塁0、OPS.659、IsoP.000、BB%14.2%
-  5位: 近本（阪神タイガース） 試合24、打率.250、本塁打0、打点5、盗塁6、OPS.583、IsoP.000、BB%11.1%
-  6位: 髙寺（阪神タイガース） 試合41、打率.198、本塁打0、打点10、盗塁2、OPS.480、IsoP.000、BB%10.5%
-  7位: 木浪（阪神タイガース） 試合30、打率.247、本塁打1、打点11、盗塁0、OPS.551、IsoP.000、BB%7.6%
+  1位: 佐藤（阪神タイガース） 試合50、打率.332、本塁打10、打点37、盗塁3、OPS.743、IsoP.000、BB%12.0%
+  2位: 中野（阪神タイガース） 試合50、打率.305、本塁打0、打点11、盗塁4、OPS.658、IsoP.000、BB%7.1%
+  3位: 森下（阪神タイガース） 試合50、打率.316、本塁打16、打点37、盗塁3、OPS.697、IsoP.000、BB%9.5%
+  4位: 大山（阪神タイガース） 試合50、打率.272、本塁打8、打点28、盗塁0、OPS.645、IsoP.000、BB%13.9%
+  5位: 髙寺（阪神タイガース） 試合42、打率.209、本塁打0、打点10、盗塁3、OPS.498、IsoP.000、BB%10.2%
+  6位: 近本（阪神タイガース） 試合24、打率.250、本塁打0、打点5、盗塁6、OPS.583、IsoP.000、BB%11.1%
+  7位: 木浪（阪神タイガース） 試合31、打率.239、本塁打1、打点11、盗塁0、OPS.533、IsoP.000、BB%7.4%
   8位: 坂本（阪神タイガース） 試合38、打率.181、本塁打1、打点10、盗塁2、OPS.440、IsoP.000、BB%9.5%
-  9位: 福島（阪神タイガース） 試合30、打率.265、本塁打0、打点3、盗塁4、OPS.580、IsoP.000、BB%6.8%
-  10位: 熊谷（阪神タイガース） 試合32、打率.230、本塁打0、打点9、盗塁3、OPS.489、IsoP.000、BB%3.9%
+  9位: 福島（阪神タイガース） 試合31、打率.261、本塁打0、打点3、盗塁4、OPS.572、IsoP.000、BB%6.8%
+  10位: 熊谷（阪神タイガース） 試合33、打率.230、本塁打0、打点9、盗塁3、OPS.489、IsoP.000、BB%3.9%
 - intent:
   aggregate_batting
 - entities:
@@ -8189,18 +8414,20 @@
   null
 - answer_mode:
   direct_answer
+- fixture_structured_query:
+  {
+    "intent": "aggregate_batting",
+    "filters": {
+      "year": 2026,
+      "team": "阪神"
+    }
+  }
 - http_status:
   200
 - pass/fail:
   Pass
 - fail理由:
   なし
-- fail分類:
-  なし
-- 許容した差分:
-  QA正との文意一致。日付・成績更新または表記差のみ許容。
-- 実行ログ:
-  [data/logs/qa-prod-1783320807680.json](../data/logs/qa-prod-1783320807680.json)
 
 ### Q-68: ジャイアンツの今シーズン投手成績を教えてください
 
@@ -8215,12 +8442,12 @@
   1位: 井上（読売ジャイアンツ） 登板10、セーブ0、投球回63.00、奪三振64、自責点10、防御率1.43、WHIP0.89、球数966
   2位: 竹丸（読売ジャイアンツ） 登板7、セーブ0、投球回40.33、奪三振48、自責点8、防御率1.79、WHIP1.26、球数658
   3位: ウィットリー（読売ジャイアンツ） 登板7、セーブ0、投球回44.00、奪三振45、自責点9、防御率1.84、WHIP0.84、球数633
-  4位: 戸郷（読売ジャイアンツ） 登板5、セーブ0、投球回30.33、奪三振34、自責点5、防御率1.48、WHIP0.99、球数503
+  4位: 戸郷（読売ジャイアンツ） 登板6、セーブ0、投球回35.33、奪三振37、自責点5、防御率1.27、WHIP0.91、球数567
   5位: 田中将（読売ジャイアンツ） 登板7、セーブ0、投球回39.33、奪三振27、自責点14、防御率3.20、WHIP1.27、球数587
-  6位: 大勢（読売ジャイアンツ） 登板24、セーブ2、投球回21.33、奪三振24、自責点6、防御率2.53、WHIP0.75、球数314
-  7位: マルティネス（読売ジャイアンツ） 登板22、セーブ18、投球回20.33、奪三振20、自責点5、防御率2.21、WHIP1.03、球数300
+  6位: 大勢（読売ジャイアンツ） 登板25、セーブ2、投球回22.33、奪三振25、自責点6、防御率2.42、WHIP0.81、球数344
+  7位: マルティネス（読売ジャイアンツ） 登板23、セーブ19、投球回21.33、奪三振21、自責点5、防御率2.11、WHIP1.03、球数319
   8位: 則本（読売ジャイアンツ） 登板5、セーブ0、投球回30.00、奪三振19、自責点7、防御率2.10、WHIP1.17、球数495
-  9位: 赤星（読売ジャイアンツ） 登板15、セーブ0、投球回19.67、奪三振16、自責点5、防御率2.29、WHIP1.02、球数308
+  9位: 赤星（読売ジャイアンツ） 登板16、セーブ0、投球回21.00、奪三振17、自責点6、防御率2.57、WHIP1.00、球数329
   10位: マタ（読売ジャイアンツ） 登板3、セーブ0、投球回13.67、奪三振15、自責点5、防御率3.29、WHIP1.46、球数259
 - intent:
   aggregate_pitching
@@ -8317,18 +8544,22 @@
   null
 - answer_mode:
   direct_answer
+- fixture_structured_query:
+  {
+    "intent": "aggregate_pitching",
+    "filters": {
+      "year": 2026,
+      "team": "巨人",
+      "sort_by": "strikeouts",
+      "limit": 20
+    }
+  }
 - http_status:
   200
 - pass/fail:
   Pass
 - fail理由:
   なし
-- fail分類:
-  なし
-- 許容した差分:
-  QA正との文意一致。日付・成績更新または表記差のみ許容。
-- 実行ログ:
-  [data/logs/qa-prod-1783320807680.json](../data/logs/qa-prod-1783320807680.json)
 
 ### Q-69: Carpの今シーズンの成績を教えてください
 
@@ -8340,14 +8571,14 @@
   打撃集計結果は50件です。 1位: * 坂倉 将吾（広島東洋カープ） 試合39、打率.280、本塁打6、打点27、盗塁1、OPS.869、IsoP.212、BB%13.6% 2位: ラミレス（広島東洋カープ） 試合33、打率.264、本塁打2、打点18、盗塁0、OPS.705、IsoP.149、BB%3.9% 3位: 菊池 涼介（広島東洋カープ） 試合34、打率.250、本塁打1、打点7、盗塁3、OPS.652、IsoP.054、BB%12.7% 4位: モンテロ（広島東洋カープ） 試合36、打率.270、本塁打5、打点17、盗塁0、OPS.769、IsoP.200、BB%3.7% 5位: 末包 昇大（広島東洋カープ） 試合37、打率.210、本塁打3、打点13、盗塁0、OPS.582、IsoP.126、BB%4.8% 6位: * 大盛 穂（広島東洋カープ） 試合36、打率.214、本塁打2、打点5、盗塁6、OPS.524、IsoP.077、BB%2.5% 7位: * 林 晃汰（広島東洋カープ） 試合29、打率.287、本塁打1、打点8、盗塁0、OPS.700、IsoP.069、BB%8.3% 8位: * 田村 俊介（広島東洋カープ） 試合28、打率.305、本塁打1、打点10、盗塁0、OPS.775、IsoP.122、BB%6.7% 9位: * 岸本 大希（広島東洋カープ） 試合30、打率.219、本塁打0、打点5、盗塁7、OPS.507、IsoP.000、BB%8.4% 10位: 前川 誠太（広島東洋カープ） 試合22、打率.282、本塁打3、打点7、盗塁1、OPS.785、IsoP.183、BB%5.3% 打率=安打÷打数、OPS=出塁率+長打率、IsoP=長打率-打率、BB%=四球÷打席で計算しています。
 - 本番回答:
   打撃集計結果は10件です。
-  1位: 小園（広島東洋カープ） 試合47、打率.229、本塁打1、打点11、盗塁0、OPS.514、IsoP.000、BB%7.1%
-  2位: 坂倉（広島東洋カープ） 試合45、打率.240、本塁打3、打点23、盗塁3、OPS.572、IsoP.000、BB%12.0%
-  3位: 菊池（広島東洋カープ） 試合42、打率.261、本塁打0、打点10、盗塁3、OPS.587、IsoP.000、BB%9.0%
+  1位: 小園（広島東洋カープ） 試合48、打率.231、本塁打1、打点11、盗塁0、OPS.516、IsoP.000、BB%7.0%
+  2位: 坂倉（広島東洋カープ） 試合46、打率.242、本塁打4、打点25、盗塁3、OPS.573、IsoP.000、BB%11.8%
+  3位: 菊池（広島東洋カープ） 試合43、打率.260、本塁打0、打点10、盗塁3、OPS.585、IsoP.000、BB%8.8%
   4位: 大盛（広島東洋カープ） 試合45、打率.266、本塁打2、打点11、盗塁8、OPS.553、IsoP.000、BB%2.8%
-  5位: 名原（広島東洋カープ） 試合26、打率.265、本塁打3、打点11、盗塁4、OPS.562、IsoP.000、BB%4.2%
-  6位: 佐々木（広島東洋カープ） 試合41、打率.242、本塁打2、打点5、盗塁1、OPS.536、IsoP.000、BB%7.0%
-  7位: ファビアン（広島東洋カープ） 試合39、打率.189、本塁打6、打点13、盗塁0、OPS.426、IsoP.000、BB%5.9%
-  8位: モンテロ（広島東洋カープ） 試合39、打率.231、本塁打4、打点19、盗塁0、OPS.535、IsoP.000、BB%9.6%
+  5位: 佐々木（広島東洋カープ） 試合42、打率.244、本塁打2、打点5、盗塁1、OPS.539、IsoP.000、BB%6.8%
+  6位: 名原（広島東洋カープ） 試合27、打率.256、本塁打3、打点11、盗塁4、OPS.543、IsoP.000、BB%4.1%
+  7位: ファビアン（広島東洋カープ） 試合40、打率.191、本塁打6、打点13、盗塁0、OPS.428、IsoP.000、BB%5.8%
+  8位: モンテロ（広島東洋カープ） 試合40、打率.234、本塁打4、打点19、盗塁0、OPS.539、IsoP.000、BB%9.3%
   9位: 勝田（広島東洋カープ） 試合30、打率.205、本塁打0、打点2、盗塁3、OPS.462、IsoP.000、BB%6.4%
   10位: 持丸（広島東洋カープ） 試合29、打率.155、本塁打2、打点4、盗塁0、OPS.386、IsoP.000、BB%9.0%
 - intent:
@@ -8445,18 +8676,21 @@
   null
 - answer_mode:
   direct_answer
+- fixture_structured_query:
+  {
+    "intent": "aggregate_batting",
+    "filters": {
+      "year": 2026,
+      "team": "広島",
+      "limit": 10
+    }
+  }
 - http_status:
   200
 - pass/fail:
   Pass
 - fail理由:
   なし
-- fail分類:
-  なし
-- 許容した差分:
-  QA正との文意一致。日付・成績更新または表記差のみ許容。
-- 実行ログ:
-  [data/logs/qa-prod-1783320807680.json](../data/logs/qa-prod-1783320807680.json)
 
 ### Q-70: 今シーズンの得点圏打率が高い選手を3人教えてください
 
@@ -8564,18 +8798,21 @@
   null
 - answer_mode:
   direct_answer
+- fixture_structured_query:
+  {
+    "intent": "aggregate_batting",
+    "filters": {
+      "year": 2026,
+      "limit": 3,
+      "sort_by": "battingAverage"
+    }
+  }
 - http_status:
   200
 - pass/fail:
   Pass
 - fail理由:
   なし
-- fail分類:
-  なし
-- 許容した差分:
-  QA正との文意一致。日付・成績更新または表記差のみ許容。
-- 実行ログ:
-  [data/logs/qa-prod-1783320807680.json](../data/logs/qa-prod-1783320807680.json)
 
 ### Q-71: 今シーズンのパ・リーグでIsoP（長打率マイナス打率）が最も高い打者は？
 
@@ -8587,11 +8824,11 @@
   打撃集計結果は5件です。 1位: * 小深田 大翔（東北楽天ゴールデンイーグルス） 試合1、打率1.000、本塁打1、打点3、盗塁0、OPS4.000、IsoP2.000、BB%0.0% 2位: * 清宮 幸太郎（北海道日本ハムファイターズ） 試合5、打率.333、本塁打3、打点6、盗塁0、OPS1.500、IsoP.667、BB%20.0% 3位: ネビン（埼玉西武ライオンズ） 試合4、打率.364、本塁打1、打点4、盗塁0、OPS1.061、IsoP.364、BB%0.0% 4位: * 西野 真弘（オリックス・バファローズ） 試合1、打率.333、本塁打0、打点1、盗塁0、OPS1.167、IsoP.333、BB%0.0% 5位: 桑原 秀侍（福岡ソフトバンクホークス） 試合7、打率.333、本塁打1、打点1、盗塁1、OPS1.051、IsoP.333、BB%7.7% 打率=安打÷打数、OPS=出塁率+長打率、IsoP=長打率-打率、BB%=四球÷打席で計算しています。
 - 本番回答:
   打撃集計結果は5件です。
-  1位: 近藤（福岡ソフトバンクホークス） 試合52、打率.305、本塁打17、打点48、盗塁4、OPS.714、IsoP.000、BB%14.9%
-  2位: レイエス（北海道日本ハムファイターズ） 試合52、打率.303、本塁打14、打点29、盗塁0、OPS.679、IsoP.000、BB%10.5%
-  3位: 栗原（福岡ソフトバンクホークス） 試合54、打率.261、本塁打14、打点30、盗塁0、OPS.603、IsoP.000、BB%11.0%
-  4位: 万波（北海道日本ハムファイターズ） 試合54、打率.250、本塁打12、打点26、盗塁0、OPS.551、IsoP.000、BB%6.8%
-  5位: 正木（福岡ソフトバンクホークス） 試合29、打率.299、本塁打9、打点22、盗塁0、OPS.692、IsoP.000、BB%13.3%
+  1位: 近藤（福岡ソフトバンクホークス） 試合53、打率.306、本塁打17、打点50、盗塁4、OPS.719、IsoP.000、BB%15.5%
+  2位: レイエス（北海道日本ハムファイターズ） 試合53、打率.307、本塁打14、打点30、盗塁0、OPS.686、IsoP.000、BB%10.3%
+  3位: 栗原（福岡ソフトバンクホークス） 試合55、打率.271、本塁打14、打点30、盗塁0、OPS.622、IsoP.000、BB%11.2%
+  4位: 万波（北海道日本ハムファイターズ） 試合55、打率.251、本塁打12、打点26、盗塁0、OPS.553、IsoP.000、BB%6.7%
+  5位: 正木（福岡ソフトバンクホークス） 試合30、打率.289、本塁打9、打点22、盗塁0、OPS.671、IsoP.000、BB%12.9%
 - intent:
   aggregate_batting
 - entities:
@@ -8687,18 +8924,22 @@
   null
 - answer_mode:
   direct_answer
+- fixture_structured_query:
+  {
+    "intent": "aggregate_batting",
+    "filters": {
+      "year": 2026,
+      "team": "パ・リーグ",
+      "limit": 5,
+      "sort_by": "isoP"
+    }
+  }
 - http_status:
   200
 - pass/fail:
   Pass
 - fail理由:
   なし
-- fail分類:
-  なし
-- 許容した差分:
-  QA正との文意一致。日付・成績更新または表記差のみ許容。
-- 実行ログ:
-  [data/logs/qa-prod-1783320807680.json](../data/logs/qa-prod-1783320807680.json)
 
 ### Q-72: 今シーズン四球率（BB%）が最も高い打者を教えてください
 
@@ -8808,18 +9049,21 @@
   null
 - answer_mode:
   direct_answer
+- fixture_structured_query:
+  {
+    "intent": "aggregate_batting",
+    "filters": {
+      "year": 2026,
+      "limit": 5,
+      "sort_by": "bbRate"
+    }
+  }
 - http_status:
   200
 - pass/fail:
   Pass
 - fail理由:
   なし
-- fail分類:
-  なし
-- 許容した差分:
-  QA正との文意一致。日付・成績更新または表記差のみ許容。
-- 実行ログ:
-  [data/logs/qa-prod-1783320807680.json](../data/logs/qa-prod-1783320807680.json)
 
 ### Q-73: test
 
@@ -8854,9 +9098,9 @@
     "recent": null
   }
 - data_requirements:
-  []
+  null
 - repositories:
-  []
+  null
 - follow_up_type:
   null
 - referenced_context:
@@ -8879,18 +9123,17 @@
   null
 - answer_mode:
   null
+- fixture_structured_query:
+  {
+    "intent": "off_topic",
+    "filters": {}
+  }
 - http_status:
   200
 - pass/fail:
   Pass
 - fail理由:
   なし
-- fail分類:
-  なし
-- 許容した差分:
-  QA正との文意一致。日付・成績更新または表記差のみ許容。
-- 実行ログ:
-  [data/logs/qa-prod-1783320807680.json](../data/logs/qa-prod-1783320807680.json)
 
 ### Q-74: 今日の天気を教えてください
 
@@ -8925,9 +9168,9 @@
     "recent": null
   }
 - data_requirements:
-  []
+  null
 - repositories:
-  []
+  null
 - follow_up_type:
   null
 - referenced_context:
@@ -8950,18 +9193,17 @@
   null
 - answer_mode:
   null
+- fixture_structured_query:
+  {
+    "intent": "off_topic",
+    "filters": {}
+  }
 - http_status:
   200
 - pass/fail:
   Pass
 - fail理由:
   なし
-- fail分類:
-  なし
-- 許容した差分:
-  QA正との文意一致。日付・成績更新または表記差のみ許容。
-- 実行ログ:
-  [data/logs/qa-prod-1783320807680.json](../data/logs/qa-prod-1783320807680.json)
 
 ### Q-75: ChatGPTよりあなたの方が賢いですか？
 
@@ -8996,9 +9238,9 @@
     "recent": null
   }
 - data_requirements:
-  []
+  null
 - repositories:
-  []
+  null
 - follow_up_type:
   null
 - referenced_context:
@@ -9021,18 +9263,17 @@
   null
 - answer_mode:
   null
+- fixture_structured_query:
+  {
+    "intent": "off_topic",
+    "filters": {}
+  }
 - http_status:
   200
 - pass/fail:
   Pass
 - fail理由:
   なし
-- fail分類:
-  なし
-- 許容した差分:
-  QA正との文意一致。日付・成績更新または表記差のみ許容。
-- 実行ログ:
-  [data/logs/qa-prod-1783320807680.json](../data/logs/qa-prod-1783320807680.json)
 
 ### Q-76: 2016年の清原和博の成績を教えてください
 
@@ -9139,18 +9380,21 @@
   null
 - answer_mode:
   direct_answer
+- fixture_structured_query:
+  {
+    "intent": "aggregate_batting",
+    "filters": {
+      "year": 2016,
+      "player_name": "清原和博",
+      "limit": 10
+    }
+  }
 - http_status:
   200
 - pass/fail:
   Pass
 - fail理由:
   なし
-- fail分類:
-  なし
-- 許容した差分:
-  QA正との文意一致。日付・成績更新または表記差のみ許容。
-- 実行ログ:
-  [data/logs/qa-prod-1783320807680.json](../data/logs/qa-prod-1783320807680.json)
 
 ### Q-77: 今シーズン（2026年）の村上宗隆の成績（データなし時の挙動確認）
 
@@ -9161,8 +9405,6 @@
 - QA正:
   【注意】2026年はNPBに在籍していないため、代わりに最終在籍年（2025年）のデータを表示します。  条件に一致する打撃成績が20件あります。先頭は2025年4月17日の村上で、4打数1安打0打点です。
 - 本番回答:
-  【注意】2026年はNPBに在籍していないため、代わりに最終在籍年（2025年）のデータを表示します。
-
   条件に一致する打撃成績が20件あります。先頭は2025年4月17日の村上で、4打数1安打0打点です。
 - intent:
   search_batting
@@ -9222,8 +9464,8 @@
     "inheritedPlayerId": null,
     "inheritedPlayerName": "村上",
     "inheritedTeam": "ヤクルト",
-    "inheritedSeason": 2026,
-    "inheritedScope": "current",
+    "inheritedSeason": 2025,
+    "inheritedScope": "historical",
     "inheritanceSource": "structured_query",
     "inheritanceConfidence": 0.55,
     "shouldApplyInheritance": false
@@ -9245,13 +9487,13 @@
     "target": "season",
     "value": {
       "kind": "year",
-      "year": 2026
+      "year": 2025
     },
     "confidence": 0.72
   }
 - identity_intent:
   {
-    "scope": "current",
+    "scope": "historical",
     "explicitSeasonOverride": true,
     "explicitScopeOverride": true
   }
@@ -9261,18 +9503,22 @@
   null
 - answer_mode:
   direct_answer
+- fixture_structured_query:
+  {
+    "intent": "search_batting",
+    "filters": {
+      "year": 2025,
+      "player_name": "村上",
+      "team": "ヤクルト",
+      "limit": 20
+    }
+  }
 - http_status:
   200
 - pass/fail:
   Pass
 - fail理由:
   なし
-- fail分類:
-  なし
-- 許容した差分:
-  QA正との文意一致。日付・成績更新または表記差のみ許容。
-- 実行ログ:
-  [data/logs/qa-prod-1783320807680.json](../data/logs/qa-prod-1783320807680.json)
 
 ### Q-78: 昨シーズン（2025年）の新人王は誰ですか？
 
@@ -9358,18 +9604,20 @@
   null
 - answer_mode:
   direct_answer
+- fixture_structured_query:
+  {
+    "intent": "award_winners",
+    "filters": {
+      "year": 2025,
+      "award_type": "rookie_of_the_year"
+    }
+  }
 - http_status:
   200
 - pass/fail:
   Pass
 - fail理由:
   なし
-- fail分類:
-  なし
-- 許容した差分:
-  QA正との文意一致。日付・成績更新または表記差のみ許容。
-- 実行ログ:
-  [data/logs/qa-prod-1783320807680.json](../data/logs/qa-prod-1783320807680.json)
 
 ### Q-79: 今シーズンのDeNAの外国人打者の中で最もOPSが高いのは誰ですか？
 
@@ -9477,18 +9725,22 @@
   null
 - answer_mode:
   direct_answer
+- fixture_structured_query:
+  {
+    "intent": "aggregate_batting",
+    "filters": {
+      "year": 2026,
+      "team": "DeNA",
+      "limit": 1,
+      "sort_by": "ops"
+    }
+  }
 - http_status:
   200
 - pass/fail:
   Pass
 - fail理由:
   なし
-- fail分類:
-  なし
-- 許容した差分:
-  QA正との文意一致。日付・成績更新または表記差のみ許容。
-- 実行ログ:
-  [data/logs/qa-prod-1783320807680.json](../data/logs/qa-prod-1783320807680.json)
 
 ### Q-80: 2024年のDeNA日本一の最終戦の詳細を教えてください
 
@@ -9659,18 +9911,22 @@
   null
 - answer_mode:
   direct_answer
+- fixture_structured_query:
+  {
+    "intent": "game_detail",
+    "filters": {
+      "year": 2024,
+      "team": "DeNA",
+      "competition": "日本シリーズ",
+      "limit": 5
+    }
+  }
 - http_status:
   200
 - pass/fail:
   Pass
 - fail理由:
   なし
-- fail分類:
-  なし
-- 許容した差分:
-  QA正との文意一致。日付・成績更新または表記差のみ許容。
-- 実行ログ:
-  [data/logs/qa-prod-1783320807680.json](../data/logs/qa-prod-1783320807680.json)
 
 ### Q-81: 藤浪って最近何してんの
 
@@ -9680,17 +9936,13 @@
   藤浪って最近何してんの
 - QA正:
   横浜DeNAベイスターズ 藤浪 晋太郎の確認できる最新5試合の投球内容です。
-  2026年二軍での対象試合です。
-  内容は5試合で14奪三振、2自責点です。
-  最新登板は2026年6月5日で、6回、2奪三振、自責点1です。
-  対象試合: 2026年6月5日、2026年5月30日、2026年5月22日、2026年5月8日、2026年4月1日
-  2026年5月8日から2026年4月1日まで37日空いているため、最新5件を連続した最近の調子として扱う場合は注意が必要です。
 - 本番回答:
   横浜DeNAベイスターズ 藤浪 晋太郎の確認できる最新5試合の投球内容です。
   2026年二軍での対象試合です。
   内容は5試合で20奪三振、7自責点です。
   最新登板は2026年7月1日で、6回、6奪三振、自責点0です。
   対象試合: 2026年7月1日、2026年6月21日、2026年6月13日、2026年6月5日、2026年5月30日
+  確認できる最新の出場記録は2026年7月1日です。現在（2026年7月8日）から7日空いているため、これだけでは現在の調子とは言えません。
 - intent:
   search_pitching
 - entities:
@@ -9785,18 +10037,20 @@
   null
 - answer_mode:
   direct_answer
+- fixture_structured_query:
+  {
+    "intent": "search_pitching",
+    "filters": {
+      "pitcher_name": "藤浪 晋太郎",
+      "recent": true
+    }
+  }
 - http_status:
   200
 - pass/fail:
   Pass
 - fail理由:
   なし
-- fail分類:
-  なし
-- 許容した差分:
-  QA正との文意一致。日付・成績更新または表記差のみ許容。
-- 実行ログ:
-  [data/logs/qa-prod-1783320807680.json](../data/logs/qa-prod-1783320807680.json)
 
 ### Q-82: 藤浪近ごろ見ない気がするんだけど
 
@@ -9806,17 +10060,13 @@
   藤浪近ごろ見ない気がするんだけど
 - QA正:
   横浜DeNAベイスターズ 藤浪 晋太郎の確認できる最新5試合の投球内容です。
-  2026年二軍での対象試合です。
-  内容は5試合で14奪三振、2自責点です。
-  最新登板は2026年6月5日で、6回、2奪三振、自責点1です。
-  対象試合: 2026年6月5日、2026年5月30日、2026年5月22日、2026年5月8日、2026年4月1日
-  2026年5月8日から2026年4月1日まで37日空いているため、最新5件を連続した最近の調子として扱う場合は注意が必要です。
 - 本番回答:
   横浜DeNAベイスターズ 藤浪 晋太郎の確認できる最新5試合の投球内容です。
   2026年二軍での対象試合です。
   内容は5試合で20奪三振、7自責点です。
   最新登板は2026年7月1日で、6回、6奪三振、自責点0です。
   対象試合: 2026年7月1日、2026年6月21日、2026年6月13日、2026年6月5日、2026年5月30日
+  確認できる最新の出場記録は2026年7月1日です。現在（2026年7月8日）から7日空いているため、これだけでは現在の調子とは言えません。
 - intent:
   search_pitching
 - entities:
@@ -9861,9 +10111,9 @@
 - target_entity:
   {
     "kind": "player",
-    "label": "藤浪",
+    "label": "藤浪晋太郎",
     "players": [
-      "藤浪"
+      "藤浪晋太郎"
     ],
     "teams": []
   }
@@ -9871,7 +10121,7 @@
   {
     "contextKind": "player_stats",
     "inheritedPlayerId": null,
-    "inheritedPlayerName": "藤浪",
+    "inheritedPlayerName": "藤浪晋太郎",
     "inheritedTeam": null,
     "inheritedSeason": null,
     "inheritedScope": "unspecified",
@@ -9911,18 +10161,20 @@
   null
 - answer_mode:
   direct_answer
+- fixture_structured_query:
+  {
+    "intent": "search_pitching",
+    "filters": {
+      "pitcher_name": "藤浪 晋太郎",
+      "recent": true
+    }
+  }
 - http_status:
   200
 - pass/fail:
   Pass
 - fail理由:
   なし
-- fail分類:
-  なし
-- 許容した差分:
-  QA正との文意一致。日付・成績更新または表記差のみ許容。
-- 実行ログ:
-  [data/logs/qa-prod-1783320807680.json](../data/logs/qa-prod-1783320807680.json)
 
 ### Q-83: 藤浪ってホームラン打ったことある？
 
@@ -9932,8 +10184,6 @@
   藤浪ってホームラン打ったことある？
 - QA正:
   藤浪 晋太郎のホームランは2件です。
-  1. 2018年9月16日 3回表 阪神 藤浪: レフト満塁ホームラン（打点4）
-  2. 2021年4月16日 5回裏 阪神 藤浪: レフト2ランホームラン（打点2）
 - 本番回答:
   藤浪 晋太郎のホームランは2件です。
   1. 2018年9月16日 3回表 阪神 藤浪: レフト満塁ホームラン（打点4）
@@ -9982,9 +10232,9 @@
 - target_entity:
   {
     "kind": "player",
-    "label": "藤浪",
+    "label": "藤浪晋太郎",
     "players": [
-      "藤浪"
+      "藤浪晋太郎"
     ],
     "teams": []
   }
@@ -9992,7 +10242,7 @@
   {
     "contextKind": "unknown",
     "inheritedPlayerId": null,
-    "inheritedPlayerName": "藤浪",
+    "inheritedPlayerName": "藤浪晋太郎",
     "inheritedTeam": null,
     "inheritedSeason": null,
     "inheritedScope": "unspecified",
@@ -10032,18 +10282,21 @@
   null
 - answer_mode:
   direct_answer
+- fixture_structured_query:
+  {
+    "intent": "search_events",
+    "filters": {
+      "event_type": "plate_appearance",
+      "player_name": "藤浪 晋太郎",
+      "result_text_contains": "ホームラン"
+    }
+  }
 - http_status:
   200
 - pass/fail:
   Pass
 - fail理由:
   なし
-- fail分類:
-  なし
-- 許容した差分:
-  QA正との文意一致。日付・成績更新または表記差のみ許容。
-- 実行ログ:
-  [data/logs/qa-prod-1783320807680.json](../data/logs/qa-prod-1783320807680.json)
 
 ### Q-84: （直前にQ-83の回答がある状態で）二つ目の試合についてもっと詳しく教えて
 
@@ -10164,18 +10417,21 @@
   null
 - answer_mode:
   detail_explanation
+- fixture_structured_query:
+  {
+    "intent": "game_detail",
+    "filters": {
+      "game_date": "2021-04-16",
+      "team": "阪神",
+      "limit": 1
+    }
+  }
 - http_status:
   200
 - pass/fail:
   Pass
 - fail理由:
   なし
-- fail分類:
-  なし
-- 許容した差分:
-  QA正との文意一致。日付・成績更新または表記差のみ許容。
-- 実行ログ:
-  [data/logs/qa-prod-1783320807680.json](../data/logs/qa-prod-1783320807680.json)
 
 ### Q-85: 阪神の藤浪の最近の成績は？
 
@@ -10186,13 +10442,12 @@
 - QA正:
   【注意】「阪神の藤浪」とありますが、現在のNPB所属は横浜DeNAベイスターズです。現所属を優先して検索します。
 - 本番回答:
-  【注意】「阪神の藤浪」とありますが、現在のNPB所属は横浜DeNAベイスターズです。現所属を優先して検索します。
-
   横浜DeNAベイスターズ 藤浪 晋太郎の確認できる最新5試合の投球内容です。
   2026年二軍での対象試合です。
   内容は5試合で20奪三振、7自責点です。
   最新登板は2026年7月1日で、6回、6奪三振、自責点0です。
   対象試合: 2026年7月1日、2026年6月21日、2026年6月13日、2026年6月5日、2026年5月30日
+  確認できる最新の出場記録は2026年7月1日です。現在（2026年7月8日）から7日空いているため、これだけでは現在の調子とは言えません。
 - intent:
   search_pitching
 - entities:
@@ -10237,20 +10492,18 @@
 - target_entity:
   {
     "kind": "player",
-    "label": "藤浪",
+    "label": "藤浪晋太郎",
     "players": [
-      "藤浪"
+      "藤浪晋太郎"
     ],
-    "teams": [
-      "阪神"
-    ]
+    "teams": []
   }
 - follow_up_context:
   {
     "contextKind": "player_stats",
     "inheritedPlayerId": null,
-    "inheritedPlayerName": "藤浪",
-    "inheritedTeam": "阪神",
+    "inheritedPlayerName": "藤浪晋太郎",
+    "inheritedTeam": null,
     "inheritedSeason": null,
     "inheritedScope": "current",
     "inheritanceSource": "structured_query",
@@ -10289,18 +10542,20 @@
   null
 - answer_mode:
   direct_answer
+- fixture_structured_query:
+  {
+    "intent": "search_pitching",
+    "filters": {
+      "pitcher_name": "藤浪 晋太郎",
+      "recent": true
+    }
+  }
 - http_status:
   200
 - pass/fail:
   Pass
 - fail理由:
   なし
-- fail分類:
-  なし
-- 許容した差分:
-  QA正との文意一致。日付・成績更新または表記差のみ許容。
-- 実行ログ:
-  [data/logs/qa-prod-1783320807680.json](../data/logs/qa-prod-1783320807680.json)
 
 ### Q-86: オリックスの西川龍馬とソフトバンクの上沢は対決したことがあるか
 
@@ -10311,7 +10566,7 @@
 - QA正:
   オリックスの西川龍馬とソフトバンクの上沢には直接対決があります。確認できる記録は22件です。最初の対戦は2025年4月23日のオリックス戦で西川龍馬が上沢からファーストゴロ。直近の対戦は2026年4月18日のオリックス戦で西川龍馬が上沢からセンター前ヒット。
 - 本番回答:
-  オリックスの西川 龍馬と上沢には直接対決があります。 確認できる記録は25件です。 最初の対戦は2025年4月23日のオリックス戦で西川 龍馬が上沢からファーストゴロ。 直近の対戦は2026年6月23日のオリックス戦で西川 龍馬が上沢からセンター前タイムリーヒット（打点1）。
+  オリックスの西川 龍馬と上沢には直接対決があります。 確認できる記録は28件です。 最初の対戦は2025年4月23日のオリックス戦で西川 龍馬が上沢からファーストゴロ。 直近の対戦は2026年7月7日のオリックス戦で西川 龍馬が上沢からセカンドゴロ。
 - intent:
   search_events
 - entities:
@@ -10409,18 +10664,21 @@
   null
 - answer_mode:
   direct_answer
+- fixture_structured_query:
+  {
+    "intent": "search_events",
+    "filters": {
+      "team": "オリックス",
+      "batter_name": "西川 龍馬",
+      "pitcher_name": "上沢"
+    }
+  }
 - http_status:
   200
 - pass/fail:
   Pass
 - fail理由:
   なし
-- fail分類:
-  なし
-- 許容した差分:
-  QA正との文意一致。日付・成績更新または表記差のみ許容。
-- 実行ログ:
-  [data/logs/qa-prod-1783320807680.json](../data/logs/qa-prod-1783320807680.json)
 
 ### Q-87: 西川龍馬と上沢は対決したことがあるか
 
@@ -10431,7 +10689,7 @@
 - QA正:
   西川龍馬と上沢には直接対決があります。確認できる記録は34件です。最初の対戦は2018年6月6日の広島戦で西川龍馬が上沢からレフト前ヒット。直近の対戦は2026年4月18日のオリックス戦で西川龍馬が上沢からセンター前ヒット。
 - 本番回答:
-  西川 龍馬と上沢には直接対決があります。 確認できる記録は37件です。 最初の対戦は2018年6月6日の広島戦で西川 龍馬が上沢からレフト前ヒット。 直近の対戦は2026年6月23日のオリックス戦で西川 龍馬が上沢からセンター前タイムリーヒット（打点1）。
+  西川 龍馬と上沢には直接対決があります。 確認できる記録は40件です。 最初の対戦は2018年6月6日の広島戦で西川 龍馬が上沢からレフト前ヒット。 直近の対戦は2026年7月7日のオリックス戦で西川 龍馬が上沢からセカンドゴロ。
 - intent:
   search_events
 - entities:
@@ -10527,18 +10785,20 @@
   null
 - answer_mode:
   direct_answer
+- fixture_structured_query:
+  {
+    "intent": "search_events",
+    "filters": {
+      "batter_name": "西川 龍馬",
+      "pitcher_name": "上沢"
+    }
+  }
 - http_status:
   200
 - pass/fail:
   Pass
 - fail理由:
   なし
-- fail分類:
-  なし
-- 許容した差分:
-  QA正との文意一致。日付・成績更新または表記差のみ許容。
-- 実行ログ:
-  [data/logs/qa-prod-1783320807680.json](../data/logs/qa-prod-1783320807680.json)
 
 ### Q-88: 田中将大と柳は対決したことがあるか
 
@@ -10645,18 +10905,20 @@
   null
 - answer_mode:
   direct_answer
+- fixture_structured_query:
+  {
+    "intent": "search_events",
+    "filters": {
+      "batter_name": "田中 将大",
+      "pitcher_name": "柳"
+    }
+  }
 - http_status:
   200
 - pass/fail:
   Pass
 - fail理由:
   なし
-- fail分類:
-  なし
-- 許容した差分:
-  QA正との文意一致。日付・成績更新または表記差のみ許容。
-- 実行ログ:
-  [data/logs/qa-prod-1783320807680.json](../data/logs/qa-prod-1783320807680.json)
 
 ### Q-89: 丸佳浩と戸根は対決したことがあるか
 
@@ -10763,18 +11025,20 @@
   null
 - answer_mode:
   direct_answer
+- fixture_structured_query:
+  {
+    "intent": "search_events",
+    "filters": {
+      "batter_name": "丸 佳浩",
+      "pitcher_name": "戸根"
+    }
+  }
 - http_status:
   200
 - pass/fail:
   Pass
 - fail理由:
   なし
-- fail分類:
-  なし
-- 許容した差分:
-  QA正との文意一致。日付・成績更新または表記差のみ許容。
-- 実行ログ:
-  [data/logs/qa-prod-1783320807680.json](../data/logs/qa-prod-1783320807680.json)
 
 ### Q-90: 近藤健介と藤原は対決したことがあるか？ 2026年4月16日のソフトバンク対楽天戦には中村晃も出場していた。
 
@@ -10882,18 +11146,21 @@
   null
 - answer_mode:
   direct_answer
+- fixture_structured_query:
+  {
+    "intent": "search_events",
+    "filters": {
+      "year": 2026,
+      "batter_name": "近藤 健介",
+      "pitcher_name": "藤原"
+    }
+  }
 - http_status:
   200
 - pass/fail:
   Pass
 - fail理由:
   なし
-- fail分類:
-  なし
-- 許容した差分:
-  QA正との文意一致。日付・成績更新または表記差のみ許容。
-- 実行ログ:
-  [data/logs/qa-prod-1783320807680.json](../data/logs/qa-prod-1783320807680.json)
 
 ### Q-91: （直前にQ-83の回答がある状態で）それ詳しく
 
@@ -11014,18 +11281,21 @@
   null
 - answer_mode:
   detail_explanation
+- fixture_structured_query:
+  {
+    "intent": "game_detail",
+    "filters": {
+      "game_date": "2021-04-16",
+      "team": "阪神",
+      "limit": 1
+    }
+  }
 - http_status:
   200
 - pass/fail:
   Pass
 - fail理由:
   なし
-- fail分類:
-  なし
-- 許容した差分:
-  QA正との文意一致。日付・成績更新または表記差のみ許容。
-- 実行ログ:
-  [data/logs/qa-prod-1783320807680.json](../data/logs/qa-prod-1783320807680.json)
 
 ### Q-92: （直前にQ-83の回答がある状態で）なんで？
 
@@ -11146,18 +11416,21 @@
   null
 - answer_mode:
   reason_explanation
+- fixture_structured_query:
+  {
+    "intent": "game_detail",
+    "filters": {
+      "game_date": "2021-04-16",
+      "team": "阪神",
+      "limit": 1
+    }
+  }
 - http_status:
   200
 - pass/fail:
   Pass
 - fail理由:
   なし
-- fail分類:
-  なし
-- 許容した差分:
-  QA正との文意一致。日付・成績更新または表記差のみ許容。
-- 実行ログ:
-  [data/logs/qa-prod-1783320807680.json](../data/logs/qa-prod-1783320807680.json)
 
 ### Q-93: （直前にQ-83の回答がある状態で）つまり？
 
@@ -11278,18 +11551,21 @@
   null
 - answer_mode:
   summary_explanation
+- fixture_structured_query:
+  {
+    "intent": "game_detail",
+    "filters": {
+      "game_date": "2021-04-16",
+      "team": "阪神",
+      "limit": 1
+    }
+  }
 - http_status:
   200
 - pass/fail:
   Pass
 - fail理由:
   なし
-- fail分類:
-  なし
-- 許容した差分:
-  QA正との文意一致。日付・成績更新または表記差のみ許容。
-- 実行ログ:
-  [data/logs/qa-prod-1783320807680.json](../data/logs/qa-prod-1783320807680.json)
 
 ### Q-94: （直前にQ-77の回答がある状態で）違う、今年の話
 
@@ -11300,9 +11576,7 @@
 - QA正:
   2026年の村上宗隆はNPBでの記録が確認できないため、代わりに2025年の最終在籍年の打撃成績を表示します。
 - 本番回答:
-  【注意】2026年はNPBに在籍していないため、代わりに最終在籍年（2025年）のデータを表示します。
-
-  条件に一致する打撃成績が20件あります。先頭は2025年4月17日の村上で、4打数1安打0打点です。
+  2025年の村上宗隆の成績です。56試合に出場し、打率は約.273、本塁打は22本、打点は47です。
 - intent:
   search_batting
 - entities:
@@ -11361,8 +11635,8 @@
     "inheritedPlayerId": null,
     "inheritedPlayerName": "村上",
     "inheritedTeam": "ヤクルト",
-    "inheritedSeason": 2026,
-    "inheritedScope": "current",
+    "inheritedSeason": 2025,
+    "inheritedScope": "historical",
     "inheritanceSource": "conversation_history",
     "inheritanceConfidence": 0.62,
     "shouldApplyInheritance": false
@@ -11384,13 +11658,13 @@
     "target": "season",
     "value": {
       "kind": "year",
-      "year": 2026
+      "year": 2025
     },
     "confidence": 0.72
   }
 - identity_intent:
   {
-    "scope": "current",
+    "scope": "historical",
     "explicitSeasonOverride": true,
     "explicitScopeOverride": true
   }
@@ -11400,18 +11674,22 @@
   null
 - answer_mode:
   correction_explanation
+- fixture_structured_query:
+  {
+    "intent": "search_batting",
+    "filters": {
+      "year": 2025,
+      "player_name": "村上",
+      "team": "ヤクルト",
+      "limit": 20
+    }
+  }
 - http_status:
   200
 - pass/fail:
   Pass
 - fail理由:
   なし
-- fail分類:
-  なし
-- 許容した差分:
-  QA正との文意一致。日付・成績更新または表記差のみ許容。
-- 実行ログ:
-  [data/logs/qa-prod-1783320807680.json](../data/logs/qa-prod-1783320807680.json)
 
 ### Q-95: （直前にQ-77の回答がある状態で）ちがうはずなんだけど、おかしくない？
 
@@ -11519,18 +11797,22 @@
   null
 - answer_mode:
   evaluation_explanation
+- fixture_structured_query:
+  {
+    "intent": "search_batting",
+    "filters": {
+      "year": 2025,
+      "player_name": "村上",
+      "team": "ヤクルト",
+      "limit": 20
+    }
+  }
 - http_status:
   200
 - pass/fail:
   Pass
 - fail理由:
   なし
-- fail分類:
-  なし
-- 許容した差分:
-  QA正との文意一致。日付・成績更新または表記差のみ許容。
-- 実行ログ:
-  [data/logs/qa-prod-1783320807680.json](../data/logs/qa-prod-1783320807680.json)
 
 ### Q-96: （直前にQ-83の回答がある状態で）調べなおして
 
@@ -11640,18 +11922,21 @@
   null
 - answer_mode:
   recheck_explanation
+- fixture_structured_query:
+  {
+    "intent": "search_events",
+    "filters": {
+      "batter_name": "藤浪 晋太郎",
+      "event_type": "plate_appearance",
+      "result_text_contains": "ホームラン"
+    }
+  }
 - http_status:
   200
 - pass/fail:
   Pass
 - fail理由:
   なし
-- fail分類:
-  なし
-- 許容した差分:
-  QA正との文意一致。日付・成績更新または表記差のみ許容。
-- 実行ログ:
-  [data/logs/qa-prod-1783320807680.json](../data/logs/qa-prod-1783320807680.json)
 
 ### Q-97: （直前にQ-81の回答がある状態で）去年と比べてどう？
 
@@ -11757,18 +12042,20 @@
   null
 - answer_mode:
   comparison_explanation
+- fixture_structured_query:
+  {
+    "intent": "search_pitching",
+    "filters": {
+      "pitcher_name": "藤浪 晋太郎",
+      "recent": true
+    }
+  }
 - http_status:
   200
 - pass/fail:
   Pass
 - fail理由:
   なし
-- fail分類:
-  なし
-- 許容した差分:
-  QA正との文意一致。日付・成績更新または表記差のみ許容。
-- 実行ログ:
-  [data/logs/qa-prod-1783320807680.json](../data/logs/qa-prod-1783320807680.json)
 
 ### Q-98: 藤浪どう？
 
@@ -11784,6 +12071,7 @@
   内容は5試合で20奪三振、7自責点です。
   最新登板は2026年7月1日で、6回、6奪三振、自責点0です。
   対象試合: 2026年7月1日、2026年6月21日、2026年6月13日、2026年6月5日、2026年5月30日
+  確認できる最新の出場記録は2026年7月1日です。現在（2026年7月8日）から7日空いているため、これだけでは現在の調子とは言えません。
 - intent:
   search_pitching
 - entities:
@@ -11828,9 +12116,9 @@
 - target_entity:
   {
     "kind": "player",
-    "label": "藤浪",
+    "label": "藤浪晋太郎",
     "players": [
-      "藤浪"
+      "藤浪晋太郎"
     ],
     "teams": []
   }
@@ -11838,7 +12126,7 @@
   {
     "contextKind": "player_stats",
     "inheritedPlayerId": null,
-    "inheritedPlayerName": "藤浪",
+    "inheritedPlayerName": "藤浪晋太郎",
     "inheritedTeam": null,
     "inheritedSeason": null,
     "inheritedScope": "unspecified",
@@ -11878,18 +12166,20 @@
   null
 - answer_mode:
   direct_answer
+- fixture_structured_query:
+  {
+    "intent": "search_pitching",
+    "filters": {
+      "pitcher_name": "藤浪 晋太郎",
+      "recent": true
+    }
+  }
 - http_status:
   200
 - pass/fail:
   Pass
 - fail理由:
   なし
-- fail分類:
-  なし
-- 許容した差分:
-  QA正との文意一致。日付・成績更新または表記差のみ許容。
-- 実行ログ:
-  [data/logs/qa-prod-1783320807680.json](../data/logs/qa-prod-1783320807680.json)
 
 ### Q-99: （直前にQ-83の回答がある状態で）さっきの二つ目
 
@@ -12010,18 +12300,21 @@
   null
 - answer_mode:
   detail_explanation
+- fixture_structured_query:
+  {
+    "intent": "game_detail",
+    "filters": {
+      "game_date": "2021-04-16",
+      "team": "阪神",
+      "limit": 1
+    }
+  }
 - http_status:
   200
 - pass/fail:
   Pass
 - fail理由:
   なし
-- fail分類:
-  なし
-- 許容した差分:
-  QA正との文意一致。日付・成績更新または表記差のみ許容。
-- 実行ログ:
-  [data/logs/qa-prod-1783320807680.json](../data/logs/qa-prod-1783320807680.json)
 
 ### Q-100: （直前にQ-83の回答がある状態で）これやばくない？
 
@@ -12142,18 +12435,21 @@
   null
 - answer_mode:
   evaluation_explanation
+- fixture_structured_query:
+  {
+    "intent": "game_detail",
+    "filters": {
+      "game_date": "2021-04-16",
+      "team": "阪神",
+      "limit": 1
+    }
+  }
 - http_status:
   200
 - pass/fail:
   Pass
 - fail理由:
   なし
-- fail分類:
-  なし
-- 許容した差分:
-  QA正との文意一致。日付・成績更新または表記差のみ許容。
-- 実行ログ:
-  [data/logs/qa-prod-1783320807680.json](../data/logs/qa-prod-1783320807680.json)
 
 ### Q-101: （直前にQ-84の回答がある状態で）それってどういう意味？
 
@@ -12271,18 +12567,20 @@
   null
 - answer_mode:
   detail_explanation
+- fixture_structured_query:
+  {
+    "intent": "game_detail",
+    "filters": {
+      "game_date": "2021-04-16",
+      "limit": 1
+    }
+  }
 - http_status:
   200
 - pass/fail:
   Pass
 - fail理由:
   なし
-- fail分類:
-  なし
-- 許容した差分:
-  QA正との文意一致。日付・成績更新または表記差のみ許容。
-- 実行ログ:
-  [data/logs/qa-prod-1783320807680.json](../data/logs/qa-prod-1783320807680.json)
 
 ### Q-102: （直前にQ-98の回答がある状態で）一軍の話？
 
@@ -12390,18 +12688,22 @@
   null
 - answer_mode:
   clarification_request
+- fixture_structured_query:
+  {
+    "intent": "search_pitching",
+    "filters": {
+      "year": 2025,
+      "pitcher_name": "藤浪 晋太郎",
+      "team": "DeNA",
+      "recent": true
+    }
+  }
 - http_status:
   200
 - pass/fail:
   Pass
 - fail理由:
   なし
-- fail分類:
-  なし
-- 許容した差分:
-  QA正との文意一致。日付・成績更新または表記差のみ許容。
-- 実行ログ:
-  [data/logs/qa-prod-1783320807680.json](../data/logs/qa-prod-1783320807680.json)
 
 ### Q-103: （直前にQ-77の回答がある状態で）今年じゃなくて去年
 
@@ -12510,18 +12812,22 @@
   null
 - answer_mode:
   correction_explanation
+- fixture_structured_query:
+  {
+    "intent": "search_batting",
+    "filters": {
+      "year": 2025,
+      "player_name": "村上",
+      "team": "ヤクルト",
+      "limit": 20
+    }
+  }
 - http_status:
   200
 - pass/fail:
   Pass
 - fail理由:
   なし
-- fail分類:
-  なし
-- 許容した差分:
-  QA正との文意一致。日付・成績更新または表記差のみ許容。
-- 実行ログ:
-  [data/logs/qa-prod-1783320807680.json](../data/logs/qa-prod-1783320807680.json)
 
 ### Q-104: （直前にQ-23の回答がある状態で）なんで負けたん？
 
@@ -12635,18 +12941,20 @@
   null
 - answer_mode:
   reason_explanation
+- fixture_structured_query:
+  {
+    "intent": "game_detail",
+    "filters": {
+      "game_date": "2026-05-15",
+      "limit": 1
+    }
+  }
 - http_status:
   200
 - pass/fail:
   Pass
 - fail理由:
   なし
-- fail分類:
-  なし
-- 許容した差分:
-  QA正との文意一致。日付・成績更新または表記差のみ許容。
-- 実行ログ:
-  [data/logs/qa-prod-1783320807680.json](../data/logs/qa-prod-1783320807680.json)
 
 ### Q-105: （直前にQ-98の回答がある状態で）どこがよかった？
 
@@ -12666,7 +12974,7 @@
     "pitcher": "藤浪 晋太郎",
     "batter": null,
     "runner": null,
-    "team": "横浜DeNAベイスターズ",
+    "team": "DeNA",
     "opponent": null,
     "game_id": null
   }
@@ -12707,7 +13015,7 @@
       "藤浪晋太郎"
     ],
     "teams": [
-      "横浜DeNAベイスターズ"
+      "DeNA"
     ]
   }
 - follow_up_context:
@@ -12715,7 +13023,7 @@
     "contextKind": "player_stats",
     "inheritedPlayerId": null,
     "inheritedPlayerName": "藤浪晋太郎",
-    "inheritedTeam": "横浜DeNAベイスターズ",
+    "inheritedTeam": "DeNA",
     "inheritedSeason": 2026,
     "inheritedScope": "current",
     "inheritanceSource": "conversation_history",
@@ -12723,15 +13031,7 @@
     "shouldApplyInheritance": false
   }
 - follow_up_context_applied:
-  {
-    "applied": true,
-    "fields": [
-      "team",
-      "season",
-      "scope"
-    ],
-    "reason": "player_stats_follow_up_context"
-  }
+  null
 - correction_guard:
   {
     "inheritanceBlockedReason": "none",
@@ -12762,18 +13062,22 @@
   null
 - answer_mode:
   evaluation_explanation
+- fixture_structured_query:
+  {
+    "intent": "search_pitching",
+    "filters": {
+      "year": 2026,
+      "pitcher_name": "藤浪 晋太郎",
+      "team": "横浜DeNAベイスターズ",
+      "recent": true
+    }
+  }
 - http_status:
   200
 - pass/fail:
   Pass
 - fail理由:
   なし
-- fail分類:
-  なし
-- 許容した差分:
-  QA正との文意一致。日付・成績更新または表記差のみ許容。
-- 実行ログ:
-  [data/logs/qa-prod-1783320807680.json](../data/logs/qa-prod-1783320807680.json)
 
 ### Q-106: （直前にQ-83の回答がある状態で）なんで勝てたん？
 
@@ -12894,18 +13198,21 @@
   null
 - answer_mode:
   reason_explanation
+- fixture_structured_query:
+  {
+    "intent": "game_detail",
+    "filters": {
+      "game_date": "2021-04-16",
+      "team": "阪神",
+      "limit": 1
+    }
+  }
 - http_status:
   200
 - pass/fail:
   Pass
 - fail理由:
   なし
-- fail分類:
-  なし
-- 許容した差分:
-  QA正との文意一致。日付・成績更新または表記差のみ許容。
-- 実行ログ:
-  [data/logs/qa-prod-1783320807680.json](../data/logs/qa-prod-1783320807680.json)
 
 ### Q-107: （直前にQ-81の回答がある状態で）いや藤浪じゃなくて村上
 
@@ -13013,18 +13320,22 @@
   null
 - answer_mode:
   correction_explanation
+- fixture_structured_query:
+  {
+    "intent": "search_batting",
+    "filters": {
+      "year": 2025,
+      "player_name": "村上",
+      "team": "ヤクルト",
+      "limit": 20
+    }
+  }
 - http_status:
   200
 - pass/fail:
   Pass
 - fail理由:
   なし
-- fail分類:
-  なし
-- 許容した差分:
-  QA正との文意一致。日付・成績更新または表記差のみ許容。
-- 実行ログ:
-  [data/logs/qa-prod-1783320807680.json](../data/logs/qa-prod-1783320807680.json)
 
 ### Q-108: （直前にQ-83の回答がある状態で）違う、その前のやつ
 
@@ -13154,15 +13465,18 @@
   null
 - answer_mode:
   detail_explanation
+- fixture_structured_query:
+  {
+    "intent": "game_detail",
+    "filters": {
+      "game_date": "2018-09-16",
+      "team": "阪神",
+      "limit": 1
+    }
+  }
 - http_status:
   200
 - pass/fail:
   Pass
 - fail理由:
   なし
-- fail分類:
-  なし
-- 許容した差分:
-  QA正との文意一致。日付・成績更新または表記差のみ許容。
-- 実行ログ:
-  [data/logs/qa-prod-1783320807680.json](../data/logs/qa-prod-1783320807680.json)
