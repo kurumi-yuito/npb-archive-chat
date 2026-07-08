@@ -1,5 +1,18 @@
 # QAテストケース一覧 - 現行本番との差分
 
+- 現行ケース数: 110
+- 本番QA実行日時: 2026-07-08T15:14:15Z
+- 対象デプロイVersion ID: 5b0a289f-ae77-4748-aedb-0f6e607ee7ba
+- QA実行モード: 通常本番API（LLM parser 実行）
+- 最新通常QAログ: [data/logs/qa-prod-block-20260708-q109.json](../data/logs/qa-prod-block-20260708-q109.json)
+- 最新通常QA結果: Blocked（Q-109 が HTTP 503）
+- Blocked理由: CHAT_QUERY_LLM が OpenAI 429 insufficient_quota を返し、production 設定では heuristic fallback を使わないため `chat_llm_unavailable` になった
+- Q-109/Q-110 本番文意一致: 未確認（LLM quota 復旧待ち）
+- HTTP 500/503件数: 1（Q-109 通常本番API確認時点）
+- summary null件数: 1（Q-109 は 503 のため answer 未生成）
+
+## 直近完了済み fixture QA（参考）
+
 - 現行ケース数: 108
 - 本番QA実行日時: 2026-07-08T13:56:14.801Z
 - 対象デプロイVersion ID: 05454aa8-34f4-43ee-b6dd-ea5a437716fe

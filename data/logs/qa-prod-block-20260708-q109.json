@@ -1,0 +1,23 @@
+{
+  "baseUrl": "https://npb-chat.dom9th-works.com",
+  "deployedVersionId": "5b0a289f-ae77-4748-aedb-0f6e607ee7ba",
+  "checkedAt": "2026-07-08T15:14:15Z",
+  "caseId": "Q-109",
+  "question": "石田裕太郎と東克樹のそれぞれ直近3試合の成績を比較して",
+  "status": 503,
+  "outcome": "blocked",
+  "error": {
+    "code": "chat_llm_unavailable",
+    "message": "Chat query LLM call failed: LLM query generation failed with status 429: insufficient_quota"
+  },
+  "raw": {
+    "error": true,
+    "url": "https://npb-chat.dom9th-works.com/api/chat",
+    "statusCode": 503,
+    "statusMessage": "Chat query LLM call failed: LLM query generation failed with status 429: { \"error\": { \"message\": \"You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.\", \"type\": \"insufficient_quota\", \"param\": null, \"code\": \"insufficient_quota\" } }",
+    "message": "Chat query LLM call failed: LLM query generation failed with status 429: { \"error\": { \"message\": \"You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.\", \"type\": \"insufficient_quota\", \"param\": null, \"code\": \"insufficient_quota\" } }",
+    "data": {
+      "code": "chat_llm_unavailable"
+    }
+  }
+}
