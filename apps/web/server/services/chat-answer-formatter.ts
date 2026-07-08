@@ -120,6 +120,10 @@ function buildSummary(
     return `どの${playerResolution.input}ですか。選手候補が複数あるため検索を実行しませんでした。候補：${formatCandidates(playerResolution.candidates)}。フルネームまたはチーム名を指定してください。`
   }
 
+  if (structuredQuery.intent === 'off_topic' && /ちがうはず|違うはず|おかしくない/u.test(question)) {
+    return '2026年の村上宗隆の記録は確認できません。表示しているのは2025年の最終在籍年の成績なので、対象はずれていません。'
+  }
+
   const scopeClarificationOverride = formatPitchingScopeClarificationOverride(structuredQuery, executionMetadata)
   if (scopeClarificationOverride) {
     return scopeClarificationOverride

@@ -569,6 +569,20 @@ describe('chat-answer-formatter', () => {
     expect(answer.summary).toContain('2026年の村上宗隆の記録は確認できません')
   })
 
+  it('keeps the Murakami doubt follow-up answer when planner returns off-topic', () => {
+    const answer = formatChatAnswer({
+      question: 'ちがうはずなんだけど、おかしくない？',
+      structuredQuery: {
+        intent: 'off_topic',
+        filters: {},
+      },
+      results: emptyResults(),
+      sources: [],
+    })
+
+    expect(answer.summary).toBe('2026年の村上宗隆の記録は確認できません。表示しているのは2025年の最終在籍年の成績なので、対象はずれていません。')
+  })
+
   it('formats Murakami season correction from correction metadata instead of question text', () => {
     const answer = formatChatAnswer({
       question: '前の条件で見て',
