@@ -201,6 +201,7 @@ export type ChatExecutionMetadata = {
   dataRequirements: ChatDataRequirement[]
   repositories: ChatExecutionRepository[]
   playerResolution: PlayerResolution | null
+  playerResolutions?: PlayerResolution[]
   identityResolution?: IdentityResolutionMetadata | null
   playerIdRequired: boolean
   playerIdSatisfied: boolean
@@ -315,7 +316,9 @@ export function extractPlannerTimeRange(query: ChatStructuredQuery): Record<stri
 export function queryHasPlayerName(query: ChatStructuredQuery): boolean {
   const filters = query.filters as Record<string, unknown>
   return typeof filters.player_name === 'string' ||
+    (Array.isArray(filters.player_names) && filters.player_names.length > 0) ||
     typeof filters.pitcher_name === 'string' ||
+    (Array.isArray(filters.pitcher_names) && filters.pitcher_names.length > 0) ||
     typeof filters.batter_name === 'string' ||
     typeof filters.runner_name === 'string'
 }
@@ -323,7 +326,9 @@ export function queryHasPlayerName(query: ChatStructuredQuery): boolean {
 export function queryHasPlayerId(query: ChatStructuredQuery): boolean {
   const filters = query.filters as Record<string, unknown>
   return typeof filters.player_id === 'string' ||
+    (Array.isArray(filters.player_ids) && filters.player_ids.length > 0) ||
     typeof filters.pitcher_player_id === 'string' ||
+    (Array.isArray(filters.pitcher_player_ids) && filters.pitcher_player_ids.length > 0) ||
     typeof filters.batter_player_id === 'string' ||
     typeof filters.runner_player_id === 'string'
 }
@@ -840,7 +845,7 @@ function classifyFollowUpType(message: string, hasAssistantHistory: boolean): Ch
   if (/(?:\d+|[一二三四五六七八九十]+|[１２３４５６７８９]+)(?:つ目|番目|件目|本目)/u.test(message)) {
     return 'context_reference'
   }
-  if (/違う|通算じゃなくて|今年の話|最近の話|訂正|修正/u.test(message)) {
+  if (/違う|通算じゃなくて|今年の話|最近の話|訂正|修正|答えになってない|回答になってない/u.test(message)) {
     return 'correction_request'
   }
   if (/調べなおして|調べ直して|もう一回|再確認|見直して/u.test(message)) {
@@ -920,7 +925,9 @@ function buildTargetEntity(
   const filters = query.filters as Record<string, unknown>
   const players = [
     typeof filters.player_name === 'string' ? filters.player_name : null,
+    ...(Array.isArray(filters.player_names) ? filters.player_names : []),
     typeof filters.pitcher_name === 'string' ? filters.pitcher_name : null,
+    ...(Array.isArray(filters.pitcher_names) ? filters.pitcher_names : []),
     typeof filters.batter_name === 'string' ? filters.batter_name : null,
     typeof filters.runner_name === 'string' ? filters.runner_name : null,
   ].filter((value): value is string => Boolean(value))

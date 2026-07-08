@@ -106,6 +106,8 @@ const coercedName = z.union([
   z.string().min(1),
   z.array(z.string().min(1)).min(1).transform((a) => a[0]!),
 ])
+const nameList = z.array(z.string().min(1)).min(1).max(6)
+const playerIdList = z.array(z.string().min(1)).min(1).max(6)
 const coercedText = coercedName
 const coercedId = z.union([
   z.string().min(1),
@@ -169,7 +171,9 @@ export const searchPitchingLinesFiltersSchema = z.object({
   game_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   game_id: coercedId.optional(),
   pitcher_name: coercedName.optional(),
+  pitcher_names: nameList.optional(),
   pitcher_player_id: z.string().min(1).optional(),
+  pitcher_player_ids: playerIdList.optional(),
   team: coercedText.optional(),
   recent: z.boolean().optional(),
   sort_by: z.enum(['date', 'pitchCount', 'inningsPitched']).optional(),
@@ -183,7 +187,9 @@ export const searchBattingLinesFiltersSchema = z.object({
   game_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   game_id: coercedId.optional(),
   player_name: coercedName.optional(),
+  player_names: nameList.optional(),
   player_id: z.string().min(1).optional(),
+  player_ids: playerIdList.optional(),
   team: z.string().min(1).optional(),
   result_text_contains: z.string().min(1).optional(),
   batting_order: z.number().int().min(1).max(9).optional(),
@@ -504,6 +510,14 @@ export const chatResponseSchema = z.object({
       target_player_id: z.string().min(1).nullable(),
       answer_mode: z.string().min(1),
       identity_resolution_scope: z.enum(['unspecified', 'current', 'historical']).optional(),
+      resolved_players: z.array(z.object({
+        input: z.string().min(1),
+        player_id: z.string().min(1).nullable().optional(),
+        name: z.string().min(1).nullable(),
+        primary_team: z.string().min(1).nullable().optional(),
+        status: z.enum(['resolved', 'ambiguous', 'not_found']),
+        candidates: z.array(playerCandidateSchema),
+      })).optional(),
       identity_resolution: z.object({
         path: z.enum(['explicit_player_id', 'candidate_search', 'none']),
         field: z.enum(['batter_name', 'pitcher_name', 'runner_name', 'player_name']).nullable(),

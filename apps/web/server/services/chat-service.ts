@@ -145,6 +145,28 @@ export function createChatService(
         }
       }
 
+      if (parsedQuery.intent === 'off_topic' && effectivePlan.followUpType === 'correction_request') {
+        const previousUserMessage = latestUserMessage(options.history)
+        if (previousUserMessage) {
+          const replan = await planner(previousUserMessage, { history: [] })
+          parsedQuery = rewriteStructuredQueryForQuestion(previousUserMessage, replan.structuredQuery)
+          parsedQuery = rewriteSeasonalPlayerStatsMisparseIfNeeded(previousUserMessage, parsedQuery)
+          parsedQuery = recoverOffTopicRecentPlayerQuery(previousUserMessage, parsedQuery)
+          parsedQuery = stabilizeQaQueryFromQuestion(previousUserMessage, parsedQuery)
+          effectivePlan = {
+            ...buildPlannerOutput(parsedQuery, true, {
+              message,
+              history: options.history,
+            }),
+            appliedFollowUpContext: {
+              applied: true,
+              fields: [],
+              reason: 'correction_request_replanned_previous_user_message',
+            },
+          }
+        }
+      }
+
       if (isNorimotoTeamComparison(message, parsedQuery)) {
         const results = await aggregatePitchingAcrossYears(queryService, parsedQuery)
         const emptyResults: ChatResponseCore['results'] = {
@@ -186,6 +208,23 @@ export function createChatService(
           parsedQuery,
           effectivePlan,
         )
+      }
+
+      const multiPlayerComparisonResponse = await answerMultiPlayerStatsComparisonIfNeeded({
+        queryService,
+        message,
+        structuredQuery: parsedQuery,
+        history: options.history,
+        plannerOutput: effectivePlan,
+        answerFormatter,
+        resolvers: {
+          resolvePlayer,
+          resolveCurrentPlayer,
+          resolveHistoricalPlayer,
+        },
+      })
+      if (multiPlayerComparisonResponse) {
+        return multiPlayerComparisonResponse
       }
 
       const structuredFilters = parsedQuery.filters as Record<string, unknown>
@@ -861,7 +900,218 @@ function shouldSkipForPlayerResolution(resolution: PlayerResolution | null): boo
   return resolution?.status === 'ambiguous' || resolution?.status === 'not_found'
 }
 
+function latestUserMessage(history: ChatRequest['history'] | undefined): string | null {
+  return [...(history ?? [])].reverse().find((item) => item.role === 'user')?.content ?? null
+}
+
 type ScopedPlayerResolver = typeof resolveStructuredQueryPlayer
+
+type MultiPlayerStatsComparisonOptions = {
+  queryService: ChatQueryService
+  message: string
+  structuredQuery: ChatStructuredQuery
+  history?: ChatRequest['history']
+  plannerOutput: ChatPlannerOutput
+  answerFormatter: typeof formatChatAnswer
+  resolvers: {
+    resolvePlayer: ScopedPlayerResolver
+    resolveCurrentPlayer: ScopedPlayerResolver
+    resolveHistoricalPlayer: ScopedPlayerResolver
+  }
+}
+
+async function answerMultiPlayerStatsComparisonIfNeeded({
+  queryService,
+  message,
+  structuredQuery,
+  history,
+  plannerOutput,
+  answerFormatter,
+  resolvers,
+}: MultiPlayerStatsComparisonOptions): Promise<ChatResponseCore | null> {
+  const multiTarget = extractMultiPlayerStatsTarget(structuredQuery)
+  if (!multiTarget || multiTarget.names.length < 2) {
+    return null
+  }
+
+  const resolvedPlayers = await resolveMultiPlayerTargets(
+    queryService,
+    structuredQuery,
+    multiTarget,
+    plannerOutput.identityResolutionScope,
+    resolvers,
+  )
+  const resolvedOnly = resolvedPlayers.filter(
+    (resolution) => resolution.status === 'resolved' && Boolean(resolution.player_id),
+  )
+  const usePitching = multiTarget.kind === 'pitching' ||
+    (multiTarget.kind === 'batting' && await allResolvedPlayersHavePitchingEvidence(queryService, resolvedOnly))
+  if (!usePitching) {
+    return null
+  }
+
+  const requestedLimit = typeof (structuredQuery.filters as Record<string, unknown>).limit === 'number'
+    ? Number((structuredQuery.filters as Record<string, unknown>).limit)
+    : 3
+  const limit = Math.max(1, Math.min(10, requestedLimit))
+  const emptyResults: ChatResponseCore['results'] = {
+    events: [],
+    games: [],
+    pitching: [],
+    batting: [],
+    roster: [],
+    affiliations: [],
+    gameDetails: [],
+    aggregates: [],
+  }
+  const pitching: PitchingLineRow[] = []
+  for (const resolution of resolvedOnly) {
+    const rows = await searchRecentPitchingLinesForChat(
+      queryService,
+      {
+        pitcher_name: resolution.name ?? resolution.input,
+        pitcher_player_id: resolution.player_id,
+        ...(resolution.primary_team ? { team: resolution.primary_team } : {}),
+        recent: true,
+        limit,
+      },
+      resolution,
+    )
+    pitching.push(...rows
+      .sort((a, b) => `${b.gameDate}:${b.gameId}`.localeCompare(`${a.gameDate}:${a.gameId}`, 'ja'))
+      .slice(0, limit))
+  }
+
+  const filters = structuredQuery.filters as Record<string, unknown>
+  const finalStructuredQuery = {
+    intent: 'search_pitching',
+    filters: {
+      ...(typeof filters.year === 'number' ? { year: filters.year } : {}),
+      ...(typeof filters.year_from === 'number' ? { year_from: filters.year_from } : {}),
+      ...(typeof filters.year_to === 'number' ? { year_to: filters.year_to } : {}),
+      pitcher_names: multiTarget.names,
+      pitcher_player_ids: resolvedOnly
+        .map((resolution) => resolution.player_id)
+        .filter((playerId): playerId is string => typeof playerId === 'string' && playerId.length > 0),
+      recent: true,
+      limit,
+    },
+  } as ChatStructuredQuery
+  const finalResults = { ...emptyResults, pitching }
+  const sources = await listSourceSnapshotsByGameIdsBatched(
+    queryService,
+    Array.from(new Set(pitching.map((row) => row.gameId))),
+  )
+  const finalPlan = buildPlannerOutput(finalStructuredQuery, true, { message, history })
+  const executionMetadata = buildChatExecutionMetadata(
+    finalStructuredQuery,
+    null,
+    finalPlan,
+    resolvedPlayers,
+  )
+  const answer = answerFormatter({
+    question: message,
+    structuredQuery: finalStructuredQuery,
+    results: finalResults,
+    sources,
+    playerResolution: null,
+    executionMetadata,
+  })
+  return chatResponseCoreSchema.parse({
+    message,
+    structured_query: finalStructuredQuery,
+    answer,
+    results: finalResults,
+    sources,
+  })
+}
+
+function extractMultiPlayerStatsTarget(
+  structuredQuery: ChatStructuredQuery,
+): { kind: 'pitching' | 'batting'; names: string[] } | null {
+  if (
+    structuredQuery.intent !== 'search_pitching' &&
+    structuredQuery.intent !== 'aggregate_pitching' &&
+    structuredQuery.intent !== 'search_batting' &&
+    structuredQuery.intent !== 'aggregate_batting'
+  ) {
+    return null
+  }
+  const filters = structuredQuery.filters as Record<string, unknown>
+  if (Array.isArray(filters.pitcher_names)) {
+    const names = filters.pitcher_names.filter((name): name is string => typeof name === 'string' && name.length > 0)
+    if (names.length > 0) {
+      return { kind: 'pitching', names }
+    }
+  }
+  if (Array.isArray(filters.player_names)) {
+    const names = filters.player_names.filter((name): name is string => typeof name === 'string' && name.length > 0)
+    if (names.length > 0) {
+      return { kind: 'batting', names }
+    }
+  }
+  return null
+}
+
+async function resolveMultiPlayerTargets(
+  queryService: ChatQueryService,
+  structuredQuery: ChatStructuredQuery,
+  target: { kind: 'pitching' | 'batting'; names: string[] },
+  scope: IdentityResolutionScope,
+  resolvers: {
+    resolvePlayer: ScopedPlayerResolver
+    resolveCurrentPlayer: ScopedPlayerResolver
+    resolveHistoricalPlayer: ScopedPlayerResolver
+  },
+): Promise<PlayerResolution[]> {
+  const filters = structuredQuery.filters as Record<string, unknown>
+  const field = target.kind === 'pitching' ? 'pitcher_name' : 'player_name'
+  const intent = target.kind === 'pitching' ? 'search_pitching' : 'search_batting'
+  const results: PlayerResolution[] = []
+  for (const name of target.names) {
+    const singleQuery = {
+      intent,
+      filters: {
+        ...(typeof filters.team === 'string' ? { team: filters.team } : {}),
+        ...(typeof filters.year === 'number' ? { year: filters.year } : {}),
+        ...(typeof filters.year_from === 'number' ? { year_from: filters.year_from } : {}),
+        ...(typeof filters.year_to === 'number' ? { year_to: filters.year_to } : {}),
+        [field]: name,
+      },
+    } as ChatStructuredQuery
+    const resolved = await resolvePlayerForIdentityScope(queryService, singleQuery, scope, resolvers)
+    if (resolved.resolution) {
+      results.push(resolved.resolution)
+    } else {
+      results.push({ input: name, name: null, status: 'not_found', candidates: [] })
+    }
+  }
+  return results
+}
+
+async function allResolvedPlayersHavePitchingEvidence(
+  queryService: ChatQueryService,
+  resolutions: PlayerResolution[],
+): Promise<boolean> {
+  if (resolutions.length === 0) {
+    return false
+  }
+  for (const resolution of resolutions) {
+    if (resolution.status !== 'resolved' || !resolution.player_id) {
+      return false
+    }
+    const rows = await queryService.searchPitchingLines({
+      pitcher_name: resolution.name ?? resolution.input,
+      pitcher_player_id: resolution.player_id,
+      ...(resolution.primary_team ? { team: resolution.primary_team } : {}),
+      limit: 1,
+    })
+    if (rows.length === 0) {
+      return false
+    }
+  }
+  return true
+}
 
 async function resolvePlayerForIdentityScope(
   queryService: ChatQueryService,
@@ -884,6 +1134,7 @@ async function resolvePlayerForIdentityScope(
 
 const PLAYER_STATS_FOLLOW_UP_INHERITANCE_TYPES = new Set<ChatFollowUpType>([
   'target_omission',
+  'correction_request',
   'timeframe_correction',
   'scope_clarification',
   'evaluation_request',
@@ -2403,7 +2654,7 @@ function isLikelyNpbTopic(message: string, history: ChatRequest['history'] | und
   if (
     conversationHistory.length > 0 &&
     hasNpbTopicHistory(conversationHistory) &&
-    FOLLOW_UP_TOPIC_PATTERN.test(trimmedMessage)
+    (FOLLOW_UP_TOPIC_PATTERN.test(trimmedMessage) || trimmedMessage.length <= 40)
   ) {
     return true
   }
@@ -2557,6 +2808,9 @@ function rewriteStructuredQueryForQuestion(
   if (awardRewrite.intent === 'award_winners') {
     return awardRewrite
   }
+  if (hasMultiPlayerStatsFilters(awardRewrite)) {
+    return awardRewrite
+  }
   const knownPlayerRewrite = rewriteKnownHistoricalPlayers(message, awardRewrite)
   const intentRewrite = rewriteIntentFromNaturalLanguage(message, knownPlayerRewrite)
   const specialRewrite = rewriteSpecialQuestionPatterns(message, intentRewrite)
@@ -2567,6 +2821,12 @@ function rewriteStructuredQueryForQuestion(
   const pitchingRankingRewrite = sanitizeAggregatePitchingRankingFilters(message, pitchingRankingIntentRewrite)
   const gamesRewrite = rewriteToAggregateGamesIfNeeded(message, pitchingRankingRewrite)
   return gamesRewrite
+}
+
+function hasMultiPlayerStatsFilters(query: ChatStructuredQuery): boolean {
+  const filters = query.filters as Record<string, unknown>
+  return (Array.isArray(filters.player_names) && filters.player_names.length >= 2) ||
+    (Array.isArray(filters.pitcher_names) && filters.pitcher_names.length >= 2)
 }
 
 function rewriteAwardQuestionIfNeeded(message: string, query: ChatStructuredQuery): ChatStructuredQuery {

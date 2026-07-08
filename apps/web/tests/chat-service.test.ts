@@ -840,6 +840,154 @@ describe('chat-service', () => {
     expect(pitchingFilters).toMatchObject({ pitcher_name: '藤浪', recent: true })
   })
 
+  it('keeps multi-pitcher recent comparisons as pitching evidence for each resolved player', async () => {
+    const service = createChatService(createFakeQueryService({
+      playerCandidatesForFilters: (filters) => {
+        if (filters.name === '石田裕太郎') {
+          return [{
+            player_id: '21125159',
+            name: '石田 裕太郎',
+            primary_team: '横浜DeNAベイスターズ',
+            roles: ['profile'],
+            teams: ['横浜DeNAベイスターズ'],
+            years: [2026],
+          }]
+        }
+        if (filters.name === '東克樹') {
+          return [{
+            player_id: '51155136',
+            name: '東 克樹',
+            primary_team: '横浜DeNAベイスターズ',
+            roles: ['profile'],
+            teams: ['横浜DeNAベイスターズ'],
+            years: [2026],
+          }]
+        }
+        return []
+      },
+      searchPitchingLines: async (filters) => {
+        const playerId = filters.pitcher_player_id
+        const name = playerId === '21125159' ? '石田裕' : '東'
+        return [0, 1, 2].map((index) => ({
+          gameId: `r2026042${index}${playerId}`,
+          gameDate: `2026-04-2${index}`,
+          team: '横浜DeNAベイスターズ',
+          pitcherName: name,
+          inningsPitched: index === 0 ? '6' : '5',
+          pitchCount: 90 + index,
+          hitsAllowed: 4,
+          homeRunsAllowed: 0,
+          walks: 1,
+          hitBatters: 0,
+          strikeouts: 5 + index,
+          runs: index,
+          earnedRuns: index,
+          sourceKind: 'box' as const,
+          sourceUrl: null,
+        }))
+      },
+    }), {
+      parseStructuredQueryFromMessage: async () => ({
+        intent: 'search_pitching',
+        filters: { pitcher_names: ['石田裕太郎', '東克樹'], recent: true, limit: 3 },
+      }),
+      formatChatAnswer,
+    })
+
+    const response = await service.answerQuestion('石田裕太郎と東克樹のそれぞれ直近3試合の成績を比較して')
+
+    expect(response.structured_query).toEqual({
+      intent: 'search_pitching',
+      filters: {
+        pitcher_names: ['石田裕太郎', '東克樹'],
+        pitcher_player_ids: ['21125159', '51155136'],
+        recent: true,
+        limit: 3,
+      },
+    })
+    expect(response.answer.execution_metadata?.player_id_satisfied).toBe(true)
+    expect(response.answer.execution_metadata?.resolved_players?.map((player) => player.player_id)).toEqual([
+      '21125159',
+      '51155136',
+    ])
+    expect(response.results.pitching).toHaveLength(6)
+    expect(response.answer.summary).toContain('石田 裕太郎: 3登板')
+    expect(response.answer.summary).toContain('東 克樹: 3登板')
+  })
+
+  it('replans dissatisfaction follow-ups from the previous user question instead of off_topic', async () => {
+    const previousQuestion = '石田裕太郎と東克樹のそれぞれ直近3試合の成績を比較して'
+    const service = createChatService(createFakeQueryService({
+      playerCandidatesForFilters: (filters) => {
+        if (filters.name === '石田裕太郎') {
+          return [{
+            player_id: '21125159',
+            name: '石田 裕太郎',
+            primary_team: '横浜DeNAベイスターズ',
+            roles: ['profile'],
+            teams: ['横浜DeNAベイスターズ'],
+            years: [2026],
+          }]
+        }
+        if (filters.name === '東克樹') {
+          return [{
+            player_id: '51155136',
+            name: '東 克樹',
+            primary_team: '横浜DeNAベイスターズ',
+            roles: ['profile'],
+            teams: ['横浜DeNAベイスターズ'],
+            years: [2026],
+          }]
+        }
+        return []
+      },
+      searchPitchingLines: async (filters) => {
+        const playerId = filters.pitcher_player_id
+        const name = playerId === '21125159' ? '石田裕' : '東'
+        return [{
+          gameId: `r20260420${playerId}`,
+          gameDate: '2026-04-20',
+          team: '横浜DeNAベイスターズ',
+          pitcherName: name,
+          inningsPitched: '6',
+          pitchCount: 90,
+          hitsAllowed: 4,
+          homeRunsAllowed: 0,
+          walks: 1,
+          hitBatters: 0,
+          strikeouts: 5,
+          runs: 1,
+          earnedRuns: 1,
+          sourceKind: 'box' as const,
+          sourceUrl: null,
+        }]
+      },
+    }), {
+      parseStructuredQueryFromMessage: async (message) => (
+        message === previousQuestion
+          ? {
+              intent: 'search_pitching',
+              filters: { pitcher_names: ['石田裕太郎', '東克樹'], recent: true, limit: 3 },
+            }
+          : { intent: 'off_topic', filters: {} }
+      ),
+      formatChatAnswer,
+    })
+
+    const response = await service.answerQuestion('は？答えになってない。', {
+      history: [
+        { role: 'user', content: previousQuestion },
+        { role: 'assistant', content: '石田裕だけの最新1出場の打撃成績です。' },
+      ],
+    })
+
+    expect(response.structured_query.intent).toBe('search_pitching')
+    expect(response.answer.execution_metadata?.follow_up_type).toBe('correction_request')
+    expect(response.answer.summary).not.toContain('このサービスはNPB')
+    expect(response.answer.summary).toContain('石田 裕太郎')
+    expect(response.answer.summary).toContain('東 克樹')
+  })
+
   it('answers first-team scope clarifications from inherited farm pitching context', async () => {
     let pitchingFilters: Parameters<ChatQueryService['searchPitchingLines']>[0] | null = null
     const service = createChatService(createFakeQueryService({

@@ -94,6 +94,9 @@ export function formatChatAnswer({
           target_player_id: executionMetadata.targetPlayerId,
           answer_mode: executionMetadata.answerMode,
           identity_resolution_scope: executionMetadata.identityResolutionScope,
+          ...(executionMetadata.playerResolutions
+            ? { resolved_players: executionMetadata.playerResolutions }
+            : {}),
           ...(executionMetadata.identityResolution
             ? { identity_resolution: executionMetadata.identityResolution }
             : {}),
@@ -187,6 +190,14 @@ function buildSummary(
 
   if (structuredQuery.intent === 'search_pitching') {
     const first = results.pitching[0] as PitchingLineRow
+    const multiPitchingSummary = formatMultiPlayerRecentPitchingSummary(
+      structuredQuery,
+      results.pitching as PitchingLineRow[],
+      executionMetadata,
+    )
+    if (multiPitchingSummary) {
+      return `${yearShiftPrefix}${multiPitchingSummary}`
+    }
     if (/最後|最終登板|最後のNPB/u.test(question)) {
       return `${yearShiftPrefix}${formatLastPitchingAppearance(question, results.pitching as PitchingLineRow[])}`
     }
@@ -1380,6 +1391,77 @@ function formatRecentPitchingComparisonFollowUpSummary(rows: PitchingLineRow[]):
     { strikeouts: 0, earnedRuns: 0 },
   )
   return `${year}年の確認できる最新${boxRows.length}試合は${totals.strikeouts}奪三振、${totals.earnedRuns}自責点です。昨年の同条件と直接の通算比較はできませんが、少なくとも直近は失点を抑えて試合を作れています。`
+}
+
+function formatMultiPlayerRecentPitchingSummary(
+  structuredQuery: ChatStructuredQuery,
+  rows: PitchingLineRow[],
+  executionMetadata?: ChatExecutionMetadata,
+): string | null {
+  const filters = structuredQuery.filters as Record<string, unknown>
+  const pitcherNames = Array.isArray(filters.pitcher_names)
+    ? filters.pitcher_names.filter((name): name is string => typeof name === 'string' && name.length > 0)
+    : []
+  if (structuredQuery.intent !== 'search_pitching' || pitcherNames.length < 2 || !filters.recent) {
+    return null
+  }
+  const limit = typeof filters.limit === 'number' ? filters.limit : 3
+  const resolvedByInput = new Map(
+    (executionMetadata?.playerResolutions ?? [])
+      .filter((resolution) => resolution.status === 'resolved')
+      .map((resolution) => [compactName(resolution.input), resolution]),
+  )
+  const lines = [`${pitcherNames.join('と')}の直近${limit}登板を投手成績で比較します。`]
+  for (const pitcherName of pitcherNames) {
+    const resolved = resolvedByInput.get(compactName(pitcherName))
+    const aliases = new Set([
+      compactName(pitcherName),
+      compactName(resolved?.name ?? ''),
+      compactName(resolved?.input ?? ''),
+      compactName(primaryNamePart(resolved?.name ?? pitcherName)),
+      compactName(shortPitcherScoreName(resolved?.name ?? pitcherName)),
+    ].filter(Boolean))
+    const playerRows = rows
+      .filter((row) => aliases.has(compactName(row.pitcherName)))
+      .sort((a, b) => `${b.gameDate}:${b.gameId}`.localeCompare(`${a.gameDate}:${a.gameId}`, 'ja'))
+      .slice(0, limit)
+    const displayName = resolved?.name ?? pitcherName
+    if (playerRows.length === 0) {
+      lines.push(`${displayName}: 条件に一致する登板データは確認できませんでした。`)
+      continue
+    }
+    const totals = playerRows.reduce(
+      (acc, row) => ({
+        strikeouts: acc.strikeouts + row.strikeouts,
+        earnedRuns: acc.earnedRuns + row.earnedRuns,
+        pitches: acc.pitches + (row.pitchCount ?? 0),
+      }),
+      { strikeouts: 0, earnedRuns: 0, pitches: 0 },
+    )
+    const gameLines = playerRows.map((row) =>
+      `${formatDateJa(row.gameDate)} ${formatInningsForDisplay(row.inningsPitched)} ${row.strikeouts}奪三振 自責${row.earnedRuns}${row.pitchCount ? ` ${row.pitchCount}球` : ''}`,
+    )
+    const shortage = playerRows.length < limit ? `（確認できた範囲は${playerRows.length}登板）` : ''
+    lines.push(`${displayName}: ${playerRows.length}登板${shortage}、${totals.strikeouts}奪三振、自責点${totals.earnedRuns}${totals.pitches ? `、${totals.pitches}球` : ''}。${gameLines.join(' / ')}`)
+  }
+  return lines.join('\n')
+}
+
+function compactName(value: string): string {
+  return value.replace(/[\s\u3000]/gu, '')
+}
+
+function primaryNamePart(value: string): string {
+  return value.trim().split(/[\s\u3000]+/u).filter(Boolean)[0] ?? value
+}
+
+function shortPitcherScoreName(value: string): string {
+  const normalized = value.trim()
+  const parts = normalized.split(/[\s\u3000]+/u).filter(Boolean)
+  if (parts.length >= 2) {
+    return `${parts[0]}${parts[1]?.slice(0, 1) ?? ''}`
+  }
+  return normalized.slice(0, 1)
 }
 
 function formatBisPitchingEvaluationSummary(row: PitchingLineRow, gameRows: PitchingLineRow[]): string {

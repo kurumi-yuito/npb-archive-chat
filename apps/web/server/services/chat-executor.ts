@@ -14,19 +14,24 @@ export function buildChatExecutionMetadata(
   structuredQuery: ChatStructuredQuery,
   playerResolution: PlayerResolution | null,
   plannerOutput?: ChatPlannerOutput,
+  playerResolutions?: PlayerResolution[],
 ): ChatExecutionMetadata {
   const playerIdRequired = queryHasPlayerName(structuredQuery)
   const resolvedPlayerId = playerResolution?.status === 'resolved' && Boolean(playerResolution.player_id)
+  const resolvedPlayerIds = playerResolutions?.length
+    ? playerResolutions.every((resolution) => resolution.status === 'resolved' && Boolean(resolution.player_id))
+    : false
   const identityResolution = buildExecutionIdentityResolution(structuredQuery, playerResolution)
   return {
     dataRequirements: plannerOutput?.dataRequirements ?? inferDataRequirements(structuredQuery),
     repositories: repositoriesForQuery(structuredQuery),
     playerResolution,
+    ...(playerResolutions ? { playerResolutions } : {}),
     ...(identityResolution
       ? { identityResolution }
       : {}),
     playerIdRequired,
-    playerIdSatisfied: !playerIdRequired || queryHasPlayerId(structuredQuery) || resolvedPlayerId,
+    playerIdSatisfied: !playerIdRequired || queryHasPlayerId(structuredQuery) || resolvedPlayerId || resolvedPlayerIds,
     followUpType: plannerOutput?.followUpType ?? 'standalone',
     referencedContext: plannerOutput?.referencedContext ?? null,
     targetEntity: plannerOutput?.targetEntity ?? null,

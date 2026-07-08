@@ -144,6 +144,7 @@ export function normalizeChatStructuredQuery(
         ...structuredQuery.filters,
         team: normalizeTeamName(structuredQuery.filters.team),
         player_name: normalizePlayerName(structuredQuery.filters.player_name),
+        player_names: normalizePlayerNames((structuredQuery.filters as { player_names?: string[] }).player_names),
         position: normalizePosition((structuredQuery.filters as { position?: string }).position),
       },
     })
@@ -156,6 +157,7 @@ export function normalizeChatStructuredQuery(
         ...structuredQuery.filters,
         team: normalizeTeamName(structuredQuery.filters.team),
         pitcher_name: normalizePlayerName(structuredQuery.filters.pitcher_name),
+        pitcher_names: normalizePlayerNames((structuredQuery.filters as { pitcher_names?: string[] }).pitcher_names),
       },
     })
   }
@@ -179,6 +181,7 @@ export function normalizeChatStructuredQuery(
         ...structuredQuery.filters,
         team: normalizeTeamName(structuredQuery.filters.team),
         player_name: normalizePlayerName(structuredQuery.filters.player_name),
+        player_names: normalizePlayerNames((structuredQuery.filters as { player_names?: string[] }).player_names),
       },
     })
   }
@@ -212,6 +215,7 @@ export function normalizeChatStructuredQuery(
         ...structuredQuery.filters,
         team: normalizeTeamName(structuredQuery.filters.team),
         pitcher_name: normalizePlayerName(structuredQuery.filters.pitcher_name),
+        pitcher_names: normalizePlayerNames((structuredQuery.filters as { pitcher_names?: string[] }).pitcher_names),
       },
     })
   }
@@ -286,6 +290,16 @@ export function normalizePlayerName(value: string | undefined): string | undefin
   }
 
   return playerAliasMap.get(normalizeLookupKey(normalized)) ?? normalized
+}
+
+function normalizePlayerNames(value: string[] | undefined): string[] | undefined {
+  if (!Array.isArray(value)) {
+    return undefined
+  }
+  const normalized = value
+    .map((name) => normalizePlayerName(name))
+    .filter((name): name is string => Boolean(name))
+  return normalized.length > 0 ? normalized : undefined
 }
 
 export function normalizePosition(value: string | undefined): string | undefined {
