@@ -293,6 +293,7 @@ export const chatHistoryMessageSchema = z.object({
 export const chatRequestSchema = z.object({
   message: z.string().min(1),
   history: z.array(chatHistoryMessageSchema).max(12).optional(),
+  fixture_structured_query: z.lazy(() => chatStructuredQuerySchema).optional(),
 })
 
 export const chatPlanSchema = z.enum(['free', 'pro'])

@@ -24,6 +24,22 @@ describe('parse-chat-request', () => {
     })
   })
 
+  it('parses an optional QA fixture structured query', () => {
+    expect(parseChatRequestBody({
+      message: 'fixtureで実行',
+      fixture_structured_query: {
+        intent: 'search_pitching',
+        filters: { year: 2026, pitcher_name: '藤浪' },
+      },
+    })).toEqual({
+      message: 'fixtureで実行',
+      fixture_structured_query: {
+        intent: 'search_pitching',
+        filters: { year: 2026, pitcher_name: '藤浪' },
+      },
+    })
+  })
+
   it('rejects an empty message', () => {
     expect(() => parseChatRequestBody({ message: '' })).toThrow()
   })

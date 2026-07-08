@@ -253,6 +253,20 @@ describe('@npb/schemas', () => {
       message: '2025-08-15の代打イベントを教えて',
     })
 
+    expect(chatRequestSchema.parse({
+      message: 'fixtureで実行',
+      fixture_structured_query: {
+        intent: 'search_pitching',
+        filters: { year: 2026, pitcher_name: '藤浪' },
+      },
+    })).toEqual({
+      message: 'fixtureで実行',
+      fixture_structured_query: {
+        intent: 'search_pitching',
+        filters: { year: 2026, pitcher_name: '藤浪' },
+      },
+    })
+
     expect(
       chatStructuredQuerySchema.parse({
         intent: 'search_events',

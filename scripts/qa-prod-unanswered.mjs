@@ -11,6 +11,8 @@ const httpRetryDelaysMs = [5000, 15000, 30000, 60000]
 
 let startId = null
 let endId = null
+let fixturePath = null
+let caseFilter = null
 for (let i = 0; i < args.length; i += 1) {
   const arg = args[i]
   if (arg === '--start') {
@@ -20,6 +22,17 @@ for (let i = 0; i < args.length; i += 1) {
   }
   if (arg === '--end') {
     endId = args[i + 1] ?? null
+    i += 1
+    continue
+  }
+  if (arg === '--fixture') {
+    fixturePath = args[i + 1] ?? null
+    i += 1
+    continue
+  }
+  if (arg === '--cases') {
+    const rawCases = args[i + 1] ?? ''
+    caseFilter = new Set(rawCases.split(',').map((id) => id.trim()).filter(Boolean))
     i += 1
   }
 }
@@ -37,6 +50,15 @@ const parseQId = (value) => {
 
 const startNo = parseQId(startId)
 const endNo = parseQId(endId)
+const fixtureMode = fixturePath !== null
+const fixtureToken = process.env.NPB_QA_REPLAY_TOKEN ?? ''
+if (fixtureMode && !fixtureToken) {
+  throw new Error('NPB_QA_REPLAY_TOKEN is required when --fixture is used')
+}
+
+const fixturesByCase = fixtureMode
+  ? await readFixtureFile(fixturePath)
+  : new Map()
 
 const text = await readFile(docPath, 'utf8')
 const cases = []
@@ -52,6 +74,10 @@ for (let i = 0; i < lines.length; i += 1) {
   if (!answerLine.startsWith('A:')) {
     continue
   }
+  const caseId = `Q-${id}`
+  if (caseFilter && !caseFilter.has(caseId)) {
+    continue
+  }
   const qNo = Number(id)
   if (startNo !== null && qNo < startNo) {
     continue
@@ -61,7 +87,7 @@ for (let i = 0; i < lines.length; i += 1) {
   }
   const answer = answerLine.slice(2).trim()
   if (process.env.QA_ALL === '1' || answer === '' || (startNo !== null || endNo !== null) || process.env.QA_ALL !== '0') {
-    cases.push({ id: `Q-${id}`, question: question.trim() })
+    cases.push({ id: caseId, question: question.trim() })
     lastCaseLineIndex = i + 1
   }
 }
@@ -69,7 +95,7 @@ for (let i = 0; i < lines.length; i += 1) {
 const trailingContent = lines
   .slice(lastCaseLineIndex + 1)
   .find((line) => line.trim() !== '')
-if (trailingContent) {
+if (!caseFilter && startNo === null && endNo === null && trailingContent) {
   throw new Error(`Unexpected trailing content after last QA case: ${trailingContent}`)
 }
 
@@ -90,19 +116,81 @@ const saveState = async (state) => {
 for (const [index, testCase] of cases.entries()) {
   const userId = `${runId}-${index + 1}`
   process.stderr.write(`[${index + 1}/${cases.length}] ${testCase.id} ${testCase.question}\n`)
+  const fixture = fixtureMode ? fixturesByCase.get(testCase.id) : null
+  if (fixtureMode && !fixture) {
+    const record = {
+      ...testCase,
+      status: 'blocked',
+      outcome: 'blocked',
+      request: null,
+      structured_query: null,
+      intent: null,
+      entities: null,
+      player_id: null,
+      target_period: null,
+      data_requirements: null,
+      repositories: null,
+      follow_up_type: null,
+      referenced_context: null,
+      target_entity: null,
+      target_game_id: null,
+      target_player_id: null,
+      answer_mode: null,
+      summary: null,
+      result_count: null,
+      resolved_player: null,
+      source_urls: null,
+      raw: null,
+      retries: null,
+      error: {
+        name: 'MissingFixture',
+        message: `Fixture is missing for ${testCase.id}`,
+        stack: null,
+        cause: null,
+      },
+      saved_at: new Date().toISOString(),
+    }
+    results.push(record)
+    await writeJson(`${runDir}/${testCase.id}.json`, record)
+    await saveState({
+      runId,
+      baseUrl,
+      docPath,
+      fixturePath,
+      lastSavedQ: testCase.id,
+      lastSavedIndex: index + 1,
+      totalCases: cases.length,
+      updatedAt: new Date().toISOString(),
+    })
+    continue
+  }
   const controller = new AbortController()
   const timeoutHandle = setTimeout(() => controller.abort(new Error(`fetch timeout after ${fetchTimeoutMs}ms`)), fetchTimeoutMs)
   const requestUrl = `${baseUrl}/api/chat`
   const requestHeaders = {
     'content-type': 'application/json',
     'x-npb-user-id': userId,
+    ...(fixtureMode ? {
+      'x-npb-qa-mode': 'fixture',
+      'x-npb-qa-token': fixtureToken,
+    } : {}),
   }
-  const history = buildHistoryForCase(testCase, completedAnswers)
-  const message = normalizeQuestionForHistoryCase(testCase.question)
-  const requestBody = JSON.stringify({
+  const requestHeadersForLog = {
+    ...requestHeaders,
+    ...(fixtureMode ? { 'x-npb-qa-token': '<redacted>' } : {}),
+  }
+  const history = fixtureMode
+    ? fixture.history
+    : buildHistoryForCase(testCase, completedAnswers)
+  const message = fixtureMode
+    ? fixture.message
+    : normalizeQuestionForHistoryCase(testCase.question)
+  const requestPayload = {
     message,
     ...(history.length > 0 ? { history } : {}),
-  })
+    ...(fixtureMode ? { fixture_structured_query: fixture.structured_query } : {}),
+  }
+  const requestBody = JSON.stringify(requestPayload)
   let response = null
   let body = null
   let json = null
@@ -199,9 +287,14 @@ for (const [index, testCase] of cases.entries()) {
     outcome,
     request: {
       url: requestUrl,
-      headers: requestHeaders,
+      headers: requestHeadersForLog,
       body: requestBody,
     },
+    fixture: fixtureMode ? {
+      case_id: fixture.case_id,
+      source_log: fixture.source_log,
+      structured_query: fixture.structured_query,
+    } : null,
     structured_query: json?.structured_query ?? null,
     intent: json?.structured_query?.intent ?? null,
     entities: extractEntities(json?.structured_query ?? null),
@@ -245,6 +338,7 @@ for (const [index, testCase] of cases.entries()) {
     runId,
     baseUrl,
     docPath,
+    fixturePath,
     lastSavedQ: testCase.id,
     lastSavedIndex: index + 1,
     totalCases: cases.length,
@@ -324,6 +418,7 @@ await saveState({
   runId,
   baseUrl,
   docPath,
+  fixturePath,
   lastSavedQ: cases.at(-1)?.id ?? null,
   lastSavedIndex: cases.length,
   totalCases: cases.length,
@@ -349,5 +444,33 @@ function buildHistoryForCase(testCase, completedAnswers) {
 
 function normalizeQuestionForHistoryCase(question) {
   return question.replace(/^（直前にQ-\d+の回答がある状態で）/u, '').trim()
+}
+
+async function readFixtureFile(path) {
+  const content = await readFile(path, 'utf8')
+  const fixtures = new Map()
+  for (const [index, line] of content.split(/\r?\n/).entries()) {
+    if (!line.trim()) {
+      continue
+    }
+    const fixture = JSON.parse(line)
+    if (!fixture.case_id) {
+      throw new Error(`Fixture line ${index + 1} is missing case_id`)
+    }
+    if (!fixture.message) {
+      throw new Error(`Fixture ${fixture.case_id} is missing message`)
+    }
+    if (!fixture.structured_query) {
+      throw new Error(`Fixture ${fixture.case_id} is missing structured_query`)
+    }
+    fixtures.set(fixture.case_id, {
+      case_id: fixture.case_id,
+      message: fixture.message,
+      history: Array.isArray(fixture.history) ? fixture.history : [],
+      structured_query: fixture.structured_query,
+      source_log: fixture.source_log ?? path,
+    })
+  }
+  return fixtures
 }
 console.log(outPath)
