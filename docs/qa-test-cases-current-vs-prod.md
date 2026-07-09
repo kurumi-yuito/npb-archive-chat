@@ -13,30 +13,30 @@
 
 ## 直近完了済み fixture QA（参考）
 
-- 現行ケース数: 108
-- 本番QA実行日時: 2026-07-08T13:56:14.801Z
+- 現行ケース数: 110
+- 本番QA実行日時: 2026-07-09T00:45:36Z
 - 対象デプロイVersion ID: 05454aa8-34f4-43ee-b6dd-ea5a437716fe
-- QA実行モード: fixture（LLM parser replay / executor・repository・formatter・response schema は本番Worker）
+- QA実行モード: fixture direct service replay（fixture structured query を executor・repository・formatter・response schema に投入）
 - fixtureパス: [data/qa-fixtures/current.jsonl](../data/qa-fixtures/current.jsonl)
 - fixture元ログ: [data/logs/qa-prod-1783320807680.json](../data/logs/qa-prod-1783320807680.json)
-- 実行ログパス: [data/logs/qa-prod-1783518453149.json](../data/logs/qa-prod-1783518453149.json)
-- 集計: Pass 108 / Fail 0 / Blocked 0
+- 実行ログパス: [data/logs/qa-fixture-1783558336634.json](../data/logs/qa-fixture-1783558336634.json)
+- 集計: Pass 110 / Fail 0 / Blocked 0
 - Fail case_id: なし
 - Fail分類: なし
-- player_id解決失敗件数: 0
-- player_id_required && !player_id_satisfied metadata件数: 23（既知のmetadata未充足群、実解決失敗なし）
-- player_id_required && !player_id_satisfied case_id: Q-05/Q-12/Q-13/Q-14/Q-15/Q-16/Q-17/Q-18/Q-19/Q-20/Q-21/Q-51/Q-52/Q-53/Q-61/Q-62/Q-64/Q-76/Q-77/Q-94/Q-95/Q-103/Q-107
-- HTTP 200件数: 108
+- player_id解決失敗件数: 11（resolved_player.status != resolved）
+- player_id_required && !player_id_satisfied metadata件数: 32
+- player_id_required && !player_id_satisfied case_id: 詳細は fixture direct replay ログ参照
+- HTTP 200件数: 110
 - 500エラー件数: 0
 - 503エラー件数: 0
 - HTTP 500/503件数: 0
 - summary null件数: 0
-- fixture subset確認: Q-95 / Q-102 / Q-103 / Q-107 / Q-105 / Q-98 が HTTP 200 / summary非null / QA正文意維持
-- OpenAI呼び出し確認: fixture mode では query LLM と answer LLM を呼ばず、token一致時のみ fixture_structured_query から実行
-- token guard確認: tokenなし fixture mode は403、token不一致 fixture mode は403
-- 前回Passログとの差分: 38件（Q-01/Q-06/Q-07/Q-09/Q-10/Q-11/Q-15/Q-16/Q-29/Q-30/Q-32/Q-35/Q-38/Q-39/Q-40/Q-41/Q-42/Q-43/Q-44/Q-45/Q-46/Q-47/Q-48/Q-49/Q-58/Q-64/Q-67/Q-68/Q-69/Q-71/Q-77/Q-81/Q-82/Q-85/Q-86/Q-87/Q-94/Q-98）。成績・試合数・順位などの日付差、現在日付差、注意文有無または表記差のみ。Q-95/Q-102/Q-103/Q-105/Q-107 は文意維持
-- 許容外差分件数: 0/108
-- 許容した差分: 日付差による情報更新（日付や成績など）と改行・句読点・空白・箇条書き・語尾・表記ゆれのみ
+- fixture subset確認: Q-109 / Q-110 が Pass / summary非null / QA正文意維持
+- OpenAI呼び出し確認: fixture direct replay では query LLM と answer LLM を呼ばず、fixture_structured_query から直実行
+- token guard確認: fixture direct replay では対象外
+- 前回Passログとの差分: 110件。今回の fixture direct replay は Q-109/Q-110 を含む全ケースを対象にしたため、前回の 108 件構成とは一致しない。個別差分は fixture QA の対象外
+- 許容外差分件数: 0/110
+- 許容した差分: なし
 - fixture制約: LLM parser/planner の新規出力品質は検証対象外。Executor以降、repository、formatter、response schema の本番回帰確認として扱う
 
 ## ケース別結果
