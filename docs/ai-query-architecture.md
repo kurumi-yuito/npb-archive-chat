@@ -109,6 +109,39 @@
 
 したがって現段階では、player_id解決を必須化し、解決後の補助条件として名前を使う箇所は残す。これは同姓同名の曖昧検索を許すためではなく、DB側のURL/ID欠落を補うためである。
 
+## 複数選手比較の取り扱い
+
+Q-109 / Q-110 で扱った複数選手比較は、単一選手質問の派生ではなく、別の実行経路として扱う。
+
+### 方針
+
+- 複数選手比較では、structured query を単一選手へ潰さない
+- `pitcher_names` / `player_names` は配列として保持する
+- `pitcher_player_ids` / `player_ids` も配列として保持する
+- 投手だけで構成された曖昧な「成績」は batting ではなく pitching を優先する
+- follow-up の dissatisfaction / correction_request は直前の質問を replan して再実行する
+
+### 実装境界
+
+- Parser prompt は複数選手比較時に配列を禁止しない
+- Schema は複数名前を先頭 1 件へ coercion しない
+- Executor は各選手を個別に player_id 解決し、比較用 evidence を選手ごとに保持する
+- Answer layer は各選手ごとの recent evidence をまとめて比較する
+
+### 未対応領域
+
+打者・投手混在比較は現時点では未対応である。
+
+例:
+
+- `大谷翔平と東克樹` のような混在比較
+
+この種別は、1 query 1 domain の前提では正しく扱えない。将来対応する場合は、batting / pitching の並列 evidence plan を別々に組み立て、選手ごとに domain を分けた上で比較結果を統合する必要がある。現状はその設計を採っていない。
+
+### QA 反映
+
+Q-109 / Q-110 を QA ケースに追加し、fixture QA では executor 以降の比較処理と follow-up 再計画の回路を確認する。fixture QA は LLM parser の品質確認ではなく、executor / repository / formatter / response schema の回帰確認として扱う。
+
 ## 雑な入力・follow-up分類設計
 
 今回の実装で、短文・雑文・訂正・疑義・再調査・比較・省略表現を Planner 側で分類するためのフィールドを追加した。対象は `chat-query-plan.ts` の Planner 出力であり、`chat-service.ts` の既存 follow-up rewrite はこの分類を参照して game_detail への寄せ先を決める。`Q-84` のような履歴参照付きの game_detail は、件数回答を出さずにそのまま試合内容説明へ寄せる。
