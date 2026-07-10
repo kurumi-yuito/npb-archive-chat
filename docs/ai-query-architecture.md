@@ -142,6 +142,20 @@ Q-109 / Q-110 で扱った複数選手比較は、単一選手質問の派生で
 
 Q-109 / Q-110 を QA ケースに追加し、fixture QA では executor 以降の比較処理と follow-up 再計画の回路を確認する。fixture QA は LLM parser の品質確認ではなく、executor / repository / formatter / response schema の回帰確認として扱う。
 
+### 追加 QA
+
+Q-111 以降では、単一選手前提の rewrite に依存しない運用ケースを追加した。
+
+- 複数打者の直近比較
+- 3投手比較
+- 年度修正 follow-up
+- team replacement follow-up
+- dissatisfaction / correction_request の再計画
+- 一軍 / 二軍の scope clarification
+- venue + matchup + result の明示
+
+これらは Planner の structured metadata と Identity 解決、比較用 evidence の保持で扱い、Service 側の自然文 regex で意味を復元しない。
+
 ## 雑な入力・follow-up分類設計
 
 今回の実装で、短文・雑文・訂正・疑義・再調査・比較・省略表現を Planner 側で分類するためのフィールドを追加した。対象は `chat-query-plan.ts` の Planner 出力であり、`chat-service.ts` の既存 follow-up rewrite はこの分類を参照して game_detail への寄せ先を決める。`Q-84` のような履歴参照付きの game_detail は、件数回答を出さずにそのまま試合内容説明へ寄せる。
