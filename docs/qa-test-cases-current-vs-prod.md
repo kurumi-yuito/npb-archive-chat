@@ -171,6 +171,16 @@
 - fail理由:
   なし
 
+### 追加本番ログ（Q-111〜Q-117）
+
+- Q-111: HTTP 200。summary は「東京ヤクルトスワローズ 岩田の確認できる最新3出場の打撃内容です。内容は3試合で3安打、打率.250です。」で、follow_up_type は `standalone`
+- Q-112: HTTP 200。summary は「石田裕太郎と東克樹と山崎伊織の直近3登板を投手成績で比較します。」で、follow_up_type は `standalone`
+- Q-113: HTTP 200。summary は「選手候補は0件です。入力「村上宗隆」は、収録対象（2016年以降のNPB一軍・ファーム出場記録）では確認できません。」で、follow_up_type は `timeframe_correction`
+- Q-114: HTTP 200。summary は「打撃集計結果は50件です。」で、follow_up_type は `standalone`
+- Q-115: HTTP 200。summary は「東京ヤクルトスワローズ 岩田の確認できる最新3出場の打撃内容です。内容は3試合で3安打、打率.250です。」で、follow_up_type は `correction_request`
+- Q-116: HTTP 200。summary は「いいえ、二軍の話です。確認できる最新5試合は二軍での登板です。」で、follow_up_type は `scope_clarification`
+- Q-117: HTTP 200。summary は「条件に一致する試合が3件あります。」で、follow_up_type は `standalone`
+
 ### Q-02: 藤浪は2026年のここまでの二軍での成績はどうですか？防御率や登板数など詳しく教えてください
 
 - case_id:
