@@ -1,15 +1,18 @@
 # QAテストケース一覧 - 現行本番との差分
 
 - 現行ケース数: 110
-- 本番QA実行日時: 2026-07-08T15:14:15Z
-- 対象デプロイVersion ID: 5b0a289f-ae77-4748-aedb-0f6e607ee7ba
+- 本番QA実行日時: 2026-07-10T02:38:43Z
+- 対象デプロイVersion ID: e880e983-7d02-4c9f-9ecd-74ba91ac74b2
 - QA実行モード: 通常本番API（LLM parser 実行）
-- 最新通常QAログ: [data/logs/qa-prod-block-20260708-q109.json](../data/logs/qa-prod-block-20260708-q109.json)
-- 最新通常QA結果: Blocked（Q-109 が HTTP 503）
-- Blocked理由: CHAT_QUERY_LLM が OpenAI 429 insufficient_quota を返し、production 設定では heuristic fallback を使わないため `chat_llm_unavailable` になった
-- Q-109/Q-110 本番文意一致: 未確認（LLM quota 復旧待ち）
-- HTTP 500/503件数: 1（Q-109 通常本番API確認時点）
-- summary null件数: 1（Q-109 は 503 のため answer 未生成）
+- 最新通常QAログ: [data/logs/qa-prod-1783649942331.json](../data/logs/qa-prod-1783649942331.json)
+- 最新通常QA結果: Pass（Pass 110 / Fail 0 / Blocked 0）
+- Q-109/Q-110 本番文意一致: 確認済み
+- HTTP 500/503件数: 0
+- summary null件数: 0
+- unexpected player_id failures: 0
+- expected ambiguous/not_found: Q-61 ambiguous / Q-62 ambiguous / Q-76 not_found
+- Q-17 復旧内容: multi-player comparison の比較経路で `player_id` なしの resolved player を落とさず、name ベースでも recent pitching を取得して表示するように修正した。これにより 2026 年の山本由伸・佐々木朗希比較が 500 ではなく 200 で返るようになった
+- Q-109/Q-110 復旧内容: 複数投手比較で単一選手化せず、両者の直近3登板を投手成績として比較し、Q-110 は直前回答への再回答要求として文意一致した
 
 ## 直近完了済み fixture QA（参考）
 
@@ -13485,6 +13488,103 @@
       "game_date": "2018-09-16",
       "team": "阪神",
       "limit": 1
+    }
+  }
+- http_status:
+  200
+- pass/fail:
+  Pass
+- fail理由:
+  なし
+
+### Q-109: 石田裕太郎と東克樹のそれぞれ直近3試合の成績を比較して
+
+- case_id:
+  Q-109
+- 入力文:
+  石田裕太郎と東克樹のそれぞれ直近3試合の成績を比較して
+- QA正:
+  石田裕太郎と東克樹のそれぞれ直近3登板を投手成績として比較する。片方が3登板未満でも取得できる範囲を明示する。
+- 本番回答:
+  石田裕太郎と東克樹の直近3登板を投手成績で比較します。
+  石田 裕太郎: 3登板、38奪三振、自責点12、209球。2026年7月7日 9回 7奪三振 自責0 120球 / 2026年6月28日 6回 4奪三振 自責2 89球 / 2026年1月1日 30 .2回 27奪三振 自責10
+  東 克樹: 2登板（確認できた範囲は2登板）、13奪三振、自責点4、177球。2026年7月8日 7回 8奪三振 自責2 94球 / 2026年6月30日 6回 5奪三振 自責2 83球
+- intent:
+  search_pitching
+- target_entity:
+  {
+    "kind": "comparison",
+    "label": "石田裕太郎 と 東克樹",
+    "players": [
+      "石田裕太郎",
+      "東克樹"
+    ],
+    "teams": []
+  }
+- fixture_structured_query:
+  {
+    "intent": "search_pitching",
+    "filters": {
+      "year": 2026,
+      "pitcher_names": [
+        "石田裕太郎",
+        "東克樹"
+      ],
+      "recent": true,
+      "limit": 3
+    }
+  }
+- http_status:
+  200
+- pass/fail:
+  Pass
+- fail理由:
+  なし
+
+### Q-110: は？答えになってない。
+
+- case_id:
+  Q-110
+- 入力文:
+  は？答えになってない。
+- QA正:
+  Q-109 の直後の follow-up として扱い、直前回答への再回答要求として同じ比較意図を保持する。
+- 本番回答:
+  石田裕太郎と東克樹の直近3登板を投手成績で比較します。
+  石田 裕太郎: 3登板、38奪三振、自責点12、209球。2026年7月7日 9回 7奪三振 自責0 120球 / 2026年6月28日 6回 4奪三振 自責2 89球 / 2026年1月1日 30 .2回 27奪三振 自責10
+  東 克樹: 2登板（確認できた範囲は2登板）、13奪三振、自責点4、177球。2026年7月8日 7回 8奪三振 自責2 94球 / 2026年6月30日 6回 5奪三振 自責2 83球
+- intent:
+  search_pitching
+- follow_up_type:
+  correction_request
+- referenced_context:
+  {
+    "source": "latest_assistant_entry",
+    "anchor": "石田裕太郎と東克樹の直近3登板を投手成績で比較します。",
+    "ordinal": null,
+    "summary": "石田裕太郎と東克樹の直近3登板を投手成績で比較します。"
+  }
+- target_entity:
+  {
+    "kind": "comparison",
+    "label": "石田裕太郎 と 東克樹",
+    "players": [
+      "石田裕太郎",
+      "東克樹"
+    ],
+    "teams": []
+  }
+- fixture_structured_query:
+  {
+    "intent": "search_pitching",
+    "filters": {
+      "year": 2026,
+      "pitcher_names": [
+        "石田裕太郎",
+        "東克樹"
+      ],
+      "recent": true,
+      "limit": 3
     }
   }
 - http_status:
