@@ -362,7 +362,7 @@ export function classifyFollowUpContext(
         : typeof filters.runner_player_id === 'string'
           ? filters.runner_player_id
           : null
-  const targetEntity = buildTargetEntity(query, normalizedMessage, assistantEntry, followUpType)
+  const targetEntity = buildTargetEntity(query, assistantEntry, followUpType)
   const referencedContext = assistantEntry
     ? {
         source: assistantEntry.source,
@@ -918,7 +918,6 @@ function classifyAnswerMode(
 
 function buildTargetEntity(
   query: ChatStructuredQuery,
-  message: string,
   assistantEntry: ReferencedAssistantEntry | null,
   followUpType: ChatFollowUpType,
 ): ChatTargetEntity {
@@ -936,7 +935,7 @@ function buildTargetEntity(
     assistantEntry?.team ?? null,
   ].filter((value): value is string => Boolean(value))
 
-  if (players.length >= 2 || /対決|対戦|比較|比べ|変化/u.test(message)) {
+  if (players.length >= 2 || followUpType === 'comparison_request') {
     return {
       kind: players.length >= 2 ? 'comparison' : 'mixed',
       label: players.join(' と ') || (assistantEntry?.summary ?? null),

@@ -72,13 +72,6 @@ export async function parseStructuredQueryFromMessage(message: string): Promise<
 }
 
 function fallbackMessageForParser(message: string, context?: ChatQueryParserContext): string {
-  const hasSearchableContext =
-    /(?:\d{4}|昨日|今日|本日|一昨日|試合|戦|成績|所属|スタメン|ロスター|イベント|本塁打|ホームラン|ハイライト|戦評|スコア|巨人|読売|阪神|広島|中日|ヤクルト|DeNA|横浜|オリックス|ロッテ|西武|ソフトバンク|日本ハム|楽天)/u
-      .test(message)
-  if (hasSearchableContext) {
-    return message
-  }
-
   const previousUserMessage = [...(context?.history ?? [])]
     .reverse()
     .find((item) => item.role === 'user')?.content

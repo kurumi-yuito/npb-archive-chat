@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import {
   chatResponseCoreSchema,
   aggregateGamesFiltersSchema,
@@ -94,17 +95,7 @@ export function createChatService(
         history: options.history,
       })
       const rawParsedQuery: ChatStructuredQuery = initialPlan.structuredQuery
-      const rewrittenForQuestion: ChatStructuredQuery = rewriteStructuredQueryForQuestion(message, rawParsedQuery)
-      let parsedQuery: ChatStructuredQuery
-      parsedQuery = rewriteFollowUpFromHistory(
-        message,
-        rewrittenForQuestion,
-        options.history,
-        initialPlan,
-      )
-      parsedQuery = rewriteSeasonalPlayerStatsMisparseIfNeeded(message, parsedQuery)
-      parsedQuery = recoverOffTopicRecentPlayerQuery(message, parsedQuery)
-      parsedQuery = stabilizeQaQueryFromQuestion(message, parsedQuery)
+      let parsedQuery: ChatStructuredQuery = rawParsedQuery
       let effectivePlan = buildPlannerOutput(parsedQuery, parsedQuery !== rawParsedQuery, {
         message,
         history: options.history,
@@ -145,14 +136,20 @@ export function createChatService(
         }
       }
 
-      if (parsedQuery.intent === 'off_topic' && effectivePlan.followUpType === 'correction_request') {
+      const comparisonFollowUpRewrite = rewritePitchingComparisonFollowUpToSearch(parsedQuery, effectivePlan)
+      if (comparisonFollowUpRewrite !== parsedQuery) {
+        parsedQuery = comparisonFollowUpRewrite
+        effectivePlan = buildPlannerOutput(parsedQuery, true, {
+          message,
+          history: options.history,
+        })
+      }
+
+      if (parsedQuery.intent === 'off_topic' && (options.history?.length ?? 0) > 0) {
         const previousUserMessage = latestUserMessage(options.history)
         if (previousUserMessage) {
           const replan = await planner(previousUserMessage, { history: [] })
-          parsedQuery = rewriteStructuredQueryForQuestion(previousUserMessage, replan.structuredQuery)
-          parsedQuery = rewriteSeasonalPlayerStatsMisparseIfNeeded(previousUserMessage, parsedQuery)
-          parsedQuery = recoverOffTopicRecentPlayerQuery(previousUserMessage, parsedQuery)
-          parsedQuery = stabilizeQaQueryFromQuestion(previousUserMessage, parsedQuery)
+          parsedQuery = replan.structuredQuery
           effectivePlan = {
             ...buildPlannerOutput(parsedQuery, true, {
               message,
@@ -383,7 +380,6 @@ export function createChatService(
         }
       }
       const teamCorrection = applyCurrentTeamCorrection(
-        message,
         structuredQuery,
         playerResolution,
         effectivePlan.identityResolutionScope,
@@ -1294,7 +1290,6 @@ function playerNameFieldForStatsIntent(intent: ChatStructuredQuery['intent']): '
 }
 
 function applyCurrentTeamCorrection(
-  message: string,
   structuredQuery: ChatStructuredQuery,
   playerResolution: PlayerResolution | null,
   identityResolutionScope: IdentityResolutionScope,
@@ -1306,9 +1301,6 @@ function applyCurrentTeamCorrection(
   const requestedTeam = typeof filters.team === 'string' ? filters.team : null
   const currentTeam = playerResolution.primary_team
   if (!requestedTeam || !currentTeam || identityResolutionScope === 'historical') {
-    return { structuredQuery, playerResolution }
-  }
-  if (identityResolutionScope === 'unspecified' && isHistoricalTeamContext(message)) {
     return { structuredQuery, playerResolution }
   }
   if (sameCanonicalTeam(requestedTeam, currentTeam)) {
@@ -1327,10 +1319,6 @@ function applyCurrentTeamCorrection(
       teamCorrectionNote: `「${requestedTeam}の${playerResolution.input}」とありますが、現在のNPB所属は${currentTeam}です。現所属を優先して検索します。`,
     },
   }
-}
-
-function isHistoricalTeamContext(message: string): boolean {
-  return /時代|在籍時|在籍中|所属時|所属していた|いた頃|移籍前|移籍後|退団前|退団後/u.test(message)
 }
 
 function currentJstYear(): number {
@@ -2674,8 +2662,7 @@ function isLikelyNpbTopic(message: string, history: ChatRequest['history'] | und
   const conversationHistory = history ?? []
   if (
     conversationHistory.length > 0 &&
-    hasNpbTopicHistory(conversationHistory) &&
-    (FOLLOW_UP_TOPIC_PATTERN.test(trimmedMessage) || trimmedMessage.length <= 40)
+    trimmedMessage.length <= 40
   ) {
     return true
   }
@@ -2687,7 +2674,6 @@ function isLikelyNpbTopic(message: string, history: ChatRequest['history'] | und
 
 const NPB_TOPIC_PATTERN = /NPB|日本プロ野球|プロ野球|野球|セ・?リーグ|パ・?リーグ|交流戦|日本シリーズ|クライマックス|CS|球団|チーム|選手|試合|ゲーム|イベント|スコア|勝敗|勝利|敗北|何勝|何敗|引き分け|対戦|対決|対|vs|VS|成績|打撃|打者|投手|投球|登板|先発|中継ぎ|抑え|セーブ|ホールド|奪三振|防御率|WHIP|打率|OPS|IsoP|四球率|BB%|打点|安打|本塁打|ホームラン|\bHR\b|盗塁|代打|打席|スタメン|打順|守備|ポジション|捕手|キャッチャー|ショート|ロスター|登録|所属|在籍|新人王|最優秀新人|MVP|沢村賞|タイトル|調子|状態|最近何して/u
 const RECENT_PLAYER_TOPIC_PATTERN = /^[一-龯々ぁ-んァ-ヶーA-Za-z・･.\s\u3000]{2,20}?(?:って)?(?:最近|近ごろ|近頃|この頃|ここのところ|見ない|何して|どうして)/u
-const FOLLOW_UP_TOPIC_PATTERN = /^(?:それ|これ|そこ|この|その|で|じゃあ|なら|あと|ついでに|詳しく|もっと|何で|どうして|誰|いつ|どこ|どう|なんで|つまり|調べなおして|調べ直して|さっき|一軍|二軍|違う|ちがう|いや|今年じゃなくて|去年と比べて|(?:\d+|[一二三四五六七八九十]+|[１２３４５６７８９]+)(?:つ目|番目|件目|本目))/u
 const KNOWN_PLAYER_SHORT_STATUS_PATTERN = /^(?:藤浪|藤浪晋太郎|村上|村上宗隆|牧|牧秀悟|近本|近本光司|坂倉|坂倉将吾)(?:って)?(?:どう|どんな感じ)\??？?$/u
 
 function hasNpbTopicHistory(history: NonNullable<ChatRequest['history']>): boolean {
@@ -2825,23 +2811,8 @@ function rewriteStructuredQueryForQuestion(
   message: string,
   query: ChatStructuredQuery,
 ): ChatStructuredQuery {
-  const awardRewrite = rewriteAwardQuestionIfNeeded(message, query)
-  if (awardRewrite.intent === 'award_winners') {
-    return awardRewrite
-  }
-  if (hasMultiPlayerStatsFilters(awardRewrite)) {
-    return awardRewrite
-  }
-  const knownPlayerRewrite = rewriteKnownHistoricalPlayers(message, awardRewrite)
-  const intentRewrite = rewriteIntentFromNaturalLanguage(message, knownPlayerRewrite)
-  const specialRewrite = rewriteSpecialQuestionPatterns(message, intentRewrite)
-  const rosterRewrite = rewriteToRosterIfNeeded(message, specialRewrite)
-  const battingRewrite = rewriteToBattingIfNeeded(message, rosterRewrite)
-  const battingRankingRewrite = sanitizeAggregateBattingRankingFilters(message, battingRewrite)
-  const pitchingRankingIntentRewrite = rewritePitchingRankingSearchToAggregate(message, battingRankingRewrite)
-  const pitchingRankingRewrite = sanitizeAggregatePitchingRankingFilters(message, pitchingRankingIntentRewrite)
-  const gamesRewrite = rewriteToAggregateGamesIfNeeded(message, pitchingRankingRewrite)
-  return gamesRewrite
+  void message
+  return query
 }
 
 function hasMultiPlayerStatsFilters(query: ChatStructuredQuery): boolean {
@@ -4112,6 +4083,53 @@ function isNorimotoTeamComparison(message: string, query: ChatStructuredQuery): 
     /則本昂大/u.test(message) &&
     /楽天/u.test(message) &&
     /巨人|移籍後/u.test(message)
+}
+
+function rewritePitchingComparisonFollowUpToSearch(
+  query: ChatStructuredQuery,
+  plan: ChatPlannerOutput,
+): ChatStructuredQuery {
+  if (plan.followUpType !== 'comparison_request' || query.intent !== 'aggregate_pitching') {
+    return query
+  }
+
+  const filters = query.filters as Record<string, unknown>
+  const hasYearScope =
+    typeof filters.year === 'number' ||
+    typeof filters.year_from === 'number' ||
+    typeof filters.year_to === 'number'
+  if (hasYearScope) {
+    return query
+  }
+
+  const hasMultiplePitchers =
+    (Array.isArray(filters.pitcher_names) && filters.pitcher_names.length > 0) ||
+    (Array.isArray(filters.player_names) && filters.player_names.length > 0) ||
+    (Array.isArray(filters.pitcher_player_ids) && filters.pitcher_player_ids.length > 0) ||
+    (Array.isArray(filters.player_ids) && filters.player_ids.length > 0)
+  if (hasMultiplePitchers) {
+    return query
+  }
+
+  const hasSinglePitcher =
+    typeof filters.pitcher_name === 'string' ||
+    typeof filters.player_name === 'string' ||
+    typeof filters.pitcher_player_id === 'string' ||
+    typeof filters.player_id === 'string'
+  if (!hasSinglePitcher) {
+    return query
+  }
+
+  const nextFilters: Record<string, unknown> = { ...filters }
+  delete nextFilters.group_by
+  delete nextFilters.sort_by
+  nextFilters.recent = true
+  nextFilters.limit = 5
+
+  return {
+    intent: 'search_pitching',
+    filters: nextFilters,
+  } as ChatStructuredQuery
 }
 
 function extractMentionedTeams(message: string): string[] {

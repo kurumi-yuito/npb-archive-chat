@@ -53,8 +53,10 @@ export function buildPlannerOutput(
     structuredQuery,
   )
   const identityResolutionScope = inferIdentityResolutionScope({
-    message: context.message ?? '',
     structuredQuery,
+    followUpType: classification.followUpType,
+    followUpContext: undefined,
+    identityIntent: undefined,
   })
   const followUpContext = extractFollowUpContextMetadata({
     query: structuredQuery,
@@ -64,6 +66,12 @@ export function buildPlannerOutput(
     targetEntity: classification.targetEntity,
     targetGameId: classification.targetGameId,
     history: context.history,
+  })
+  const updatedIdentityResolutionScope = inferIdentityResolutionScope({
+    structuredQuery,
+    followUpType: classification.followUpType,
+    followUpContext,
+    identityIntent: undefined,
   })
   const initialCorrectionGuard = inferCorrectionGuardMetadata({
     message: context.message ?? '',
@@ -79,7 +87,7 @@ export function buildPlannerOutput(
     identityResolutionScope,
   })
   const initialIdentityIntent = inferIdentityIntentMetadata({
-    identityResolutionScope,
+    identityResolutionScope: updatedIdentityResolutionScope,
     correctionGuard: initialCorrectionGuard,
   })
   const correctionGuard = inferCorrectionGuardMetadata({
@@ -98,7 +106,7 @@ export function buildPlannerOutput(
     identityResolutionScope,
   })
   const identityIntent = inferIdentityIntentMetadata({
-    identityResolutionScope,
+    identityResolutionScope: updatedIdentityResolutionScope,
     correctionGuard,
   })
   return chatPlannerOutputSchema.parse({
@@ -117,7 +125,7 @@ export function buildPlannerOutput(
     timeRange: extractPlannerTimeRange(structuredQuery),
     dataRequirements: inferDataRequirements(structuredQuery),
     answerMode: classification.answerMode,
-    identityResolutionScope,
+    identityResolutionScope: updatedIdentityResolutionScope,
     confidence: legacyStabilizationApplied ? 0.72 : 0.86,
     clarificationRequired: false,
     legacyStabilizationApplied,
