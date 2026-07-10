@@ -70,7 +70,7 @@ describe('runD1Sync', () => {
 
     const year = result.years[0]!
     const sqlPaths = year.sqlPaths
-    expect(sqlPaths.length).toBe(15) // one per table
+    expect(sqlPaths.length).toBe(17) // one per table
 
     const gamesSql = await readFile(sqlPaths.find((p) => p.endsWith('_games.sql'))!, 'utf8')
     expect(gamesSql).toContain('DELETE FROM "games" WHERE year = 2025;')
@@ -97,6 +97,8 @@ describe('runD1Sync', () => {
       player_fielding_stats: 0,
       team_monthly_results: 0,
       player_profiles: 0,
+      player_aliases: 0,
+      player_sources: 0,
     }
     const years = [
       { year: 2025, rowCounts: { ...rowCounts, player_profiles: 900 } },
