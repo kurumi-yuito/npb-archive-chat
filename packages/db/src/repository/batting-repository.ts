@@ -124,6 +124,9 @@ export async function searchBattingLines(
     .all(...values, limit)
   const gameRows = rows as BattingLineRow[]
   if (gameRows.length === 0 && normalized.player_id && normalized.player_name) {
+    // Box-score rows sometimes lack player_url even after identity resolution.
+    // In that case, a name fallback is an exception path after player_id resolution,
+    // not the primary identity path.
     return searchBattingLines(database, {
       ...normalized,
       player_id: undefined,

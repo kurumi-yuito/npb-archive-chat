@@ -103,6 +103,8 @@ export async function searchPitchingLines(
     .all(...values, limit)
   const gameRows = rows as PitchingLineRow[]
   if (gameRows.length === 0 && normalized.pitcher_player_id && normalized.pitcher_name) {
+    // Box-score rows sometimes lack pitcher_url even after identity resolution.
+    // Keep a name fallback only as a post-resolution exception path.
     return searchPitchingLines(database, {
       ...normalized,
       pitcher_player_id: undefined,

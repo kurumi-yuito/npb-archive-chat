@@ -91,6 +91,77 @@ async function resolvePlayerIdsFromProfiles(
   }
 }
 
+async function resolvePlayerIdsFromAliases(
+  database: QueryDatabase,
+  aliases: string[],
+): Promise<ProfileMatch[]> {
+  const normalizedAliases = uniqueStrings(aliases.map((alias) => normalizeIdentityKey(alias)))
+  if (normalizedAliases.length === 0) {
+    return []
+  }
+  const values = normalizedAliases.map((alias) => `%${alias}%`)
+  const clauses = normalizedAliases.map(() => 'player_aliases.normalized_alias LIKE ?')
+  try {
+    const rows = await database
+      .prepare(
+        `SELECT
+          player_profiles.player_id,
+          COALESCE(player_profiles.canonical_name, player_profiles.full_name) AS full_name,
+          player_profiles.team_name,
+          player_profiles.year_teams_json,
+          player_profiles.current_team,
+          player_aliases.season_from,
+          player_aliases.season_to
+        FROM player_aliases
+        INNER JOIN player_profiles ON player_profiles.player_id = player_aliases.player_id
+        WHERE ${clauses.join(' OR ')}
+        LIMIT 50`,
+      )
+      .all(...values) as Array<{
+      player_id: string
+      full_name: string | null
+      team_name: string | null
+      year_teams_json: string | null
+      current_team: string | null
+      season_from: number | null
+      season_to: number | null
+    }>
+    return mergeProfileMatches(
+      rows.map((row) => {
+        const knownTeams = row.team_name ? [row.team_name] : []
+        const years: number[] = []
+        if (row.season_from && row.season_to && row.season_from <= row.season_to) {
+          for (let year = row.season_from; year <= row.season_to; year += 1) {
+            years.push(year)
+          }
+        }
+        try {
+          const yearTeams = JSON.parse(row.year_teams_json ?? '{}') as Record<string, string>
+          for (const [year, team] of Object.entries(yearTeams)) {
+            if (team) knownTeams.push(team)
+            const parsedYear = Number(year)
+            if (Number.isFinite(parsedYear)) {
+              years.push(parsedYear)
+            }
+          }
+        } catch {
+          // ignore parse errors
+        }
+        return {
+          player_id: row.player_id,
+          fullName: row.full_name,
+          knownTeams: [...new Set(knownTeams.filter(Boolean))],
+          years: [...new Set(years)].sort((a, b) => a - b),
+          currentTeam: row.current_team,
+        }
+      }),
+      [],
+    )
+  } catch {
+    return []
+  }
+}
+
 async function resolvePlayerRowsFromIdSources(
   database: QueryDatabase,
   aliases: string[],
@@ -160,7 +231,10 @@ export async function searchPlayerCandidates(
     return []
   }
 
-  const profileMatches = await resolvePlayerIdsFromProfiles(database, [filters.name])
+  const profileMatches = mergeProfileMatches(
+    await resolvePlayerIdsFromProfiles(database, [filters.name]),
+    await resolvePlayerIdsFromAliases(database, aliases),
+  )
   const profilePlayerIds = profileMatches.map((m) => m.player_id)
   if (profileMatches.length === 1 && !filters.latestOnly) {
     const profile = profileMatches[0]!
@@ -436,6 +510,13 @@ function uniqueStrings(values: Array<string | undefined>): string[] {
   return [...new Set(values.map((value) => value?.trim()).filter(Boolean) as string[])]
 }
 
+function normalizeIdentityKey(value: string): string {
+  return value
+    .normalize('NFKC')
+    .replace(/[・･.\-_\s\u3000]/gu, '')
+    .toLowerCase()
+}
+
 function latestTeam(teamYears: Array<{ team: string; year: number }>): string | null {
   if (teamYears.length === 0) return null
   return teamYears.reduce((best, current) => current.year > best.year ? current : best).team
@@ -493,6 +574,26 @@ function mergeFallbackCandidates(candidates: PlayerCandidate[]): PlayerCandidate
     target.primary_team ??= candidate.primary_team
   }
   return merged
+}
+
+function mergeProfileMatches(matches: ProfileMatch[], additional: ProfileMatch[]): ProfileMatch[] {
+  const merged = new Map<string, ProfileMatch>()
+  for (const match of [...matches, ...additional]) {
+    const existing = merged.get(match.player_id)
+    if (!existing) {
+      merged.set(match.player_id, {
+        ...match,
+        knownTeams: [...match.knownTeams],
+        years: [...match.years],
+      })
+      continue
+    }
+    existing.fullName ??= match.fullName
+    existing.currentTeam ??= match.currentTeam
+    existing.knownTeams = unique([...existing.knownTeams, ...match.knownTeams])
+    existing.years = unique([...existing.years, ...match.years]).sort((a, b) => a - b)
+  }
+  return [...merged.values()]
 }
 
 function unique<T>(values: T[]): T[] {

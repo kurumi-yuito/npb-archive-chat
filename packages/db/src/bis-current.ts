@@ -15,6 +15,7 @@ import { migrateDatabase } from './migrations'
 import { createObjectStorage, defaultR2Bucket, parseStorageArg, type ObjectStorage, type StorageArgs } from './object-storage'
 import { openDatabase, type SqliteDatabase } from './sqlite'
 import { withTransaction } from './sqlite'
+import { materializePlayerIdentityArtifacts } from './player-identity-maintenance'
 
 const DEFAULT_SQLITE_DIR = 'data'
 const DEFAULT_USER_AGENT = 'npb-archive-chat/0.1 (+https://npb.jp/)'
@@ -188,6 +189,13 @@ export async function runBisCurrentUpdate(options: UpdateBisCurrentArgs): Promis
   } finally {
     db.close()
   }
+
+  await runPlayerProfilesUpdate({
+    sqlitePath,
+    year,
+    delayMs: options.delayMs,
+    userAgent: options.userAgent,
+  })
 
   return {
     year,
@@ -533,8 +541,37 @@ export async function runPlayerProfilesUpdate(options: PlayerProfilesUpdateArgs)
         const profile = parseBisPlayerProfileHtml(html, playerId, url)
         if (profile?.fullName) {
           db.prepare(
-            `INSERT OR REPLACE INTO player_profiles (player_id, full_name, team_name, year_teams_json, source_url, fetched_at) VALUES (?, ?, ?, ?, ?, ?)`,
-          ).run(profile.playerId, profile.fullName, profile.teamName, profile.yearTeamsJson, profile.sourceUrl, new Date().toISOString())
+            `INSERT OR REPLACE INTO player_profiles (
+              player_id,
+              full_name,
+              team_name,
+              year_teams_json,
+              source_url,
+              fetched_at,
+              canonical_name,
+              current_team,
+              active,
+              metadata,
+              created_at,
+              updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          ).run(
+            profile.playerId,
+            profile.fullName,
+            profile.teamName,
+            profile.yearTeamsJson,
+            profile.sourceUrl,
+            new Date().toISOString(),
+            profile.fullName,
+            profile.teamName,
+            1,
+            JSON.stringify({
+              year_teams_json: profile.yearTeamsJson,
+              source_url: profile.sourceUrl,
+            }),
+            new Date().toISOString(),
+            new Date().toISOString(),
+          )
           fetched += 1
         } else {
           failed += 1
@@ -547,6 +584,8 @@ export async function runPlayerProfilesUpdate(options: PlayerProfilesUpdateArgs)
         failed += 1
       }
     }
+
+    materializePlayerIdentityArtifacts(db, year)
 
     return {
       total: playerIds.length,

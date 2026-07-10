@@ -51,14 +51,8 @@ export async function searchRosterEntries(
     values.push(...teams)
   }
   if (normalized.player_id) {
-    const nameFallback = normalized.player_name
-      ? ` OR (roster_entries.player_url IS NULL AND roster_entries.player_name = ?)`
-      : ''
-    clauses.push(`(roster_entries.player_url LIKE ?${nameFallback})`)
+    clauses.push('(roster_entries.player_url LIKE ?)')
     values.push(playerIdPattern(normalized.player_id))
-    if (normalized.player_name) {
-      values.push(normalized.player_name)
-    }
   } else if (normalized.player_name) {
     clauses.push('roster_entries.player_name = ?')
     values.push(normalized.player_name)
