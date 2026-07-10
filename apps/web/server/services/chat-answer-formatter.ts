@@ -1422,7 +1422,7 @@ function formatMultiPlayerRecentPitchingSummary(
       compactName(shortPitcherScoreName(resolved?.name ?? pitcherName)),
     ].filter(Boolean))
     const playerRows = rows
-      .filter((row) => aliases.has(compactName(row.pitcherName)))
+      .filter((row) => matchesComparisonPitcherName(row.pitcherName, aliases))
       .sort((a, b) => `${b.gameDate}:${b.gameId}`.localeCompare(`${a.gameDate}:${a.gameId}`, 'ja'))
       .slice(0, limit)
     const displayName = resolved?.name ?? pitcherName
@@ -1445,6 +1445,19 @@ function formatMultiPlayerRecentPitchingSummary(
     lines.push(`${displayName}: ${playerRows.length}登板${shortage}、${totals.strikeouts}奪三振、自責点${totals.earnedRuns}${totals.pitches ? `、${totals.pitches}球` : ''}。${gameLines.join(' / ')}`)
   }
   return lines.join('\n')
+}
+
+function matchesComparisonPitcherName(rowPitcherName: string, aliases: Set<string>): boolean {
+  const compactRowName = compactName(rowPitcherName)
+  if (aliases.has(compactRowName)) {
+    return true
+  }
+  for (const alias of aliases) {
+    if (alias.startsWith(compactRowName) || compactRowName.startsWith(alias)) {
+      return true
+    }
+  }
+  return false
 }
 
 function compactName(value: string): string {

@@ -942,8 +942,11 @@ async function answerMultiPlayerStatsComparisonIfNeeded({
     resolvers,
   )
   const resolvedOnly = resolvedPlayers.filter(
-    (resolution) => resolution.status === 'resolved' && Boolean(resolution.player_id),
+    (resolution) => resolution.status === 'resolved',
   )
+  const resolvedPlayerIds = resolvedOnly
+    .map((resolution) => resolution.player_id)
+    .filter((playerId): playerId is string => typeof playerId === 'string' && playerId.length > 0)
   const usePitching = multiTarget.kind === 'pitching' ||
     (multiTarget.kind === 'batting' && await allResolvedPlayersHavePitchingEvidence(queryService, resolvedOnly))
   if (!usePitching) {
@@ -965,12 +968,12 @@ async function answerMultiPlayerStatsComparisonIfNeeded({
     aggregates: [],
   }
   const pitching: PitchingLineRow[] = []
-  for (const resolution of resolvedOnly) {
+  for (const resolution of resolvedPlayers) {
     const rows = await searchRecentPitchingLinesForChat(
       queryService,
       {
         pitcher_name: resolution.name ?? resolution.input,
-        pitcher_player_id: resolution.player_id,
+        ...(typeof resolution.player_id === 'string' ? { pitcher_player_id: resolution.player_id } : {}),
         ...(resolution.primary_team ? { team: resolution.primary_team } : {}),
         recent: true,
         limit,
@@ -990,9 +993,7 @@ async function answerMultiPlayerStatsComparisonIfNeeded({
       ...(typeof filters.year_from === 'number' ? { year_from: filters.year_from } : {}),
       ...(typeof filters.year_to === 'number' ? { year_to: filters.year_to } : {}),
       pitcher_names: multiTarget.names,
-      pitcher_player_ids: resolvedOnly
-        .map((resolution) => resolution.player_id)
-        .filter((playerId): playerId is string => typeof playerId === 'string' && playerId.length > 0),
+      ...(resolvedPlayerIds.length > 0 ? { pitcher_player_ids: resolvedPlayerIds } : {}),
       recent: true,
       limit,
     },
@@ -1080,6 +1081,26 @@ async function resolveMultiPlayerTargets(
       },
     } as ChatStructuredQuery
     const resolved = await resolvePlayerForIdentityScope(queryService, singleQuery, scope, resolvers)
+    if (resolved.resolution?.status === 'resolved' && resolved.resolution.player_id) {
+      results.push(resolved.resolution)
+      continue
+    }
+    if (scope !== 'historical') {
+      const historicalResolved = await resolvePlayerForIdentityScope(
+        queryService,
+        singleQuery,
+        'historical',
+        resolvers,
+      )
+      if (historicalResolved.resolution?.status === 'resolved' && historicalResolved.resolution.player_id) {
+        results.push(historicalResolved.resolution)
+        continue
+      }
+      if (historicalResolved.resolution) {
+        results.push(historicalResolved.resolution)
+        continue
+      }
+    }
     if (resolved.resolution) {
       results.push(resolved.resolution)
     } else {
