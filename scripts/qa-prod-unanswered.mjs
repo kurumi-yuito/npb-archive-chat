@@ -217,9 +217,6 @@ for (const [index, testCase] of cases.entries()) {
         })
         body = await response.text()
         status = response.status
-        if (!response.ok) {
-          outcome = 'error'
-        }
         try {
           json = JSON.parse(body)
         } catch {
@@ -242,6 +239,7 @@ for (const [index, testCase] of cases.entries()) {
           continue
         }
         lastError = null
+        outcome = response.ok ? 'success' : 'error'
         break
       } catch (err) {
         const normalizedError = err instanceof Error ? err : new Error(String(err))

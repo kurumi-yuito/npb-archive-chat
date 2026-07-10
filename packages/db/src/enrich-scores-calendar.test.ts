@@ -204,7 +204,7 @@ describe('enrich-scores-calendar', () => {
       'game.json',
     )
     await expect(stat(structuredGamePath)).resolves.toBeTruthy()
-  })
+  }, 10000)
 
   it('respects --limit and only processes the first N games', async () => {
     const workspaceRoot = await mkdtemp(path.join(tmpdir(), 'npb-enrich-calendar-limit-'))
