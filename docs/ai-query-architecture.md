@@ -286,18 +286,27 @@ QA正は `docs/qa-test-cases.md` とする。
 
 QA判定要件は以下を原文どおり維持する。
 
-## Phase 3 completion state
+## Phase 3 implementation target
 
-Phase 3 では canonical player identity persistence を実装済みである。
+Phase 3 では canonical player identity persistence の設計と実装方針を定義済みである。
 
-- migration `0009_canonical_player_identity.sql` により `player_aliases` / `player_sources` を永続化した
-- `player_profiles` は canonical master として `canonical_name` / `current_team` / `active` / `metadata` を保持する
-- `player-identity-maintenance.ts` により future ingest と historical backfill の両方を同じ identity artifact 生成経路で扱う
-- Repository は player_id-first を原則とし、name fallback は既存欠損の例外経路へ縮小した
-- Identity Layer は DB-backed になり、alias / source URL / team / season / affiliation context を統合して resolve する
-- ambiguous / unresolved は無理に埋めず、QA と運用で明示的に扱う
-- daily import / long-running import 中は migration / backfill / QA を実行しない
-- rollback / rerun は migration 再適用と maintenance 再実行で行い、既存データは削除しない
+- migration `0009_canonical_player_identity.sql` は canonical schema を追加する前提で設計した
+- `player_profiles` は canonical master として `canonical_name` / `current_team` / `active` / `metadata` を保持する設計である
+- `player-identity-maintenance.ts` は future ingest と historical backfill を同じ identity artifact 生成経路で扱う設計である
+- Repository は player_id-first を原則とし、name fallback は既存欠損の例外経路へ縮小する設計である
+- Identity Layer は DB-backed になり、alias / source URL / team / season / affiliation context を統合して resolve する設計である
+- ambiguous / unresolved は無理に埋めず、QA と運用で明示的に扱う設計である
+- daily import / long-running import 中は migration / backfill / QA を実行しない運用前提である
+- rollback / rerun は migration 再適用と maintenance 再実行で行い、既存データは削除しない運用前提である
+
+### 実測確認が必要な項目
+
+- 本番 D1 への migration 適用
+- 本番 D1 上の `player_aliases` / `player_sources` 実在確認
+- historical backfill 実行結果
+- future ingest の本番反映確認
+- DB-backed Identity Layer の本番経路確認
+- production QA の最新結果反映
 
 ## Player identity architecture roadmap
 
@@ -561,8 +570,8 @@ season           = temporal scope
 
 ### 補足
 
-- Historical backfill は既に実装済み
-- Identity Layer / future ingest / historical backfill は同じ player_id-first contract で揃えた
+- Historical backfill は maintenance 実装済みだが、本番適用・完了確認は別途実測が必要である
+- Identity Layer / future ingest / historical backfill は同じ player_id-first contract で揃える方針である
 
 ## Future ingest 検証メモ
 
