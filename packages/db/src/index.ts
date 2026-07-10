@@ -67,6 +67,11 @@ import {
   runBisCurrentUpdate,
   runPlayerProfilesUpdate,
 } from './bis-current'
+export {
+  materializePlayerIdentityArtifacts,
+  parsePlayerIdentityBackfillArgs,
+  runPlayerIdentityBackfill,
+} from './player-identity-maintenance'
 import { migrateDatabase, resolveMigrationsDir } from './migrations'
 import { sqliteDatabaseToQuery, withTransactionAsync } from './query-driver'
 import { openDatabase } from './sqlite'

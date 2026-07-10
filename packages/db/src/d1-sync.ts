@@ -19,7 +19,11 @@ const LATEST_SNAPSHOT_TABLES = new Set<ImportTable>([
   'player_fielding_stats',
   'team_monthly_results',
 ])
-const MERGED_GLOBAL_TABLES = new Set<ImportTable>(['player_profiles'])
+const MERGED_GLOBAL_TABLES = new Set<ImportTable>([
+  'player_profiles',
+  'player_aliases',
+  'player_sources',
+])
 const IMPORT_TABLES = [
   'games',
   'source_snapshots',
@@ -36,6 +40,8 @@ const IMPORT_TABLES = [
   'player_fielding_stats',
   'team_monthly_results',
   'player_profiles',
+  'player_aliases',
+  'player_sources',
 ] as const
 
 type ImportTable = (typeof IMPORT_TABLES)[number]

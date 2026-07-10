@@ -27,6 +27,7 @@
   },
   "scripts": {
     "backfill:scores-canonical": "node --import tsx ./src/cli.ts backfill:scores-canonical",
+    "backfill:player-identity": "node --import tsx ./src/cli.ts backfill:player-identity",
     "enrich:bis-farm-boxes": "node --import tsx ./src/cli.ts enrich:bis-farm-boxes",
     "enrich:scores-calendar": "node --import tsx ./src/cli.ts enrich:scores-calendar",
     "lint": "eslint -c ../../eslint.config.mjs .",
