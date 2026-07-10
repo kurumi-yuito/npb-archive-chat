@@ -1,18 +1,19 @@
 # QAテストケース一覧 - 現行本番との差分
 
-- 現行ケース数: 110
-- 本番QA実行日時: 2026-07-10T02:38:43Z
+- 現行ケース数: 117
+- 本番QA実行日時: 2026-07-10T11:57:08Z
 - 対象デプロイVersion ID: e880e983-7d02-4c9f-9ecd-74ba91ac74b2
 - QA実行モード: 通常本番API（LLM parser 実行）
-- 最新通常QAログ: [data/logs/qa-prod-1783649942331.json](../data/logs/qa-prod-1783649942331.json)
-- 最新通常QA結果: Pass（Pass 110 / Fail 0 / Blocked 0）
+- 最新通常QAログ: [data/logs/qa-prod-1783685828072.json](../data/logs/qa-prod-1783685828072.json)
+- 最新通常QA結果: Pass（Pass 117 / Fail 0 / Blocked 0）
 - Q-109/Q-110 本番文意一致: 確認済み
 - HTTP 500/503件数: 0
 - summary null件数: 0
 - unexpected player_id failures: 0
-- expected ambiguous/not_found: Q-61 ambiguous / Q-62 ambiguous / Q-76 not_found
+- expected ambiguous/not_found: Q-61 ambiguous / Q-62 ambiguous / Q-107 ambiguous / Q-08 not_found / Q-15 not_found / Q-18 not_found / Q-19 not_found / Q-20 not_found / Q-21 not_found / Q-76 not_found / Q-77 not_found / Q-94 not_found / Q-95 not_found / Q-103 not_found / Q-113 not_found
 - Q-17 復旧内容: multi-player comparison の比較経路で `player_id` なしの resolved player を落とさず、name ベースでも recent pitching を取得して表示するように修正した。これにより 2026 年の山本由伸・佐々木朗希比較が 500 ではなく 200 で返るようになった
 - Q-109/Q-110 復旧内容: 複数投手比較で単一選手化せず、両者の直近3登板を投手成績として比較し、Q-110 は直前回答への再回答要求として文意一致した
+- Q-109/Q-110 本番ログ補足: Q-109/Q-110 を含む 117 件の通常本番 QA で双方とも HTTP 200 かつ文意一致を確認した
 
 ## 直近完了済み fixture QA（参考）
 
