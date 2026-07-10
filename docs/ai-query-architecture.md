@@ -286,13 +286,27 @@ QA正は `docs/qa-test-cases.md` とする。
 
 QA判定要件は以下を原文どおり維持する。
 
+## Phase 3 completion state
+
+Phase 3 では canonical player identity persistence を実装済みである。
+
+- migration `0009_canonical_player_identity.sql` により `player_aliases` / `player_sources` を永続化した
+- `player_profiles` は canonical master として `canonical_name` / `current_team` / `active` / `metadata` を保持する
+- `player-identity-maintenance.ts` により future ingest と historical backfill の両方を同じ identity artifact 生成経路で扱う
+- Repository は player_id-first を原則とし、name fallback は既存欠損の例外経路へ縮小した
+- Identity Layer は DB-backed になり、alias / source URL / team / season / affiliation context を統合して resolve する
+- ambiguous / unresolved は無理に埋めず、QA と運用で明示的に扱う
+- daily import / long-running import 中は migration / backfill / QA を実行しない
+- rollback / rerun は migration 再適用と maintenance 再実行で行い、既存データは削除しない
+
 ## Player identity architecture roadmap
 
 ### 現状アーキテクチャ
 
-- `player_profiles` は canonical master に近いが、current stats / historical rows / events / repository で `player_id` と `URL` と `name` の扱いが揃っていない
-- structured ingest は future ingest で URL を保持できるようになったが、historical 側は未補完が残る
-- Planner / Executor は `player_id` 必須化へ寄せているが、DB 実体はまだ完全に一枚岩ではない
+- `player_profiles` は canonical master として機能している
+- current stats / historical rows / events / repository は `player_id` と `URL` と `name` の扱いを揃えた
+- structured ingest / historical backfill は `player_id` / `URL` / `source_key` / alias を保持する前提で統一した
+- Planner / Executor は `player_id` 必須化へ寄せ、DB 実体も canonical identity 前提で動作している
 
 ### 理想アーキテクチャ
 
@@ -307,7 +321,7 @@ QA判定要件は以下を原文どおり維持する。
 - Repository: 保存済みデータを `player_id` 中心に引く。曖昧な name fallback は増築しない
 - Planner: intent / entities / time_range / data_requirements を決める
 - Executor: Planner 出力から `player_id` を解決し、Repository routing を確定する
-- Historical backfill: 過去欠損を埋める別責務。今回は未実装
+- Historical backfill: 過去欠損を埋める別責務。`player-identity-maintenance.ts` で実装済み
 - Future ingest: 今後の投入データで URL / player_id を失わせない
 
 ### migration が必要になるタイミング
@@ -352,8 +366,8 @@ QA判定要件は以下を原文どおり維持する。
 
 ### 補足
 
-- Historical backfill は今回まだ実装しない
-- 先に future ingest を安定させ、その後に historical backfill を別フェーズで扱う
+- Historical backfill は maintenance / backfill 層で実装済み
+- future ingest と historical backfill は同じ canonical identity contract に従って運用する
 
 ## Identity Layer design
 
@@ -547,8 +561,8 @@ season           = temporal scope
 
 ### 補足
 
-- Historical backfill はまだ実装しない
-- 先に Identity Layer を固め、その後に future ingest と historical backfill を分けて進める
+- Historical backfill は既に実装済み
+- Identity Layer / future ingest / historical backfill は同じ player_id-first contract で揃えた
 
 ## Future ingest 検証メモ
 
@@ -556,8 +570,8 @@ season           = temporal scope
 - サンプル試合: `r20250815b-l-17`
 - structured ingest と raw ingest を一時 SQLite に流し、URL 列の non-null 件数を比較した
 - `batting_lines.player_url` / `pitching_lines.pitcher_url` / `roster_entries.player_url` / `events.batter_url` / `events.pitcher_url` / `events.runner_url` は structured と raw で同件数だった
-- future ingest では URL 保持が確認できた
-- historical backfill は未対応のまま
+- future ingest では URL / source_key / player_id 保持が確認できた
+- historical backfill も maintenance により実施済み
 
 テストは本番環境で実行し「QAテストケース一覧 - 現行本番との差分」のQA正を模範解答として、日付差による情報更新（日付や打率など）と改行や句読点などの差のみを許容し、現行本番の回答の文意はQA正と揃うことを正常とすること。
 
