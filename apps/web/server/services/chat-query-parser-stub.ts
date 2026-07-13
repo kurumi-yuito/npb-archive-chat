@@ -11,6 +11,7 @@ import {
   type SearchRosterEntriesFilters,
   type PlayerAffiliationFilters,
 } from '@npb/schemas'
+import { normalizeStructuredQueryFromLlmMessage } from './chat-query-llm'
 
 const eventSubtypeRules: Array<{
   pattern: RegExp
@@ -31,79 +32,113 @@ export function parseStructuredQueryFromMessageStub(message: string): ChatStruct
 
   const inferredIntent = inferIntent(normalized, explicit.intent)
   if (inferredIntent === 'search_games') {
-    return chatStructuredQuerySchema.parse({
+    return finalizeStructuredQuery(normalized, {
       intent: 'search_games',
       filters: buildGamesFilters(normalized, explicit),
     })
   }
 
   if (inferredIntent === 'search_batting') {
-    return chatStructuredQuerySchema.parse({
+    return finalizeStructuredQuery(normalized, {
       intent: 'search_batting',
       filters: buildBattingFilters(normalized, explicit),
     })
   }
 
   if (inferredIntent === 'search_pitching') {
-    return chatStructuredQuerySchema.parse({
+    return finalizeStructuredQuery(normalized, {
       intent: 'search_pitching',
       filters: buildPitchingFilters(normalized, explicit),
     })
   }
 
   if (inferredIntent === 'search_roster') {
-    return chatStructuredQuerySchema.parse({
+    return finalizeStructuredQuery(normalized, {
       intent: 'search_roster',
       filters: buildRosterFilters(normalized, explicit),
     })
   }
 
   if (inferredIntent === 'player_affiliation') {
-    return chatStructuredQuerySchema.parse({
+    return finalizeStructuredQuery(normalized, {
       intent: 'player_affiliation',
       filters: buildPlayerAffiliationFilters(normalized, explicit),
     })
   }
 
   if (inferredIntent === 'game_detail') {
-    return chatStructuredQuerySchema.parse({
+    return finalizeStructuredQuery(normalized, {
       intent: 'game_detail',
       filters: buildGameDetailFilters(normalized, explicit),
     })
   }
 
   if (inferredIntent === 'aggregate_batting') {
-    return chatStructuredQuerySchema.parse({
+    const filters = buildBattingFilters(normalized, explicit)
+    const typedFilters = filters as Record<string, unknown>
+    if (
+      filters.limit === undefined &&
+      typeof filters.player_name === 'string' &&
+      typedFilters.group_by === undefined &&
+      filters.batting_order === undefined &&
+      filters.position === undefined
+    ) {
+      filters.limit = 10
+    }
+    return finalizeStructuredQuery(normalized, {
       intent: 'aggregate_batting',
-      filters: buildBattingFilters(normalized, explicit),
+      filters,
     })
   }
 
   if (inferredIntent === 'aggregate_pitching') {
-    return chatStructuredQuerySchema.parse({
+    return finalizeStructuredQuery(normalized, {
       intent: 'aggregate_pitching',
       filters: buildPitchingFilters(normalized, explicit),
     })
   }
 
   if (inferredIntent === 'aggregate_events') {
-    return chatStructuredQuerySchema.parse({
+    return finalizeStructuredQuery(normalized, {
       intent: 'aggregate_events',
       filters: buildEventsFilters(normalized, explicit),
     })
   }
 
   if (inferredIntent === 'award_winners') {
-    return chatStructuredQuerySchema.parse({
+    return finalizeStructuredQuery(normalized, {
       intent: 'award_winners',
       filters: buildAwardWinnerFilters(normalized, explicit),
     })
   }
 
-  return chatStructuredQuerySchema.parse({
+  return finalizeStructuredQuery(normalized, {
     intent: 'search_events',
     filters: buildEventsFilters(normalized, explicit),
   })
+}
+
+function finalizeStructuredQuery(message: string, query: unknown): ChatStructuredQuery {
+  return chatStructuredQuerySchema.parse(
+    pruneUndefinedDeep(normalizeStructuredQueryFromLlmMessage(message, query)),
+  )
+}
+
+function pruneUndefinedDeep<T>(value: T): T {
+  if (Array.isArray(value)) {
+    return value
+      .map((item) => pruneUndefinedDeep(item))
+      .filter((item) => item !== undefined) as T
+  }
+  if (!value || typeof value !== 'object') {
+    return value
+  }
+  const entries = Object.entries(value as Record<string, unknown>)
+    .flatMap(([key, entry]) => {
+      const pruned = pruneUndefinedDeep(entry)
+      return pruned === undefined ? [] : [[key, pruned] as const]
+    })
+  return Object.fromEntries(entries) as T
 }
 
 function inferIntent(

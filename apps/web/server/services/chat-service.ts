@@ -118,6 +118,14 @@ export function createChatService(
           })
         }
       }
+      const historicalRewrite = rewriteKnownHistoricalPlayers(message, parsedQuery)
+      if (historicalRewrite !== parsedQuery) {
+        parsedQuery = historicalRewrite
+        effectivePlan = buildPlannerOutput(parsedQuery, true, {
+          message,
+          history: options.history,
+        })
+      }
       const followUpContextApplication = applyPlayerStatsFollowUpContext(
         parsedQuery,
         effectivePlan,
@@ -143,6 +151,31 @@ export function createChatService(
           message,
           history: options.history,
         })
+      }
+
+      if (
+        effectivePlan.followUpType === 'correction_request' &&
+        options.history?.length &&
+        !queryHasPlayerName(parsedQuery) &&
+        !queryHasPlayerId(parsedQuery) &&
+        parsedQuery.intent !== 'game_detail'
+      ) {
+        const previousUserMessage = latestUserMessage(options.history)
+        if (previousUserMessage) {
+          const replan = await planner(previousUserMessage, { history: [] })
+          parsedQuery = replan.structuredQuery
+          effectivePlan = {
+            ...buildPlannerOutput(parsedQuery, true, {
+              message,
+              history: options.history,
+            }),
+            appliedFollowUpContext: {
+              applied: true,
+              fields: [],
+              reason: 'correction_request_replanned_previous_user_message',
+            },
+          }
+        }
       }
 
       if (parsedQuery.intent === 'off_topic' && (options.history?.length ?? 0) > 0) {
@@ -290,6 +323,7 @@ export function createChatService(
           name: playerName,
           aliases: [playerName],
           latestOnly: true,
+          searchDomain: 'batting',
           limit: 5,
         })
         const playerCandidate = candidateRows.find((candidate) => candidate.player_id)
@@ -2014,6 +2048,46 @@ async function aggregateCareerBattingFromBisRowsForChat(
     return null
   }
 
+  try {
+    const aggregateRows = await queryService.aggregateBattingLines({
+      ...(playerName ? { player_name: playerName } : {}),
+      ...(playerId ? { player_id: playerId } : {}),
+      ...(typeof filters.team === 'string' ? { team: filters.team } : {}),
+      ...(typeof filters.year === 'number' ? { year: filters.year } : {}),
+      ...(typeof filters.year_from === 'number' ? { year_from: filters.year_from } : {}),
+      ...(typeof filters.year_to === 'number' ? { year_to: filters.year_to } : {}),
+      limit: 20,
+    } as AggregateBattingFilters)
+    if (aggregateRows.length > 0) {
+      const emptyResults: ChatResponseCore['results'] = {
+        events: [],
+        games: [],
+        pitching: [],
+        batting: [],
+        roster: [],
+        affiliations: [],
+        gameDetails: [],
+        aggregates: [],
+      }
+      return {
+        results: {
+          ...emptyResults,
+          aggregates: aggregateRows.map((row) => ({
+            ...row,
+            stats: {
+              ...row.stats,
+              ...(typeof filters.year === 'number' ? { year: filters.year } : {}),
+              ...(typeof filters.year_from === 'number' ? { year_from: filters.year_from } : {}),
+              ...(typeof filters.year_to === 'number' ? { year_to: filters.year_to } : {}),
+            },
+          })),
+        },
+      }
+    }
+  } catch {
+    // fall back to BIS rows below
+  }
+
   let batting: ChatResponseCore['results']['batting'] = []
   try {
     batting = await queryService.searchBattingLines({
@@ -2930,6 +3004,9 @@ function isTeamScopedSeasonBattingAggregate(message: string, query: ChatStructur
   if (typeof filters.year !== 'number') {
     return false
   }
+  if (typeof filters.team !== 'string' || !filters.team.trim()) {
+    return false
+  }
   if (
     filters.player_id !== undefined ||
     filters.group_by !== undefined ||
@@ -3267,7 +3344,13 @@ function rewriteIntentFromNaturalLanguage(message: string, query: ChatStructured
               recent: true,
             },
           } as ChatStructuredQuery
-        : query
+        : {
+            ...query,
+            filters: {
+              ...query.filters,
+              ...(filters.limit === undefined ? { limit: 10 } : {}),
+            },
+          } as ChatStructuredQuery
     }
     const mention = extractMentionBefore(message, /(?:の今年の成績|の今季の成績|の成績|成績|打撃成績|打席内容|打率|OPS|IsoP|四球率|BB%|安打|打点)/iu)
     const player = parseTeamQualifiedPlayerMention(mention ?? '')

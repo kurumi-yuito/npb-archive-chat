@@ -1,15 +1,19 @@
 import { describe, expect, it, vi } from 'vitest'
 import {
+  createMultiYearQueryService,
   migrateDatabase,
   openDatabase,
   sqliteDatabaseToQuery,
   type ChatQueryService,
 } from '@npb/db'
 import { richGameSchema } from '@npb/schemas'
+import path from 'node:path'
 import { loadRichGame } from '../../../packages/db/src/loader'
 import { formatChatAnswer } from '../server/services/chat-answer-formatter'
 import { createChatService } from '../server/services/chat-service'
 import { ChatFinalAnswerLlmHttpError } from '../server/services/chat-final-answer-llm'
+
+const SQLITE_DIR = path.resolve(process.cwd(), 'data')
 
 function buildFixtureRichGame() {
   return richGameSchema.parse({
@@ -1035,6 +1039,85 @@ describe('chat-service', () => {
     expect(response.answer.summary).toContain('東 克樹')
   })
 
+  it('replans correction requests when the current parse loses the previous comparison intent', async () => {
+    const previousQuestion = '石田裕太郎と東克樹のそれぞれ直近3試合の成績を比較して'
+    const service = createChatService(createFakeQueryService({
+      playerCandidatesForFilters: (filters) => {
+        if (filters.name === '石田裕太郎') {
+          return [{
+            player_id: '21125159',
+            name: '石田 裕太郎',
+            primary_team: '横浜DeNAベイスターズ',
+            roles: ['profile'],
+            teams: ['横浜DeNAベイスターズ'],
+            years: [2026],
+          }]
+        }
+        if (filters.name === '東克樹') {
+          return [{
+            player_id: '51155136',
+            name: '東 克樹',
+            primary_team: '横浜DeNAベイスターズ',
+            roles: ['profile'],
+            teams: ['横浜DeNAベイスターズ'],
+            years: [2026],
+          }]
+        }
+        return []
+      },
+      searchPitchingLines: async (filters) => {
+        const playerId = filters.pitcher_player_id
+        const name = playerId === '21125159' ? '石田裕' : '東'
+        return [{
+          gameId: `r20260420${playerId}`,
+          gameDate: '2026-04-20',
+          team: '横浜DeNAベイスターズ',
+          pitcherName: name,
+          inningsPitched: '6',
+          pitchCount: 90,
+          hitsAllowed: 4,
+          homeRunsAllowed: 0,
+          walks: 1,
+          hitBatters: 0,
+          strikeouts: 5,
+          runs: 1,
+          earnedRuns: 1,
+          sourceKind: 'box' as const,
+          sourceUrl: null,
+        }]
+      },
+    }), {
+      parseStructuredQueryFromMessage: async (message) => (
+        message === previousQuestion
+          ? {
+              intent: 'search_pitching',
+              filters: { pitcher_names: ['石田裕太郎', '東克樹'], recent: true, limit: 3 },
+            }
+          : {
+              intent: 'search_events',
+              filters: {},
+            }
+      ),
+      formatChatAnswer,
+    })
+
+    const response = await service.answerQuestion('は？答えになってない。', {
+      history: [
+        { role: 'user', content: previousQuestion },
+        { role: 'assistant', content: '石田裕太郎と東克樹の直近3登板の比較です。' },
+      ],
+    })
+
+    expect(response.structured_query.intent).toBe('search_pitching')
+    expect(response.structured_query.filters).toMatchObject({
+      pitcher_names: ['石田裕太郎', '東克樹'],
+      recent: true,
+      limit: 3,
+    })
+    expect(response.answer.summary).toContain('石田 裕太郎')
+    expect(response.answer.summary).toContain('東 克樹')
+  })
+
   it.skip('answers first-team scope clarifications from inherited farm pitching context', async () => {
     let pitchingFilters: Parameters<ChatQueryService['searchPitchingLines']>[0] | null = null
     const service = createChatService(createFakeQueryService({
@@ -1742,15 +1825,21 @@ describe('chat-service', () => {
     expect(response.answer.summary).toContain('佐藤 輝明')
   })
 
-  it.skip('keeps known current-season batting metric queries off broad player resolution scans', async () => {
+  it('resolves known current-season batting metric queries through player_id and avoids aggregate fallback scans', async () => {
     const service = createChatService(createFakeQueryService({
-      searchPlayerCandidates: async () => {
-        throw new Error('searchPlayerCandidates should not be called')
-      },
+      searchPlayerCandidates: async () => [{
+        player_id: '13115153',
+        name: '牧秀悟',
+        primary_team: '横浜DeNAベイスターズ',
+        roles: ['profile'],
+        teams: ['横浜DeNAベイスターズ'],
+        years: [2026],
+      }],
       aggregateBattingLines: async (filters) => {
         expect(filters).toMatchObject({
           year: 2026,
           player_name: '牧秀悟',
+          player_id: '13115153',
         })
         return [{
           kind: 'batting',
@@ -1770,6 +1859,9 @@ describe('chat-service', () => {
           },
         }]
       },
+      searchBattingLines: async () => {
+        throw new Error('searchBattingLines should not be called')
+      },
     }), {
       parseStructuredQueryFromMessage: async () => ({
         intent: 'aggregate_batting',
@@ -1786,7 +1878,9 @@ describe('chat-service', () => {
       intent: 'aggregate_batting',
       filters: {
         year: 2026,
+        team: '横浜DeNAベイスターズ',
         player_name: '牧秀悟',
+        player_id: '13115153',
         limit: 10,
       },
     })
@@ -1840,6 +1934,77 @@ describe('chat-service', () => {
       },
     })
     expect(response.answer.summary).toContain('投手集計結果は1件です')
+  })
+
+  it('rewrites Ohtani historical batting queries before broad player resolution scans', async () => {
+    const service = createChatService(createFakeQueryService({
+      searchPlayerCandidates: async () => {
+        throw new Error('searchPlayerCandidates should not be called')
+      },
+      aggregateBattingLines: async (filters) => {
+        expect(filters).toMatchObject({
+          year: 2017,
+          team: '日本ハム',
+          player_name: '大谷',
+          limit: 10,
+        })
+        return [{
+          kind: 'batting',
+          label: '大谷',
+          total: 61,
+          stats: {
+            team: '北海道日本ハムファイターズ',
+            games: 61,
+            atBats: 202,
+            hits: 67,
+            homeRuns: 8,
+            runsBattedIn: 31,
+            walks: 24,
+            strikeouts: 63,
+            battingAverage: 0.332,
+          },
+        }]
+      },
+    }), {
+      parseStructuredQueryFromMessage: async () => ({
+        intent: 'aggregate_batting',
+        filters: {
+          year: 2025,
+          team: '日本ハム',
+          player_name: '大谷翔平',
+        },
+      }),
+    })
+
+    const response = await service.answerQuestion('2025年の大谷翔平の成績を教えてください')
+
+    expect(response.structured_query).toEqual({
+      intent: 'aggregate_batting',
+      filters: {
+        year: 2017,
+        team: '日本ハム',
+        player_name: '大谷',
+        limit: 10,
+      },
+    })
+    expect(response.answer.summary).toContain('大谷')
+  })
+
+  it('returns an ambiguous response for surname-only current-player queries without broad raw scans', async () => {
+    const service = createChatService(createMultiYearQueryService({ sqliteDir: SQLITE_DIR }), {
+      parseStructuredQueryFromMessage: async () => ({
+        intent: 'search_batting',
+        filters: {
+          year: 2026,
+          player_name: '田中',
+        },
+      }),
+    })
+
+    const response = await service.answerQuestion('今シーズンの田中の成績を教えてください。')
+
+    expect(response.answer.summary).toContain('どの田中ですか')
+    expect(response.answer.summary).toContain('候補')
   })
 
   it.skip('recovers QA multi-year batting player extraction before player resolution', async () => {

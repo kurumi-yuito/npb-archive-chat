@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { createChatQueryLlm } from '../server/services/chat-query-llm'
+import { createChatQueryLlm, normalizeStructuredQueryFromLlmMessage } from '../server/services/chat-query-llm'
 
 describe('chat-query-llm', () => {
   it('parses a valid OpenAI-compatible chat completions response', async () => {
@@ -114,6 +114,69 @@ describe('chat-query-llm', () => {
         year: 2026,
         sort_by: 'pitchCount',
         limit: 1,
+      },
+    })
+  })
+
+  it('normalizes pitching ranking outputs with era sort into aggregate_pitching', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          choices: [
+            {
+              message: {
+                content: JSON.stringify({
+                  intent: 'search_pitching',
+                  filters: {
+                    year: 2026,
+                    pitcher_names: ['山本由伸', '佐々木朗希'],
+                    sort_by: 'era',
+                  },
+                }),
+              },
+            },
+          ],
+        }),
+        { status: 200, headers: { 'content-type': 'application/json' } },
+      ),
+    )
+
+    const llm = createChatQueryLlm(
+      { baseUrl: 'https://example.test/v1', apiKey: 'secret', model: 'test-model' },
+      { fetch: fetchMock },
+    )
+
+    await expect(
+      llm.generateStructuredQuery('今シーズン（2026年）の山本由伸と佐々木朗希を比較してください。防御率・奪三振・投球回の3つの観点で。'),
+    ).resolves.toEqual({
+      intent: 'aggregate_pitching',
+      filters: {
+        year: 2026,
+        pitcher_names: ['山本由伸', '佐々木朗希'],
+        limit: 3,
+        sort_by: 'era',
+      },
+    })
+  })
+
+  it('normalizes multi-player recent comparison outputs into player arrays', () => {
+    expect(
+      normalizeStructuredQueryFromLlmMessage(
+        '石田裕太郎と東克樹のそれぞれ直近3試合の成績を比較して',
+        {
+          intent: 'search_batting',
+          filters: {
+            player_name: 'それぞれ直近3試合',
+            recent: true,
+          },
+        },
+      ),
+    ).toEqual({
+      intent: 'search_pitching',
+      filters: {
+        pitcher_names: ['石田裕太郎', '東克樹'],
+        recent: true,
+        limit: 3,
       },
     })
   })

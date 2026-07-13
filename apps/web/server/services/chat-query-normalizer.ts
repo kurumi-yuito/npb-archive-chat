@@ -198,13 +198,22 @@ export function normalizeChatStructuredQuery(
   }
 
   if (structuredQuery.intent === 'aggregate_batting') {
+    const normalizedTeam = normalizeTeamName(structuredQuery.filters.team)
+    const normalizedPlayerName = normalizePlayerName(structuredQuery.filters.player_name)
+    const normalizedPlayerNames = normalizePlayerNames((structuredQuery.filters as { player_names?: string[] }).player_names)
+    const normalizedPlayerNamesCount = normalizedPlayerNames?.length ?? 0
+    const filters = {
+      ...structuredQuery.filters,
+      ...(normalizedTeam ? { team: normalizedTeam } : {}),
+      ...(normalizedPlayerName ? { player_name: normalizedPlayerName } : {}),
+      ...(normalizedPlayerNamesCount > 0 ? { player_names: normalizedPlayerNames } : {}),
+      ...(structuredQuery.filters.limit === undefined && (normalizedPlayerName || normalizedPlayerNamesCount > 0)
+        ? { limit: 10 }
+        : {}),
+    }
     return chatStructuredQuerySchema.parse({
       intent: 'aggregate_batting',
-      filters: {
-        ...structuredQuery.filters,
-        team: normalizeTeamName(structuredQuery.filters.team),
-        player_name: normalizePlayerName(structuredQuery.filters.player_name),
-      },
+      filters,
     })
   }
 

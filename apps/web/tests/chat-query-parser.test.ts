@@ -182,6 +182,7 @@ describe('chat-query-parser', () => {
       filters: {
         year: currentJstYear(),
         player_name: '牧秀悟',
+        limit: 10,
       },
     })
   })
@@ -217,6 +218,19 @@ describe('chat-query-parser', () => {
       filters: {
         year: 2026,
         pitcher_name: '藤浪',
+      },
+    })
+  })
+
+  it('parses multi-player recent comparison questions in fallback logic', () => {
+    expect(
+      parseStructuredQueryFromMessageStub('石田裕太郎と東克樹のそれぞれ直近3試合の成績を比較して'),
+    ).toEqual({
+      intent: 'search_pitching',
+      filters: {
+        pitcher_names: ['石田裕太郎', '東克樹'],
+        recent: true,
+        limit: 3,
       },
     })
   })

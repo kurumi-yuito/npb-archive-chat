@@ -133,6 +133,7 @@ export function materializePlayerIdentityArtifacts(
       FROM player_profiles
       WHERE player_id IS NOT NULL AND player_id <> ''`,
     ).all() as ProfileRow[]
+    const profileIds = new Set(profiles.map((profile) => profile.player_id))
 
     let playerProfilesUpdated = 0
     let playerAliasesUpserted = 0
@@ -206,6 +207,37 @@ export function materializePlayerIdentityArtifacts(
         season = excluded.season,
         team = excluded.team,
         updated_at = excluded.updated_at`,
+    )
+    const upsertSeedProfile = database.prepare(
+      `INSERT INTO player_profiles (
+        player_id,
+        full_name,
+        team_name,
+        year_teams_json,
+        source_url,
+        fetched_at,
+        canonical_name,
+        current_team,
+        active,
+        metadata,
+        created_at,
+        updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT(player_id) DO UPDATE SET
+        full_name = COALESCE(NULLIF(excluded.full_name, ''), player_profiles.full_name),
+        team_name = COALESCE(NULLIF(excluded.team_name, ''), player_profiles.team_name),
+        year_teams_json = COALESCE(NULLIF(excluded.year_teams_json, ''), player_profiles.year_teams_json),
+        source_url = COALESCE(NULLIF(excluded.source_url, ''), player_profiles.source_url),
+        fetched_at = COALESCE(NULLIF(excluded.fetched_at, ''), player_profiles.fetched_at),
+        canonical_name = COALESCE(NULLIF(excluded.canonical_name, ''), player_profiles.canonical_name),
+        current_team = COALESCE(NULLIF(excluded.current_team, ''), player_profiles.current_team),
+        active = MAX(player_profiles.active, excluded.active),
+        metadata = CASE
+          WHEN excluded.metadata IS NOT NULL AND excluded.metadata <> '{}' THEN excluded.metadata
+          ELSE player_profiles.metadata
+        END,
+        created_at = COALESCE(NULLIF(excluded.created_at, ''), player_profiles.created_at),
+        updated_at = COALESCE(NULLIF(excluded.updated_at, ''), player_profiles.updated_at)`,
     )
     const updateCurrentTeamRoster = database.prepare(
       `UPDATE current_team_roster
@@ -291,6 +323,29 @@ export function materializePlayerIdentityArtifacts(
     for (const row of rosterRows) {
       const resolvedId = row.player_id || resolveProfileId(database, row.player_name, row.team_name) || null
       if (!resolvedId) continue
+      if (!profileIds.has(resolvedId)) {
+        const yearTeamsJson = JSON.stringify({ [row.year]: row.team_name })
+        upsertSeedProfile.run(
+          resolvedId,
+          row.player_name,
+          row.team_name,
+          yearTeamsJson,
+          row.source_url,
+          row.source_url,
+          row.player_name,
+          row.team_name,
+          year === CURRENT_YEAR ? 1 : 0,
+          JSON.stringify({
+            year_teams_json: yearTeamsJson,
+            source_url: row.source_url,
+            seeded_from: 'current_team_roster',
+          }),
+          row.source_url,
+          row.source_url,
+        )
+        profileIds.add(resolvedId)
+        playerProfilesUpdated += 1
+      }
       if (!row.player_id) {
         updateCurrentTeamRoster.run(resolvedId, row.year, row.team_id, row.player_name)
         rosterPlayerIdsBackfilled += 1
@@ -330,6 +385,29 @@ export function materializePlayerIdentityArtifacts(
       for (const row of rows) {
         const resolvedId = row.player_id || resolveProfileId(database, row.player_name, row.team_name) || null
         if (!resolvedId) continue
+        if (!profileIds.has(resolvedId)) {
+          const yearTeamsJson = JSON.stringify({ [row.year]: row.team_name })
+          upsertSeedProfile.run(
+            resolvedId,
+            row.player_name,
+            row.team_name,
+            yearTeamsJson,
+            row.source_url,
+            row.source_url,
+            row.player_name,
+            row.team_name,
+            year === CURRENT_YEAR ? 1 : 0,
+            JSON.stringify({
+              year_teams_json: yearTeamsJson,
+              source_url: row.source_url,
+              seeded_from: table,
+            }),
+            row.source_url,
+            row.source_url,
+          )
+          profileIds.add(resolvedId)
+          playerProfilesUpdated += 1
+        }
         if (!row.player_id) {
           database.prepare(
             `UPDATE ${table}

@@ -11,6 +11,7 @@ export type SearchPlayerCandidatesFilters = {
   year_to?: number
   latestOnly?: boolean
   includeEvents?: boolean
+  searchDomain?: 'all' | 'batting' | 'pitching'
   limit?: number
 }
 
@@ -236,6 +237,17 @@ export async function searchPlayerCandidates(
     await resolvePlayerIdsFromAliases(database, aliases),
   )
   const profilePlayerIds = profileMatches.map((m) => m.player_id)
+  if (profileMatches.length > 1 && !filters.latestOnly) {
+    return profileMatches.map((profile) => ({
+      player_id: profile.player_id,
+      name: profile.fullName ?? filters.name,
+      primary_team: profile.currentTeam,
+      roles: ['profile'],
+      teams: [...new Set([...profile.knownTeams, profile.currentTeam].filter(Boolean) as string[])],
+      years: profile.years,
+      match_kind: 'profile',
+    } as PlayerCandidate & { match_kind: 'profile' }))
+  }
   if (profileMatches.length === 1 && !filters.latestOnly) {
     const profile = profileMatches[0]!
     const inferredRoles = await inferPlayerRoles(database, profile.player_id)
@@ -251,38 +263,48 @@ export async function searchPlayerCandidates(
   }
 
   const rows: RawPlayerMention[] = []
-  rows.push(...await queryRawPlayerMentions(database, aliases, filters, {
-    sql: 'SELECT current_team_roster.player_name AS name, current_team_roster.player_id AS player_url, ? AS role, current_team_roster.team_name AS team, current_team_roster.year AS year FROM current_team_roster',
-    role: 'bis_roster',
-    nameColumn: 'current_team_roster.player_name',
-    yearColumn: 'current_team_roster.year',
-  }))
-  rows.push(...await queryRawPlayerMentions(database, aliases, filters, {
-    sql: 'SELECT player_batting_stats.player_name AS name, player_batting_stats.player_id AS player_url, ? AS role, player_batting_stats.team_name AS team, player_batting_stats.year AS year FROM player_batting_stats',
-    role: 'bis_batting',
-    nameColumn: 'player_batting_stats.player_name',
-    yearColumn: 'player_batting_stats.year',
-  }))
-  const bisRows = await queryRawPlayerMentions(database, aliases, filters, {
-    sql: 'SELECT player_pitching_stats.player_name AS name, player_pitching_stats.player_id AS player_url, ? AS role, player_pitching_stats.team_name AS team, player_pitching_stats.year AS year FROM player_pitching_stats',
-    role: 'bis_pitching',
-    nameColumn: 'player_pitching_stats.player_name',
-    yearColumn: 'player_pitching_stats.year',
-  })
-  rows.push(...bisRows)
+  if (filters.searchDomain === 'all') {
+    rows.push(...await queryRawPlayerMentions(database, aliases, filters, {
+      sql: 'SELECT current_team_roster.player_name AS name, current_team_roster.player_id AS player_url, ? AS role, current_team_roster.team_name AS team, current_team_roster.year AS year FROM current_team_roster',
+      role: 'bis_roster',
+      nameColumn: 'current_team_roster.player_name',
+      yearColumn: 'current_team_roster.year',
+    }))
+  }
+  if (filters.searchDomain !== 'pitching') {
+    rows.push(...await queryRawPlayerMentions(database, aliases, filters, {
+      sql: 'SELECT player_batting_stats.player_name AS name, player_batting_stats.player_id AS player_url, ? AS role, player_batting_stats.team_name AS team, player_batting_stats.year AS year FROM player_batting_stats',
+      role: 'bis_batting',
+      nameColumn: 'player_batting_stats.player_name',
+      yearColumn: 'player_batting_stats.year',
+    }))
+  }
+  if (filters.searchDomain !== 'batting') {
+    const bisRows = await queryRawPlayerMentions(database, aliases, filters, {
+      sql: 'SELECT player_pitching_stats.player_name AS name, player_pitching_stats.player_id AS player_url, ? AS role, player_pitching_stats.team_name AS team, player_pitching_stats.year AS year FROM player_pitching_stats',
+      role: 'bis_pitching',
+      nameColumn: 'player_pitching_stats.player_name',
+      yearColumn: 'player_pitching_stats.year',
+    })
+    rows.push(...bisRows)
+  }
   if (filters.includeEvents !== false) {
-    rows.push(...await queryRawPlayerMentions(database, aliases, filters, {
-      sql: `SELECT events.batter_name AS name, COALESCE(NULLIF(events.batter_url, ''), CASE WHEN json_valid(events.event_attributes_json) THEN json_extract(events.event_attributes_json, '$.batter_links[0].url') ELSE NULL END) AS player_url, ? AS role, events.offense_team AS team, games.year AS year FROM events INNER JOIN games ON games.game_id = events.game_id`,
-      role: 'batter',
-      nameColumn: 'events.batter_name',
-      yearColumn: 'games.year',
-    }))
-    rows.push(...await queryRawPlayerMentions(database, aliases, filters, {
-      sql: 'SELECT events.pitcher_name AS name, NULLIF(events.pitcher_url, \'\') AS player_url, ? AS role, NULL AS team, games.year AS year FROM events INNER JOIN games ON games.game_id = events.game_id',
-      role: 'pitcher',
-      nameColumn: 'events.pitcher_name',
-      yearColumn: 'games.year',
-    }))
+    if (filters.searchDomain !== 'pitching') {
+      rows.push(...await queryRawPlayerMentions(database, aliases, filters, {
+        sql: `SELECT events.batter_name AS name, COALESCE(NULLIF(events.batter_url, ''), CASE WHEN json_valid(events.event_attributes_json) THEN json_extract(events.event_attributes_json, '$.batter_links[0].url') ELSE NULL END) AS player_url, ? AS role, events.offense_team AS team, games.year AS year FROM events INNER JOIN games ON games.game_id = events.game_id`,
+        role: 'batter',
+        nameColumn: 'events.batter_name',
+        yearColumn: 'games.year',
+      }))
+    }
+    if (filters.searchDomain !== 'batting') {
+      rows.push(...await queryRawPlayerMentions(database, aliases, filters, {
+        sql: 'SELECT events.pitcher_name AS name, NULLIF(events.pitcher_url, \'\') AS player_url, ? AS role, NULL AS team, games.year AS year FROM events INNER JOIN games ON games.game_id = events.game_id',
+        role: 'pitcher',
+        nameColumn: 'events.pitcher_name',
+        yearColumn: 'games.year',
+      }))
+    }
     rows.push(...await queryRawPlayerMentions(database, aliases, filters, {
       sql: 'SELECT events.runner_name AS name, NULLIF(events.runner_url, \'\') AS player_url, ? AS role, events.offense_team AS team, games.year AS year FROM events INNER JOIN games ON games.game_id = events.game_id',
       role: 'runner',
@@ -290,24 +312,30 @@ export async function searchPlayerCandidates(
       yearColumn: 'games.year',
     }))
   }
-  rows.push(...await queryRawPlayerMentions(database, aliases, filters, {
-    sql: 'SELECT batting_lines.player_name AS name, NULLIF(batting_lines.player_url, \'\') AS player_url, ? AS role, batting_lines.team AS team, games.year AS year FROM batting_lines INNER JOIN games ON games.game_id = batting_lines.game_id',
-    role: 'batter',
-    nameColumn: 'batting_lines.player_name',
-    yearColumn: 'games.year',
-  }))
-  rows.push(...await queryRawPlayerMentions(database, aliases, filters, {
-    sql: 'SELECT pitching_lines.pitcher_name AS name, NULLIF(pitching_lines.pitcher_url, \'\') AS player_url, ? AS role, pitching_lines.team AS team, games.year AS year FROM pitching_lines INNER JOIN games ON games.game_id = pitching_lines.game_id',
-    role: 'pitcher',
-    nameColumn: 'pitching_lines.pitcher_name',
-    yearColumn: 'games.year',
-  }))
-  rows.push(...await queryRawPlayerMentions(database, aliases, filters, {
-    sql: 'SELECT roster_entries.player_name AS name, NULLIF(roster_entries.player_url, \'\') AS player_url, ? AS role, roster_entries.team AS team, games.year AS year FROM roster_entries INNER JOIN games ON games.game_id = roster_entries.game_id',
-    role: 'roster',
-    nameColumn: 'roster_entries.player_name',
-    yearColumn: 'games.year',
-  }))
+  if (filters.searchDomain !== 'pitching') {
+    rows.push(...await queryRawPlayerMentions(database, aliases, filters, {
+      sql: 'SELECT batting_lines.player_name AS name, NULLIF(batting_lines.player_url, \'\') AS player_url, ? AS role, batting_lines.team AS team, games.year AS year FROM batting_lines INNER JOIN games ON games.game_id = batting_lines.game_id',
+      role: 'batter',
+      nameColumn: 'batting_lines.player_name',
+      yearColumn: 'games.year',
+    }))
+  }
+  if (filters.searchDomain !== 'batting') {
+    rows.push(...await queryRawPlayerMentions(database, aliases, filters, {
+      sql: 'SELECT pitching_lines.pitcher_name AS name, NULLIF(pitching_lines.pitcher_url, \'\') AS player_url, ? AS role, pitching_lines.team AS team, games.year AS year FROM pitching_lines INNER JOIN games ON games.game_id = pitching_lines.game_id',
+      role: 'pitcher',
+      nameColumn: 'pitching_lines.pitcher_name',
+      yearColumn: 'games.year',
+    }))
+  }
+  if (filters.searchDomain === 'all') {
+    rows.push(...await queryRawPlayerMentions(database, aliases, filters, {
+      sql: 'SELECT roster_entries.player_name AS name, NULLIF(roster_entries.player_url, \'\') AS player_url, ? AS role, roster_entries.team AS team, games.year AS year FROM roster_entries INNER JOIN games ON games.game_id = roster_entries.game_id',
+      role: 'roster',
+      nameColumn: 'roster_entries.player_name',
+      yearColumn: 'games.year',
+    }))
+  }
 
   const candidateRows = filters.latestOnly ? latestMentionRows(rows) : rows
   let candidates = mergeFallbackCandidates(groupPlayerMentions(candidateRows, aliases))

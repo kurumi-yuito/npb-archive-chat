@@ -240,6 +240,14 @@ function buildSummary(
 
   if (structuredQuery.intent === 'search_batting') {
     const first = results.batting[0] as BattingLineRow
+    const multiBattingSummary = formatMultiPlayerRecentBattingSummary(
+      structuredQuery,
+      results.batting as BattingLineRow[],
+      executionMetadata,
+    )
+    if (multiBattingSummary) {
+      return `${yearShiftPrefix}${multiBattingSummary}`
+    }
     if (isEvaluationQuestion(question, structuredQuery.filters, executionMetadata)) {
       const boxGameDates = (results.batting as BattingLineRow[])
         .filter((r) => r.sourceKind !== 'bis_batting')
@@ -1393,6 +1401,60 @@ function formatRecentPitchingComparisonFollowUpSummary(rows: PitchingLineRow[]):
   return `${year}年の確認できる最新${boxRows.length}試合は${totals.strikeouts}奪三振、${totals.earnedRuns}自責点です。昨年の同条件と直接の通算比較はできませんが、少なくとも直近は失点を抑えて試合を作れています。`
 }
 
+function formatMultiPlayerRecentBattingSummary(
+  structuredQuery: ChatStructuredQuery,
+  rows: BattingLineRow[],
+  executionMetadata?: ChatExecutionMetadata,
+): string | null {
+  const filters = structuredQuery.filters as Record<string, unknown>
+  const playerNames = Array.isArray(filters.player_names)
+    ? filters.player_names.filter((name): name is string => typeof name === 'string' && name.length > 0)
+    : []
+  if (structuredQuery.intent !== 'search_batting' || playerNames.length < 2 || !filters.recent) {
+    return null
+  }
+  const limit = typeof filters.limit === 'number' ? filters.limit : 3
+  const resolvedByInput = new Map(
+    (executionMetadata?.playerResolutions ?? [])
+      .filter((resolution) => resolution.status === 'resolved')
+      .map((resolution) => [compactName(resolution.input), resolution]),
+  )
+  const lines = [`${playerNames.join('と')}の直近${limit}試合の打撃成績を比較します。`]
+  for (const playerName of playerNames) {
+    const resolved = resolvedByInput.get(compactName(playerName))
+    const aliases = new Set([
+      compactName(playerName),
+      compactName(resolved?.name ?? ''),
+      compactName(resolved?.input ?? ''),
+      compactName(primaryNamePart(resolved?.name ?? playerName)),
+    ].filter(Boolean))
+    const playerRows = rows
+      .filter((row) => matchesComparisonPlayerName(row.playerName, aliases))
+      .sort((a, b) => `${b.gameDate}:${b.gameId}`.localeCompare(`${a.gameDate}:${a.gameId}`, 'ja'))
+      .slice(0, limit)
+    const displayName = resolved?.name ?? playerName
+    if (playerRows.length === 0) {
+      lines.push(`${displayName}: 条件に一致する打撃データは確認できませんでした。`)
+      continue
+    }
+    const totals = playerRows.reduce(
+      (acc, row) => ({
+        atBats: acc.atBats + row.atBats,
+        hits: acc.hits + row.hits,
+        runsBattedIn: acc.runsBattedIn + row.runsBattedIn,
+      }),
+      { atBats: 0, hits: 0, runsBattedIn: 0 },
+    )
+    const average = totals.atBats > 0 ? formatRate(totals.hits / totals.atBats) : 'N/A'
+    const gameLines = playerRows.map((row) =>
+      `${formatDateJa(row.gameDate)} ${row.atBats}打数${row.hits}安打${row.runsBattedIn ? ` ${row.runsBattedIn}打点` : ''}`,
+    )
+    const shortage = playerRows.length < limit ? `（確認できた範囲は${playerRows.length}試合）` : ''
+    lines.push(`${displayName}: ${playerRows.length}試合${shortage}、${totals.atBats}打数${totals.hits}安打、打率${average}${totals.runsBattedIn ? `、打点${totals.runsBattedIn}` : ''}。${gameLines.join(' / ')}`)
+  }
+  return lines.join('\n')
+}
+
 function formatMultiPlayerRecentPitchingSummary(
   structuredQuery: ChatStructuredQuery,
   rows: PitchingLineRow[],
@@ -1458,6 +1520,10 @@ function matchesComparisonPitcherName(rowPitcherName: string, aliases: Set<strin
     }
   }
   return false
+}
+
+function matchesComparisonPlayerName(rowPlayerName: string, aliases: Set<string>): boolean {
+  return matchesComparisonPitcherName(rowPlayerName, aliases)
 }
 
 function compactName(value: string): string {

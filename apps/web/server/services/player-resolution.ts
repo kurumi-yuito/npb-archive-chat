@@ -2,6 +2,7 @@ import type { ChatStructuredQuery, PlayerCandidate } from '@npb/schemas'
 import type { ChatQueryService } from '@npb/db'
 import { normalizeFreeText } from './chat-query-normalizer'
 import { buildAliases } from './player-alias'
+import type { SearchPlayerCandidatesFilters } from '@npb/db'
 
 export type PlayerResolution = {
   input: string
@@ -58,11 +59,18 @@ export async function resolveStructuredQueryPlayer(
 
   const input = target.value
   const aliases = buildAliases(input)
+  const searchDomain: SearchPlayerCandidatesFilters['searchDomain'] =
+    structuredQuery.intent === 'search_batting' || structuredQuery.intent === 'aggregate_batting'
+    ? 'batting'
+    : structuredQuery.intent === 'search_pitching' || structuredQuery.intent === 'aggregate_pitching'
+      ? 'pitching'
+      : 'all'
   const candidateFilters = {
     ...yearFilters(structuredQuery),
     name: input,
     aliases,
     includeEvents: target.field === 'runner_name' || structuredQuery.intent === 'search_events' || structuredQuery.intent === 'aggregate_events',
+    searchDomain,
     latestOnly: structuredQuery.intent === 'player_affiliation' && !hasExplicitYearFilter(structuredQuery),
     limit: 50,
   }
@@ -78,6 +86,7 @@ export async function resolveStructuredQueryPlayer(
       name: candidateFilters.name,
       aliases,
       includeEvents: candidateFilters.includeEvents,
+      searchDomain,
       limit: 50,
     })
     candidates = selectCandidatesForInput(
@@ -93,6 +102,7 @@ export async function resolveStructuredQueryPlayer(
       name: candidateFilters.name,
       aliases,
       includeEvents: candidateFilters.includeEvents,
+      searchDomain,
       limit: 50,
     })
     candidates = selectCandidatesForInput(
