@@ -65,6 +65,10 @@ crons = ["5 1,7,13 * * *"]
 name = "npb-archive-chat-web-normalized"
 workers_dev = true
 preview_urls = true
+routes = []
+
+[env.normalized.triggers]
+crons = []
 
 [env.normalized.vars]
 NPB_AUTH_HEADER_FALLBACK = "false"
@@ -85,7 +89,3 @@ database_id = "eb614de3-eb0c-4816-a7b2-8440e94093a8"
 binding = "NPB_META_DB"
 database_name = "npb-archive-chat-meta"
 database_id = "585f542f-488d-4196-8f97-373d858302df"
-
-[[env.normalized.r2_buckets]]
-binding = "NPB_R2_RAW"
-bucket_name = "npb-archive-chat-raw"
