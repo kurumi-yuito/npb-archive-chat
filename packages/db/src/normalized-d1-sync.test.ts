@@ -78,13 +78,13 @@ describe('runNormalizedD1Sync', () => {
       expect(cleanupSql).toContain('DELETE FROM "teams";')
 
       const gameSql = await readFile(
-        result.sqlPaths.find((sqlPath) => sqlPath.endsWith('_game_facts.sql'))!,
+        result.sqlPaths.find((sqlPath) => sqlPath.includes('_game_facts_'))!,
         'utf8',
       )
       expect(gameSql).toContain('INSERT OR REPLACE INTO "game_facts"')
 
       const eventSql = await readFile(
-        result.sqlPaths.find((sqlPath) => sqlPath.endsWith('_event_facts.sql'))!,
+        result.sqlPaths.find((sqlPath) => sqlPath.includes('_event_facts_'))!,
         'utf8',
       )
       expect(eventSql).toContain('51155118')

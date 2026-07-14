@@ -13,6 +13,7 @@ const DEFAULT_SQLITE_DIR = 'data'
 const DEFAULT_D1_DATABASE = 'npb-archive-chat-normalized'
 const DEFAULT_SQLITE_FILE_RE = /^npb-(\d{4})\.sqlite$/u
 const D1_OMIT_COLUMNS = new Set(['id'])
+const IMPORT_CHUNK_ROWS = 5000
 const DEFAULT_NORMALIZED_MIGRATIONS_DIR = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
   '..',
@@ -308,10 +309,17 @@ async function buildNormalizedD1ImportFiles(
 
   for (const table of NORMALIZED_IMPORT_TABLES) {
     const { columns, rows } = readTableRows(database, table)
-    const statements = buildInsertStatements(table, columns, rows)
-    const sqlPath = path.join(importDir, `normalized_${table}.sql`)
-    await writeFile(sqlPath, `${statements.join('\n')}\n`, 'utf8')
-    sqlPaths.push(sqlPath)
+    for (let index = 0; index < rows.length || (index === 0 && rows.length === 0); index += IMPORT_CHUNK_ROWS) {
+      const chunk = rows.slice(index, index + IMPORT_CHUNK_ROWS)
+      const statements = buildInsertStatements(table, columns, chunk)
+      const chunkNumber = String(Math.floor(index / IMPORT_CHUNK_ROWS) + 1).padStart(4, '0')
+      const sqlPath = path.join(importDir, `normalized_${table}_${chunkNumber}.sql`)
+      await writeFile(sqlPath, `${statements.join('\n')}\n`, 'utf8')
+      sqlPaths.push(sqlPath)
+      if (rows.length === 0) {
+        break
+      }
+    }
   }
   return sqlPaths
 }
