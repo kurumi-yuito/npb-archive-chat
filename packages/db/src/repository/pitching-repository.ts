@@ -2,6 +2,7 @@ import { searchPitchingLinesFiltersSchema } from '@npb/schemas'
 import type { QueryDatabase } from '../query-driver'
 import type { SearchPitchingLinesFilters } from '@npb/schemas'
 import { toJapaneseTeamAliases } from './team-name-utils'
+import { isNormalizedFactsSchema } from './schema-detection'
 
 /** 投手成績の検索向け最小列 */
 export type PitchingLineRow = {
@@ -31,6 +32,18 @@ export async function searchPitchingLines(
     : await searchCurrentPitchingStats(database, normalized, limit)
   if (currentRows.length > 0) {
     return currentRows
+  }
+  if (normalized.pitcher_player_id && await isNormalizedFactsSchema(database)) {
+    const normalizedRows = await searchNormalizedPitchingLines(database, normalized, limit)
+    if (normalizedRows.length > 0) {
+      return normalizedRows
+    }
+    if (normalized.pitcher_name) {
+      return searchPitchingLines(database, {
+        ...normalized,
+        pitcher_player_id: undefined,
+      })
+    }
   }
 
   const clauses: string[] = []
@@ -111,6 +124,68 @@ export async function searchPitchingLines(
     })
   }
   return gameRows
+}
+
+async function searchNormalizedPitchingLines(
+  database: QueryDatabase,
+  filters: SearchPitchingLinesFilters,
+  limit: number,
+): Promise<PitchingLineRow[]> {
+  const clauses: string[] = ['pitching_line_facts.pitcher_id = ?']
+  const values: Array<string | number> = [filters.pitcher_player_id!]
+  if (filters.game_date) {
+    clauses.push('game_facts.game_date = ?')
+    values.push(filters.game_date)
+  }
+  if (filters.game_id) {
+    clauses.push('pitching_line_facts.game_id = ?')
+    values.push(filters.game_id)
+  }
+  if (filters.year) {
+    clauses.push('game_facts.year = ?')
+    values.push(filters.year)
+  }
+  if (filters.year_from) {
+    clauses.push('game_facts.year >= ?')
+    values.push(filters.year_from)
+  }
+  if (filters.year_to) {
+    clauses.push('game_facts.year <= ?')
+    values.push(filters.year_to)
+  }
+  if (filters.team) {
+    const teams = toJapaneseTeamAliases(filters.team)
+    clauses.push(`teams.team_name IN (${teams.map(() => '?').join(', ')})`)
+    values.push(...teams)
+  }
+  const rows = await database
+    .prepare(
+      `SELECT
+        pitching_line_facts.game_id AS gameId,
+        game_facts.game_date AS gameDate,
+        teams.team_name AS team,
+        person_names.name AS pitcherName,
+        pitching_line_facts.innings_pitched AS inningsPitched,
+        pitching_line_facts.pitch_count AS pitchCount,
+        pitching_line_facts.strikeouts AS strikeouts,
+        pitching_line_facts.runs AS runs,
+        pitching_line_facts.earned_runs AS earnedRuns,
+        'box' AS sourceKind,
+        source_snapshot_facts.source_url AS sourceUrl,
+        NULL AS statsJson
+      FROM pitching_line_facts
+      INNER JOIN game_facts ON game_facts.game_id = pitching_line_facts.game_id
+      INNER JOIN teams ON teams.team_id = pitching_line_facts.team_id
+      INNER JOIN person_names ON person_names.name_id = pitching_line_facts.pitcher_name_id
+      LEFT JOIN source_snapshot_facts ON source_snapshot_facts.source_snapshot_id = pitching_line_facts.source_snapshot_id
+      WHERE ${clauses.join(' AND ')}
+      ORDER BY ${filters.sort_by === 'pitchCount'
+        ? 'pitching_line_facts.pitch_count DESC, game_facts.game_date DESC, pitching_line_facts.game_id DESC'
+        : `game_facts.game_date ${filters.recent ? 'DESC' : 'ASC'}, pitching_line_facts.game_id ASC, pitching_line_facts.row_index ASC`}
+      LIMIT ?`,
+    )
+    .all(...values, limit)
+  return rows as PitchingLineRow[]
 }
 
 export async function searchCurrentPitchingStats(

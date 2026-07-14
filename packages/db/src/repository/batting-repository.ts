@@ -4,6 +4,7 @@ import {
 } from '@npb/schemas'
 import type { QueryDatabase } from '../query-driver'
 import { toJapaneseTeamAliases } from './team-name-utils'
+import { isNormalizedFactsSchema } from './schema-detection'
 
 export type BattingLineRow = {
   gameId: string
@@ -40,6 +41,18 @@ export async function searchBattingLines(
     : await searchCurrentBattingStats(database, normalized, limit)
   if (currentRows.length > 0) {
     return currentRows
+  }
+  if (normalized.player_id && await isNormalizedFactsSchema(database)) {
+    const normalizedRows = await searchNormalizedBattingLines(database, normalized, limit)
+    if (normalizedRows.length > 0) {
+      return normalizedRows
+    }
+    if (normalized.player_name) {
+      return searchBattingLines(database, {
+        ...normalized,
+        player_id: undefined,
+      })
+    }
   }
 
   const clauses: string[] = []
@@ -133,6 +146,80 @@ export async function searchBattingLines(
     })
   }
   return gameRows
+}
+
+async function searchNormalizedBattingLines(
+  database: QueryDatabase,
+  filters: SearchBattingLinesFilters,
+  limit: number,
+): Promise<BattingLineRow[]> {
+  const clauses: string[] = ['batting_line_facts.player_id = ?']
+  const values: Array<string | number> = [filters.player_id!]
+  if (filters.game_date) {
+    clauses.push('game_facts.game_date = ?')
+    values.push(filters.game_date)
+  }
+  if (filters.game_id) {
+    clauses.push('batting_line_facts.game_id = ?')
+    values.push(filters.game_id)
+  }
+  if (filters.year) {
+    clauses.push('game_facts.year = ?')
+    values.push(filters.year)
+  }
+  if (filters.year_from) {
+    clauses.push('game_facts.year >= ?')
+    values.push(filters.year_from)
+  }
+  if (filters.year_to) {
+    clauses.push('game_facts.year <= ?')
+    values.push(filters.year_to)
+  }
+  if (filters.team) {
+    const teams = toJapaneseTeamAliases(filters.team)
+    clauses.push(`teams.team_name IN (${teams.map(() => '?').join(', ')})`)
+    values.push(...teams)
+  }
+  if (filters.batting_order !== undefined) {
+    clauses.push('batting_line_facts.batting_order = ?')
+    values.push(filters.batting_order)
+  }
+  if (filters.position) {
+    clauses.push('positions.position LIKE ?')
+    values.push(`%${filters.position}%`)
+  }
+  const rows = await database
+    .prepare(
+      `SELECT
+        batting_line_facts.game_id AS gameId,
+        game_facts.game_date AS gameDate,
+        teams.team_name AS team,
+        person_names.name AS playerName,
+        batting_line_facts.batting_order AS battingOrder,
+        positions.position AS position,
+        batting_line_facts.at_bats AS atBats,
+        batting_line_facts.runs AS runs,
+        batting_line_facts.hits AS hits,
+        batting_line_facts.runs_batted_in AS runsBattedIn,
+        batting_line_facts.stolen_bases AS stolenBases,
+        batting_line_facts.strikeouts AS strikeouts,
+        batting_line_facts.walks AS walks,
+        NULL AS rawText,
+        'box' AS sourceKind,
+        source_snapshot_facts.source_url AS sourceUrl,
+        NULL AS statsJson
+      FROM batting_line_facts
+      INNER JOIN game_facts ON game_facts.game_id = batting_line_facts.game_id
+      INNER JOIN teams ON teams.team_id = batting_line_facts.team_id
+      INNER JOIN person_names ON person_names.name_id = batting_line_facts.player_name_id
+      LEFT JOIN positions ON positions.position_id = batting_line_facts.position_id
+      LEFT JOIN source_snapshot_facts ON source_snapshot_facts.source_snapshot_id = batting_line_facts.source_snapshot_id
+      WHERE ${clauses.join(' AND ')}
+      ORDER BY game_facts.game_date ${filters.recent ? 'DESC' : 'ASC'}, batting_line_facts.game_id ASC, batting_line_facts.row_index ASC
+      LIMIT ?`,
+    )
+    .all(...values, limit)
+  return rows as BattingLineRow[]
 }
 
 async function searchCurrentBattingStats(
