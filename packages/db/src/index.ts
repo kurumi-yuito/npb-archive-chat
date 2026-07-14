@@ -51,6 +51,14 @@ import {
   runD1Sync,
 } from './d1-sync'
 import {
+  parseNormalizeDatabaseArgs,
+  runNormalizeDatabase,
+} from './normalized-conversion'
+import {
+  parseSyncNormalizedD1Args,
+  runNormalizedD1Sync,
+} from './normalized-d1-sync'
+import {
   parseUpdateDailyArgs,
   resolveDailyDateRange,
   runDailyUpdate,
@@ -145,6 +153,8 @@ export {
   parseUpdateDailyArgs,
   parseUpdateBisCurrentArgs,
   parseSyncD1Args,
+  parseNormalizeDatabaseArgs,
+  parseSyncNormalizedD1Args,
   parseRebuildYearFromR2Args,
   resolveDailyDateRange,
   parseBackfillScoresCanonicalArgs,
@@ -154,6 +164,8 @@ export {
   runDailyUpdate,
   runBisCurrentUpdate,
   runD1Sync,
+  runNormalizeDatabase,
+  runNormalizedD1Sync,
   rebuildYearFromR2,
   runScoresCalendarEnrichment,
   parseEnrichBisFarmBoxesArgs,

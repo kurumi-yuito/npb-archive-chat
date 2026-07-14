@@ -7,11 +7,15 @@ import {
   parsePlayerIdentityBackfillArgs,
   parseUpdateDailyArgs,
   parseSyncD1Args,
+  parseNormalizeDatabaseArgs,
+  parseSyncNormalizedD1Args,
   migrateDatabase,
   openDatabase,
   parseUpdateYearArgs,
   runDailyUpdate,
   runD1Sync,
+  runNormalizeDatabase,
+  runNormalizedD1Sync,
   runScoresCalendarEnrichment,
   runBackfillScoresCanonical,
   runBisCurrentUpdate,
@@ -34,6 +38,10 @@ const KNOWN_COMMANDS = new Set([
   'update-daily',
   'sync:d1',
   'sync-d1',
+  'normalize:d1',
+  'normalize-d1',
+  'sync:normalized-d1',
+  'sync-normalized-d1',
   'rebuild:r2-year',
   'rebuild-r2-year',
   'enrich:scores-calendar',
@@ -51,7 +59,7 @@ function resolveCliCommand(): { command: string; tail: string[] } {
   const commandIndex = argv.findIndex((arg) => KNOWN_COMMANDS.has(arg))
   if (commandIndex === -1) {
     throw new Error(
-      'Usage: tsx src/cli.ts <migrate|update-year|update:daily|update:bis-current|sync:d1|rebuild:r2-year|enrich:scores-calendar|backfill:scores-canonical|backfill:player-identity> ...\n       tsx src/cli.ts migrate <sqlite-db-path>\n       tsx src/cli.ts update-year --year <year> --sqlite-path <sqlite-path> [--from YYYY-MM-DD --to YYYY-MM-DD] [--workspace-root <path>] [--delay-ms <ms>] [--user-agent <ua>] [--storage <local|r2> --r2-bucket <bucket>]\n       tsx src/cli.ts update:daily [--date YYYY-MM-DD | --from YYYY-MM-DD --to YYYY-MM-DD | --days <n>] [--strict] [--include-bis-current] [--sqlite-dir <dir>] [--workspace-root <path>] [--delay-ms <ms>] [--user-agent <ua>] [--storage <local|r2> --r2-bucket <bucket>]\n       tsx src/cli.ts sync:d1 [--sqlite-dir <dir>] [--d1-database <name>] [--workspace-root <path>] [--dry-run] [--keep-files]\n       tsx src/cli.ts rebuild:r2-year --year <year> --sqlite-path <sqlite-path> --storage r2 --r2-bucket <bucket> [--clean]\n       tsx src/cli.ts update:bis-current --year <year> [--team <id|name>] [--sqlite-path <path>|--sqlite-dir <dir>] [--workspace-root <path>] [--delay-ms <ms>] [--user-agent <ua>] [--dry-run] [--storage <local|r2> --r2-bucket <bucket>]\n       tsx src/cli.ts enrich:scores-calendar --year <year> --sqlite-path <sqlite-path> [--from YYYY-MM-DD --to YYYY-MM-DD] [--limit <n>] [--league <all|regular>] [--exclude-farm] [--workspace-root <path>] [--delay-ms <ms>] [--user-agent <ua>] [--progress-every <n>] [--storage <local|r2> --r2-bucket <bucket>]\n       tsx src/cli.ts backfill:scores-canonical --year <year> --sqlite-path <sqlite-path> [--from YYYY-MM-DD --to YYYY-MM-DD] [--source <verified-candidates|calendar-live|calendar-raw>] [--league <all|regular>] [--limit <n>] [--workspace-root <path>] [--user-agent <ua>]\n       tsx src/cli.ts backfill:player-identity [--sqlite-dir <dir> | --sqlite-path <path>] [--year <year>] [--dry-run]',
+      'Usage: tsx src/cli.ts <migrate|update-year|update:daily|update:bis-current|sync:d1|normalize:d1|sync:normalized-d1|rebuild:r2-year|enrich:scores-calendar|backfill:scores-canonical|backfill:player-identity> ...\n       tsx src/cli.ts migrate <sqlite-db-path>\n       tsx src/cli.ts update-year --year <year> --sqlite-path <sqlite-path> [--from YYYY-MM-DD --to YYYY-MM-DD] [--workspace-root <path>] [--delay-ms <ms>] [--user-agent <ua>] [--storage <local|r2> --r2-bucket <bucket>]\n       tsx src/cli.ts update:daily [--date YYYY-MM-DD | --from YYYY-MM-DD --to YYYY-MM-DD | --days <n>] [--strict] [--include-bis-current] [--sqlite-dir <dir>] [--workspace-root <path>] [--delay-ms <ms>] [--user-agent <ua>] [--storage <local|r2> --r2-bucket <bucket>]\n       tsx src/cli.ts sync:d1 [--sqlite-dir <dir>] [--d1-database <name>] [--workspace-root <path>] [--dry-run] [--keep-files]\n       tsx src/cli.ts normalize:d1 --source <legacy-sqlite-path> --target <normalized-sqlite-path> [--migrations-dir <path>]\n       tsx src/cli.ts sync:normalized-d1 [--sqlite-dir <dir>] [--d1-database <name>] [--workspace-root <path>] [--migrations-dir <path>] [--dry-run] [--keep-files]\n       tsx src/cli.ts rebuild:r2-year --year <year> --sqlite-path <sqlite-path> --storage r2 --r2-bucket <bucket> [--clean]\n       tsx src/cli.ts update:bis-current --year <year> [--team <id|name>] [--sqlite-path <path>|--sqlite-dir <dir>] [--workspace-root <path>] [--delay-ms <ms>] [--user-agent <ua>] [--dry-run] [--storage <local|r2> --r2-bucket <bucket>]\n       tsx src/cli.ts enrich:scores-calendar --year <year> --sqlite-path <sqlite-path> [--from YYYY-MM-DD --to YYYY-MM-DD] [--limit <n>] [--league <all|regular>] [--exclude-farm] [--workspace-root <path>] [--delay-ms <ms>] [--user-agent <ua>] [--progress-every <n>] [--storage <local|r2> --r2-bucket <bucket>]\n       tsx src/cli.ts backfill:scores-canonical --year <year> --sqlite-path <sqlite-path> [--from YYYY-MM-DD --to YYYY-MM-DD] [--source <verified-candidates|calendar-live|calendar-raw>] [--league <all|regular>] [--limit <n>] [--workspace-root <path>] [--user-agent <ua>]\n       tsx src/cli.ts backfill:player-identity [--sqlite-dir <dir> | --sqlite-path <path>] [--year <year>] [--dry-run]',
     )
   }
 
@@ -84,6 +92,26 @@ async function main() {
     const args = parseSyncD1Args(tail)
     const result = await runD1Sync(args)
     process.stdout.write(`${JSON.stringify(result, null, 2)}\n`)
+    return
+  }
+
+  if (command === 'normalize:d1' || command === 'normalize-d1') {
+    const args = parseNormalizeDatabaseArgs(tail)
+    const result = runNormalizeDatabase(args)
+    process.stdout.write(`${JSON.stringify(result, null, 2)}\n`)
+    if (!result.parity.ok) {
+      process.exitCode = 1
+    }
+    return
+  }
+
+  if (command === 'sync:normalized-d1' || command === 'sync-normalized-d1') {
+    const args = parseSyncNormalizedD1Args(tail)
+    const result = await runNormalizedD1Sync(args)
+    process.stdout.write(`${JSON.stringify(result, null, 2)}\n`)
+    if (!result.verified && args.dryRun !== true && args.verify !== false) {
+      process.exitCode = 1
+    }
     return
   }
 
