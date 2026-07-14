@@ -360,10 +360,7 @@ CREATE TABLE IF NOT EXISTS normalized_migration_checkpoints (
 
 CREATE INDEX IF NOT EXISTS idx_games_year_date ON games(year, game_date);
 CREATE INDEX IF NOT EXISTS idx_games_date ON games(game_date);
-CREATE INDEX IF NOT EXISTS idx_events_game_sequence ON events(game_id, sequence);
 CREATE INDEX IF NOT EXISTS idx_events_batter_player ON events(batter_player_id);
-CREATE INDEX IF NOT EXISTS idx_events_pitcher_player ON events(pitcher_player_id);
-CREATE INDEX IF NOT EXISTS idx_events_runner_player ON events(runner_player_id);
 CREATE INDEX IF NOT EXISTS idx_events_type_subtype ON events(event_type_id, event_subtype_id);
 CREATE INDEX IF NOT EXISTS idx_events_result ON events(result_code_id);
 CREATE INDEX IF NOT EXISTS idx_batting_player_game ON batting_lines(player_id, game_id);
