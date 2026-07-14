@@ -60,3 +60,32 @@ custom_domain = true
 
 [triggers]
 crons = ["5 1,7,13 * * *"]
+
+[env.normalized]
+name = "npb-archive-chat-web-normalized"
+workers_dev = true
+preview_urls = true
+
+[env.normalized.vars]
+NPB_AUTH_HEADER_FALLBACK = "false"
+NPB_DEFAULT_PLAN = "free"
+CHAT_QUERY_LLM_BASE_URL = "https://api.openai.com/v1"
+CHAT_QUERY_LLM_MODEL = "gpt-4.1-mini"
+CHAT_ALLOW_HEURISTIC_FALLBACK = "false"
+CHAT_ANSWER_LLM_BASE_URL = "https://api.openai.com/v1"
+CHAT_ANSWER_LLM_MODEL = "gpt-4.1-mini"
+CHAT_ALLOW_DETERMINISTIC_ANSWER_FALLBACK = "false"
+
+[[env.normalized.d1_databases]]
+binding = "NPB_DB"
+database_name = "npb-archive-chat-normalized"
+database_id = "eb614de3-eb0c-4816-a7b2-8440e94093a8"
+
+[[env.normalized.d1_databases]]
+binding = "NPB_META_DB"
+database_name = "npb-archive-chat-meta"
+database_id = "585f542f-488d-4196-8f97-373d858302df"
+
+[[env.normalized.r2_buckets]]
+binding = "NPB_R2_RAW"
+bucket_name = "npb-archive-chat-raw"
