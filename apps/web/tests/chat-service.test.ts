@@ -1894,7 +1894,7 @@ describe('chat-service', () => {
         name: '牧秀悟',
         primary_team: '横浜DeNAベイスターズ',
         roles: ['profile', 'batter'],
-        teams: ['横浜DeNAベイスターズ'],
+        teams: ['横浜DeNA', '横浜DeNAベイスターズ'],
         years: [2021, 2022, 2023, 2024, 2025, 2026],
       }],
       aggregateBattingLines: async (filters) => {

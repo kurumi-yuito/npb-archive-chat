@@ -362,6 +362,7 @@ function teamAliasKey(team: string): string {
     読売ジャイアンツ: '巨人',
     巨人: '巨人',
     横浜denaベイスターズ: 'dena',
+    横浜dena: 'dena',
     dena: 'dena',
     横浜: 'dena',
     阪神タイガース: '阪神',
