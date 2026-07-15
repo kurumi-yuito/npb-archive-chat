@@ -210,6 +210,25 @@ describe('runNormalizeDatabase', () => {
           },
         ])
 
+        const playerIdWithNameFallbackRows = await aggregateBattingLines(queryDatabase, {
+          year: 2025,
+          player_id: '13115153',
+          player_name: '牧秀悟',
+          team: '楽天',
+          limit: 10,
+        })
+        expect(playerIdWithNameFallbackRows).toMatchObject([
+          {
+            kind: 'batting',
+            label: '牧',
+            stats: {
+              team: '楽天',
+              hits: 2,
+              homeRuns: 0,
+            },
+          },
+        ])
+
         const ambiguousOneCharacterRows = await aggregateBattingLines(queryDatabase, {
           year: 2025,
           player_name: '牧秀悟',

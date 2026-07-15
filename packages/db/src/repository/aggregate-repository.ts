@@ -231,8 +231,21 @@ async function aggregateNormalizedBattingLines(
   const values: Array<string | number> = []
   appendNormalizedGameClauses(clauses, values, normalized)
   if (normalized.player_id) {
-    clauses.push('batting_line_facts.player_id = ?')
-    values.push(normalized.player_id)
+    if (normalized.player_name) {
+      clauses.push(
+        `(
+          batting_line_facts.player_id = ?
+          OR (
+            batting_line_facts.player_id IS NULL
+            AND ${prefixMatchesCompactNameSql('?', 'person_names.name', normalized.team ? 1 : 2)}
+          )
+        )`,
+      )
+      values.push(normalized.player_id, normalized.player_name)
+    } else {
+      clauses.push('batting_line_facts.player_id = ?')
+      values.push(normalized.player_id)
+    }
   } else if (normalized.player_name) {
     clauses.push(prefixMatchesCompactNameSql('?', 'person_names.name', normalized.team ? 1 : 2))
     values.push(normalized.player_name)

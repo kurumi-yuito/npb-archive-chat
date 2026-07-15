@@ -3040,13 +3040,6 @@ function isKnownQaRecoveryQueryWithoutPlayerResolution(message: string, query: C
     return true
   }
   if (
-    /牧秀悟|村上宗隆|岡本和真/u.test(message) &&
-    query.intent === 'aggregate_batting' &&
-    typeof filters.year_from === 'number'
-  ) {
-    return true
-  }
-  if (
     (/Baystars/i.test(message) || /ジャイアンツ/u.test(message) || /外国人打者/u.test(message)) &&
     (query.intent === 'aggregate_batting' || query.intent === 'aggregate_pitching') &&
     typeof filters.team === 'string' &&

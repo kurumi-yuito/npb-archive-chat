@@ -1887,6 +1887,71 @@ describe('chat-service', () => {
     expect(response.answer.summary).toContain('牧秀悟')
   })
 
+  it('resolves multi-year batting aggregate queries through player_id before repository fallback', async () => {
+    const service = createChatService(createFakeQueryService({
+      searchPlayerCandidates: async () => [{
+        player_id: '13115153',
+        name: '牧秀悟',
+        primary_team: '横浜DeNAベイスターズ',
+        roles: ['profile', 'batter'],
+        teams: ['横浜DeNAベイスターズ'],
+        years: [2021, 2022, 2023, 2024, 2025, 2026],
+      }],
+      aggregateBattingLines: async (filters) => {
+        expect(filters).toMatchObject({
+          year_from: 2023,
+          year_to: 2025,
+          team: '横浜DeNAベイスターズ',
+          player_name: '牧秀悟',
+          player_id: '13115153',
+        })
+        return [{
+          kind: 'batting',
+          label: '牧',
+          total: 391,
+          stats: {
+            team: '横浜DeNAベイスターズ',
+            games: 391,
+            atBats: 1522,
+            hits: 437,
+            homeRuns: 70,
+            runsBattedIn: 235,
+            stolenBases: 17,
+            walks: 96,
+            strikeouts: 233,
+            battingAverage: 0.287,
+          },
+        }]
+      },
+    }), {
+      parseStructuredQueryFromMessage: async () => ({
+        intent: 'aggregate_batting',
+        filters: {
+          year_from: 2023,
+          year_to: 2025,
+          player_name: '牧秀悟',
+          limit: 10,
+        },
+      }),
+    })
+
+    const response = await service.answerQuestion('牧秀悟の2023年から2025年の通算打率と本塁打数を教えてください')
+
+    expect(response.structured_query).toEqual({
+      intent: 'aggregate_batting',
+      filters: {
+        year_from: 2023,
+        year_to: 2025,
+        team: '横浜DeNAベイスターズ',
+        player_name: '牧秀悟',
+        player_id: '13115153',
+        limit: 10,
+      },
+    })
+    expect(response.answer.summary).toContain('牧')
+    expect(response.answer.execution_metadata?.player_id_satisfied).toBe(true)
+  })
+
   it.skip('recovers known QA historical player queries without broad player resolution scans', async () => {
     const service = createChatService(createFakeQueryService({
       searchPlayerCandidates: async () => {
