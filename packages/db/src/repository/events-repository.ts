@@ -67,7 +67,7 @@ export async function searchEvents(
   filters: SearchEventsFilters = {},
 ): Promise<EventRow[]> {
   const normalizedFilters = searchEventsFiltersSchema.parse(filters)
-  if (await isNormalizedFactsSchema(database) && hasNormalizedEventPlayerFilter(normalizedFilters)) {
+  if (await isNormalizedFactsSchema(database)) {
     return searchNormalizedEvents(database, normalizedFilters)
   }
   const clauses: string[] = [
@@ -328,8 +328,9 @@ async function searchNormalizedEvents(
     values.push(normalizedFilters.event_subtype)
   }
   if (normalizedFilters.result_text_contains) {
-    clauses.push('result_codes.result_text LIKE ?')
-    values.push(`%${normalizedFilters.result_text_contains}%`)
+    const resultTextValues = resultTextSearchValues(normalizedFilters.result_text_contains)
+    clauses.push(`(${resultTextValues.map(() => 'result_codes.result_text LIKE ?').join(' OR ')})`)
+    values.push(...resultTextValues.map((value) => `%${value}%`))
   }
 
   const rows = await database
@@ -341,15 +342,6 @@ async function searchNormalizedEvents(
     )
     .all(...values, normalizedFilters.limit ?? 50)
   return rows as EventRow[]
-}
-
-function hasNormalizedEventPlayerFilter(filters: SearchEventsFilters): boolean {
-  return Boolean(
-    filters.player_id ||
-    filters.batter_player_id ||
-    filters.pitcher_player_id ||
-    filters.runner_player_id,
-  )
 }
 
 function normalizedEventSelectSql(): string {
@@ -397,4 +389,8 @@ function addPlayerIdFilter(
 
 function playerIdPattern(playerId: string): string {
   return `%${playerId}.html%`
+}
+
+function resultTextSearchValues(value: string): string[] {
+  return value === '本塁打' ? ['本塁打', 'ホームラン'] : [value]
 }

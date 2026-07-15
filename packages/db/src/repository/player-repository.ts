@@ -435,7 +435,7 @@ async function queryRawPlayerMentions(
     aliases.map((alias) => {
       const compact = alias.replace(/[ \u3000]/gu, '')
       values.push(compact, `%${compact}%`, compact)
-      return `(${compactNameCol(source.nameColumn)} = ? OR ${compactNameCol(source.nameColumn)} LIKE ? OR (? LIKE ${compactNameCol(source.nameColumn)} || '%' AND LENGTH(${compactNameCol(source.nameColumn)}) >= 2))`
+      return `(${compactNameCol(source.nameColumn)} = ? OR ${compactNameCol(source.nameColumn)} LIKE ? OR (SUBSTR(?, 1, LENGTH(${compactNameCol(source.nameColumn)})) = ${compactNameCol(source.nameColumn)} AND LENGTH(${compactNameCol(source.nameColumn)}) >= 2))`
     }).join(' OR ')
   })`)
   if (filters.year) {

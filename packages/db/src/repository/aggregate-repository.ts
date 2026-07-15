@@ -9,6 +9,7 @@ import {
   type AggregatePitchingFilters,
 } from '@npb/schemas'
 import type { QueryDatabase } from '../query-driver'
+import { isNormalizedFactsSchema } from './schema-detection'
 import { canonicalTeamName, toJapaneseTeamAliases, toEnglishLeagueTeams, toGameTeamAliases } from './team-name-utils'
 import { venueSearchValues } from './venue-aliases'
 
@@ -33,13 +34,16 @@ export async function aggregateBattingLines(
       return bisRows
     }
   }
+  if (await isNormalizedFactsSchema(database)) {
+    return aggregateNormalizedBattingLines(database, normalized)
+  }
   const clauses: string[] = []
   const values: Array<string | number> = []
   appendGameClauses(clauses, values, normalized)
   if (normalized.player_id) {
     addBattingLinePlayerIdFilter(clauses, values, normalized.player_id)
   } else if (normalized.player_name) {
-    clauses.push(`${compactNameSql('?')} LIKE ${compactNameSql('batting_lines.player_name')} || '%'`)
+    clauses.push(prefixMatchesCompactNameSql('?', 'batting_lines.player_name', normalized.team ? 1 : 2))
     values.push(normalized.player_name)
   }
   if (normalized.team) {
@@ -144,7 +148,7 @@ export async function aggregatePitchingLines(
   if (normalized.pitcher_player_id) {
     addPitchingLinePlayerIdFilter(clauses, values, normalized.pitcher_player_id)
   } else if (normalized.pitcher_name) {
-    clauses.push(`${compactNameSql('?')} LIKE ${compactNameSql('pitching_lines.pitcher_name')} || '%'`)
+    clauses.push(prefixMatchesCompactNameSql('?', 'pitching_lines.pitcher_name', normalized.team ? 1 : 2))
     values.push(normalized.pitcher_name)
   }
   if (normalized.team) {
@@ -216,6 +220,142 @@ export async function aggregatePitchingLines(
       inningsPitched: Number(row.inningsPitched ?? 0),
     },
   }))
+}
+
+async function aggregateNormalizedBattingLines(
+  database: QueryDatabase,
+  normalized: AggregateBattingFilters,
+): Promise<AggregateRow[]> {
+  const groupByYear = normalized.group_by === 'year'
+  const clauses: string[] = []
+  const values: Array<string | number> = []
+  appendNormalizedGameClauses(clauses, values, normalized)
+  if (normalized.player_id) {
+    clauses.push('batting_line_facts.player_id = ?')
+    values.push(normalized.player_id)
+  } else if (normalized.player_name) {
+    clauses.push(prefixMatchesCompactNameSql('?', 'person_names.name', normalized.team ? 1 : 2))
+    values.push(normalized.player_name)
+  }
+  if (normalized.team) {
+    const teams = toJapaneseTeamAliases(normalized.team)
+    clauses.push(`teams.team_name IN (${teams.map(() => '?').join(', ')})`)
+    values.push(...teams)
+  }
+  if (normalized.result_text_contains) {
+    const resultTextValues = resultTextSearchValues(normalized.result_text_contains)
+    clauses.push(
+      `EXISTS (
+        SELECT 1
+        FROM event_facts AS filtered_events
+        INNER JOIN result_codes AS filtered_results
+          ON filtered_results.result_code_id = filtered_events.result_code_id
+        LEFT JOIN person_names AS filtered_batter_name
+          ON filtered_batter_name.name_id = filtered_events.batter_name_id
+        WHERE filtered_events.game_id = batting_line_facts.game_id
+          AND (
+            (filtered_events.batter_player_id IS NOT NULL AND filtered_events.batter_player_id = batting_line_facts.player_id)
+            OR filtered_batter_name.name = person_names.name
+          )
+          AND (${resultTextValues.map(() => 'filtered_results.result_text LIKE ?').join(' OR ')})
+      )`,
+    )
+    values.push(...resultTextValues.map((value) => `%${value}%`))
+  }
+  if (normalized.batting_order !== undefined) {
+    clauses.push('batting_line_facts.batting_order = ?')
+    values.push(normalized.batting_order)
+  }
+  if (normalized.position) {
+    clauses.push('positions.position LIKE ?')
+    values.push(`%${normalized.position}%`)
+  }
+
+  const whereClause = clauses.length > 0 ? `WHERE ${clauses.join(' AND ')}` : ''
+  const isSeasonRanking = !groupByYear && !normalized.player_name && !normalized.game_date &&
+    normalized.year && !normalized.year_from && !normalized.year_to
+  const havingClause = (normalized.sort_by === 'battingAverage' || normalized.sort_by === 'ops')
+    ? isSeasonRanking
+      ? 'HAVING SUM(batting_line_facts.at_bats) >= 10 AND COUNT(*) >= 3'
+      : 'HAVING SUM(batting_line_facts.at_bats) >= 10'
+    : ''
+  const rows = await database
+    .prepare(
+      `SELECT
+        ${groupByYear ? 'CAST(game_facts.year AS TEXT)' : 'person_names.name'} AS label,
+        MAX(person_names.name) AS playerName,
+        ${groupByYear ? 'MAX(teams.team_name)' : 'teams.team_name'} AS team,
+        COUNT(*) AS games,
+        SUM(batting_line_facts.at_bats) AS atBats,
+        SUM(batting_line_facts.runs) AS runs,
+        SUM(batting_line_facts.hits) AS hits,
+        SUM(batting_line_facts.runs_batted_in) AS runsBattedIn,
+        SUM(batting_line_facts.stolen_bases) AS stolenBases,
+        SUM(COALESCE(batting_line_facts.walks, 0)) AS walks,
+        SUM(COALESCE(batting_line_facts.strikeouts, 0)) AS strikeouts,
+        COALESCE(SUM(hr_stats.hr_count), 0) AS homeRuns
+      FROM batting_line_facts
+      INNER JOIN game_facts ON game_facts.game_id = batting_line_facts.game_id
+      INNER JOIN teams ON teams.team_id = batting_line_facts.team_id
+      INNER JOIN person_names ON person_names.name_id = batting_line_facts.player_name_id
+      LEFT JOIN positions ON positions.position_id = batting_line_facts.position_id
+      LEFT JOIN (
+        SELECT
+          event_facts.game_id,
+          event_facts.batter_player_id,
+          batter_name.name AS batter_name,
+          COUNT(*) AS hr_count
+        FROM event_facts
+        INNER JOIN result_codes ON result_codes.result_code_id = event_facts.result_code_id
+        LEFT JOIN person_names AS batter_name ON batter_name.name_id = event_facts.batter_name_id
+        WHERE result_codes.result_text LIKE '%ホームラン%'
+        GROUP BY event_facts.game_id, event_facts.batter_player_id, batter_name.name
+      ) hr_stats
+        ON hr_stats.game_id = batting_line_facts.game_id
+       AND (
+          (hr_stats.batter_player_id IS NOT NULL AND hr_stats.batter_player_id = batting_line_facts.player_id)
+          OR hr_stats.batter_name = person_names.name
+       )
+      ${whereClause}
+      GROUP BY ${groupByYear ? 'game_facts.year' : 'person_names.name, teams.team_name'}
+      ${havingClause}
+      ORDER BY ${groupByYear ? 'CAST(label AS INTEGER) ASC' : `${normalizedBattingSortClause(normalized.sort_by)}, label ASC`}
+      LIMIT ?`,
+    )
+    .all(...values, normalized.limit ?? 50)
+
+  return (rows as Array<Record<string, string | number | null>>).map((row) => {
+    const atBats = Number(row.atBats ?? 0)
+    const hits = Number(row.hits ?? 0)
+    const walks = Number(row.walks ?? 0)
+    const battingAverage = atBats > 0 ? hits / atBats : null
+    const onBasePercentage = atBats + walks > 0 ? (hits + walks) / (atBats + walks) : null
+    const sluggingPercentage = battingAverage
+    return {
+      kind: 'batting',
+      label: String(row.label ?? ''),
+      total: Number(row.games ?? 0),
+      stats: {
+        team: row.team ?? null,
+        playerName: row.playerName ?? null,
+        games: Number(row.games ?? 0),
+        atBats,
+        runs: Number(row.runs ?? 0),
+        hits,
+        homeRuns: Number(row.homeRuns ?? 0),
+        runsBattedIn: Number(row.runsBattedIn ?? 0),
+        stolenBases: Number(row.stolenBases ?? 0),
+        walks,
+        strikeouts: Number(row.strikeouts ?? 0),
+        battingAverage,
+        onBasePercentage,
+        sluggingPercentage,
+        ops: onBasePercentage !== null && sluggingPercentage !== null ? onBasePercentage + sluggingPercentage : null,
+        isoP: 0,
+        bbRate: atBats + walks > 0 ? walks / (atBats + walks) : null,
+      },
+    }
+  })
 }
 
 export async function aggregateEvents(
@@ -347,6 +487,31 @@ function battingSortClause(sortBy: string | undefined): string {
   }
 }
 
+function normalizedBattingSortClause(sortBy: string | undefined): string {
+  switch (sortBy) {
+    case 'battingAverage':
+      return 'CASE WHEN SUM(batting_line_facts.at_bats) > 0 THEN CAST(SUM(batting_line_facts.hits) AS REAL)/SUM(batting_line_facts.at_bats) ELSE 0 END DESC'
+    case 'ops': {
+      const h = 'SUM(batting_line_facts.hits)'
+      const ab = 'SUM(batting_line_facts.at_bats)'
+      const bb = 'SUM(COALESCE(batting_line_facts.walks, 0))'
+      return `CASE WHEN (${ab}+${bb}) > 0 AND ${ab} > 0 THEN (CAST(${h}+${bb} AS REAL)/(${ab}+${bb})) + CAST(${h} AS REAL)/${ab} ELSE 0 END DESC`
+    }
+    case 'isoP':
+      return 'COALESCE(SUM(hr_stats.hr_count), 0) DESC, SUM(batting_line_facts.hits) DESC'
+    case 'bbRate':
+      return 'CASE WHEN (SUM(batting_line_facts.at_bats)+SUM(COALESCE(batting_line_facts.walks, 0))) > 0 THEN CAST(SUM(COALESCE(batting_line_facts.walks, 0)) AS REAL)/(SUM(batting_line_facts.at_bats)+SUM(COALESCE(batting_line_facts.walks, 0))) ELSE 0 END DESC'
+    case 'atBats': return 'SUM(batting_line_facts.at_bats) DESC'
+    case 'homeRuns': return 'COALESCE(SUM(hr_stats.hr_count), 0) DESC'
+    case 'runsBattedIn': return 'SUM(batting_line_facts.runs_batted_in) DESC'
+    case 'stolenBases': return 'SUM(batting_line_facts.stolen_bases) DESC'
+    case 'walks': return 'SUM(COALESCE(batting_line_facts.walks, 0)) DESC'
+    case 'strikeouts': return 'SUM(COALESCE(batting_line_facts.strikeouts, 0)) DESC'
+    case 'games': return 'COUNT(*) DESC'
+    default: return 'SUM(batting_line_facts.hits) DESC, SUM(batting_line_facts.at_bats) DESC'
+  }
+}
+
 function currentBattingSortClause(sortBy: string | undefined): string {
   const ab = "SUM(CAST(COALESCE(json_extract(values_json, '$.打数'), '0') AS INTEGER))"
   const h = "SUM(CAST(COALESCE(json_extract(values_json, '$.安打'), '0') AS INTEGER))"
@@ -395,6 +560,12 @@ function pitchingSortClause(sortBy: string | undefined): string {
 
 function compactNameSql(column: string): string {
   return `REPLACE(REPLACE(REPLACE(REPLACE(${column}, ' ', ''), char(12288), ''), '*', ''), '＊', '')`
+}
+
+function prefixMatchesCompactNameSql(inputColumn: string, storedNameColumn: string, minimumStoredLength = 2): string {
+  const input = compactNameSql(inputColumn)
+  const storedName = compactNameSql(storedNameColumn)
+  return `(SUBSTR(${input}, 1, LENGTH(${storedName})) = ${storedName} AND LENGTH(${storedName}) >= ${minimumStoredLength})`
 }
 
 function compactName(value: string): string {
@@ -458,6 +629,10 @@ function playerIdPattern(playerId: string): string {
   return `%${playerId}.html%`
 }
 
+function resultTextSearchValues(value: string): string[] {
+  return value === '本塁打' ? ['本塁打', 'ホームラン'] : [value]
+}
+
 function scoreSql(side: 'home' | 'away'): string {
   return `CAST(COALESCE(json_extract(games.linescore_json, '$.runs.${side}'), json_extract(games.linescore_json, '$.${side}.totals.runs')) AS INTEGER)`
 }
@@ -493,6 +668,29 @@ function appendGameClauses(
   }
   if (filters.year_to) {
     clauses.push('games.year <= ?')
+    values.push(filters.year_to)
+  }
+}
+
+function appendNormalizedGameClauses(
+  clauses: string[],
+  values: Array<string | number>,
+  filters: { game_date?: string; year?: number; year_from?: number; year_to?: number },
+) {
+  if (filters.game_date) {
+    clauses.push('game_facts.game_date = ?')
+    values.push(filters.game_date)
+  }
+  if (filters.year) {
+    clauses.push('game_facts.year = ?')
+    values.push(filters.year)
+  }
+  if (filters.year_from) {
+    clauses.push('game_facts.year >= ?')
+    values.push(filters.year_from)
+  }
+  if (filters.year_to) {
+    clauses.push('game_facts.year <= ?')
     values.push(filters.year_to)
   }
 }

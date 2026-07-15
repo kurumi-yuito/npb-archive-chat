@@ -76,7 +76,7 @@ export async function searchPitchingLines(
   if (normalized.pitcher_player_id) {
     addPitchingLinePlayerIdFilter(clauses, values, normalized.pitcher_player_id)
   } else if (normalized.pitcher_name) {
-    clauses.push(`${compactNameSql('?')} LIKE ${compactNameSql('pitching_lines.pitcher_name')} || '%'`)
+    clauses.push(prefixMatchesCompactNameSql('?', 'pitching_lines.pitcher_name', normalized.team ? 1 : 2))
     values.push(normalized.pitcher_name)
   }
 
@@ -249,6 +249,12 @@ export async function searchCurrentPitchingStats(
 
 function compactNameSql(column: string): string {
   return `REPLACE(REPLACE(REPLACE(REPLACE(${column}, ' ', ''), char(12288), ''), '*', ''), '＊', '')`
+}
+
+function prefixMatchesCompactNameSql(inputColumn: string, storedNameColumn: string, minimumStoredLength = 2): string {
+  const input = compactNameSql(inputColumn)
+  const storedName = compactNameSql(storedNameColumn)
+  return `(SUBSTR(${input}, 1, LENGTH(${storedName})) = ${storedName} AND LENGTH(${storedName}) >= ${minimumStoredLength})`
 }
 
 function compactName(value: string): string {
