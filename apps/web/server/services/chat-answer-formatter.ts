@@ -1365,7 +1365,10 @@ function formatPitchingGoodPointSummary(rows: PitchingLineRow[]): string {
   )
   const latest = gameRows[0]
   const latestRunsText = latest.earnedRuns === 0 ? '無失点' : `${latest.earnedRuns}失点`
-  return `${gameRows.length}試合で${totals.strikeouts}奪三振、${totals.earnedRuns}自責点です。直近登板でも${formatInningsForDisplay(latest.inningsPitched)}、${latest.strikeouts}奪三振、${latestRunsText}でした。奪三振を取れていて、直近登板で失点を抑えられているのが良かった点です。`
+  const runEvaluation = totals.earnedRuns <= gameRows.length
+    ? '失点を抑えながら試合を作れているのが良かった点です'
+    : '失点は残っていますが、三振を取れる内容は良かった点です'
+  return `${gameRows.length}試合で${totals.strikeouts}奪三振、${totals.earnedRuns}自責点です。直近登板でも${formatInningsForDisplay(latest.inningsPitched)}、${latest.strikeouts}奪三振、${latestRunsText}でした。奪三振を取れていて、${runEvaluation}。`
 }
 
 function formatPitchingScopeClarificationSummary(
