@@ -175,6 +175,9 @@ export async function runNormalizedD1Sync(
   )
   const sqliteDir = path.resolve(workspaceRoot, options.sqliteDir ?? DEFAULT_SQLITE_DIR)
   const d1Database = options.d1Database ?? DEFAULT_D1_DATABASE
+  if (d1Database !== DEFAULT_D1_DATABASE) {
+    throw new Error(`Normalized D1 sync must target ${DEFAULT_D1_DATABASE}; got ${d1Database}`)
+  }
   const importDir = path.join(workspaceRoot, 'data', 'logs', 'd1-sync-normalized')
   await mkdir(importDir, { recursive: true })
 

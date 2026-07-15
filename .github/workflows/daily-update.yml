@@ -35,6 +35,10 @@ on:
         default: false
         type: boolean
 
+concurrency:
+  group: normalized-daily-update
+  cancel-in-progress: false
+
 jobs:
   update-daily:
     runs-on: ubuntu-latest
@@ -43,6 +47,7 @@ jobs:
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       IS_DRY_RUN: ${{ inputs.dry_run == true || inputs.dry_run == 'true' }}
       NPB_D1_DATABASE: npb-archive-chat-normalized
+      NPB_D1_DATABASE_ID: eb614de3-eb0c-4816-a7b2-8440e94093a8
       NPB_R2_BUCKET: npb-archive-chat-raw
       NPB_R2_SQLITE_BACKUP_PREFIX: backups/sqlite
     steps:
@@ -154,6 +159,11 @@ jobs:
             exit 1
           fi
           export CLOUDFLARE_API_TOKEN="$(printf '%s' "$CLOUDFLARE_API_TOKEN" | tr -d '\r\n ')"
+          test "$NPB_D1_DATABASE" = "npb-archive-chat-normalized"
+          test "$NPB_D1_DATABASE_ID" = "eb614de3-eb0c-4816-a7b2-8440e94093a8"
+          node scripts/phase5-normalized-ops-check.mjs \
+            --database "$NPB_D1_DATABASE" \
+            --output data/logs/phase5-normalized-ops-check-before-sync.json
           pnpm --filter @npb/db run sync:normalized-d1 -- --sqlite-dir ./data --d1-database "$NPB_D1_DATABASE" --keep-files --verify | tee data/logs/d1-sync-action.log
 
       - name: Verify D1 sync summary
@@ -162,6 +172,18 @@ jobs:
         run: |
           set -euo pipefail
           test -f data/logs/d1-sync-normalized/summary.json
+
+      - name: Verify normalized D1 integrity after sync
+        if: ${{ env.IS_DRY_RUN != 'true' }}
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_D1_API_TOKEN }}
+        run: |
+          set -euo pipefail
+          export CLOUDFLARE_API_TOKEN="$(printf '%s' "$CLOUDFLARE_API_TOKEN" | tr -d '\r\n ')"
+          node scripts/phase5-normalized-ops-check.mjs \
+            --database "$NPB_D1_DATABASE" \
+            --output data/logs/phase5-normalized-ops-check-after-sync.json
 
       - name: Backfill official pitching evidence
         if: ${{ env.IS_DRY_RUN != 'true' }}
@@ -227,6 +249,14 @@ jobs:
               cat data/logs/d1-sync-normalized/summary.json
               echo '```'
             fi
+            if [ -f data/logs/phase5-normalized-ops-check-after-sync.json ]; then
+              echo
+              echo '### phase5 normalized ops check'
+              echo
+              echo '```json'
+              cat data/logs/phase5-normalized-ops-check-after-sync.json
+              echo '```'
+            fi
             if [ -f data/logs/phase4-backfill-official-pitching-evidence.json ]; then
               echo
               echo '### phase4 official pitching evidence backfill'
@@ -249,4 +279,6 @@ jobs:
             data/logs/enrich-bis-farm-boxes-action.log
             data/logs/d1-sync-action.log
             data/logs/d1-sync-normalized/summary.json
+            data/logs/phase5-normalized-ops-check-before-sync.json
+            data/logs/phase5-normalized-ops-check-after-sync.json
           if-no-files-found: ignore
