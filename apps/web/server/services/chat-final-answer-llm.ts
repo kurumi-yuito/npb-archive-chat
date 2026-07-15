@@ -75,6 +75,7 @@ export function createChatFinalAnswerLlm(config: ChatFinalAnswerLlmConfig): Chat
             'results の各配列（pitching・batting・aggregates 等）は検索クエリの完全な結果セットです。ある選手名・数値が results に含まれていない場合、そのデータは存在しないことを意味します。推測・補完・学習データからの補足は一切禁止です。',
             'aggregates に特定選手の行がない場合、その選手の防御率・打率・本塁打数など一切の数値を作ってはいけません。「このデータには含まれていませんでした」と一言で済ませてください。',
             'answer.execution_metadata.answer_mode が reason_explanation のときは、単なる数値列挙ではなく、何が勝敗や好不調を分けたかをデータから説明してください。detail_explanation のときは試合の流れや根拠を丁寧に補足してください。comparison_explanation のときは比較対象を明示して差分を説明してください。clarification_request のときは、対象範囲や前提を明確にしてから説明してください。evaluation_explanation のときは、数字の良し悪しや特徴を根拠つきで評価してください。',
+            'evaluation_explanation で results.pitching を評価する場合、対象試合数より自責点合計が多いときは「失点を抑えた」「失点を抑えられている」と言ってはいけません。その場合は「失点は残るが奪三振を取れている」のように、良い点と課題を分けて述べてください。',
             'answer.execution_metadata.follow_up_type と referenced_context がある場合は、その会話文脈を踏まえて応答を続けてください。',
             '## 試合単位記録の収録遅延に関する絶対禁止事項',
             'batting・pitchingのbox-scoreデータ（sourceKind="box"）は収録が数週間〜数ヶ月遅れる場合があります。results.battingの最新日付が2024年や2025年であっても、2026年の試合が存在しないとは断定できません。',
