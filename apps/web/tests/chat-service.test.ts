@@ -1952,6 +1952,75 @@ describe('chat-service', () => {
     expect(response.answer.execution_metadata?.player_id_satisfied).toBe(true)
   })
 
+  it('prefers the longest registered-name prefix for historical batting aggregates', async () => {
+    const service = createChatService(createFakeQueryService({
+      searchPlayerCandidates: async () => [
+        {
+          player_id: null,
+          name: '岡本',
+          primary_team: '広島東洋カープ',
+          roles: ['batter'],
+          teams: ['広島東洋カープ'],
+          years: [2025, 2026],
+        },
+        {
+          player_id: null,
+          name: '岡本和',
+          primary_team: '読売ジャイアンツ',
+          roles: ['batter'],
+          teams: ['読売ジャイアンツ'],
+          years: [2021, 2022, 2023, 2024],
+        },
+      ],
+      aggregateBattingLines: async (filters) => {
+        expect(filters).toMatchObject({
+          year_from: 2016,
+          player_name: '岡本和',
+          team: '読売ジャイアンツ',
+          sort_by: 'homeRuns',
+        })
+        return [{
+          kind: 'batting',
+          label: '岡本和',
+          total: 1083,
+          stats: {
+            team: '読売ジャイアンツ',
+            games: 1083,
+            atBats: 4000,
+            hits: 1000,
+            homeRuns: 252,
+            runsBattedIn: 700,
+            stolenBases: 2,
+            walks: 350,
+            strikeouts: 800,
+            battingAverage: 0.25,
+          },
+        }]
+      },
+    }), {
+      parseStructuredQueryFromMessage: async () => ({
+        intent: 'aggregate_batting',
+        filters: {
+          year_from: 2016,
+          player_name: '岡本和真',
+          sort_by: 'homeRuns',
+          limit: 10,
+        },
+      }),
+    })
+
+    const response = await service.answerQuestion('岡本和真の2016年以降の通算本塁打数を教えてください')
+
+    expect(response.structured_query.filters).toMatchObject({
+      year_from: 2016,
+      player_name: '岡本和',
+      team: '読売ジャイアンツ',
+      sort_by: 'homeRuns',
+      limit: 10,
+    })
+    expect(response.answer.summary).toContain('252')
+  })
+
   it.skip('recovers known QA historical player queries without broad player resolution scans', async () => {
     const service = createChatService(createFakeQueryService({
       searchPlayerCandidates: async () => {

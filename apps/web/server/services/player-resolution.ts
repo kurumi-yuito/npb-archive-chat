@@ -300,10 +300,17 @@ function selectCandidatesForInput(
     return nameKey.length >= 1 && inputKey.startsWith(nameKey)
   })
   if (surnameMatches.length > 0) {
-    const collapsed = collapseSameEntityFallbacks(surnameMatches)
+    const maxNameLength = Math.max(...surnameMatches.map((candidate) => normalizeCandidateName(candidate.name).length))
+    const longestSurnameMatches = surnameMatches.filter((candidate) =>
+      normalizeCandidateName(candidate.name).length === maxNameLength,
+    )
+    const collapsed = collapseSameEntityFallbacks(longestSurnameMatches)
     const profileMatches = collapsed.filter((candidate) => (candidate as InternalPlayerCandidate).match_kind === 'profile')
     if (profileMatches.length > 0) {
       return collapseSameEntityFallbacks(profileMatches)
+    }
+    if (collapsed.length === 1 && !collapsed[0]!.player_id) {
+      return collapsed
     }
     const entityIds = [...new Set(collapsed.map((candidate) => candidate.player_id).filter(Boolean))]
     if (entityIds.length === 1 && collapsed.every((candidate) => candidate.player_id === entityIds[0])) {
