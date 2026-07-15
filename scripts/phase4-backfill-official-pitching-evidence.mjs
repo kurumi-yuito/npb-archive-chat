@@ -5,6 +5,10 @@ import path from 'node:path'
 const DEFAULT_LOG_DIR = 'data/logs'
 const DEFAULT_SOURCE_DB = '14c099c3-03ac-4307-9704-7a770b31d108'
 const DEFAULT_TARGET_DB = 'eb614de3-eb0c-4816-a7b2-8440e94093a8'
+const PLAYER_ID_BY_COMPACT_NAME = new Map([
+  ['藤浪', '41045137'],
+  ['藤浪晋太郎', '41045137'],
+])
 
 const args = parseArgs(process.argv.slice(2))
 const accountId = process.env.CLOUDFLARE_ACCOUNT_ID
@@ -49,10 +53,13 @@ const profileByCompactName = new Map(playerProfiles.map((profile) => [compactNam
 const missingGames = gameIds.filter((gameId) => !gamesById.has(gameId))
 
 for (const row of selectedRows) {
-  const profile = profileByCompactName.get(compactName(row.pitcherName))
+  const compactPitcherName = compactName(row.pitcherName)
+  const profile = profileByCompactName.get(compactPitcherName)
   if (profile) {
     row.pitcherName = profile.full_name
     row.pitcherPlayerId = profile.player_id
+  } else {
+    row.pitcherPlayerId = PLAYER_ID_BY_COMPACT_NAME.get(compactPitcherName) ?? row.pitcherPlayerId
   }
 }
 

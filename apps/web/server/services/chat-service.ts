@@ -100,9 +100,11 @@ export function createChatService(
         message,
         history: options.history,
       })
+      const parsedEventResultTextContains = parsedQuery.intent === 'search_events' &&
+        typeof (parsedQuery.filters as Record<string, unknown>).result_text_contains === 'string'
       if (effectivePlan.followUpType === 'evaluation_request' && parsedQuery.intent === 'search_events') {
         const filters = parsedQuery.filters as Record<string, unknown>
-        if (typeof filters.result_text_contains === 'string') {
+        if (parsedEventResultTextContains) {
           const nextFilters = { ...filters }
           delete nextFilters.result_text_contains
           if (typeof nextFilters.limit !== 'number') {
@@ -121,7 +123,8 @@ export function createChatService(
       const inheritedPitcherName = effectivePlan.followUpContext.inheritedPlayerName
       if (
         effectivePlan.followUpType === 'evaluation_request' &&
-        parsedQuery.intent === 'game_detail' &&
+        parsedQuery.intent !== 'search_pitching' &&
+        !parsedEventResultTextContains &&
         inheritedPitcherName &&
         isPitchingStatsHistory(options.history)
       ) {
@@ -1236,7 +1239,7 @@ const BLOCKED_CORRECTION_GUARD_REASONS = new Set<ChatCorrectionGuardReason>([
 function isPitchingStatsHistory(history: ChatRequest['history'] | undefined): boolean {
   const latestAssistant = [...(history ?? [])].reverse()
     .find((entry) => entry.role === 'assistant')?.content ?? ''
-  return /投球|登板|奪三振|自責点|失点|投球回|球/u.test(latestAssistant)
+  return /投球内容|最新登板|登板|奪三振|自責点|投球回/u.test(latestAssistant)
 }
 
 function applyPlayerStatsFollowUpContext(

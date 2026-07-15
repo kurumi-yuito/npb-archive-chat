@@ -554,7 +554,7 @@ describe('chat-service', () => {
     expect(response.answer.summary).toContain('良かった点です')
   })
 
-  it('keeps pitching evaluation follow-ups on player stats when the previous summary includes a game date', async () => {
+  it('keeps pitching evaluation follow-ups on player stats when the parser shifts to event search', async () => {
     let pitchingFilters: Parameters<ChatQueryService['searchPitchingLines']>[0] | null = null
     const currentResolver = vi.fn(async (_queryService, structuredQuery) => ({
       structuredQuery: {
@@ -593,10 +593,13 @@ describe('chat-service', () => {
       },
     }), {
       parseStructuredQueryFromMessage: async () => ({
-        intent: 'game_detail',
+        intent: 'search_events',
         filters: {
-          game_date: '2026-07-11',
-          team: 'DeNA',
+          year: 2026,
+          team: '横浜DeNAベイスターズ',
+          pitcher_name: '藤浪 晋太郎',
+          pitcher_player_id: '41045137',
+          limit: 10,
         },
       }),
       resolveCurrentStructuredQueryPlayer: currentResolver,
@@ -615,7 +618,7 @@ describe('chat-service', () => {
     expect(response.structured_query).toMatchObject({
       intent: 'search_pitching',
       filters: {
-        pitcher_name: '藤浪',
+        pitcher_name: expect.stringContaining('藤浪'),
         pitcher_player_id: '41045137',
         year: 2026,
         recent: true,
