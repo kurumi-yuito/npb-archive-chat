@@ -167,7 +167,7 @@ export const chatExecutionRepositorySchema = z.enum([
   'aggregateEvents',
   'aggregateGameResults',
   'listSourceSnapshotsByGameIds',
-  'fetchAwardWinners',
+  'searchAwardWinners',
 ])
 
 export type ChatExecutionRepository = z.infer<typeof chatExecutionRepositorySchema>
@@ -279,7 +279,7 @@ export function repositoriesForQuery(query: ChatStructuredQuery): ChatExecutionR
       case 'aggregate_games':
         return ['aggregateGameResults'] as ChatExecutionRepository[]
       case 'award_winners':
-        return ['fetchAwardWinners'] as ChatExecutionRepository[]
+        return ['searchAwardWinners'] as ChatExecutionRepository[]
       case 'off_topic':
         return [] as ChatExecutionRepository[]
     }

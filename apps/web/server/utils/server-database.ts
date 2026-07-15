@@ -1,6 +1,11 @@
 import type { QueryDatabase } from '@npb/db/query-driver'
 import { sqliteDatabaseToQuery } from '@npb/db/query-driver'
-import { createMultiYearQueryService, createSingleDatabaseQueryService, type ChatQueryService } from '@npb/db'
+import {
+  createMultiYearQueryService,
+  createSingleDatabaseQueryService,
+  getNormalizedRuntimeMetadata,
+  type ChatQueryService,
+} from '@npb/db'
 import type { D1Database } from '@cloudflare/workers-types'
 import type { H3Event } from 'h3'
 import path from 'node:path'
@@ -17,6 +22,7 @@ let sqliteCache: { path: string; db: QueryDatabase } | null = null
 let d1Cache: QueryDatabase | null = null
 let metaD1Cache: QueryDatabase | null = null
 let multiYearCache: { dir: string; service: ChatQueryService } | null = null
+let normalizedRuntimeValidated = false
 
 async function getSqlite() {
   await import('node:sqlite')
@@ -36,6 +42,13 @@ export async function getServerDatabase(
   if (d1) {
     if (!d1Cache) {
       d1Cache = createQueryDatabaseFromD1(d1)
+    }
+    if (!normalizedRuntimeValidated) {
+      const metadata = await getNormalizedRuntimeMetadata(d1Cache)
+      if (metadata.schema_version !== 'phase5-normalized-v1' || metadata.runtime_contract !== 'normalized-only') {
+        throw new Error('NPB_DB must be normalized D1 runtime schema phase5-normalized-v1')
+      }
+      normalizedRuntimeValidated = true
     }
     return d1Cache
   }

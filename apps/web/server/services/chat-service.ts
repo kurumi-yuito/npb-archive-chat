@@ -16,7 +16,6 @@ import {
   DEFAULT_CHAT_QUERY_YEARS,
   type ChatQueryService,
   type GameDetailRow,
-  type GameSummaryRow,
   type PitchingLineRow,
   type QueryDatabase,
 } from '@npb/db'
@@ -264,6 +263,7 @@ export function createChatService(
           message,
           parsedQuery,
           effectivePlan,
+          queryService,
         )
       }
 
@@ -602,17 +602,8 @@ export function createChatService(
                   }),
                 }
               } else {
-                let pitching = await queryService.searchPitchingLines(structuredQuery.filters)
-                if (
-                  pitching.length === 0 &&
-                  shouldUseOfficialStatsFallback() &&
-                  shouldUseOfficialCurrentPitchingFallback(message, structuredQuery, playerResolution)
-                ) {
-                  pitching = await fetchOfficialCurrentPitchingStatsFallback(
-                    Number((structuredQuery.filters as Record<string, unknown>).year),
-                    playerResolution,
-                  )
-                }
+                const pitching = await queryService.searchPitchingLines(structuredQuery.filters)
+                void shouldUseOfficialCurrentPitchingFallback
                 results = { ...emptyResults, pitching }
               }
             } else if (structuredQuery.intent === 'search_roster') {
@@ -1568,12 +1559,6 @@ async function searchRecentPitchingLinesForChat(
     if (options.firstTeamOnly) {
       return []
     }
-    const officialGameRows = shouldUseOfficialStatsFallback()
-      ? await fetchOfficialRecentPitchingGameLogsFallback(queryService, filters.year, playerResolution)
-      : []
-    if (officialGameRows.length > 0) {
-      return officialGameRows
-    }
     const seasonRows = await queryService.searchPitchingLines({
       ...baseFilters,
       recent: false,
@@ -1583,9 +1568,8 @@ async function searchRecentPitchingLinesForChat(
     if (seasonRows.length > 0) {
       return seasonRows
     }
-    return fetchOfficialCurrentPitchingStatsFallback(filters.year, playerResolution)
+    return []
   }
-  const latestChatYear = DEFAULT_CHAT_QUERY_YEARS[DEFAULT_CHAT_QUERY_YEARS.length - 1]
   for (const year of [...DEFAULT_CHAT_QUERY_YEARS].reverse()) {
     const rows = filterPitchingRowsForLeague(await queryService.searchPitchingLines({
       ...baseFilters,
@@ -1597,18 +1581,6 @@ async function searchRecentPitchingLinesForChat(
     if (options.firstTeamOnly) {
       continue
     }
-    if (year === latestChatYear && shouldUseOfficialStatsFallback()) {
-      const officialGameRows = await fetchOfficialRecentPitchingGameLogsFallback(queryService, year, playerResolution)
-      if (officialGameRows.length > 0) {
-        return officialGameRows
-      }
-    }
-    if (year === latestChatYear && shouldUseOfficialStatsFallback()) {
-      const officialRows = await fetchOfficialCurrentPitchingStatsFallback(year, playerResolution)
-      if (officialRows.length > 0) {
-        return officialRows
-      }
-    }
     const seasonRows = await queryService.searchPitchingLines({
       ...baseFilters,
       recent: false,
@@ -1617,12 +1589,6 @@ async function searchRecentPitchingLinesForChat(
     } as Parameters<ChatQueryService['searchPitchingLines']>[0])
     if (seasonRows.length > 0) {
       return seasonRows
-    }
-    const officialRows = shouldUseOfficialStatsFallback()
-      ? await fetchOfficialCurrentPitchingStatsFallback(year, playerResolution)
-      : []
-    if (officialRows.length > 0) {
-      return officialRows
     }
   }
   return []
@@ -1636,266 +1602,6 @@ function filterPitchingRowsForLeague<T extends { gameId: string }>(
     return rows
   }
   return rows.filter((row) => row.gameId.startsWith('r'))
-}
-
-function shouldUseOfficialStatsFallback(): boolean {
-  return process.env.NODE_ENV !== 'test'
-}
-
-async function fetchOfficialRecentPitchingGameLogsFallback(
-  queryService: ChatQueryService,
-  year: number,
-  playerResolution: PlayerResolution | null,
-): Promise<PitchingLineRow[]> {
-  if (playerResolution?.status !== 'resolved' || !playerResolution.primary_team || !playerResolution.name) {
-    return []
-  }
-  const aliases = officialPitcherNameAliases(playerResolution)
-  if (aliases.length === 0) {
-    return []
-  }
-  const games = await queryService.searchGames({
-    year,
-    team: playerResolution.primary_team,
-    include_farm: true,
-    limit: 500,
-  })
-  const recentFarmGames = games
-    .filter((game) => game.gameId.startsWith('f'))
-    .sort((a, b) => `${b.date}:${b.gameId}`.localeCompare(`${a.date}:${a.gameId}`))
-    .slice(0, 80)
-  const snapshots = await listSourceSnapshotsByGameIdsBatched(
-    queryService,
-    recentFarmGames.map((game) => game.gameId),
-  )
-  const sourceByGameId = new Map<string, string>()
-  for (const snapshot of snapshots) {
-    if (!snapshot.source_url || !/npb\.jp\/bis\/eng\/\d{4}\/games\//u.test(snapshot.source_url)) {
-      continue
-    }
-    const url = snapshot.source_url.replace(/#.*$/u, '')
-    if (snapshot.source_key === 'index' || !sourceByGameId.has(snapshot.game_id)) {
-      sourceByGameId.set(snapshot.game_id, url)
-    }
-  }
-  const rows: PitchingLineRow[] = []
-  for (const game of recentFarmGames) {
-    const sourceUrl = sourceByGameId.get(game.gameId)
-    if (!sourceUrl) {
-      continue
-    }
-    const row = await fetchOfficialPitchingGameRow(sourceUrl, game, playerResolution, aliases)
-    if (row) {
-      rows.push(row)
-    }
-    if (rows.length >= 5) {
-      break
-    }
-  }
-  return rows
-}
-
-function officialPitcherNameAliases(playerResolution: PlayerResolution): string[] {
-  const aliasesByPlayerId: Record<string, string[]> = {
-    '41045137': ['Fujinami'],
-  }
-  if (playerResolution.player_id && aliasesByPlayerId[playerResolution.player_id]) {
-    return aliasesByPlayerId[playerResolution.player_id]
-  }
-  return []
-}
-
-async function fetchOfficialPitchingGameRow(
-  sourceUrl: string,
-  game: GameSummaryRow,
-  playerResolution: PlayerResolution,
-  aliases: string[],
-): Promise<PitchingLineRow | null> {
-  try {
-    const response = await fetch(sourceUrl)
-    if (!response.ok) {
-      return null
-    }
-    return parseOfficialPitchingGameRow(await response.text(), game, playerResolution, aliases, sourceUrl)
-  } catch {
-    return null
-  }
-}
-
-function parseOfficialPitchingGameRow(
-  html: string,
-  game: GameSummaryRow,
-  playerResolution: PlayerResolution,
-  aliases: string[],
-  sourceUrl: string,
-): PitchingLineRow | null {
-  const rowMatches = html.matchAll(/<tr\b[^>]*class=["'][^"']*\bgmstats\b[^"']*["'][^>]*>([\s\S]*?)<\/tr>/giu)
-  for (const match of rowMatches) {
-    const cells = [...match[1].matchAll(/<td\b[^>]*>([\s\S]*?)<\/td>/giu)]
-      .map((cell) => normalizeHtmlText(cell[1]))
-    if (cells.length < 9) {
-      continue
-    }
-    const officialName = compactOfficialPitcherName(cells[0] ?? '')
-    if (!aliases.some((alias) => officialName.toLowerCase() === alias.toLowerCase())) {
-      continue
-    }
-    return {
-      gameId: game.gameId,
-      gameDate: game.date,
-      team: playerResolution.primary_team ?? '',
-      pitcherName: playerResolution.name ?? officialName,
-      inningsPitched: formatOfficialInnings(cells[1] ?? '', cells[2] ?? ''),
-      pitchCount: 0,
-      strikeouts: toInteger(cells[7] ?? ''),
-      runs: toInteger(cells[8] ?? ''),
-      earnedRuns: toInteger(cells[8] ?? ''),
-      sourceKind: 'box',
-      sourceUrl,
-      statsJson: null,
-    }
-  }
-  return null
-}
-
-function compactOfficialPitcherName(name: string): string {
-  return name
-    .replace(/\([^)]*\)/gu, '')
-    .replace(/^[*＊+＋\s\u3000]+/u, '')
-    .replace(/[^A-Za-z]/gu, '')
-}
-
-function formatOfficialInnings(whole: string, fraction: string): string {
-  const cleanWhole = whole.replace(/[^\d]/gu, '')
-  const cleanFraction = fraction.replace(/[^\d]/gu, '')
-  if (cleanWhole && cleanFraction && cleanFraction !== '0') {
-    return `${cleanWhole}.${cleanFraction}`
-  }
-  return cleanWhole || '0'
-}
-
-async function fetchOfficialCurrentPitchingStatsFallback(
-  year: number,
-  playerResolution: PlayerResolution | null,
-) {
-  if (playerResolution?.status !== 'resolved' || !playerResolution.primary_team || !playerResolution.name) {
-    return []
-  }
-  const playerName = playerResolution.name
-  const teamId = officialBisTeamId(playerResolution.primary_team)
-  if (!teamId) {
-    return []
-  }
-  for (const source of [
-    { suffix: '2', sourceKind: 'bis_pitching_farm' as const },
-    { suffix: '1', sourceKind: 'bis_pitching' as const },
-  ]) {
-    const sourceUrl = `https://npb.jp/bis/${year}/stats/idp${source.suffix}_${teamId}.html`
-    try {
-      const response = await fetch(sourceUrl)
-      if (!response.ok) {
-        continue
-      }
-      const html = await response.text()
-      const row = parseOfficialPitchingStatsRow(html, playerName)
-      if (!row) {
-        continue
-      }
-      return [{
-        gameId: `bis:${year}:${teamId}:idp${source.suffix}:official`,
-        gameDate: `${year}-01-01`,
-        team: playerResolution.primary_team,
-        pitcherName: playerName,
-        inningsPitched: row.投球回,
-        pitchCount: 0,
-        strikeouts: toInteger(row.三振),
-        runs: toInteger(row.失点),
-        earnedRuns: toInteger(row.自責点),
-        sourceKind: source.sourceKind,
-        sourceUrl,
-        statsJson: JSON.stringify(row),
-      }]
-    } catch {
-      continue
-    }
-  }
-  return []
-}
-
-function parseOfficialPitchingStatsRow(html: string, playerName: string): Record<string, string> | null {
-  const target = compactPlayerName(playerName)
-  const rowMatches = html.matchAll(/<tr\b[^>]*>([\s\S]*?)<\/tr>/giu)
-  for (const match of rowMatches) {
-    const cells = [...match[1].matchAll(/<td\b[^>]*>([\s\S]*?)<\/td>/giu)]
-      .map((cell) => normalizeHtmlText(cell[1]))
-    if (cells.length < 22 || compactPlayerName(cells[0]) !== target) {
-      continue
-    }
-    return {
-      選手: playerName,
-      登板: cells[1],
-      勝利: cells[2],
-      敗北: cells[3],
-      セーブ: cells[4],
-      完投: cells[5],
-      完封勝: cells[6],
-      無四球: cells[7],
-      勝率: cells[8],
-      打者: cells[9],
-      投球回: cells[10],
-      安打: cells[11],
-      本塁打: cells[12],
-      四球: cells[13],
-      故意四: cells[14],
-      死球: cells[15],
-      三振: cells[16],
-      暴投: cells[17],
-      ボーク: cells[18],
-      失点: cells[19],
-      自責点: cells[20],
-      防御率: cells[21],
-    }
-  }
-  return null
-}
-
-function normalizeHtmlText(html: string): string {
-  return html
-    .replace(/<[^>]+>/gu, '')
-    .replace(/&nbsp;/gu, ' ')
-    .replace(/&amp;/gu, '&')
-    .replace(/&lt;/gu, '<')
-    .replace(/&gt;/gu, '>')
-    .replace(/\s+/gu, ' ')
-    .trim()
-}
-
-function compactPlayerName(name: string): string {
-  return name.replace(/^[*＊+＋\s\u3000]+/u, '').replace(/[\s\u3000]/gu, '')
-}
-
-function officialBisTeamId(team: string): string | null {
-  const normalized = normalizeTeamName(team) ?? team
-  const ids: Record<string, string> = {
-    巨人: 'g',
-    ヤクルト: 's',
-    DeNA: 'db',
-    中日: 'd',
-    阪神: 't',
-    広島: 'c',
-    日本ハム: 'f',
-    楽天: 'e',
-    西武: 'l',
-    ロッテ: 'm',
-    オリックス: 'b',
-    ソフトバンク: 'h',
-  }
-  return ids[normalized] ?? null
-}
-
-function toInteger(value: string): number {
-  const parsed = Number.parseInt(value.replace(/[^\d-]/gu, ''), 10)
-  return Number.isNaN(parsed) ? 0 : parsed
 }
 
 async function searchRecentBattingLinesForChat(
@@ -2621,21 +2327,23 @@ type RookieOfTheYearWinner = {
   team: string
 }
 
-type AwardWinnersResult = {
-  sourceUrl: string
-  winners: RookieOfTheYearWinner[]
-}
-
 async function buildAwardWinnersResponse(
   message: string,
   structuredQuery: Extract<ChatStructuredQuery, { intent: 'award_winners' }>,
   plannerOutput: ChatPlannerOutput,
+  queryService: ChatQueryService,
 ): Promise<ChatResponseCore> {
   const year = typeof structuredQuery.filters.year === 'number' ? structuredQuery.filters.year : currentJstYear()
   const awardType = structuredQuery.filters.award_type ?? 'rookie_of_the_year'
-  const result = awardType === 'rookie_of_the_year'
-    ? await fetchOfficialRookieOfTheYearWinners(year)
-    : null
+  const awardRows = await queryService.searchAwardWinners({ year, award_type: awardType })
+  const winners: RookieOfTheYearWinner[] = awardRows
+    .filter((winner) => winner.league === 'セ・リーグ' || winner.league === 'パ・リーグ')
+    .map((winner) => ({
+      league: winner.league === 'セ・リーグ' ? 'セ・リーグ' : 'パ・リーグ',
+      playerName: winner.playerName,
+      team: winner.team,
+    }))
+  const sourceUrls = Array.from(new Set(awardRows.map((winner) => winner.sourceUrl).filter(Boolean)))
 
   const emptyResults: ChatResponseCore['results'] = {
     events: [],
@@ -2648,13 +2356,13 @@ async function buildAwardWinnersResponse(
     aggregates: [],
   }
 
-  if (!result) {
+  if (winners.length === 0) {
     const executionMetadata = buildChatExecutionMetadata(structuredQuery, null, plannerOutput)
     return chatResponseCoreSchema.parse({
       message,
       structured_query: structuredQuery,
         answer: {
-          summary: `${year}年の表彰結果は確認できませんでした。確認できるNPBデータにないため、推測では回答しません。`,
+	        summary: `${year}年の表彰結果は確認できませんでした。保存済みNPBデータにないため、推測では回答しません。`,
           result_count: 0,
           source_urls: [],
           applied_filters: structuredQuery.filters,
@@ -2683,9 +2391,9 @@ async function buildAwardWinnersResponse(
     message,
     structured_query: structuredQuery,
       answer: {
-        summary: formatAwardWinnersSummary(year, result.winners),
-        result_count: result.winners.length,
-        source_urls: [result.sourceUrl],
+        summary: formatAwardWinnersSummary(year, winners),
+        result_count: winners.length,
+        source_urls: sourceUrls,
         applied_filters: structuredQuery.filters,
         execution_metadata: {
           data_requirements: executionMetadata.dataRequirements,
@@ -2705,56 +2413,6 @@ async function buildAwardWinnersResponse(
     results: emptyResults,
     sources: [],
   })
-}
-
-async function fetchOfficialRookieOfTheYearWinners(year: number): Promise<AwardWinnersResult | null> {
-  const sourceUrl = `https://npb.jp/award/${year}/`
-  try {
-    const response = await fetch(sourceUrl)
-    if (!response.ok) {
-      return null
-    }
-    const html = await response.text()
-    const text = html
-      .replace(/<script[\s\S]*?<\/script>/giu, ' ')
-      .replace(/<style[\s\S]*?<\/style>/giu, ' ')
-      .replace(/<[^>]+>/gu, ' ')
-      .replace(/\s+/gu, ' ')
-      .trim()
-    const sentenceMatch = text.match(/新人王には\s*([^。]+?)が選出/u)
-    if (!sentenceMatch?.[1]) {
-      return null
-    }
-    const parts = sentenceMatch[1]
-      .split('、')
-      .map((part) => part.trim())
-      .filter(Boolean)
-    if (parts.length < 2) {
-      return null
-    }
-    const winners = parts.slice(0, 2).map((part, index) => {
-      const [teamToken = '', playerName = ''] = part.split('・')
-      return {
-        league: index === 0 ? 'セ・リーグ' : 'パ・リーグ',
-        playerName: playerName.trim(),
-        team: displayAwardTeamName(teamToken.trim()),
-      } as RookieOfTheYearWinner
-    })
-    if (winners.some((winner) => !winner.playerName || !winner.team)) {
-      return null
-    }
-    return { sourceUrl, winners }
-  } catch {
-    return null
-  }
-}
-
-function displayAwardTeamName(team: string): string {
-  const map: Record<string, string> = {
-    ヤクルト: '東京ヤクルト',
-    ロッテ: '千葉ロッテ',
-  }
-  return map[team] ?? team
 }
 
 function formatAwardWinnersSummary(year: number, winners: RookieOfTheYearWinner[]): string {
@@ -3136,152 +2794,6 @@ function extractKnownVenue(message: string): string | undefined {
     '京セラドーム',
   ]
   return venues.find((venue) => message.includes(venue))
-}
-
-async function fetchOfficialCurrentBattingAggregatesFallback(
-  filters: AggregateBattingFilters,
-): Promise<ChatResponseCore['results']['aggregates']> {
-  if (!filters.year || filters.year < 2026 || filters.group_by === 'year') {
-    return []
-  }
-  if (filters.player_name || filters.player_id || filters.game_date || filters.batting_order || filters.position) {
-    return []
-  }
-  if (!filters.sort_by && !filters.team) {
-    return []
-  }
-  const teams = officialBattingTeamIds(filters.team)
-  if (teams.length === 0) {
-    return []
-  }
-  const rows = (await Promise.all(
-    teams.map(async (team) => {
-      try {
-        const url = `https://npb.jp/bis/${filters.year}/stats/idb1_${team.id}.html`
-        const response = await fetch(url)
-        if (!response.ok) {
-          return []
-        }
-        return parseOfficialBattingStatsRows(await response.text(), team.name)
-      } catch {
-        return []
-      }
-    }),
-  )).flat()
-  if (rows.length === 0) {
-    return []
-  }
-  const filteredRows = (filters.sort_by === 'battingAverage' || filters.sort_by === 'ops')
-    ? rows.filter((row) => Number(row.stats.atBats ?? 0) >= 10)
-    : rows
-  return filteredRows
-    .sort((a, b) => compareOfficialBattingRows(a, b, filters.sort_by))
-    .slice(0, filters.limit ?? 50)
-}
-
-void fetchOfficialCurrentBattingAggregatesFallback
-
-function officialBattingTeamIds(team: string | undefined): Array<{ id: string; name: string }> {
-  const all = [
-    { id: 'g', name: '読売ジャイアンツ', league: 'セ・リーグ' },
-    { id: 't', name: '阪神タイガース', league: 'セ・リーグ' },
-    { id: 'db', name: '横浜DeNAベイスターズ', league: 'セ・リーグ' },
-    { id: 'c', name: '広島東洋カープ', league: 'セ・リーグ' },
-    { id: 'd', name: '中日ドラゴンズ', league: 'セ・リーグ' },
-    { id: 's', name: '東京ヤクルトスワローズ', league: 'セ・リーグ' },
-    { id: 'b', name: 'オリックス・バファローズ', league: 'パ・リーグ' },
-    { id: 'h', name: '福岡ソフトバンクホークス', league: 'パ・リーグ' },
-    { id: 'f', name: '北海道日本ハムファイターズ', league: 'パ・リーグ' },
-    { id: 'm', name: '千葉ロッテマリーンズ', league: 'パ・リーグ' },
-    { id: 'e', name: '東北楽天ゴールデンイーグルス', league: 'パ・リーグ' },
-    { id: 'l', name: '埼玉西武ライオンズ', league: 'パ・リーグ' },
-  ] as const
-  if (!team) {
-    return all.map(({ id, name }) => ({ id, name }))
-  }
-  const canonical = normalizeTeamName(team)
-  if (canonical === 'セ・リーグ' || canonical === 'パ・リーグ') {
-    return all.filter((entry) => entry.league === canonical).map(({ id, name }) => ({ id, name }))
-  }
-  return all
-    .filter((entry) => normalizeTeamName(entry.name) === canonical)
-    .map(({ id, name }) => ({ id, name }))
-}
-
-function parseOfficialBattingStatsRows(
-  html: string,
-  team: string,
-): ChatResponseCore['results']['aggregates'] {
-  const rows: ChatResponseCore['results']['aggregates'] = []
-  const rowMatches = html.matchAll(/<tr\b[^>]*>([\s\S]*?)<\/tr>/giu)
-  for (const match of rowMatches) {
-    const cells = [...match[1].matchAll(/<td\b[^>]*>([\s\S]*?)<\/td>/giu)]
-      .map((cell) => normalizeHtmlText(cell[1]))
-    if (cells.length < 23 || !cells[0] || /選手|年度/u.test(cells[0])) {
-      continue
-    }
-    const atBats = toInteger(cells[3] ?? '0')
-    const hits = toInteger(cells[5] ?? '0')
-    const totalBases = toInteger(cells[9] ?? '0')
-    const walks = toInteger(cells[15] ?? '0')
-    const hitByPitch = toInteger(cells[16] ?? '0')
-    const sacrificeFlies = toInteger(cells[20] ?? '0')
-    const plateAppearances = toInteger(cells[2] ?? '0')
-    const battingAverage = atBats > 0 ? hits / atBats : null
-    const onBaseDenominator = atBats + walks + hitByPitch + sacrificeFlies
-    const onBasePercentage = onBaseDenominator > 0 ? (hits + walks + hitByPitch) / onBaseDenominator : null
-    const sluggingPercentage = atBats > 0 ? totalBases / atBats : null
-    rows.push({
-      kind: 'batting',
-      label: cells[0],
-      total: toInteger(cells[1] ?? '0'),
-      stats: {
-        team,
-        playerName: cells[0],
-        games: toInteger(cells[1] ?? '0'),
-        plateAppearances,
-        atBats,
-        runs: toInteger(cells[4] ?? '0'),
-        hits,
-        homeRuns: toInteger(cells[8] ?? '0'),
-        totalBases,
-        runsBattedIn: toInteger(cells[10] ?? '0'),
-        stolenBases: toInteger(cells[11] ?? '0'),
-        walks,
-        strikeouts: toInteger(cells[18] ?? '0'),
-        battingAverage,
-        onBasePercentage,
-        sluggingPercentage,
-        ops: onBasePercentage !== null && sluggingPercentage !== null ? onBasePercentage + sluggingPercentage : null,
-        isoP: battingAverage !== null && sluggingPercentage !== null ? sluggingPercentage - battingAverage : null,
-        bbRate: plateAppearances > 0 ? walks / plateAppearances : null,
-      },
-    })
-  }
-  return rows
-}
-
-function compareOfficialBattingRows(
-  left: ChatResponseCore['results']['aggregates'][number],
-  right: ChatResponseCore['results']['aggregates'][number],
-  sortBy: AggregateBattingFilters['sort_by'] | undefined,
-): number {
-  const stat = (row: ChatResponseCore['results']['aggregates'][number], key: string) => Number(row.stats[key] ?? -1)
-  const desc = (key: string) => stat(right, key) - stat(left, key)
-  const primary =
-    sortBy === 'battingAverage' ? desc('battingAverage') :
-    sortBy === 'ops' ? desc('ops') :
-    sortBy === 'isoP' ? desc('isoP') :
-    sortBy === 'bbRate' ? desc('bbRate') :
-    sortBy === 'homeRuns' ? desc('homeRuns') :
-    sortBy === 'runsBattedIn' ? desc('runsBattedIn') :
-    sortBy === 'stolenBases' ? desc('stolenBases') :
-    sortBy === 'walks' ? desc('walks') :
-    sortBy === 'strikeouts' ? desc('strikeouts') :
-    sortBy === 'games' ? desc('games') :
-    sortBy === 'atBats' ? desc('atBats') :
-    desc('hits')
-  return primary || desc('atBats') || left.label.localeCompare(right.label, 'ja')
 }
 
 function rewriteIntentFromNaturalLanguage(message: string, query: ChatStructuredQuery): ChatStructuredQuery {

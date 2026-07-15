@@ -15,6 +15,8 @@ import {
   searchPlayerAffiliations,
   searchPlayerCandidates,
   searchRosterEntries,
+  searchAwardWinners,
+  getNormalizedRuntimeMetadata,
   canonicalTeamName,
   type AggregateRow,
   type BattingLineRow,
@@ -27,6 +29,7 @@ import {
   type SearchPlayerCandidatesFilters,
   type RosterEntryRow,
   type SourceSnapshotRow,
+  type AwardWinnerRow,
 } from './repository'
 import { migrateDatabase } from './migrations'
 import { sqliteDatabaseToQuery, type QueryDatabase } from './query-driver'
@@ -69,6 +72,8 @@ export type ChatQueryService = {
   aggregateEvents: (filters: AggregateEventsFilters) => Promise<AggregateRow[]>
   aggregateGameResults: (filters: AggregateGamesFilters) => Promise<AggregateRow[]>
   searchPlayerCandidates: (filters: SearchPlayerCandidatesFilters) => Promise<PlayerCandidate[]>
+  searchAwardWinners: (filters: { year: number; award_type: string }) => Promise<AwardWinnerRow[]>
+  getNormalizedRuntimeMetadata: () => Promise<Record<string, string>>
   listSourceSnapshotsByGameIds: (gameIds: string[]) => Promise<SourceSnapshotRow[]>
   close: () => void
 }
@@ -115,6 +120,8 @@ export function createSingleDatabaseQueryService(database: QueryDatabase): ChatQ
     aggregateEvents: (filters) => aggregateEvents(database, filters),
     aggregateGameResults: (filters) => aggregateGameResults(database, filters),
     searchPlayerCandidates: (filters) => searchPlayerCandidates(database, filters),
+    searchAwardWinners: (filters) => searchAwardWinners(database, filters),
+    getNormalizedRuntimeMetadata: () => getNormalizedRuntimeMetadata(database),
     listSourceSnapshotsByGameIds: (gameIds) => listSourceSnapshotsByGameIds(database, gameIds),
     close: () => database.close(),
   }
@@ -258,6 +265,19 @@ export function createMultiYearQueryService({
     aggregateGameResults: async (filters) => mergeGameResultAggregates(
       await runAggregateAcrossYears(filters, (db) => aggregateGameResults(db, filters)),
     ),
+    searchAwardWinners: async (filters) => {
+      for (const year of [...availableYears({ year: filters.year })].reverse()) {
+        const rows = await searchAwardWinners(openYear(year), filters)
+        if (rows.length > 0) {
+          return rows
+        }
+      }
+      return []
+    },
+    getNormalizedRuntimeMetadata: async () => {
+      const latest = [...availableYears()].reverse()[0]
+      return latest ? getNormalizedRuntimeMetadata(openYear(latest)) : {}
+    },
     searchPlayerCandidates: async (filters) => mergePlayerCandidates(
       await runPlayerCandidateAcrossYears(filters),
       filters.limit ?? 10,

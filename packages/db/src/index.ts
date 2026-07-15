@@ -41,6 +41,8 @@ import {
   searchGames,
   searchPitchingLines,
   searchRosterEntries,
+  searchAwardWinners,
+  getNormalizedRuntimeMetadata,
 } from './repository/index'
 import {
   parseUpdateYearArgs,
@@ -108,6 +110,7 @@ export type {
   PlayerAffiliationRow,
   RosterEntryRow,
   SourceSnapshotRow,
+  AwardWinnerRow,
   ChatAccountRow,
   GoogleAccountInput,
   UpdateChatAccountBillingInput,
@@ -179,4 +182,6 @@ export {
   searchPlayerAffiliations,
   searchPlayerCandidates,
   searchRosterEntries,
+  searchAwardWinners,
+  getNormalizedRuntimeMetadata,
 }

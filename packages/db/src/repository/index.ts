@@ -52,6 +52,11 @@ export {
   type SourceSnapshotRow,
 } from './source-snapshots-repository'
 export {
+  getNormalizedRuntimeMetadata,
+  searchAwardWinners,
+  type AwardWinnerRow,
+} from './award-repository'
+export {
   getChatAccount,
   getChatAccountByAuthIdentity,
   getOrCreateChatAccount,
