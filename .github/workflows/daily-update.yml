@@ -161,7 +161,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          test -f data/logs/d1-sync/summary.json
+          test -f data/logs/d1-sync-normalized/summary.json
 
       - name: Save SQLite backups to R2
         if: ${{ always() && env.IS_DRY_RUN != 'true' && steps.update_daily.outcome == 'success' && steps.enrich_farm.outcome == 'success' }}
@@ -204,12 +204,12 @@ jobs:
               cat data/logs/update-daily-summary.json
               echo '```'
             fi
-            if [ -f data/logs/d1-sync/summary.json ]; then
+            if [ -f data/logs/d1-sync-normalized/summary.json ]; then
               echo
-              echo '### sync:d1'
+              echo '### sync:normalized-d1'
               echo
               echo '```json'
-              cat data/logs/d1-sync/summary.json
+              cat data/logs/d1-sync-normalized/summary.json
               echo '```'
             fi
           } >> "$GITHUB_STEP_SUMMARY"
@@ -225,5 +225,5 @@ jobs:
             data/logs/enrich-scores-calendar.log
             data/logs/enrich-bis-farm-boxes-action.log
             data/logs/d1-sync-action.log
-            data/logs/d1-sync/summary.json
+            data/logs/d1-sync-normalized/summary.json
           if-no-files-found: ignore
