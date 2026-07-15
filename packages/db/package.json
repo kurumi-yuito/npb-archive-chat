@@ -34,6 +34,7 @@
     "migrate": "node --import tsx ./src/cli.ts migrate",
     "rebuild:r2-year": "node --import tsx ./src/cli.ts rebuild:r2-year",
     "sync:d1": "node --import tsx ./src/cli.ts sync:d1",
+    "sync:normalized-d1": "node --import tsx ./src/cli.ts sync:normalized-d1",
     "update:bis-current": "node --import tsx ./src/cli.ts update:bis-current",
     "update:daily": "node --import tsx ./src/cli.ts update:daily",
     "update:year": "node --import tsx ./src/cli.ts update-year",

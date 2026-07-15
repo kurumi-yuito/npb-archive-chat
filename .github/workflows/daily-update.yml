@@ -42,7 +42,7 @@ jobs:
     env:
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       IS_DRY_RUN: ${{ inputs.dry_run == true || inputs.dry_run == 'true' }}
-      NPB_D1_DATABASE: npb-archive-chat-import
+      NPB_D1_DATABASE: npb-archive-chat-normalized
       NPB_R2_BUCKET: npb-archive-chat-raw
       NPB_R2_SQLITE_BACKUP_PREFIX: backups/sqlite
     steps:
@@ -154,7 +154,7 @@ jobs:
             exit 1
           fi
           export CLOUDFLARE_API_TOKEN="$(printf '%s' "$CLOUDFLARE_API_TOKEN" | tr -d '\r\n ')"
-          pnpm --filter @npb/db run sync:d1 -- --sqlite-dir ./data --d1-database "$NPB_D1_DATABASE" --keep-files --verify | tee data/logs/d1-sync-action.log
+          pnpm --filter @npb/db run sync:normalized-d1 -- --sqlite-dir ./data --d1-database "$NPB_D1_DATABASE" --keep-files --verify | tee data/logs/d1-sync-action.log
 
       - name: Verify D1 sync summary
         if: ${{ env.IS_DRY_RUN != 'true' }}

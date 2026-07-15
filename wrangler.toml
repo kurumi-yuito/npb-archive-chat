@@ -35,8 +35,8 @@ vue = "./apps/web/node_modules/vue/dist/vue.runtime.esm-bundler.js"
 # D1: normalized search DB and chat account/usage DB.
 [[d1_databases]]
 binding = "NPB_DB"
-database_name = "npb-archive-chat-import"
-database_id = "14c099c3-03ac-4307-9704-7a770b31d108"
+database_name = "npb-archive-chat-normalized"
+database_id = "eb614de3-eb0c-4816-a7b2-8440e94093a8"
 
 [[d1_databases]]
 binding = "NPB_META_DB"
