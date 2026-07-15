@@ -9,6 +9,14 @@ const PLAYER_ID_BY_COMPACT_NAME = new Map([
   ['藤浪', '41045137'],
   ['藤浪晋太郎', '41045137'],
 ])
+const PLAYER_PROFILE_BY_ID = new Map([
+  ['41045137', {
+    playerId: '41045137',
+    fullName: '藤浪 晋太郎',
+    teamName: '横浜DeNAベイスターズ',
+    sourceUrl: 'https://npb.jp/bis/players/41045137.html',
+  }],
+])
 
 const args = parseArgs(process.argv.slice(2))
 const accountId = process.env.CLOUDFLARE_ACCOUNT_ID
@@ -185,6 +193,9 @@ function evidenceScore(row) {
 
 function buildStatements(rows, gamesById, snapshotsByGame) {
   const statements = []
+  for (const profile of PLAYER_PROFILE_BY_ID.values()) {
+    statements.push(upsertPlayerProfileStatement(profile))
+  }
   for (const row of rows) {
     const game = gamesById.get(row.gameId)
     const snapshots = snapshotsByGame.get(row.gameId) ?? []
@@ -207,6 +218,42 @@ function buildStatements(rows, gamesById, snapshotsByGame) {
     statements.push(upsertPitchingLineStatement(row))
   }
   return statements
+}
+
+function upsertPlayerProfileStatement(profile) {
+  const now = new Date().toISOString()
+  return {
+    sql: `
+      INSERT INTO player_profiles (
+        player_id, full_name, team_name, year_teams_json, source_url, fetched_at,
+        canonical_name, current_team, active, metadata, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?)
+      ON CONFLICT(player_id) DO UPDATE SET
+        full_name = excluded.full_name,
+        team_name = excluded.team_name,
+        year_teams_json = excluded.year_teams_json,
+        source_url = excluded.source_url,
+        fetched_at = excluded.fetched_at,
+        canonical_name = excluded.canonical_name,
+        current_team = excluded.current_team,
+        active = excluded.active,
+        metadata = excluded.metadata,
+        updated_at = excluded.updated_at
+    `,
+    params: [
+      profile.playerId,
+      profile.fullName,
+      profile.teamName,
+      JSON.stringify({ 2026: profile.teamName }),
+      profile.sourceUrl,
+      now,
+      compactName(profile.fullName),
+      profile.teamName,
+      JSON.stringify({ source: 'phase4_official_pitching_evidence' }),
+      now,
+      now,
+    ],
+  }
 }
 
 function upsertReferenceStatements(game, row) {
