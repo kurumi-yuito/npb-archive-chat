@@ -597,11 +597,20 @@ QA runner `scripts/qa-prod-unanswered.mjs` は今回、以下をログに追加�
 
 ## 直近の本番QA記録
 
-- 本番QA実行日時: 2026-06-26T06:13:37.218Z
-- 対象デプロイVersion ID: `cbb2a58c-740d-455a-9046-a59d5a3b569f`
-- 実行ログ: `data/logs/qa-prod-1782453010913.json`
-- 結果: Pass 108 / Fail 0 / Blocked 0
-- 追加メモ: Q-58 の `inningsPitched` 不整合は `chat-query-llm.ts` / `chat-query-parser.ts` / `packages/schemas/src/index.ts` で修正済み
+- 本番QA実行日時: 2026-07-15T11:15:26Z
+- 対象デプロイVersion ID: `a5b81262-0178-47af-b6db-a6fe051157a8`
+- 実行ログ: `data/logs/qa-prod-1784115474552.json`
+- 結果: Pass 117 / Fail 0 / Blocked 0
+- HTTP 500/503: 0 / 0
+- summary null: 0
+- D1 code 7500: 0
+- 追加メモ: Phase 4 normalized D1 cutover 完了。詳細は [phase4-normalized-cutover-report.md](phase4-normalized-cutover-report.md) を参照。
+
+## Phase 4 normalized cutover
+
+Phase 4 では production `NPB_DB` binding を normalized D1 `npb-archive-chat-normalized` / `eb614de3-eb0c-4816-a7b2-8440e94093a8` へ切り替えた。旧D1 `npb-archive-chat-import` / `14c099c3-03ac-4307-9704-7a770b31d108` は rollback 用に保持する。
+
+normalized repository adapter は legacy repository contract を維持し、formatter で shape を補正しない。Q-51 は multi-year aggregate batting を normalized facts から返す。Q-105 は current canonical pitching facts の最新5試合を使い、official evidence backfill と canonical player profile を normalized daily sync 後に再適用する。
 
 ## Phase 2 completion
 

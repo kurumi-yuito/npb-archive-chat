@@ -65,7 +65,7 @@ repo root の [wrangler.toml](../wrangler.toml) を編集する。
 - `main = "apps/web/.output/server/index.mjs"`
 - `directory = "apps/web/.output/public"`
 
-このリポジトリでは、既存の D1 は `npb-archive-chat-import` / `14c099c3-03ac-4307-9704-7a770b31d108`、既存の R2 は `npb-archive-chat-raw` を使う。
+このリポジトリでは、production 検索 D1 は normalized DB `npb-archive-chat-normalized` / `eb614de3-eb0c-4816-a7b2-8440e94093a8` を使う。旧 D1 `npb-archive-chat-import` / `14c099c3-03ac-4307-9704-7a770b31d108` は rollback 用に保持し、削除しない。既存の R2 は `npb-archive-chat-raw` を使う。
 
 ### 4. secrets を設定する
 

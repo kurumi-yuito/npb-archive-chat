@@ -298,15 +298,17 @@ gh workflow run daily-update.yml -f from=2026-05-07 -f to=2026-05-09
 - `Verify D1 sync summary` が成功する
 - artifact `daily-update-logs` が作成される
 - `data/logs/update-daily-summary.json` が artifact に含まれる
-- `data/logs/d1-sync/summary.json` が artifact に含まれる
+- `data/logs/d1-sync-normalized/summary.json` が artifact に含まれる
+- `data/logs/phase4-backfill-official-pitching-evidence.json` が artifact に含まれる
 - `d1-sync` の verification が `mismatches: []`
+- `Backfill official pitching evidence` が成功し、Q-105 用 official pitching evidence と canonical player profile が normalized D1 に再適用される
 
-`data/logs/d1-sync/summary.json` は GitHub Actions runner 上で作られる。ローカルの `data/logs/d1-sync/summary.json` に自動では戻らない。確認場所は次のどちらか。
+`data/logs/d1-sync-normalized/summary.json` は GitHub Actions runner 上で作られる。ローカルの `data/logs/d1-sync-normalized/summary.json` に自動では戻らない。確認場所は次のどちらか。
 
 - GitHub Actions run の Step Summary にある `sync:d1`
-- artifact `daily-update-logs` をダウンロードして中の `data/logs/d1-sync/summary.json`
+- artifact `daily-update-logs` をダウンロードして中の `data/logs/d1-sync-normalized/summary.json`
 
-ローカルに同じファイルが必要な場合は、ローカルで `sync:d1` を実行する。dry run では `sync:d1` を実行しないため、このファイルは出ない。
+ローカルに同じファイルが必要な場合は、ローカルで `sync:normalized-d1` を実行する。dry run では normalized D1 sync と official pitching evidence backfill を実行しないため、これらのファイルは出ない。
 
 本番 API 確認:
 

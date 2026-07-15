@@ -1,15 +1,21 @@
 # QAテストケース一覧 - 現行本番との差分
 
 - 現行ケース数: 117
-- 本番QA実行日時: 2026-07-13T06:02:55Z
-- 対象デプロイVersion ID: 2a25745b-4c47-4982-ba4b-fae2f1e12c17
+- 本番QA実行日時: 2026-07-15T11:15:26Z
+- 対象デプロイVersion ID: a5b81262-0178-47af-b6db-a6fe051157a8
 - QA実行モード: 通常本番API（LLM parser 実行）
-- 最新通常QAログ: [data/logs/qa-prod-1783922141606.json](../data/logs/qa-prod-1783922141606.json)
+- 最新通常QAログ: [data/logs/qa-prod-1784115474552.json](../data/logs/qa-prod-1784115474552.json)
 - 最新通常QA結果: Pass（Pass 117 / Fail 0 / Blocked 0）
+- Q-51 本番文意一致: normalized aggregate adapter で HTTP 200 / 複数年通算打率・本塁打数を確認済み
+- Q-105 本番文意一致: current canonical facts の最新5試合（2026-07-11, 2026-07-01, 2026-06-21, 2026-06-13, 2026-06-05）で評価説明を確認済み
 - Q-109/Q-110 本番文意一致: 確認済み
 - HTTP 500/503件数: 0
 - summary null件数: 0
 - unexpected player_id failures: 0
+- D1 code 7500件数: 0
+- normalized DB: `npb-archive-chat-normalized` / `eb614de3-eb0c-4816-a7b2-8440e94093a8`
+- production cutover: `NPB_DB` binding を旧DB `npb-archive-chat-import` / `14c099c3-03ac-4307-9704-7a770b31d108` から normalized DB へ切替済み。旧DBは削除しない
+- rollback先: 旧 production Deploy Version ID `f36ff5ad-a057-4adc-9aa7-a318fd535413`、旧DB `npb-archive-chat-import`
 - expected ambiguous/not_found: Q-61 ambiguous / Q-62 ambiguous / Q-107 ambiguous / Q-08 not_found / Q-15 not_found / Q-18 not_found / Q-19 not_found / Q-20 not_found / Q-21 not_found / Q-76 not_found / Q-77 not_found / Q-94 not_found / Q-95 not_found / Q-103 not_found / Q-113 not_found
 - Q-17 復旧内容: multi-player comparison の pitch compare 正規化で `sort_by:"era"` を `aggregate_pitching` に寄せ、`今シーズン(2026年)` のような修飾語を選手名から除去した。これにより 2026 年の山本由伸・佐々木朗希比較が 503 ではなく 200 で返るようになった
 - Q-109/Q-110 復旧内容: 複数投手比較で単一選手化せず、両者の直近3登板を投手成績として比較し、Q-110 は直前回答への再回答要求として文意一致した
