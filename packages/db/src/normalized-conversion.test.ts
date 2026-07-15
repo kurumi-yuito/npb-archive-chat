@@ -6,6 +6,7 @@ import { describe, expect, it } from 'vitest'
 import { migrateDatabase } from './migrations'
 import { runNormalizeDatabase } from './normalized-conversion'
 import { sqliteDatabaseToQuery } from './query-driver'
+import { aggregateBattingLines } from './repository/aggregate-repository'
 import { searchBattingLines } from './repository/batting-repository'
 import { searchEvents } from './repository/events-repository'
 import { searchRosterEntries } from './repository/roster-repository'
@@ -58,11 +59,11 @@ describe('runNormalizeDatabase', () => {
           ) VALUES (
             'r20250328b-e-01', 0, 1, 1, 'top', '1回表', '楽天',
             'plate_appearance', 'standard', 'zero', NULL, '1-2より', '浅村',
-            '山本', NULL, '空振り三振', 0, '[]',
+            '山本', NULL, 'ホームラン', 1, '[]',
             '{"batter_links":[{"name":"浅村","url":"https://npb.jp/bis/players/51155118.html"}],"count":"1-2より"}',
-            '0アウト 浅村 1-2より 空振り三振', 0,
+            '0アウト 浅村 1-2より ホームラン', 1,
             'https://npb.jp/scores/2025/0328/b-e-01/playbyplay.html',
-            '0アウト 浅村 1-2より 空振り三振'
+            '0アウト 浅村 1-2より ホームラン'
           );
 
           INSERT INTO batting_lines (
@@ -75,6 +76,11 @@ describe('runNormalizeDatabase', () => {
             '[]', '[]', 1, 0, 0, 0, 0, 0, '浅村 4打数1安打',
             'https://npb.jp/scores/2025/0328/b-e-01/box.html',
             'https://npb.jp/bis/players/51155118.html'
+          ), (
+            'r20250328b-e-01', '楽天', 1, 2, '二', '牧', 4, 1, 2, 1, 0,
+            '[]', '[]', 0, 1, 0, 0, 0, 0, '牧 4打数2安打',
+            'https://npb.jp/scores/2025/0328/b-e-01/box.html',
+            'https://npb.jp/bis/players/13115153.html'
           );
 
           INSERT INTO pitching_lines (
@@ -141,10 +147,22 @@ describe('runNormalizeDatabase', () => {
           {
             gameId: 'r20250328b-e-01',
             batterName: '浅村',
-            resultText: '空振り三振',
+            resultText: 'ホームラン',
             sourceUrl: 'https://npb.jp/scores/2025/0328/b-e-01/playbyplay.html',
           },
         ])
+
+        const homeRunEvents = await searchEvents(queryDatabase, {
+          year: 2025,
+          result_text_contains: '本塁打',
+          limit: 10,
+        })
+        expect(homeRunEvents).toHaveLength(1)
+        expect(homeRunEvents[0]).toMatchObject({
+          gameId: 'r20250328b-e-01',
+          batterName: '浅村',
+          resultText: 'ホームラン',
+        })
 
         const battingLines = await searchBattingLines(queryDatabase, {
           player_id: '51155118',
@@ -157,6 +175,47 @@ describe('runNormalizeDatabase', () => {
             sourceUrl: 'https://npb.jp/scores/2025/0328/b-e-01/box.html',
           },
         ])
+
+        const aggregateRows = await aggregateBattingLines(queryDatabase, {
+          year: 2025,
+          sort_by: 'homeRuns',
+          limit: 1,
+        })
+        expect(aggregateRows).toMatchObject([
+          {
+            kind: 'batting',
+            label: '浅村',
+            stats: {
+              homeRuns: 1,
+              hits: 1,
+            },
+          },
+        ])
+
+        const oneCharacterRegisteredNameRows = await aggregateBattingLines(queryDatabase, {
+          year: 2025,
+          player_name: '牧秀悟',
+          team: '楽天',
+          limit: 10,
+        })
+        expect(oneCharacterRegisteredNameRows).toMatchObject([
+          {
+            kind: 'batting',
+            label: '牧',
+            stats: {
+              team: '楽天',
+              hits: 2,
+              homeRuns: 0,
+            },
+          },
+        ])
+
+        const ambiguousOneCharacterRows = await aggregateBattingLines(queryDatabase, {
+          year: 2025,
+          player_name: '牧秀悟',
+          limit: 10,
+        })
+        expect(ambiguousOneCharacterRows).toHaveLength(0)
 
         const rosterEntries = await searchRosterEntries(queryDatabase, {
           player_id: '51155118',
