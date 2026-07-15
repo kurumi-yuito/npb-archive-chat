@@ -554,6 +554,82 @@ describe('chat-service', () => {
     expect(response.answer.summary).toContain('良かった点です')
   })
 
+  it('keeps pitching evaluation follow-ups on player stats when the previous summary includes a game date', async () => {
+    let pitchingFilters: Parameters<ChatQueryService['searchPitchingLines']>[0] | null = null
+    const currentResolver = vi.fn(async (_queryService, structuredQuery) => ({
+      structuredQuery: {
+        ...structuredQuery,
+        filters: {
+          ...structuredQuery.filters,
+          pitcher_player_id: '41045137',
+        },
+      },
+      resolution: scopedResolution('current', '41045137'),
+    }))
+    const service = createChatService(createFakeQueryService({
+      searchPitchingLines: async (filters) => {
+        pitchingFilters = filters
+        return [{
+          gameId: 'f20260711g-db-13',
+          gameDate: '2026-07-11',
+          team: '横浜DeNAベイスターズ',
+          pitcherName: '藤浪 晋太郎',
+          result: null,
+          inningsPitched: '3',
+          battersFaced: 16,
+          pitchCount: 94,
+          hitsAllowed: 4,
+          homeRunsAllowed: 0,
+          strikeouts: 4,
+          walks: 3,
+          hitByPitch: 0,
+          runs: 3,
+          earnedRuns: 3,
+          rawText: '藤浪 3回 3自責点',
+        }]
+      },
+      searchGameDetails: async () => {
+        throw new Error('searchGameDetails should not be called for pitching evaluation follow-up')
+      },
+    }), {
+      parseStructuredQueryFromMessage: async () => ({
+        intent: 'game_detail',
+        filters: {
+          game_date: '2026-07-11',
+          team: 'DeNA',
+        },
+      }),
+      resolveCurrentStructuredQueryPlayer: currentResolver,
+    })
+
+    const response = await service.answerQuestion('どこがよかった？', {
+      history: [
+        { role: 'user', content: '藤浪どう？' },
+        {
+          role: 'assistant',
+          content: '横浜DeNAベイスターズ 藤浪の確認できる最新1試合の投球内容です。\n最新登板は2026年7月11日で、3回、4奪三振、自責点3です。',
+        },
+      ],
+    })
+
+    expect(response.structured_query).toMatchObject({
+      intent: 'search_pitching',
+      filters: {
+        pitcher_name: '藤浪',
+        pitcher_player_id: '41045137',
+        year: 2026,
+        recent: true,
+        limit: 5,
+      },
+    })
+    expect(pitchingFilters).toMatchObject({
+      pitcher_player_id: '41045137',
+      year: 2026,
+      recent: true,
+    })
+    expect(response.answer.summary).toContain('良かった点です')
+  })
+
   it('keeps evaluation follow-up event context without parser text-search noise', async () => {
     let eventFilters: Parameters<ChatQueryService['searchEvents']>[0] | null = null
     const service = createChatService(createFakeQueryService({

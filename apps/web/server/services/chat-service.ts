@@ -118,6 +118,30 @@ export function createChatService(
           })
         }
       }
+      const inheritedPitcherName = effectivePlan.followUpContext.inheritedPlayerName
+      if (
+        effectivePlan.followUpType === 'evaluation_request' &&
+        parsedQuery.intent === 'game_detail' &&
+        inheritedPitcherName &&
+        isPitchingStatsHistory(options.history)
+      ) {
+        const inherited = effectivePlan.followUpContext
+        parsedQuery = {
+          intent: 'search_pitching',
+          filters: {
+            pitcher_name: inheritedPitcherName,
+            ...(inherited.inheritedPlayerId ? { pitcher_player_id: inherited.inheritedPlayerId } : {}),
+            ...(inherited.inheritedTeam ? { team: inherited.inheritedTeam } : {}),
+            ...(inherited.inheritedSeason !== null ? { year: inherited.inheritedSeason } : {}),
+            recent: true,
+            limit: 5,
+          },
+        }
+        effectivePlan = buildPlannerOutput(parsedQuery, true, {
+          message,
+          history: options.history,
+        })
+      }
       const historicalRewrite = rewriteKnownHistoricalPlayers(message, parsedQuery)
       if (historicalRewrite !== parsedQuery) {
         parsedQuery = historicalRewrite
@@ -1208,6 +1232,12 @@ const BLOCKED_CORRECTION_GUARD_REASONS = new Set<ChatCorrectionGuardReason>([
   'game_context',
   'follow_up_type_excluded',
 ])
+
+function isPitchingStatsHistory(history: ChatRequest['history'] | undefined): boolean {
+  const latestAssistant = [...(history ?? [])].reverse()
+    .find((entry) => entry.role === 'assistant')?.content ?? ''
+  return /投球|登板|奪三振|自責点|失点|投球回|球/u.test(latestAssistant)
+}
 
 function applyPlayerStatsFollowUpContext(
   structuredQuery: ChatStructuredQuery,
