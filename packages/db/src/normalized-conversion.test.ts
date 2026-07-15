@@ -246,6 +246,16 @@ describe('runNormalizeDatabase', () => {
             playerName: '浅村',
           },
         ])
+
+        const metadata = normalized.prepare(
+          "SELECT metadata_value AS value FROM normalized_runtime_metadata WHERE metadata_key = 'schema_version'",
+        ).get() as { value?: string } | undefined
+        expect(metadata?.value).toBe('phase5-normalized-v1')
+
+        const awardCount = normalized.prepare(
+          "SELECT COUNT(*) AS count FROM award_facts WHERE year = 2025 AND award_type = 'rookie_of_the_year'",
+        ).get() as { count?: number } | undefined
+        expect(awardCount?.count).toBe(2)
       } finally {
         normalized.close()
       }

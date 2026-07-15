@@ -11,6 +11,14 @@ async function createTempDir() {
 }
 
 describe('runNormalizedD1Sync', () => {
+  it('refuses to target the legacy D1 database', async () => {
+    await expect(runNormalizedD1Sync({
+      sqliteDir: 'data',
+      d1Database: 'npb-archive-chat-import',
+      dryRun: true,
+    })).rejects.toThrow('Normalized D1 sync must target npb-archive-chat-normalized')
+  })
+
   it('builds normalized D1 import SQL from year SQLite files without touching D1 in dry run', async () => {
     const tempRoot = await createTempDir()
     const sqliteDir = path.join(tempRoot, 'data')

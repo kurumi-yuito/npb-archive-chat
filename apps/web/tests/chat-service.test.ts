@@ -8,12 +8,14 @@ import {
 } from '@npb/db'
 import { richGameSchema } from '@npb/schemas'
 import path from 'node:path'
+import { readFileSync } from 'node:fs'
 import { loadRichGame } from '../../../packages/db/src/loader'
 import { formatChatAnswer } from '../server/services/chat-answer-formatter'
 import { createChatService } from '../server/services/chat-service'
 import { ChatFinalAnswerLlmHttpError } from '../server/services/chat-final-answer-llm'
 
 const SQLITE_DIR = path.resolve(process.cwd(), 'data')
+const CHAT_SERVICE_SOURCE = path.resolve(process.cwd(), 'apps/web/server/services/chat-service.ts')
 
 function buildFixtureRichGame() {
   return richGameSchema.parse({
@@ -332,6 +334,12 @@ function scopedResolution<const Scope extends 'current' | 'historical' | 'unspec
 }
 
 describe('chat-service', () => {
+  it('does not contain request-time NPB or BIS fetch fallbacks', () => {
+    const source = readFileSync(CHAT_SERVICE_SOURCE, 'utf8')
+    expect(source).not.toMatch(/fetchOfficial|OfficialStatsFallback|https:\/\/npb\.jp\/bis|https:\/\/npb\.jp\/award/)
+    expect(source).not.toMatch(/fetch\(/)
+  })
+
   it('rejects non-baseball topics before invoking the query parser', async () => {
     let parserCalled = false
     const service = createChatService(createFakeQueryService(), {
@@ -1605,8 +1613,27 @@ describe('chat-service', () => {
     }
   })
 
-  it.skip('returns award_winners responses with schema-compliant execution metadata', async () => {
-    const service = createChatService(createFakeQueryService(), {
+  it('returns award_winners responses from normalized D1 facts with schema-compliant execution metadata', async () => {
+    const service = createChatService(createFakeQueryService({
+      searchAwardWinners: async () => [
+        {
+          year: 2025,
+          awardType: 'rookie_of_the_year',
+          league: 'セ・リーグ',
+          playerName: '荘司宏太',
+          team: '東京ヤクルト',
+          sourceUrl: 'https://npb.jp/award/2025/',
+        },
+        {
+          year: 2025,
+          awardType: 'rookie_of_the_year',
+          league: 'パ・リーグ',
+          playerName: '西川史礁',
+          team: '千葉ロッテ',
+          sourceUrl: 'https://npb.jp/award/2025/',
+        },
+      ],
+    }), {
       parseStructuredQueryFromMessage: async () => ({
         intent: 'award_winners',
         filters: {
@@ -1624,7 +1651,7 @@ describe('chat-service', () => {
     )
     expect(response.answer.execution_metadata).toEqual({
       data_requirements: ['award_winners', 'source_snapshots'],
-      repositories: ['fetchAwardWinners', 'listSourceSnapshotsByGameIds'],
+      repositories: ['searchAwardWinners', 'listSourceSnapshotsByGameIds'],
       player_id_required: false,
       player_id_satisfied: true,
       follow_up_type: 'standalone',
@@ -3707,6 +3734,7 @@ function createFakeQueryService(options: {
   searchGameDetails?: ChatQueryService['searchGameDetails']
   aggregateBattingLines?: ChatQueryService['aggregateBattingLines']
   aggregatePitchingLines?: ChatQueryService['aggregatePitchingLines']
+  searchAwardWinners?: ChatQueryService['searchAwardWinners']
 } = {}): ChatQueryService {
   const emptyResults = options.empty === true
   return {
@@ -3766,6 +3794,8 @@ function createFakeQueryService(options: {
     aggregatePitchingLines: options.aggregatePitchingLines ?? (async () => []),
     aggregateEvents: async () => [],
     aggregateGameResults: async () => [],
+    searchAwardWinners: options.searchAwardWinners ?? (async () => []),
+    getNormalizedRuntimeMetadata: async () => ({ schema_version: 'phase5-normalized-v1' }),
     searchPlayerCandidates: options.searchPlayerCandidates ?? (async (filters) => options.playerCandidatesForFilters?.(filters) ?? options.playerCandidates ?? (
       filters.name === '存在しない選手'
         ? []
