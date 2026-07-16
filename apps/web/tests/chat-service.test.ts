@@ -641,6 +641,91 @@ describe('chat-service', () => {
     expect(response.answer.summary).toContain('良かった点です')
   })
 
+  it('keeps mixed first-team and farm pitching evaluation follow-ups on pitching lines', async () => {
+    let pitchingFilters: Parameters<ChatQueryService['searchPitchingLines']>[0] | null = null
+    const currentResolver = vi.fn(async (_queryService, structuredQuery) => ({
+      structuredQuery: {
+        ...structuredQuery,
+        filters: {
+          ...structuredQuery.filters,
+          pitcher_player_id: '41045137',
+        },
+      },
+      resolution: scopedResolution('current', '41045137'),
+    }))
+    const service = createChatService(createFakeQueryService({
+      searchPitchingLines: async (filters) => {
+        pitchingFilters = filters
+        return [{
+          gameId: 'r20260711db-g-12',
+          gameDate: '2026-07-11',
+          team: '横浜DeNAベイスターズ',
+          pitcherName: '藤浪',
+          result: null,
+          inningsPitched: '3',
+          battersFaced: 18,
+          pitchCount: 94,
+          hitsAllowed: 3,
+          homeRunsAllowed: 0,
+          strikeouts: 4,
+          walks: 6,
+          hitByPitch: 0,
+          runs: 3,
+          earnedRuns: 3,
+          rawText: '藤浪 3回 3自責点',
+        }]
+      },
+      searchEvents: async () => {
+        throw new Error('searchEvents should not be called for mixed pitching evaluation follow-up')
+      },
+    }), {
+      parseStructuredQueryFromMessage: async () => ({
+        intent: 'search_events',
+        filters: {
+          team: '横浜DeNAベイスターズ',
+          pitcher_name: '藤浪 晋太郎',
+          pitcher_player_id: '41045137',
+          limit: 5,
+        },
+      }),
+      resolveCurrentStructuredQueryPlayer: currentResolver,
+    })
+
+    const response = await service.answerQuestion('どこがよかった？', {
+      history: [
+        { role: 'user', content: '藤浪どう？' },
+        {
+          role: 'assistant',
+          content: [
+            '横浜DeNAベイスターズ 藤浪の確認できる最新5試合の投球内容です。',
+            '2026年一軍・二軍での対象試合です。',
+            '内容は5試合で22奪三振、10自責点、94球です。',
+            '最新登板は2026年7月11日で、3回、4奪三振、自責点3です。',
+            '対象試合: 2026年7月11日、2026年7月1日、2026年6月21日、2026年6月13日、2026年6月5日',
+            '2026年5月8日から2026年4月1日まで37日空いているため、最新10件を連続した最近の調子として扱う場合は注意が必要です。',
+          ].join('\n'),
+        },
+      ],
+    })
+
+    expect(response.structured_query).toMatchObject({
+      intent: 'search_pitching',
+      filters: {
+        pitcher_name: expect.stringContaining('藤浪'),
+        pitcher_player_id: '41045137',
+        year: 2026,
+        recent: true,
+        limit: 5,
+      },
+    })
+    expect(pitchingFilters).toMatchObject({
+      pitcher_player_id: '41045137',
+      year: 2026,
+      recent: true,
+    })
+    expect(response.answer.summary).toContain('良かった点です')
+  })
+
   it('keeps evaluation follow-up event context without parser text-search noise', async () => {
     let eventFilters: Parameters<ChatQueryService['searchEvents']>[0] | null = null
     const service = createChatService(createFakeQueryService({
@@ -672,6 +757,7 @@ describe('chat-service', () => {
           year: 2025,
           pitcher_name: '藤浪 晋太郎',
           pitcher_player_id: '41045137',
+          game_id: 'r20250401db-s-01',
           result_text_contains: '良かった',
         },
       }),
@@ -689,6 +775,7 @@ describe('chat-service', () => {
       filters: {
         year: 2025,
         pitcher_player_id: '41045137',
+        game_id: 'r20250401db-s-01',
       },
     })
     expect(response.structured_query.filters).not.toHaveProperty('result_text_contains')
@@ -696,6 +783,7 @@ describe('chat-service', () => {
     expect(eventFilters).toMatchObject({
       year: 2025,
       pitcher_player_id: '41045137',
+      game_id: 'r20250401db-s-01',
       limit: 5,
     })
     expect(eventFilters).not.toHaveProperty('result_text_contains')

@@ -120,21 +120,51 @@ export function createChatService(
         }
       }
       const inheritedPitcherName = effectivePlan.followUpContext.inheritedPlayerName
+      const parsedEventFilters = parsedQuery.intent === 'search_events'
+        ? parsedQuery.filters as Record<string, unknown>
+        : null
+      const eventQueryHasEventSpecificTarget = Boolean(parsedEventFilters && (
+        typeof parsedEventFilters.batter_name === 'string' ||
+        typeof parsedEventFilters.runner_name === 'string' ||
+        typeof parsedEventFilters.event_type === 'string' ||
+        typeof parsedEventFilters.event_subtype === 'string' ||
+        typeof parsedEventFilters.result_text_contains === 'string' ||
+        typeof parsedEventFilters.game_id === 'string' ||
+        typeof parsedEventFilters.game_date === 'string'
+      ))
+      const pitcherNameFromEventFilters = parsedEventFilters && typeof parsedEventFilters.pitcher_name === 'string'
+        ? parsedEventFilters.pitcher_name
+        : null
+      const pitcherPlayerIdFromEventFilters = parsedEventFilters && typeof parsedEventFilters.pitcher_player_id === 'string'
+        ? parsedEventFilters.pitcher_player_id
+        : null
       if (
         effectivePlan.followUpType === 'evaluation_request' &&
         parsedQuery.intent !== 'search_pitching' &&
         !parsedEventResultTextContains &&
-        inheritedPitcherName &&
-        isPitchingStatsHistory(options.history)
+        (inheritedPitcherName || pitcherNameFromEventFilters) &&
+        (isPitchingStatsHistory(options.history) || (
+          parsedQuery.intent === 'search_events' &&
+          !eventQueryHasEventSpecificTarget &&
+          Boolean(pitcherNameFromEventFilters || pitcherPlayerIdFromEventFilters)
+        ))
       ) {
         const inherited = effectivePlan.followUpContext
         parsedQuery = {
           intent: 'search_pitching',
           filters: {
-            pitcher_name: inheritedPitcherName,
-            ...(inherited.inheritedPlayerId ? { pitcher_player_id: inherited.inheritedPlayerId } : {}),
-            ...(inherited.inheritedTeam ? { team: inherited.inheritedTeam } : {}),
-            ...(inherited.inheritedSeason !== null ? { year: inherited.inheritedSeason } : {}),
+            pitcher_name: inheritedPitcherName ?? pitcherNameFromEventFilters!,
+            ...(inherited.inheritedPlayerId || pitcherPlayerIdFromEventFilters
+              ? { pitcher_player_id: inherited.inheritedPlayerId ?? pitcherPlayerIdFromEventFilters! }
+              : {}),
+            ...(inherited.inheritedTeam || (parsedEventFilters && typeof parsedEventFilters.team === 'string')
+              ? { team: inherited.inheritedTeam ?? parsedEventFilters!.team as string }
+              : {}),
+            ...(inherited.inheritedSeason !== null
+              ? { year: inherited.inheritedSeason }
+              : parsedEventFilters && typeof parsedEventFilters.year === 'number'
+                ? { year: parsedEventFilters.year }
+                : {}),
             recent: true,
             limit: 5,
           },
@@ -575,86 +605,93 @@ export function createChatService(
               structuredQuery = lightweightAggregatePitching.structuredQuery
               results = lightweightAggregatePitching.results
             } else {
-            if (shouldSkipForPlayerResolution(playerResolution)) {
-              results = emptyResults
-            } else if (structuredQuery.intent === 'search_events') {
-              const events = await queryService.searchEvents(structuredQuery.filters)
-              results = { ...emptyResults, events }
-            } else if (structuredQuery.intent === 'search_games') {
-              results = { ...emptyResults, games: await queryService.searchGames(structuredQuery.filters) }
-            } else if (structuredQuery.intent === 'search_batting') {
-              try {
-                results = structuredQuery.filters.recent === true && typeof structuredQuery.filters.player_id === 'string'
-                  ? {
-                      ...emptyResults,
-                      batting: await searchRecentBattingLinesForChat(queryService, structuredQuery.filters, playerResolution),
-                    }
-                  : { ...emptyResults, batting: await queryService.searchBattingLines(structuredQuery.filters) }
-              } catch {
-                results = emptyResults
+              const pitchingEvaluationReroute = rewritePitchingEvaluationEventQueryToPitching(
+                structuredQuery,
+                effectivePlan,
+              )
+              if (pitchingEvaluationReroute) {
+                structuredQuery = pitchingEvaluationReroute
               }
-            } else if (structuredQuery.intent === 'search_pitching') {
-              if (structuredQuery.filters.recent === true && typeof structuredQuery.filters.pitcher_player_id === 'string') {
+              if (shouldSkipForPlayerResolution(playerResolution)) {
+                results = emptyResults
+              } else if (structuredQuery.intent === 'search_events') {
+                const events = await queryService.searchEvents(structuredQuery.filters)
+                results = { ...emptyResults, events }
+              } else if (structuredQuery.intent === 'search_games') {
+                results = { ...emptyResults, games: await queryService.searchGames(structuredQuery.filters) }
+              } else if (structuredQuery.intent === 'search_batting') {
+                try {
+                  results = structuredQuery.filters.recent === true && typeof structuredQuery.filters.player_id === 'string'
+                    ? {
+                        ...emptyResults,
+                        batting: await searchRecentBattingLinesForChat(queryService, structuredQuery.filters, playerResolution),
+                      }
+                    : { ...emptyResults, batting: await queryService.searchBattingLines(structuredQuery.filters) }
+                } catch {
+                  results = emptyResults
+                }
+              } else if (structuredQuery.intent === 'search_pitching') {
+                if (structuredQuery.filters.recent === true && typeof structuredQuery.filters.pitcher_player_id === 'string') {
+                  results = {
+                    ...emptyResults,
+                    pitching: await searchRecentPitchingLinesForChat(queryService, structuredQuery.filters, playerResolution, {
+                      firstTeamOnly: /一軍/u.test(message),
+                    }),
+                  }
+                } else {
+                  const pitching = await queryService.searchPitchingLines(structuredQuery.filters)
+                  void shouldUseOfficialCurrentPitchingFallback
+                  results = { ...emptyResults, pitching }
+                }
+              } else if (structuredQuery.intent === 'search_roster') {
+                results = { ...emptyResults, roster: await queryService.searchRosterEntries(structuredQuery.filters) }
+              } else if (structuredQuery.intent === 'player_affiliation') {
                 results = {
                   ...emptyResults,
-                  pitching: await searchRecentPitchingLinesForChat(queryService, structuredQuery.filters, playerResolution, {
-                    firstTeamOnly: /一軍/u.test(message),
-                  }),
+                  affiliations: await searchPlayerAffiliationsForChat(
+                    queryService,
+                    structuredQuery.filters,
+                    playerResolution,
+                  ),
                 }
-              } else {
-                const pitching = await queryService.searchPitchingLines(structuredQuery.filters)
-                void shouldUseOfficialCurrentPitchingFallback
-                results = { ...emptyResults, pitching }
-              }
-            } else if (structuredQuery.intent === 'search_roster') {
-              results = { ...emptyResults, roster: await queryService.searchRosterEntries(structuredQuery.filters) }
-            } else if (structuredQuery.intent === 'player_affiliation') {
-              results = {
-                ...emptyResults,
-                affiliations: await searchPlayerAffiliationsForChat(
+              } else if (structuredQuery.intent === 'game_detail') {
+                results = {
+                  ...emptyResults,
+                  gameDetails: filterGameDetailsForTeam(
+                    await queryService.searchGameDetails(structuredQuery.filters),
+                    typeof structuredQuery.filters.team === 'string' ? structuredQuery.filters.team : null,
+                  ),
+                }
+              } else if (structuredQuery.intent === 'aggregate_batting') {
+                const lightweightCareerAggregate = await aggregateCareerBattingFromBisRowsForChat(
                   queryService,
-                  structuredQuery.filters,
+                  message,
+                  structuredQuery,
                   playerResolution,
-                ),
-              }
-            } else if (structuredQuery.intent === 'game_detail') {
-              results = {
-                ...emptyResults,
-                gameDetails: filterGameDetailsForTeam(
-                  await queryService.searchGameDetails(structuredQuery.filters),
-                  typeof structuredQuery.filters.team === 'string' ? structuredQuery.filters.team : null,
-                ),
-              }
-            } else if (structuredQuery.intent === 'aggregate_batting') {
-              const lightweightCareerAggregate = await aggregateCareerBattingFromBisRowsForChat(
-                queryService,
-                message,
-                structuredQuery,
-                playerResolution,
-              )
-              if (lightweightCareerAggregate) {
-                results = lightweightCareerAggregate.results
+                )
+                if (lightweightCareerAggregate) {
+                  results = lightweightCareerAggregate.results
+                } else {
+                  const aggregates = await queryService.aggregateBattingLines(structuredQuery.filters)
+                  results = { ...emptyResults, aggregates }
+                }
+              } else if (structuredQuery.intent === 'aggregate_pitching') {
+                const resolvedAggregate = await aggregatePitchingForResolvedPlayer(
+                  queryService,
+                  structuredQuery,
+                  aggregatePitchingPlayerResolution,
+                )
+                if (resolvedAggregate) {
+                  structuredQuery = resolvedAggregate.structuredQuery
+                  results = resolvedAggregate.results
+                } else {
+                  results = { ...emptyResults, aggregates: await queryService.aggregatePitchingLines(structuredQuery.filters) }
+                }
+              } else if (structuredQuery.intent === 'aggregate_events') {
+                results = { ...emptyResults, aggregates: await queryService.aggregateEvents(structuredQuery.filters) }
               } else {
-                const aggregates = await queryService.aggregateBattingLines(structuredQuery.filters)
-                results = { ...emptyResults, aggregates }
+                results = { ...emptyResults, aggregates: await queryService.aggregateGameResults(structuredQuery.filters) }
               }
-            } else if (structuredQuery.intent === 'aggregate_pitching') {
-              const resolvedAggregate = await aggregatePitchingForResolvedPlayer(
-                queryService,
-                structuredQuery,
-                aggregatePitchingPlayerResolution,
-              )
-              if (resolvedAggregate) {
-                structuredQuery = resolvedAggregate.structuredQuery
-                results = resolvedAggregate.results
-              } else {
-                results = { ...emptyResults, aggregates: await queryService.aggregatePitchingLines(structuredQuery.filters) }
-              }
-            } else if (structuredQuery.intent === 'aggregate_events') {
-              results = { ...emptyResults, aggregates: await queryService.aggregateEvents(structuredQuery.filters) }
-            } else {
-              results = { ...emptyResults, aggregates: await queryService.aggregateGameResults(structuredQuery.filters) }
-            }
             }
           }
         }
@@ -1333,6 +1370,55 @@ function applyPlayerStatsFollowUpContext(
       applied: true,
       fields,
       reason: 'player_stats_follow_up_context',
+    },
+  }
+}
+
+function rewritePitchingEvaluationEventQueryToPitching(
+  structuredQuery: ChatStructuredQuery,
+  plannerOutput: ChatPlannerOutput,
+): ChatStructuredQuery | null {
+  if (plannerOutput.followUpType !== 'evaluation_request' || structuredQuery.intent !== 'search_events') {
+    return null
+  }
+  const filters = structuredQuery.filters as Record<string, unknown>
+  const hasEventSpecificTarget =
+    typeof filters.batter_name === 'string' ||
+    typeof filters.runner_name === 'string' ||
+    typeof filters.event_type === 'string' ||
+    typeof filters.event_subtype === 'string' ||
+    typeof filters.result_text_contains === 'string' ||
+    typeof filters.game_id === 'string' ||
+    typeof filters.game_date === 'string'
+  if (hasEventSpecificTarget) {
+    return null
+  }
+  const pitcherName = typeof filters.pitcher_name === 'string'
+    ? filters.pitcher_name
+    : plannerOutput.followUpContext.inheritedPlayerName
+  const pitcherPlayerId = typeof filters.pitcher_player_id === 'string'
+    ? filters.pitcher_player_id
+    : plannerOutput.followUpContext.inheritedPlayerId
+  if (!pitcherName && !pitcherPlayerId) {
+    return null
+  }
+  return {
+    intent: 'search_pitching',
+    filters: {
+      ...(pitcherName ? { pitcher_name: pitcherName } : {}),
+      ...(pitcherPlayerId ? { pitcher_player_id: pitcherPlayerId } : {}),
+      ...(typeof filters.team === 'string'
+        ? { team: filters.team }
+        : plannerOutput.followUpContext.inheritedTeam
+          ? { team: plannerOutput.followUpContext.inheritedTeam }
+          : {}),
+      ...(typeof filters.year === 'number'
+        ? { year: filters.year }
+        : plannerOutput.followUpContext.inheritedSeason !== null
+          ? { year: plannerOutput.followUpContext.inheritedSeason }
+          : {}),
+      recent: true,
+      limit: 5,
     },
   }
 }
