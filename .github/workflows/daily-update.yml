@@ -173,18 +173,6 @@ jobs:
           set -euo pipefail
           test -f data/logs/d1-sync-normalized/summary.json
 
-      - name: Verify normalized D1 integrity after sync
-        if: ${{ env.IS_DRY_RUN != 'true' }}
-        shell: bash
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_D1_API_TOKEN }}
-        run: |
-          set -euo pipefail
-          export CLOUDFLARE_API_TOKEN="$(printf '%s' "$CLOUDFLARE_API_TOKEN" | tr -d '\r\n ')"
-          node scripts/phase5-normalized-ops-check.mjs \
-            --database "$NPB_D1_DATABASE" \
-            --output data/logs/phase5-normalized-ops-check-after-sync.json
-
       - name: Backfill official pitching evidence
         if: ${{ env.IS_DRY_RUN != 'true' }}
         shell: bash
@@ -199,6 +187,18 @@ jobs:
           export CLOUDFLARE_API_TOKEN="$(printf '%s' "$CLOUDFLARE_API_TOKEN" | tr -d '\r\n ')"
           node scripts/phase4-backfill-official-pitching-evidence.mjs \
             --output data/logs/phase4-backfill-official-pitching-evidence.json
+
+      - name: Verify normalized D1 integrity after sync
+        if: ${{ env.IS_DRY_RUN != 'true' }}
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_D1_API_TOKEN }}
+        run: |
+          set -euo pipefail
+          export CLOUDFLARE_API_TOKEN="$(printf '%s' "$CLOUDFLARE_API_TOKEN" | tr -d '\r\n ')"
+          node scripts/phase5-normalized-ops-check.mjs \
+            --database "$NPB_D1_DATABASE" \
+            --output data/logs/phase5-normalized-ops-check-after-sync.json
 
       - name: Save SQLite backups to R2
         if: ${{ always() && env.IS_DRY_RUN != 'true' && steps.update_daily.outcome == 'success' && steps.enrich_farm.outcome == 'success' }}
@@ -279,6 +279,7 @@ jobs:
             data/logs/enrich-bis-farm-boxes-action.log
             data/logs/d1-sync-action.log
             data/logs/d1-sync-normalized/summary.json
+            data/logs/phase4-backfill-official-pitching-evidence.json
             data/logs/phase5-normalized-ops-check-before-sync.json
             data/logs/phase5-normalized-ops-check-after-sync.json
           if-no-files-found: ignore
