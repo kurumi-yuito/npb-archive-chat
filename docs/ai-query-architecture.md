@@ -597,14 +597,26 @@ QA runner `scripts/qa-prod-unanswered.mjs` は今回、以下をログに追加�
 
 ## 直近の本番QA記録
 
-- 本番QA実行日時: 2026-07-15T11:15:26Z
-- 対象デプロイVersion ID: `a5b81262-0178-47af-b6db-a6fe051157a8`
-- 実行ログ: `data/logs/qa-prod-1784115474552.json`
+- 本番QA実行日時: 2026-07-16T15:57:31Z - 2026-07-16T16:03:44Z
+- 対象デプロイVersion ID: `ee28cf3b-5514-4418-93a5-d99cf3492d38`
+- 実行ログ: `data/logs/qa-prod-1784217447662.json`
 - 結果: Pass 117 / Fail 0 / Blocked 0
 - HTTP 500/503: 0 / 0
 - summary null: 0
 - D1 code 7500: 0
-- 追加メモ: Phase 4 normalized D1 cutover 完了。詳細は [phase4-normalized-cutover-report.md](phase4-normalized-cutover-report.md) を参照。
+- 追加メモ: Phase 5 normalized production hardening 完了。詳細は [phase5-normalized-hardening-report.md](phase5-normalized-hardening-report.md) を参照。
+
+## Phase 5 normalized production hardening
+
+Phase 5 では production runtime の通常経路を normalized D1 に固定した。production `NPB_DB` binding は `npb-archive-chat-normalized` / `eb614de3-eb0c-4816-a7b2-8440e94093a8` のまま維持し、旧D1 `npb-archive-chat-import` / `14c099c3-03ac-4307-9704-7a770b31d108` は rollback / forensic conversion 専用として保持する。旧D1は削除しない。
+
+runtime startup は `normalized_runtime_metadata` の `schema_version=phase5-normalized-v1` と `runtime_contract=normalized-only` を検証する。通常の repository / formatter / chat service は normalized facts を唯一のruntime contractとして扱い、legacy schema検出や旧DB fallbackを通常経路へ追加しない。
+
+request-time live fetch は通常チャット経路から撤去した。Q-78の新人王は request-time official fetch ではなく `award_facts` から返す。Q-105のofficial pitching evidenceは daily normalized sync 後に `scripts/phase4-backfill-official-pitching-evidence.mjs` が保存済みcanonical evidence rowsとsource provenanceを再適用する。
+
+daily update は normalized D1 ID guard、schema version guard、row count / duplicate / orphan / missing source URL guard、Q-105 latest5 guard、500MB上限に対する70%/85%/95% capacity guardを実行する。2026-07-17 の successful run `29547128720` で `Sync updated SQLite data to D1`、`Backfill official pitching evidence`、`Verify normalized D1 integrity after sync` がすべてgreenになった。
+
+query performance確認では、`game_facts.game_date` は `idx_games_date`、`event_facts` は primary key、`pitching_line_facts.pitcher_id` は `idx_pitching_player_game` を使用することを `EXPLAIN QUERY PLAN` で確認した。normalized DB size は daily update後 `275,415,040` bytes、capacity usage は約52.5%でwarning threshold未満。
 
 ## Phase 4 normalized cutover
 

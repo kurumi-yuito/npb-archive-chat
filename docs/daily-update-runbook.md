@@ -302,6 +302,18 @@ gh workflow run daily-update.yml -f from=2026-05-07 -f to=2026-05-09
 - `data/logs/phase4-backfill-official-pitching-evidence.json` が artifact に含まれる
 - `d1-sync` の verification が `mismatches: []`
 - `Backfill official pitching evidence` が成功し、Q-105 用 official pitching evidence と canonical player profile が normalized D1 に再適用される
+- `Verify normalized D1 integrity after sync` が成功し、schema version、capacity、duplicate、orphan、missing source URL、Q-105 latest5 provenance がすべてgreenになる
+
+Phase 5以降、official pitching evidence backfill はQAログの有無に依存しない。`scripts/phase4-backfill-official-pitching-evidence.mjs` は保存済みcanonical evidence rowsを持ち、GitHub Actions runner上の空の `data/logs` からでもQ-105 factsを再適用できる。
+
+最新確認済みrun:
+
+- GitHub Actions run: `29547128720`
+- 結果: success
+- normalized DB size: `275,415,040` bytes
+- capacity usage: `52.53%`
+- duplicate / orphan / missing source URL: 0
+- Q-105 latest5: 2026-07-11, 2026-07-01, 2026-06-21, 2026-06-13, 2026-06-05
 
 `data/logs/d1-sync-normalized/summary.json` は GitHub Actions runner 上で作られる。ローカルの `data/logs/d1-sync-normalized/summary.json` に自動では戻らない。確認場所は次のどちらか。
 
