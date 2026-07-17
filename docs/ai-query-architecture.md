@@ -597,9 +597,9 @@ QA runner `scripts/qa-prod-unanswered.mjs` は今回、以下をログに追加�
 
 ## 直近の本番QA記録
 
-- 本番QA実行日時: 2026-07-16T15:57:31Z - 2026-07-16T16:03:44Z
-- 対象デプロイVersion ID: `ee28cf3b-5514-4418-93a5-d99cf3492d38`
-- 実行ログ: `data/logs/qa-prod-1784217447662.json`
+- 本番QA実行日時: 2026-07-17T11:39:41Z - 2026-07-17T12:00:03Z
+- 対象デプロイVersion ID: `cafb1078-f735-4d1d-b406-51ce6f8938e9`
+- 実行ログ: `data/logs/qa-prod-1784288378437.json`
 - 結果: Pass 117 / Fail 0 / Blocked 0
 - HTTP 500/503: 0 / 0
 - summary null: 0
@@ -616,7 +616,7 @@ request-time live fetch は通常チャット経路から撤去した。Q-78の�
 
 daily update は normalized D1 ID guard、schema version guard、row count / duplicate / orphan / missing source URL guard、Q-105 latest5 guard、500MB上限に対する70%/85%/95% capacity guardを実行する。2026-07-17 の successful run `29547128720` で `Sync updated SQLite data to D1`、`Backfill official pitching evidence`、`Verify normalized D1 integrity after sync` がすべてgreenになった。
 
-query performance確認では、`game_facts.game_date` は `idx_games_date`、`event_facts` は primary key、`pitching_line_facts.pitcher_id` は `idx_pitching_player_game` を使用することを `EXPLAIN QUERY PLAN` で確認した。normalized DB size は daily update後 `275,415,040` bytes、capacity usage は約52.5%でwarning threshold未満。
+query performance確認では、`game_facts.game_date` は `idx_games_date`、`event_facts` は primary key、`pitching_line_facts.pitcher_id` は `idx_pitching_player_game` を使用することを `EXPLAIN QUERY PLAN` で確認した。normalized DB size は `275,582,976` bytes、capacity usage は約52.6%でwarning threshold未満。
 
 ## Phase 4 normalized cutover
 

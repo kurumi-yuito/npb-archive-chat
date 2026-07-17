@@ -3,7 +3,7 @@
 ## Summary
 
 - Production Worker: `npb-archive-chat-web`
-- Production Deploy Version ID: `ee28cf3b-5514-4418-93a5-d99cf3492d38`
+- Production Deploy Version ID: `cafb1078-f735-4d1d-b406-51ce6f8938e9`
 - Normalized D1: `npb-archive-chat-normalized` / `eb614de3-eb0c-4816-a7b2-8440e94093a8`
 - Schema version: `phase5-normalized-v1`
 - Runtime contract: `normalized-only`
@@ -48,8 +48,8 @@ Guards:
 
 After daily update:
 
-- DB size: `275,415,040` bytes
-- Capacity usage: `52.53%`
+- DB size: `275,582,976` bytes
+- Capacity usage: `52.56%`
 - Table counts: `game_facts=18067`, `source_snapshot_facts=72268`, `event_facts=772525`, `batting_line_facts=252167`, `pitching_line_facts=74690`, `roster_entry_facts=456943`, `award_facts=2`
 - Duplicate counts: 0
 - Orphan counts: 0
@@ -60,7 +60,7 @@ After daily update:
 - Staging Deploy Version ID: `1148e0f3-2526-48a4-a096-0d2288507301`
 - Staging fixture QA: `data/logs/qa-prod-1784202727696.json`, Pass 117 / Fail 0 / Blocked 0
 - Staging normal LLM QA: `data/logs/qa-prod-1784202929870.json`, Pass 117 / Fail 0 / Blocked 0
-- Production normal LLM QA: `data/logs/qa-prod-1784217447662.json`, Pass 117 / Fail 0 / Blocked 0
+- Production normal LLM QA: `data/logs/qa-prod-1784288378437.json`, Pass 117 / Fail 0 / Blocked 0
 - Post-daily smoke QA: `data/logs/qa-prod-1784253469147.json`, Pass 7 / Fail 0 / Blocked 0
 - HTTP 500/503: 0 / 0
 - Summary null: 0

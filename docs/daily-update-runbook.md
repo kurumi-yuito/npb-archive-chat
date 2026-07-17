@@ -310,8 +310,8 @@ Phase 5以降、official pitching evidence backfill はQAログの有無に依�
 
 - GitHub Actions run: `29547128720`
 - 結果: success
-- normalized DB size: `275,415,040` bytes
-- capacity usage: `52.53%`
+- normalized DB size: `275,582,976` bytes
+- capacity usage: `52.56%`
 - duplicate / orphan / missing source URL: 0
 - Q-105 latest5: 2026-07-11, 2026-07-01, 2026-06-21, 2026-06-13, 2026-06-05
 
