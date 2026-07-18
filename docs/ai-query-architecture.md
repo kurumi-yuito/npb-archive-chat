@@ -624,6 +624,10 @@ Phase 4 では production `NPB_DB` binding を normalized D1 `npb-archive-chat-n
 
 normalized repository adapter は legacy repository contract を維持し、formatter で shape を補正しない。Q-51 は multi-year aggregate batting を normalized facts から返す。Q-105 は current canonical pitching facts の最新5試合を使い、official evidence backfill と canonical player profile を normalized daily sync 後に再適用する。
 
+Phase 5.1 で QA 専用 bypass を撤去した。route catch は特定質問文・特定選手名で成功レスポンスを返さず、OpenAI unavailable、parser invalid response、D1/schema failure、validation error、unknown internal errorを原因別に一貫して扱う。known QA recovery / hardcoded answer path / unresolved playerのresolved合成 / forbidden name fallback / request-time live fetch / legacy schema fallback は通常QAで使用禁止で、最新 production QA `data/logs/qa-prod-1784361033364.json` では使用件数0を確認した。
+
+`env.normalized` は production normalized D1 を共有する read-only validation environment としてのみ使う。`NPB_SEARCH_DB_MODE=read_only_validation_shared_production_db` を設定し、scheduled daily update dispatch はこの mode では失敗する。通常の production は `NPB_SEARCH_DB_MODE=production` で、daily update は production normalized D1 にのみ書く。
+
 ## Phase 2 completion
 
 Phase 2 は、Identity Layer 本体を DB 化する前に、既存 chat-service / planner / executor から安定して参照できる identity 境界を整える段階として完了した。

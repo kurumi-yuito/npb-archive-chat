@@ -3,12 +3,23 @@
 ## Summary
 
 - Production Worker: `npb-archive-chat-web`
-- Production Deploy Version ID: `cafb1078-f735-4d1d-b406-51ce6f8938e9`
+- Production Deploy Version ID: `d23e1fa2-b853-4db5-bbe2-73e258ab423e`
 - Normalized D1: `npb-archive-chat-normalized` / `eb614de3-eb0c-4816-a7b2-8440e94093a8`
 - Schema version: `phase5-normalized-v1`
 - Runtime contract: `normalized-only`
 - Legacy D1 retained for rollback only: `npb-archive-chat-import` / `14c099c3-03ac-4307-9704-7a770b31d108`
 - Legacy rollback Deploy Version ID: `f36ff5ad-a057-4adc-9aa7-a318fd535413`
+
+## Phase 5.1 integrity follow-up
+
+See [Phase 5.1 QA bypass retirement report](./phase5-1-qa-bypass-retirement-report.md).
+
+- Removed Q-65 question-specific fixed success response from the route catch boundary.
+- Removed known QA recovery and unused special rewrite definitions from runtime code.
+- Explicit `player_id` is now validated against candidate search before being accepted.
+- Multi-player comparison no longer continues with name-only fallback when any member is ambiguous or not found.
+- Recent N-game formatter gap notes now use the same displayed window as the answer body.
+- `env.normalized` remains a read-only validation environment sharing production normalized D1 and is marked with `NPB_SEARCH_DB_MODE=read_only_validation_shared_production_db`; scheduled daily update dispatch refuses to run in that mode.
 
 ## Retired runtime paths
 
@@ -60,7 +71,9 @@ After daily update:
 - Staging Deploy Version ID: `1148e0f3-2526-48a4-a096-0d2288507301`
 - Staging fixture QA: `data/logs/qa-prod-1784202727696.json`, Pass 117 / Fail 0 / Blocked 0
 - Staging normal LLM QA: `data/logs/qa-prod-1784202929870.json`, Pass 117 / Fail 0 / Blocked 0
-- Production normal LLM QA: `data/logs/qa-prod-1784288378437.json`, Pass 117 / Fail 0 / Blocked 0
+- Production normal LLM QA: `data/logs/qa-prod-1784361033364.json`, Pass 117 / Fail 0 / Blocked 0
+- Phase 5.1 staging fixture QA: `data/logs/qa-prod-1784357692322.json`, Pass 117 / Fail 0 / Blocked 0
+- Phase 5.1 staging normal LLM QA: `data/logs/qa-prod-1784359926126.json`, Pass 117 / Fail 0 / Blocked 0
 - Post-daily smoke QA: `data/logs/qa-prod-1784253469147.json`, Pass 7 / Fail 0 / Blocked 0
 - HTTP 500/503: 0 / 0
 - Summary null: 0

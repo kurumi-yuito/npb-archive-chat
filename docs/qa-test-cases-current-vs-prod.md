@@ -1,11 +1,13 @@
 # QAテストケース一覧 - 現行本番との差分
 
 - 現行ケース数: 117
-- 本番QA実行日時: 2026-07-17T11:39:41.618Z - 2026-07-17T12:00:03.083Z
-- 対象デプロイVersion ID: cafb1078-f735-4d1d-b406-51ce6f8938e9
+- 本番QA実行日時: 2026-07-18T07:50:37.864Z - 2026-07-18T07:57:12.727Z
+- 対象デプロイVersion ID: d23e1fa2-b853-4db5-bbe2-73e258ab423e
 - QA実行モード: 通常本番API（LLM parser 実行）
-- 最新通常QAログ: [data/logs/qa-prod-1784288378437.json](../data/logs/qa-prod-1784288378437.json)
-- latest run dir: [data/logs/qa-prod-run/qa-prod-1784288378437](../data/logs/qa-prod-run/qa-prod-1784288378437)
+- 最新通常QAログ: [data/logs/qa-prod-1784361033364.json](../data/logs/qa-prod-1784361033364.json)
+- latest run dir: [data/logs/qa-prod-run/qa-prod-1784361033364](../data/logs/qa-prod-run/qa-prod-1784361033364)
+- Phase 5.1 staging fixture QAログ: [data/logs/qa-prod-1784357692322.json](../data/logs/qa-prod-1784357692322.json)
+- Phase 5.1 staging通常LLM QAログ: [data/logs/qa-prod-1784359926126.json](../data/logs/qa-prod-1784359926126.json)
 - daily update後smoke QAログ: [data/logs/qa-prod-1784253469147.json](../data/logs/qa-prod-1784253469147.json)
 - 最新通常QA結果: Pass（Pass 117 / Fail 0 / Blocked 0）
 - daily update後smoke結果: Pass（Pass 7 / Fail 0 / Blocked 0）
@@ -13,8 +15,11 @@
 - 代表smoke: [data/logs/qa-prod-1784287905847.json](../data/logs/qa-prod-1784287905847.json) Pass 8 / Fail 0 / Blocked 0
 - 履歴つきQ-97確認: [data/logs/qa-prod-1784288334091.json](../data/logs/qa-prod-1784288334091.json) Pass 2 / Fail 0 / Blocked 0
 - Q-51 本番文意一致: normalized aggregate adapter で HTTP 200 / 複数年通算打率・本塁打数を確認済み
+- Q-65 本番文意一致: `chat.post.ts` outer catchの固定成功レスポンス撤去後、通常 planner/repository/formatter 経路で HTTP 200
 - Q-78 本番文意一致: request-time award fetchではなく normalized D1 の award_facts から回答
 - Q-105 本番文意一致: current canonical facts の最新5試合（2026-07-11, 2026-07-01, 2026-06-21, 2026-06-13, 2026-06-05）で評価説明を確認済み
+- QA recovery / hardcoded path使用件数: 0
+- request-time live fetch使用件数: 0
 - Q-109/Q-110 本番文意一致: 確認済み
 - HTTP 500/503件数: 0 / 0
 - summary null件数: 0
@@ -23,11 +28,12 @@
 - normalized DB: `npb-archive-chat-normalized` / `eb614de3-eb0c-4816-a7b2-8440e94093a8`
 - normalized schema version: `phase5-normalized-v1`
 - normalized runtime contract: `normalized-only`
-- normalized DB size: `275,582,976` bytes（500MB上限の約52.56%）
+- normalized DB size: `275,697,664` bytes（500MB上限の約52.59%）
 - daily update確認: GitHub Actions run `29547128720` success。`Sync updated SQLite data to D1`、`Backfill official pitching evidence`、`Verify normalized D1 integrity after sync` がgreen
 - production cutover: `NPB_DB` binding は normalized DB。旧DB `npb-archive-chat-import` / `14c099c3-03ac-4307-9704-7a770b31d108` はrollback用に保持し、通常runtimeからは切離し済み
 - rollback先: 旧 production Deploy Version ID `f36ff5ad-a057-4adc-9aa7-a318fd535413`、旧DB `npb-archive-chat-import`
 - Phase 5追加確認: request-time award fetchを撤去し、Q-78は `award_facts` から回答する。Q-105 official pitching evidence はQAログ依存ではなくcanonical rowsからdaily sync後に再適用する
+- Phase 5.1追加確認: Q-65固定回答、knownQa recovery、未参照special rewriteを撤去。explicit `player_id` は候補照合で検証し、multi-player比較は未解決メンバーがある場合にname-only fallbackで続行しない。F-02の最新N件gap注記は本文表示windowに統一済み。
 - 許容外差分件数: 0/117
 
 ## 主要確認ケース
@@ -59,7 +65,7 @@
   内容は5試合で22奪三振、10自責点、94球です。
   最新登板は2026年7月11日で、3回、4奪三振、自責点3です。
   対象試合: 2026年7月11日、2026年7月1日、2026年6月21日、2026年6月13日、2026年6月5日
-  2026年5月8日から2026年4月1日まで37日空いているため、最新10件を連続した最近の調子として扱う場合は注意が必要です。
+  確認できる最新の出場記録は2026年7月11日です。現在（2026年7月18日）から7日空いているため、これだけでは現在の調子とは言えません。
 - intent:
   search_pitching
 - entities:
