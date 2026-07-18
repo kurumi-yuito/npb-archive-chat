@@ -510,6 +510,22 @@ export const chatResponseSchema = z.object({
       target_player_id: z.string().min(1).nullable(),
       answer_mode: z.string().min(1),
       identity_resolution_scope: z.enum(['unspecified', 'current', 'historical']).optional(),
+      question_intent: z.enum([
+        'historical_record',
+        'analytical',
+        'opinion',
+        'news',
+        'realtime',
+      ]).optional(),
+      capability_route: z.enum([
+        'repository_history',
+        'repository_analysis',
+        'analysis_then_opinion',
+        'external_source_guidance',
+      ]).optional(),
+      capability_requires_analysis: z.boolean().optional(),
+      capability_uses_repository: z.boolean().optional(),
+      external_source_url: z.string().url().nullable().optional(),
       resolved_players: z.array(z.object({
         input: z.string().min(1),
         player_id: z.string().min(1).nullable().optional(),

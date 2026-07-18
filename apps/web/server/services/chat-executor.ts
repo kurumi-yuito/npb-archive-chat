@@ -72,6 +72,21 @@ export function buildChatExecutionMetadata(
     targetPlayerId: plannerOutput?.targetPlayerId ?? null,
     answerMode: plannerOutput?.answerMode ?? 'direct_answer',
     identityResolutionScope: plannerOutput?.identityResolutionScope ?? 'unspecified',
+    ...(plannerOutput?.questionIntent
+      ? { questionIntent: plannerOutput.questionIntent }
+      : {}),
+    ...(plannerOutput?.capabilityRoute
+      ? { capabilityRoute: plannerOutput.capabilityRoute }
+      : {}),
+    ...(plannerOutput?.capabilityRequiresAnalysis !== undefined
+      ? { capabilityRequiresAnalysis: plannerOutput.capabilityRequiresAnalysis }
+      : {}),
+    ...(plannerOutput?.capabilityUsesRepository !== undefined
+      ? { capabilityUsesRepository: plannerOutput.capabilityUsesRepository }
+      : {}),
+    ...(plannerOutput?.capabilityExternalSourceUrl !== undefined
+      ? { capabilityExternalSourceUrl: plannerOutput.capabilityExternalSourceUrl }
+      : {}),
   }
 }
 

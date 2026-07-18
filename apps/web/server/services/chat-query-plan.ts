@@ -1,6 +1,7 @@
 import { z, type ChatRequest, type ChatStructuredQuery } from '@npb/schemas'
 import type { IdentityResolutionMetadata, IdentityResolutionScope } from './player-identity'
 import type { PlayerResolution } from './player-resolution'
+import type { ChatCapabilityIntent, ChatCapabilityRoute } from './chat-capability'
 
 export const chatDataRequirementSchema = z.enum([
   'events',
@@ -193,6 +194,22 @@ export const chatPlannerOutputSchema = z.object({
   confidence: z.number().min(0).max(1),
   clarificationRequired: z.boolean(),
   legacyStabilizationApplied: z.boolean(),
+  questionIntent: z.enum([
+    'historical_record',
+    'analytical',
+    'opinion',
+    'news',
+    'realtime',
+  ]).optional(),
+  capabilityRoute: z.enum([
+    'repository_history',
+    'repository_analysis',
+    'analysis_then_opinion',
+    'external_source_guidance',
+  ]).optional(),
+  capabilityRequiresAnalysis: z.boolean().optional(),
+  capabilityUsesRepository: z.boolean().optional(),
+  capabilityExternalSourceUrl: z.string().url().nullable().optional(),
 })
 
 export type ChatPlannerOutput = z.infer<typeof chatPlannerOutputSchema>
@@ -217,6 +234,11 @@ export type ChatExecutionMetadata = {
   targetPlayerId: string | null
   answerMode: ChatAnswerMode
   identityResolutionScope: IdentityResolutionScope
+  questionIntent?: ChatCapabilityIntent
+  capabilityRoute?: ChatCapabilityRoute
+  capabilityRequiresAnalysis?: boolean
+  capabilityUsesRepository?: boolean
+  capabilityExternalSourceUrl?: string | null
 }
 
 export function inferDataRequirements(query: ChatStructuredQuery): ChatDataRequirement[] {

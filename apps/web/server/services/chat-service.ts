@@ -46,6 +46,12 @@ import type { ChatFinalAnswerGenerator } from './chat-final-answer-llm'
 import { buildPlannerOutput, createChatPlanner } from './chat-planner'
 import { buildChatExecutionMetadata } from './chat-executor'
 import type { ChatPlannerOutput } from './chat-query-plan'
+import {
+  buildCapabilityFailureResponse,
+  classifyChatCapability,
+  type ChatCapabilityClassification,
+} from './chat-capability'
+import { appendOpinionComment } from './chat-opinion-generator'
 
 type ChatServiceDependencies = {
   allowFinalAnswerFallback?: boolean
@@ -100,6 +106,11 @@ export function createChatService(
         message,
         history: options.history,
       })
+      const capability = classifyChatCapability(message, parsedQuery, effectivePlan)
+      effectivePlan = applyCapabilityToPlan(effectivePlan, capability)
+      if (!capability.usesRepository) {
+        return chatResponseCoreSchema.parse(buildCapabilityFailureResponse(message, parsedQuery, effectivePlan))
+      }
       const parsedEventResultTextContains = parsedQuery.intent === 'search_events' &&
         typeof (parsedQuery.filters as Record<string, unknown>).result_text_contains === 'string'
       if (effectivePlan.followUpType === 'evaluation_request' && parsedQuery.intent === 'search_events') {
@@ -114,10 +125,10 @@ export function createChatService(
             ...parsedQuery,
             filters: nextFilters,
           } as ChatStructuredQuery
-          effectivePlan = buildPlannerOutput(parsedQuery, true, {
+          effectivePlan = withCapability(buildPlannerOutput(parsedQuery, true, {
             message,
             history: options.history,
-          })
+          }), message, parsedQuery)
         }
       }
       const inheritedPitcherName = effectivePlan.followUpContext.inheritedPlayerName
@@ -170,10 +181,10 @@ export function createChatService(
             limit: 5,
           },
         }
-        effectivePlan = buildPlannerOutput(parsedQuery, true, {
+        effectivePlan = withCapability(buildPlannerOutput(parsedQuery, true, {
           message,
           history: options.history,
-        })
+        }), message, parsedQuery)
       }
       const followUpContextApplication = applyPlayerStatsFollowUpContext(
         parsedQuery,
@@ -182,10 +193,10 @@ export function createChatService(
       if (followUpContextApplication.metadata.applied) {
         parsedQuery = followUpContextApplication.structuredQuery
         effectivePlan = {
-          ...buildPlannerOutput(parsedQuery, true, {
+          ...withCapability(buildPlannerOutput(parsedQuery, true, {
             message,
             history: options.history,
-          }),
+          }), message, parsedQuery),
           ...(followUpContextApplication.identityResolutionScope
             ? { identityResolutionScope: followUpContextApplication.identityResolutionScope }
             : {}),
@@ -196,10 +207,10 @@ export function createChatService(
       const comparisonFollowUpRewrite = rewritePitchingComparisonFollowUpToSearch(parsedQuery, effectivePlan)
       if (comparisonFollowUpRewrite !== parsedQuery) {
         parsedQuery = comparisonFollowUpRewrite
-        effectivePlan = buildPlannerOutput(parsedQuery, true, {
+        effectivePlan = withCapability(buildPlannerOutput(parsedQuery, true, {
           message,
           history: options.history,
-        })
+        }), message, parsedQuery)
       }
 
       if (
@@ -214,10 +225,10 @@ export function createChatService(
           const replan = await planner(previousUserMessage, { history: [] })
           parsedQuery = replan.structuredQuery
           effectivePlan = {
-            ...buildPlannerOutput(parsedQuery, true, {
+            ...withCapability(buildPlannerOutput(parsedQuery, true, {
               message,
               history: options.history,
-            }),
+            }), message, parsedQuery),
             appliedFollowUpContext: {
               applied: true,
               fields: [],
@@ -233,10 +244,10 @@ export function createChatService(
           const replan = await planner(previousUserMessage, { history: [] })
           parsedQuery = replan.structuredQuery
           effectivePlan = {
-            ...buildPlannerOutput(parsedQuery, true, {
+            ...withCapability(buildPlannerOutput(parsedQuery, true, {
               message,
               history: options.history,
-            }),
+            }), message, parsedQuery),
             appliedFollowUpContext: {
               applied: true,
               fields: [],
@@ -900,10 +911,15 @@ export function createChatService(
         playerResolution,
         executionMetadata: buildChatExecutionMetadata(structuredQuery, playerResolution, effectivePlan),
       })
+      const finalAnswer = appendOpinionComment(answer, {
+        intent: effectivePlan.questionIntent ?? 'historical_record',
+        answer,
+        results,
+      })
       const core = chatResponseCoreSchema.parse({
         message,
         structured_query: structuredQuery,
-        answer,
+        answer: finalAnswer,
         results,
         sources,
       })
@@ -935,6 +951,31 @@ export function createChatService(
 }
 
 export type ChatService = ReturnType<typeof createChatService>
+
+function withCapability(
+  plannerOutput: ChatPlannerOutput,
+  message: string,
+  structuredQuery: ChatStructuredQuery,
+): ChatPlannerOutput {
+  return applyCapabilityToPlan(
+    plannerOutput,
+    classifyChatCapability(message, structuredQuery, plannerOutput),
+  )
+}
+
+function applyCapabilityToPlan(
+  plannerOutput: ChatPlannerOutput,
+  capability: ChatCapabilityClassification,
+): ChatPlannerOutput {
+  return {
+    ...plannerOutput,
+    questionIntent: capability.intent,
+    capabilityRoute: capability.route,
+    capabilityRequiresAnalysis: capability.requiresAnalysis,
+    capabilityUsesRepository: capability.usesRepository,
+    capabilityExternalSourceUrl: capability.externalSourceUrl,
+  }
+}
 
 function isChatQueryService(value: QueryDatabase | ChatQueryService): value is ChatQueryService {
   return 'searchBattingLines' in value && 'aggregateEvents' in value
@@ -2688,7 +2729,7 @@ function isLikelyNpbTopic(message: string, history: ChatRequest['history'] | und
     extractMentionedTeams(message).length > 0
 }
 
-const NPB_TOPIC_PATTERN = /NPB|日本プロ野球|プロ野球|野球|セ・?リーグ|パ・?リーグ|交流戦|日本シリーズ|クライマックス|CS|球団|チーム|選手|試合|ゲーム|イベント|スコア|勝敗|勝利|敗北|何勝|何敗|引き分け|対戦|対決|対|vs|VS|成績|打撃|打者|投手|投球|登板|先発|中継ぎ|抑え|セーブ|ホールド|奪三振|防御率|WHIP|打率|OPS|IsoP|四球率|BB%|打点|安打|本塁打|ホームラン|\bHR\b|盗塁|代打|打席|スタメン|打順|守備|ポジション|捕手|キャッチャー|ショート|ロスター|登録|所属|在籍|新人王|最優秀新人|MVP|沢村賞|タイトル|調子|状態|最近何して/u
+const NPB_TOPIC_PATTERN = /NPB|日本プロ野球|プロ野球|野球|セ・?リーグ|パ・?リーグ|交流戦|日本シリーズ|クライマックス|CS|球団|チーム|選手|試合|ゲーム|イベント|スコア|勝敗|勝利|敗北|何勝|何敗|引き分け|対戦|対決|対|vs|VS|成績|打撃|打者|投手|投球|登板|先発|中継ぎ|抑え|セーブ|ホールド|奪三振|防御率|WHIP|打率|OPS|IsoP|四球率|BB%|打点|安打|本塁打|ホームラン|\bHR\b|盗塁|代打|打席|スタメン|打順|守備|ポジション|捕手|キャッチャー|ショート|ロスター|登録|所属|在籍|新人王|最優秀新人|MVP|沢村賞|タイトル|調子|状態|最近何して|ニュース|記事|公示|登録抹消|ケガ|怪我|故障|契約|移籍|トレード|コメント|会見|速報|途中経過|ライブ|リアルタイム/u
 const RECENT_PLAYER_TOPIC_PATTERN = /^[一-龯々ぁ-んァ-ヶーA-Za-z・･.\s\u3000]{2,20}?(?:って)?(?:最近|近ごろ|近頃|この頃|ここのところ|見ない|何して|どうして)/u
 const KNOWN_PLAYER_SHORT_STATUS_PATTERN = /^(?:藤浪|藤浪晋太郎|村上|村上宗隆|牧|牧秀悟|近本|近本光司|坂倉|坂倉将吾)(?:って)?(?:どう|どんな感じ)\??？?$/u
 

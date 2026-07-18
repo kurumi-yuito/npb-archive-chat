@@ -14,6 +14,7 @@ import {
   type ChatPlannerOutput,
 } from './chat-query-plan'
 import { inferIdentityResolutionScope } from './chat-identity-scope'
+import { classifyChatCapability } from './chat-capability'
 
 export type ChatPlanner = (
   message: string,
@@ -35,10 +36,19 @@ export function createChatPlanner({
         history: context.history,
       }),
     )
-    return buildPlannerOutput(structuredQuery, false, {
+    const plannerOutput = buildPlannerOutput(structuredQuery, false, {
       message,
       history: context.history,
     })
+    const capability = classifyChatCapability(message, structuredQuery, plannerOutput)
+    return {
+      ...plannerOutput,
+      questionIntent: capability.intent,
+      capabilityRoute: capability.route,
+      capabilityRequiresAnalysis: capability.requiresAnalysis,
+      capabilityUsesRepository: capability.usesRepository,
+      capabilityExternalSourceUrl: capability.externalSourceUrl,
+    }
   }
 }
 

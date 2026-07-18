@@ -361,6 +361,97 @@ describe('chat-service', () => {
     expect(response.results.events).toHaveLength(0)
   })
 
+  it('routes realtime lineup questions to Sports Navi without repository access', async () => {
+    const queryService = createFakeQueryService()
+    queryService.searchRosterEntries = vi.fn(async () => {
+      throw new Error('repository must not be called for realtime guidance')
+    })
+    const service = createChatService(queryService, {
+      parseStructuredQueryFromMessage: async () => ({
+        intent: 'search_roster',
+        filters: { team: '巨人', starter: true },
+      }),
+    })
+
+    const response = await service.answerQuestion('巨人の今日のスタメンは？')
+
+    expect(queryService.searchRosterEntries).not.toHaveBeenCalled()
+    expect(response.answer.summary).toContain('スポーツナビ プロ野球')
+    expect(response.answer.summary).toContain('https://baseball.yahoo.co.jp/npb/')
+    expect(response.answer.execution_metadata).toMatchObject({
+      question_intent: 'realtime',
+      capability_route: 'external_source_guidance',
+      capability_uses_repository: false,
+      external_source_url: 'https://baseball.yahoo.co.jp/npb/',
+    })
+  })
+
+  it('routes news and injury questions to Sports Navi without using stored stats as a guess', async () => {
+    const searchPitchingLines = vi.fn(async () => [{
+      gameId: 'r20260711db-g-01',
+      gameDate: '2026-07-11',
+      team: 'DeNA',
+      pitcherName: '藤浪',
+      inningsPitched: '3',
+      pitchCount: 60,
+      strikeouts: 4,
+      runs: 3,
+      earnedRuns: 3,
+      sourceKind: 'box' as const,
+      sourceUrl: 'https://npb.jp/scores/2026/0711/db-g-01/box.html',
+      statsJson: null,
+    }])
+    const service = createChatService(createFakeQueryService({ searchPitchingLines }), {
+      parseStructuredQueryFromMessage: async () => ({
+        intent: 'search_pitching',
+        filters: { pitcher_name: '藤浪', recent: true },
+      }),
+    })
+
+    const response = await service.answerQuestion('藤浪ってケガした？')
+
+    expect(searchPitchingLines).not.toHaveBeenCalled()
+    expect(response.answer.summary).toContain('ケガ・公示・契約・移籍')
+    expect(response.answer.summary).toContain('https://baseball.yahoo.co.jp/npb/')
+    expect(response.answer.execution_metadata?.question_intent).toBe('news')
+  })
+
+  it('keeps opinion on the repository path and appends commentary only after analysis evidence', async () => {
+    const searchPitchingLines = vi.fn(async () => [{
+      gameId: 'r20260711db-g-01',
+      gameDate: '2026-07-11',
+      team: 'DeNA',
+      pitcherName: '藤浪',
+      inningsPitched: '3',
+      pitchCount: 60,
+      strikeouts: 4,
+      runs: 3,
+      earnedRuns: 3,
+      sourceKind: 'box' as const,
+      sourceUrl: 'https://npb.jp/scores/2026/0711/db-g-01/box.html',
+      statsJson: null,
+    }])
+    const service = createChatService(createFakeQueryService({ searchPitchingLines }), {
+      parseStructuredQueryFromMessage: async () => ({
+        intent: 'search_pitching',
+        filters: { pitcher_name: '藤浪', recent: true, limit: 5 },
+      }),
+      formatChatAnswer,
+    })
+
+    const response = await service.answerQuestion('藤浪の最近の投球をどう評価する？')
+
+    expect(searchPitchingLines).toHaveBeenCalled()
+    expect(response.answer.summary).toContain('データを見る限り')
+    expect(response.answer.summary).toContain('ニュース、ケガ、契約')
+    expect(response.answer.execution_metadata).toMatchObject({
+      question_intent: 'opinion',
+      capability_route: 'analysis_then_opinion',
+      capability_requires_analysis: true,
+      capability_uses_repository: true,
+    })
+  })
+
   it('allows short follow-up wording when the conversation history is baseball context', async () => {
     let parserCalled = false
     const service = createChatService(createFakeQueryService(), {

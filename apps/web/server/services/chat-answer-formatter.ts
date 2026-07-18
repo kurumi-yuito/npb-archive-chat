@@ -94,6 +94,21 @@ export function formatChatAnswer({
           target_player_id: executionMetadata.targetPlayerId,
           answer_mode: executionMetadata.answerMode,
           identity_resolution_scope: executionMetadata.identityResolutionScope,
+          ...(executionMetadata.questionIntent
+            ? { question_intent: executionMetadata.questionIntent }
+            : {}),
+          ...(executionMetadata.capabilityRoute
+            ? { capability_route: executionMetadata.capabilityRoute }
+            : {}),
+          ...(executionMetadata.capabilityRequiresAnalysis !== undefined
+            ? { capability_requires_analysis: executionMetadata.capabilityRequiresAnalysis }
+            : {}),
+          ...(executionMetadata.capabilityUsesRepository !== undefined
+            ? { capability_uses_repository: executionMetadata.capabilityUsesRepository }
+            : {}),
+          ...(executionMetadata.capabilityExternalSourceUrl !== undefined
+            ? { external_source_url: executionMetadata.capabilityExternalSourceUrl }
+            : {}),
           ...(executionMetadata.playerResolutions
             ? { resolved_players: executionMetadata.playerResolutions }
             : {}),
