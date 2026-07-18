@@ -33,6 +33,19 @@ describe('cloudflare cron daily update dispatch', () => {
     ).toBeNull()
   })
 
+  it('refuses to dispatch daily update from a read-only validation environment sharing production NPB_DB', () => {
+    expect(() =>
+      resolveCloudflareCronDailyUpdateDispatchConfig({
+        NPB_SEARCH_DB_MODE: 'read_only_validation_shared_production_db',
+        NPB_DAILY_UPDATE_GITHUB_OWNER: 'kurumi-yuito',
+        NPB_DAILY_UPDATE_GITHUB_REPO: 'npb-archive-chat',
+        NPB_DAILY_UPDATE_GITHUB_WORKFLOW: 'daily-update.yml',
+        NPB_DAILY_UPDATE_GITHUB_REF: 'main',
+        NPB_DAILY_UPDATE_GITHUB_TOKEN: 'secret-token',
+      }),
+    ).toThrow('read-only validation environments')
+  })
+
   it('prefers Cloudflare runtime env names over build-time runtime config names', () => {
     expect(
       resolveCloudflareCronDailyUpdateDispatchConfig({

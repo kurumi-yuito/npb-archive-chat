@@ -27,7 +27,6 @@ export async function searchAwardWinners(
       ORDER BY CASE league WHEN 'セ・リーグ' THEN 0 WHEN 'パ・リーグ' THEN 1 ELSE 2 END, league ASC`,
     )
     .all(filters.year, filters.award_type)
-    .catch(() => [])
   return rows as AwardWinnerRow[]
 }
 
@@ -40,6 +39,5 @@ export async function getNormalizedRuntimeMetadata(
       FROM normalized_runtime_metadata`,
     )
     .all()
-    .catch(() => [])
   return Object.fromEntries((rows as Array<{ key: string; value: string }>).map((row) => [row.key, row.value]))
 }

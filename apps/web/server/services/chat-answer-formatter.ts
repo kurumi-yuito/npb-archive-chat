@@ -224,6 +224,7 @@ function buildSummary(
     if (isEvaluationQuestion(question, structuredQuery.filters, executionMetadata)) {
       const boxGameDates = (results.pitching as PitchingLineRow[])
         .filter((r) => r.sourceKind === 'box')
+        .slice(0, 5)
         .map((r) => r.gameDate)
       const gapNote = buildRecentGapNote(
         boxGameDates,
@@ -251,6 +252,7 @@ function buildSummary(
     if (isEvaluationQuestion(question, structuredQuery.filters, executionMetadata)) {
       const boxGameDates = (results.batting as BattingLineRow[])
         .filter((r) => r.sourceKind !== 'bis_batting')
+        .slice(0, 5)
         .map((r) => r.gameDate)
       const gapNote = buildRecentGapNote(
         boxGameDates,

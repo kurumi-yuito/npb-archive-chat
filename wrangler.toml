@@ -13,6 +13,7 @@ workers_dev = true
 preview_urls = true
 
 [vars]
+NPB_SEARCH_DB_MODE = "production"
 NPB_AUTH_HEADER_FALLBACK = "false"
 NPB_DEFAULT_PLAN = "free"
 CHAT_QUERY_LLM_BASE_URL = "https://api.openai.com/v1"
@@ -71,6 +72,7 @@ routes = []
 crons = []
 
 [env.normalized.vars]
+NPB_SEARCH_DB_MODE = "read_only_validation_shared_production_db"
 NPB_AUTH_HEADER_FALLBACK = "false"
 NPB_DEFAULT_PLAN = "free"
 CHAT_QUERY_LLM_BASE_URL = "https://api.openai.com/v1"

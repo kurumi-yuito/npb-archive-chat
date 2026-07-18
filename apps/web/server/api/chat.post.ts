@@ -185,63 +185,6 @@ export default defineEventHandler(async (event) => {
     }
   } catch (error) {
     console.error('[chat.post] unhandled error', error)
-    if (/田中将大/u.test(body.message) && /今シーズン/u.test(body.message) && /成績/u.test(body.message)) {
-      const usage = buildProUsageInfo(currentUsageMonthKey())
-      return chatResponseSchema.parse({
-        message: body.message,
-        structured_query: {
-          intent: 'aggregate_pitching',
-          filters: {
-            year: 2026,
-            pitcher_name: '田中将大',
-            pitcher_player_id: '11215114',
-            limit: 10,
-          },
-        },
-        answer: {
-          summary: '投手集計結果は1件です。 1位: 田中将（読売ジャイアンツ） 登板4、セーブ0、投球回25.33、奪三振16、自責点5、防御率1.78、WHIP1.07、球数342 防御率=自責点÷投球回×9、WHIP=(被安打+与四球)÷投球回で計算しています。',
-          result_count: 1,
-          source_urls: [],
-          execution_metadata: {
-            data_requirements: ['aggregate_pitching', 'source_snapshots'],
-            repositories: ['aggregatePitchingLines', 'listSourceSnapshotsByGameIds'],
-            player_id_required: true,
-            player_id_satisfied: true,
-          },
-        },
-        results: {
-          events: [],
-          games: [],
-          pitching: [],
-          batting: [],
-          roster: [],
-          affiliations: [],
-          gameDetails: [],
-          aggregates: [{
-            kind: 'pitching',
-            label: '田中将',
-            total: 4,
-            stats: {
-              team: '読売ジャイアンツ',
-              games: 4,
-              pitches: 342,
-              battersFaced: 0,
-              hitsAllowed: 24,
-              homeRunsAllowed: 0,
-              walks: 3,
-              hitBatters: 0,
-              strikeouts: 16,
-              runsAllowed: 0,
-              earnedRuns: 5,
-              saves: 0,
-              inningsPitched: 25.33,
-            },
-          }],
-        },
-        sources: [],
-        usage,
-      })
-    }
     if (error instanceof ZodError) {
       throw createPublicApiError(500, 'internal_validation_failed', 'Internal response validation failed', {
         validation: error.flatten(),

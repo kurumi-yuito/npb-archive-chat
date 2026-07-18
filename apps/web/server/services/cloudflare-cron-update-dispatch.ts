@@ -17,17 +17,24 @@ export type CloudflareCronDailyUpdateDispatchContext = {
 }
 
 export function resolveCloudflareCronDailyUpdateDispatchConfig(config: {
+  npbSearchDbMode?: unknown
   npbDailyUpdateGithubOwner?: unknown
   npbDailyUpdateGithubRepo?: unknown
   npbDailyUpdateGithubWorkflow?: unknown
   npbDailyUpdateGithubRef?: unknown
   npbDailyUpdateGithubToken?: unknown
+  NPB_SEARCH_DB_MODE?: unknown
   NPB_DAILY_UPDATE_GITHUB_OWNER?: unknown
   NPB_DAILY_UPDATE_GITHUB_REPO?: unknown
   NPB_DAILY_UPDATE_GITHUB_WORKFLOW?: unknown
   NPB_DAILY_UPDATE_GITHUB_REF?: unknown
   NPB_DAILY_UPDATE_GITHUB_TOKEN?: unknown
 }): CloudflareCronDailyUpdateDispatchConfig | null {
+  const searchDbMode = stringValue(config.NPB_SEARCH_DB_MODE, config.npbSearchDbMode)
+  if (searchDbMode === 'read_only_validation_shared_production_db') {
+    throw new Error('Cloudflare Cron dispatch is disabled for read-only validation environments sharing production NPB_DB')
+  }
+
   const githubOwner = stringValue(config.NPB_DAILY_UPDATE_GITHUB_OWNER, config.npbDailyUpdateGithubOwner)
   const githubRepo = stringValue(config.NPB_DAILY_UPDATE_GITHUB_REPO, config.npbDailyUpdateGithubRepo)
   const githubWorkflow = stringValue(config.NPB_DAILY_UPDATE_GITHUB_WORKFLOW, config.npbDailyUpdateGithubWorkflow)

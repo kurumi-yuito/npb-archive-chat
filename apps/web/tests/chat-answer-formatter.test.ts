@@ -412,6 +412,31 @@ describe('chat-answer-formatter', () => {
     expect(answer.summary).toContain('5回')
   })
 
+  it('keeps recent pitching gap notes within the displayed latest window', () => {
+    const results = emptyResults()
+    results.pitching = [
+      regularBoxRow('2026-07-11', 'r20260711db-g-12', '横浜DeNAベイスターズ', '藤浪', '3', 4, 3),
+      farmBoxRow('2026-07-01', 'f20260701db-d-09', '横浜DeNAベイスターズ', '藤浪', '6', 6, 0),
+      farmBoxRow('2026-06-21', 'f20260621db-l-12', '横浜DeNAベイスターズ', '藤浪', '5', 6, 1),
+      farmBoxRow('2026-06-13', 'f20260613e-db-03', '横浜DeNAベイスターズ', '藤浪', '4', 4, 5),
+      farmBoxRow('2026-06-05', 'f20260605db-v-08', '横浜DeNAベイスターズ', '藤浪', '6', 2, 1),
+      farmBoxRow('2026-05-08', 'f20260508db-v-05', '横浜DeNAベイスターズ', '藤浪', '1', 2, 0),
+      farmBoxRow('2026-04-01', 'f20260401b-db-01', '横浜DeNAベイスターズ', '藤浪', '1', 0, 0),
+    ]
+
+    const answer = formatChatAnswer({
+      question: '藤浪どう？',
+      structuredQuery: { intent: 'search_pitching', filters: { pitcher_name: '藤浪', recent: true } },
+      results,
+      sources: [],
+    })
+
+    expect(answer.summary).toContain('確認できる最新5試合')
+    expect(answer.summary).toContain('対象試合: 2026年7月11日、2026年7月1日、2026年6月21日、2026年6月13日、2026年6月5日')
+    expect(answer.summary).not.toContain('2026年5月8日から2026年4月1日')
+    expect(answer.summary).not.toContain('最新7件')
+  })
+
   it('formats pitching comparison follow-ups from execution metadata instead of question text', () => {
     const results = emptyResults()
     results.pitching = [

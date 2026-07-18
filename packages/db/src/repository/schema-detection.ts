@@ -11,7 +11,6 @@ export function isNormalizedFactsSchema(database: QueryDatabase): Promise<boolea
     .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'event_facts' LIMIT 1")
     .get()
     .then((row) => Boolean((row as { name?: string } | undefined)?.name))
-    .catch(() => false)
   normalizedSchemaCache.set(database, promise)
   return promise
 }
