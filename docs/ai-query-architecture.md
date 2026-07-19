@@ -658,6 +658,16 @@ generic fallback summary は `条件に一致する...がN件あります` を�
 
 Phase 7 production QAでは `Q-123` から `Q-126` を追加し、初記録/通算1号/試合詳細レイアウト/Summary先頭の表示を確認した。最新production deploy `aec15b3c-2189-414c-875f-78dc7f9b507a` の通常LLM full QA `data/logs/qa-prod-1784459567807.json` は Pass 126 / Fail 0 / Blocked 0、HTTP 500/503 0 / 0、summary null 0、HTTP retry 0。
 
+## Phase 8 game summary highlight generation
+
+Phase 8 では、data retrieval / Planner / Repository / D1 schema を変更せず、試合詳細回答の先頭に試合ハイライトを追加した。
+
+ハイライトは `chat-answer-formatter.ts` の試合詳細formatter内で生成する。入力は既存の試合詳細結果に含まれるスコア、得点推移、得点イベント、打撃成績、投手成績であり、追加のDB取得やrequest-time live fetchは行わない。
+
+ハイライト生成では、点差、総得点、リード変動、サヨナラ、決勝打候補、長打イベント、無失点投球などを見て、2〜4文で試合の流れを要約する。本文はハイライトの後に従来の `試合結果`、`得点経過`、`主な投手`、`主な打者`、`主な得点シーン` を表示する。
+
+Phase 8 production QAでは `Q-127` から `Q-131` を追加し、投手戦、接戦、シーソーゲーム、ワンサイドゲーム、該当なしのサヨナラ検索を確認した。最新production deploy `109121a6-0109-40ac-a8f5-7dd1f1f83902` の通常LLM full QA `data/logs/qa-prod-1784468730551.json` は Pass 131 / Fail 0 / Blocked 0、HTTP 500/503 0 / 0、summary null 0、HTTP retry 0。
+
 ## Phase 2 completion
 
 Phase 2 は、Identity Layer 本体を DB 化する前に、既存 chat-service / planner / executor から安定して参照できる identity 境界を整える段階として完了した。

@@ -1,15 +1,15 @@
 # QAテストケース一覧 - 現行本番との差分
 
-- 現行ケース数: 126
-- 本番QA実行日時: 2026-07-19T11:12:53.278Z - 2026-07-19T11:22:51.060Z
-- 対象デプロイVersion ID: aec15b3c-2189-414c-875f-78dc7f9b507a
+- 現行ケース数: 131
+- 本番QA実行日時: 2026-07-19T13:45:33.754Z - 2026-07-19T13:56:07.075Z
+- 対象デプロイVersion ID: 109121a6-0109-40ac-a8f5-7dd1f1f83902
 - QA実行モード: 通常本番API（LLM parser 実行）
-- 最新通常QAログ: [data/logs/qa-prod-1784459567807.json](../data/logs/qa-prod-1784459567807.json)
-- latest run dir: [data/logs/qa-prod-run/qa-prod-1784459567807](../data/logs/qa-prod-run/qa-prod-1784459567807)
-- Phase 7 staging通常LLM QAログ: [data/logs/qa-prod-1784457463014.json](../data/logs/qa-prod-1784457463014.json)
-- Phase 7 staging Deploy Version ID: d72c5d7c-829b-43cb-b25b-77807ff63a0c
-- daily update確認: GitHub Actions run `29681108779` success
-- 最新通常QA結果: Pass（Pass 126 / Fail 0 / Blocked 0）
+- 最新通常QAログ: [data/logs/qa-prod-1784468730551.json](../data/logs/qa-prod-1784468730551.json)
+- latest run dir: [data/logs/qa-prod-run/qa-prod-1784468730551](../data/logs/qa-prod-run/qa-prod-1784468730551)
+- Phase 8 staging通常LLM QAログ: [data/logs/qa-prod-1784467230016.json](../data/logs/qa-prod-1784467230016.json)
+- Phase 8 staging Deploy Version ID: e30a0e57-da63-4bfe-a5e9-c5a2ab36a88a
+- daily update確認: Phase 8ではDB・daily update設定を変更していないため、Phase 7最終確認を維持
+- 最新通常QA結果: Pass（Pass 131 / Fail 0 / Blocked 0）
 - HTTP 500/503件数: 0 / 0
 - HTTP retry件数: 0
 - summary null件数: 0
@@ -18,11 +18,11 @@
 - normalized DB: `npb-archive-chat-normalized` / `eb614de3-eb0c-4816-a7b2-8440e94093a8`
 - normalized schema version: `phase5-normalized-v1`
 - normalized runtime contract: `normalized-only`
-- Phase 7追加確認: Summaryは質問への直接回答または上位結果の説明から始め、検索結果件数は補足へ移動した。
-- Phase 7追加確認: 試合詳細はスマートフォンで読みやすい見出し・箇条書き構成にした。
-- question_intent distribution: `{"aggregate_batting":35,"aggregate_games":5,"aggregate_pitching":16,"award_winners":1,"game_detail":9,"off_topic":3,"player_affiliation":2,"search_batting":15,"search_events":17,"search_games":5,"search_pitching":18}`
-- answer_mode distribution: `{"clarification_request":2,"comparison_explanation":1,"contextual_answer":4,"correction_explanation":6,"detail_explanation":1,"direct_answer":101,"evaluation_explanation":3,"missing":3,"reason_explanation":3,"recheck_explanation":1,"summary_explanation":1}`
-- 許容外差分件数: 0/126
+- Phase 8追加確認: 試合詳細回答は2〜4文のハイライトから始まり、その後に試合結果・得点経過・主な投手・主な打者・主な得点シーンを表示する。
+- Phase 8追加確認: ハイライトはスコア、得点推移、重要イベント、投手成績から生成し、Planner / Repository / D1 schema は変更していない。
+- question_intent distribution: `{"aggregate_batting":35,"aggregate_games":5,"aggregate_pitching":16,"award_winners":1,"game_detail":13,"off_topic":3,"player_affiliation":2,"search_batting":15,"search_events":17,"search_games":6,"search_pitching":18}`
+- answer_mode distribution: `{"clarification_request":2,"comparison_explanation":1,"contextual_answer":4,"correction_explanation":6,"detail_explanation":1,"direct_answer":106,"evaluation_explanation":3,"reason_explanation":3,"recheck_explanation":1,"summary_explanation":1,"unknown":3}`
+- 許容外差分件数: 0/131
 
 ## 主要確認ケース
 
@@ -32,20 +32,23 @@
 - Q-51: HTTP 200 / summary非null / structured intent `aggregate_batting` / answer_mode `direct_answer`
   - 本番回答: 横浜DeNAベイスターズの牧選手の2023年から2025年シーズン通算では、391試合に出場し、1522打数437安打で打率は約.287です。ホームランは70本、打点は235、盗塁は17、四球は96、三振は233となっています。
 
-- Q-118: HTTP 200 / summary非null / structured intent `game_detail` / answer_mode `direct_answer`
-  - 本番回答: ### 試合結果 / 2021年4月16日 甲子園 / 東京ヤクルトスワローズ 0 - 2 阪神タイガース / 阪神タイガースが東京ヤクルトスワローズに2-0で勝利しました。 /  / ### 得点経過 / ・5回裏 阪神タイガース2点（0-2） /  / ### 主な投手 / ・阪神タイガース 藤浪 /   5回2/3 / 94球 / 6奪三振 / 失点0 / 自責0 /  / ### 主な打者 / ・阪神タイガース 藤浪 /   1打数1安打 / 2打点 / 1得点 / ・阪神タイガース サンズ /   3打数1安打 / ・阪神タイガース 糸原 /   4打数1安打 / ・阪神タイガース 大山 /   3打数1安打 / ・阪神タイガース 中野 /   3打数1安打 /  / ### 主な得点シーン / ・5回裏 阪神 藤浪: レフト2ランホームラン（打点2） /  / 安打: 東京ヤクルトスワローズ 5 / 阪神タイガース 5 / 失策: 東京ヤクルトスワローズ 1 / 阪神タイガース 0
-
-- Q-123: HTTP 200 / summary非null / structured intent `search_events` / answer_mode `direct_answer`
-  - 本番回答: エンカーナシオンの1号ホームランは、2026年7月11日の巨人戦です。 /  / 1回裏、竹丸投手からレフト3ランホームラン（打点3）を放ちました。 / 対象記録: 1件
-
-- Q-124: HTTP 200 / summary非null / structured intent `search_events` / answer_mode `direct_answer`
-  - 本番回答: エンカーナシオンの1号ホームランは、2026年7月11日の巨人戦です。 /  / 1回裏、竹丸投手からレフト3ランホームラン（打点3）を放ちました。 / 対象記録: 1件
-
 - Q-125: HTTP 200 / summary非null / structured intent `game_detail` / answer_mode `direct_answer`
-  - 本番回答: ### 試合結果 / 2021年4月16日 甲子園 / 東京ヤクルトスワローズ 0 - 2 阪神タイガース / 阪神タイガースが東京ヤクルトスワローズに2-0で勝利しました。 /  / ### 得点経過 / ・5回裏 阪神タイガース2点（0-2） /  / ### 主な投手 / ・阪神タイガース 藤浪 /   5回2/3 / 94球 / 6奪三振 / 失点0 / 自責0 /  / ### 主な打者 / ・阪神タイガース 藤浪 /   1打数1安打 / 2打点 / 1得点 / ・阪神タイガース サンズ /   3打数1安打 / ・阪神タイガース 糸原 /   4打数1安打 / ・阪神タイガース 大山 /   3打数1安打 / ・阪神タイガース 中野 /   3打数1安打 /  / ### 主な得点シーン / ・5回裏 阪神 藤浪: レフト2ランホームラン（打点2） /  / 安打: 東京ヤクルトスワローズ 5 / 阪神タイガース 5 / 失策: 東京ヤクルトスワローズ 1 / 阪神タイガース 0
+  - 本番回答: **この試合は両軍の投手が試合を作った投手戦でした。** / 阪神タイガースが5回裏に先制し、そこから試合が動きました。 / 5回裏には阪神の藤浪がレフト2ランホームラン（打点2）を記録しました。 / 投手では阪神タイガースの藤浪が5回2/3を無失点に抑え、試合を作りました。 /  / ### 試合結果 / 2021年4月16日 甲子園 / 東京ヤクルトスワローズ 0 - 2 阪神タイガース / 阪神タイガースが東京ヤクルトスワローズに2-0で勝利しました。 /  / ### 得点経過 / ・5回裏 阪神タイガース2点（0-2） /  / ### 主な投手 / ・阪神タイガース 藤浪 /   5回2/3 / 94球 / 6奪三振 / 失点0 / 自責0 /  / ### 主な打者 / ・阪神タイガース 藤浪 /   1打数1安打 / 2打点 / 1得点 / ・阪神タイガース サンズ /   3打数1安打 / ・阪神タイガース 糸原 /   4打数1安打 / ・阪神タイガース 大山 /   3打数1安打 / ・阪神タイガース 中野 /   3打数1安打 /  / ### 主な得点シーン / ・5回裏 阪神 藤浪: レフト2ランホームラン（打点2） /  / 安打: 東京ヤクルトスワローズ 5 / 阪神タイガース 5 / 失策: 東京ヤクルトスワローズ 1 / 阪神タイガース 0
 
-- Q-126: HTTP 200 / summary非null / structured intent `aggregate_batting` / answer_mode `direct_answer`
-  - 本番回答: 打撃集計の上位結果です。 / 1位: * 佐野 恵太（横浜DeNAベイスターズ） 試合28、打率.243、本塁打4、打点17、盗塁0、OPS.738、IsoP.159、BB%12.3% / 2位: 牧 秀悟（横浜DeNAベイスターズ） 試合21、打率.333、本塁打2、打点10、盗塁1、OPS.898、IsoP.141、BB%12.0% / 3位: * 度会 隆輝（横浜DeNAベイスターズ） 試合26、打率.294、本塁打2、打点6、盗塁1、OPS.729、IsoP.094、BB%5.4% / 4位: 宮﨑 敏郎（横浜DeNAベイスターズ） 試合22、打率.254、本塁打1、打点9、盗塁0、OPS.663、IsoP.085、BB%7.5% / 5位: * 勝又 温史（横浜DeNAベイスターズ） 試合14、打率.383、本塁打0、打点6、盗塁1、OPS.834、IsoP.043、BB%2.0% / 6位: + ヒュンメル（横浜DeNAベイスターズ） 試合26、打率.232、本塁打3、打点13、盗塁0、OPS.733、IsoP.159、BB%12.2% / 7位: 山本 祐大（横浜DeNAベイスターズ） 試合21、打率.246、本塁打1、打点8、盗塁0、OPS.747、IsoP.115、BB%14.5% / 8位: * 三森 大貴（横浜DeNAベイスターズ） 試合18、打率.300、本塁打0、打点5、盗塁3、OPS.684、IsoP.020、BB%9.1% / 9位: 蝦名 達夫（横浜DeNAベイスターズ） 試合22、打率.190、本塁打0、打点2、盗塁3、OPS.494、IsoP.032、BB%5.6% / 10位: * 京田 陽太（横浜DeNAベイスターズ） 試合18、打率.308、本塁打0、打点5、盗塁1、OPS.726、IsoP.077、BB%2.4% / 対象: 45件
+- Q-127: HTTP 200 / summary非null / structured intent `game_detail` / answer_mode `direct_answer`
+  - 本番回答: **この試合は両軍の投手が試合を作った投手戦でした。** / 阪神タイガースが5回裏に先制し、そこから試合が動きました。 / 5回裏には阪神の藤浪がレフト2ランホームラン（打点2）を記録しました。 / 投手では阪神タイガースの藤浪が5回2/3を無失点に抑え、試合を作りました。 /  / ### 試合結果 / 2021年4月16日 甲子園 / 東京ヤクルトスワローズ 0 - 2 阪神タイガース / 阪神タイガースが東京ヤクルトスワローズに2-0で勝利しました。 /  / ### 得点経過 / ・5回裏 阪神タイガース2点（0-2） /  / ### 主な投手 / ・阪神タイガース 藤浪 /   5回2/3 / 94球 / 6奪三振 / 失点0 / 自責0 /  / ### 主な打者 / ・阪神タイガース 藤浪 /   1打数1安打 / 2打点 / 1得点 / ・阪神タイガース サンズ /   3打数1安打 / ・阪神タイガース 糸原 /   4打数1安打 / ・阪神タイガース 大山 /   3打数1安打 / ・阪神タイガース 中野 /   3打数1安打 /  / ### 主な得点シーン / ・5回裏 阪神 藤浪: レフト2ランホームラン（打点2） /  / 安打: 東京ヤクルトスワローズ 5 / 阪神タイガース 5 / 失策: 東京ヤクルトスワローズ 1 / 阪神タイガース 0
+
+- Q-128: HTTP 200 / summary非null / structured intent `game_detail` / answer_mode `direct_answer`
+  - 本番回答: **この試合は両チームがリードを奪い合うシーソーゲームでした。** / 読売ジャイアンツ 巨人は7回表に2点を取り、5-4として流れを引き寄せました。 / 1回裏にはDeNAのエンカーナシオンがレフト3ランホームラン（打点3）を記録しました。 /  / ### 試合結果 / 2026年7月11日 横浜 / 読売ジャイアンツ 巨人 5 - 4 横浜DeNAベイスターズ DeNA / 読売ジャイアンツ 巨人が横浜DeNAベイスターズ DeNAに5-4で勝利しました。 /  / ### 得点経過 / ・1回表 読売ジャイアンツ 巨人2点（2-0） / ・1回裏 横浜DeNAベイスターズ DeNA3点（2-3） / ・3回表 読売ジャイアンツ 巨人1点（3-3） / ・6回裏 横浜DeNAベイスターズ DeNA1点（3-4） / ・7回表 読売ジャイアンツ 巨人2点（5-4） /  / ### 主な投手 / ・横浜DeNAベイスターズ 藤浪 /   3回 / 94球 / 4奪三振 / 失点3 / 自責3 /  / ### 主な打者 / ・横浜DeNAベイスターズ エンカーナシオン /   4打数1安打 / 3打点 / 1得点 / ・横浜DeNAベイスターズ 蝦名 /   4打数1安打 / 1打点 / ・横浜DeNAベイスターズ 宮下 /   3打数2安打 / ・横浜DeNAベイスターズ 佐野 /   4打数1安打 / 1得点 / ・横浜DeNAベイスターズ 勝又 /   4打数1安打 / 1得点 / ・横浜DeNAベイスターズ 牧 /   4打数1安打 / 1得点 /  / ### 主な得点シーン / ・1回表 巨人 ダルベック: レフト犠牲フライ（打点1） / ・1回表 巨人 大城: レフト線タイムリーツーベース（打点1） / ・1回裏 DeNA エンカーナシオン: レフト3ランホームラン（打点3） / ・3回表 巨人 笹原: レフト前タイムリーヒット（打点1） / ・6回裏 DeNA 蝦名: レフト前タイムリーヒット（打点1） / ・7回表 巨人 泉口: センター前タイムリーヒット（打点1） / ・7回表 巨人 門脇: ファースト犠牲バント（打点1） /  / 安打: 読売ジャイアンツ 巨人 8 / 横浜DeNAベイスターズ DeNA 7 / 失策: 読売ジャイアンツ 巨人 1 / 横浜DeNAベイスターズ DeNA 1
+
+- Q-129: HTTP 200 / summary非null / structured intent `game_detail` / answer_mode `direct_answer`
+  - 本番回答: **この試合は横浜DeNAベイスターズ DeNAが主導権を握ったワンサイドゲームでした。** / 横浜DeNAベイスターズ DeNAが2回裏に先制し、そこから試合が動きました。 / 2回裏にはDeNAの筒香がセンターソロホームラン（打点1）を記録しました。 /  / ### 試合結果 / 2024年11月3日 横浜 / 福岡ソフトバンクホークス ソフトバンク 2 - 11 横浜DeNAベイスターズ DeNA / 横浜DeNAベイスターズ DeNAが福岡ソフトバンクホークス ソフトバンクに11-2で勝利しました。 /  / ### 得点経過 / ・2回裏 横浜DeNAベイスターズ DeNA3点（0-3） / ・3回裏 横浜DeNAベイスターズ DeNA1点（0-4） / ・4回表 福岡ソフトバンクホークス ソフトバンク2点（2-4） / ・5回裏 横浜DeNAベイスターズ DeNA7点（2-11） /  / ### 主な投手 / ・横浜DeNAベイスターズ 大貫 /   4回 / 56球 / 3奪三振 / 失点2 / 自責2 /  / ### 主な打者 / ・横浜DeNAベイスターズ 筒香 /   5打数2安打 / 4打点 / 2得点 / ・横浜DeNAベイスターズ 桑原 /   4打数3安打 / 3打点 / 1得点 / ・横浜DeNAベイスターズ 梶原 /   5打数1安打 / 1打点 / 1得点 / ・横浜DeNAベイスターズ 宮﨑 /   4打数1安打 / 1打点 / ・横浜DeNAベイスターズ 森敬 /   2打数1安打 / 1打点 / 2得点 / ・横浜DeNAベイスターズ オースティン /   3打数0安打 / 1打点 / 1得点 /  / ### 主な得点シーン / ・2回裏 DeNA 筒香: センターソロホームラン（打点1） / ・2回裏 DeNA 桑原: レフト前タイムリーヒット（打点2） / ・3回裏 DeNA 森敬: フォアボール（打点1） / ・4回表 ソフトバンク 柳田: センター2ランホームラン（打点2） / ・5回裏 DeNA 桑原: フォアボール（打点1） / ・5回裏 DeNA 梶原: センター前タイムリーヒット（打点1） / ・5回裏 DeNA オースティン: デッドボール（打点1） / ・5回裏 DeNA 筒香: 左中間タイムリーツーベース（打点3） / ・5回裏 DeNA 宮﨑: 左中間タイムリーツーベース（打点1） /  / 安打: 福岡ソフトバンクホークス ソフトバンク 6 / 横浜DeNAベイスターズ DeNA 13 / 失策: 福岡ソフトバンクホークス ソフトバンク 1 / 横浜DeNAベイスターズ DeNA 0
+
+- Q-130: HTTP 200 / summary非null / structured intent `game_detail` / answer_mode `direct_answer`
+  - 本番回答: **この試合は最後まで大きく離れない接戦でした。** / ヤクルトが1回裏に先制し、そこから試合が動きました。 /  / ### 試合結果 / 2026年5月21日 Jingu / 巨人 1 - 3 ヤクルト / ヤクルトが巨人に3-1で勝利しました。 /  / ### 得点経過 / ・1回裏 ヤクルト2点（0-2） / ・2回裏 ヤクルト1点（0-3） / ・3回表 巨人1点（1-3） /  / ### 主な投手 / ・投手成績は確認できませんでした。 /  / ### 主な打者 / ・打撃成績は確認できませんでした。 /  / ### 主な得点シーン / ・主な得点シーンは確認できませんでした。 /  / 安打: 巨人 9 / ヤクルト 5 / 失策: 巨人 0 / ヤクルト 0
+
+- Q-131: HTTP 200 / summary非null / structured intent `search_games` / answer_mode `direct_answer`
+  - 本番回答: 条件期間の一軍公式戦では、該当チームのサヨナラ勝ちは0試合です。
 
 ## ケース別結果
 
@@ -56,11 +59,12 @@
 - structured intent: `search_pitching`
 - question_intent: `search_pitching`
 - answer_mode: `direct_answer`
-- repositories: `["searchPitchingLines","listSourceSnapshotsByGameIds"]`
+- repositories: `searchPitchingLines, listSourceSnapshotsByGameIds`
 - player_id: `41045137`
 - http_status: 200
 - pass/fail: Pass
 - fail理由: なし
+
 ### Q-02: 藤浪は2026年のここまでの二軍での成績はどうですか？防御率や登板数など詳しく教えてください
 
 - QA正: 2026年の藤浪晋太郎投手は、横浜DeNAの二軍で5試合に登板しています。シーズン成績行では投球回14、被安打11、与四球7、奪三振19、失点5、自責点3、防御率1.93です。個別試合では2026年5月22日の登板が直近で、5回8奪三振、失点1、自責点1でした。
@@ -68,7 +72,7 @@
 - structured intent: `search_pitching`
 - question_intent: `search_pitching`
 - answer_mode: `direct_answer`
-- repositories: `["searchPitchingLines","listSourceSnapshotsByGameIds"]`
+- repositories: `searchPitchingLines, listSourceSnapshotsByGameIds`
 - player_id: `41045137`
 - http_status: 200
 - pass/fail: Pass
@@ -81,7 +85,7 @@
 - structured intent: `search_pitching`
 - question_intent: `search_pitching`
 - answer_mode: `direct_answer`
-- repositories: `["searchPitchingLines","listSourceSnapshotsByGameIds"]`
+- repositories: `searchPitchingLines, listSourceSnapshotsByGameIds`
 - player_id: `41045137`
 - http_status: 200
 - pass/fail: Pass
@@ -90,11 +94,11 @@
 ### Q-04: 藤浪晋太郎は今どこの球団に所属していますか？
 
 - QA正: 藤浪晋太郎投手は2026年シーズン、横浜DeNAベイスターズに所属しています。
-- 本番回答: 藤浪晋太郎投手は2026年シーズン、横浜DeNAベイスターズに所属しています。7月11日の一軍公式戦でも同チームの選手として出場記録が確認できます。
+- 本番回答: 藤浪晋太郎投手は2026年シーズン、横浜DeNAベイスターズに所属しています。7月11日の一軍公式戦にも出場しており、現在も同球団の戦力として活躍中です。
 - structured intent: `player_affiliation`
 - question_intent: `player_affiliation`
 - answer_mode: `direct_answer`
-- repositories: `["searchPlayerAffiliations","listSourceSnapshotsByGameIds"]`
+- repositories: `searchPlayerAffiliations, listSourceSnapshotsByGameIds`
 - player_id: `41045137`
 - http_status: 200
 - pass/fail: Pass
@@ -107,7 +111,7 @@
 - structured intent: `aggregate_pitching`
 - question_intent: `aggregate_pitching`
 - answer_mode: `direct_answer`
-- repositories: `["aggregatePitchingLines","listSourceSnapshotsByGameIds"]`
+- repositories: `aggregatePitchingLines, listSourceSnapshotsByGameIds`
 - player_id: `null`
 - http_status: 200
 - pass/fail: Pass
@@ -120,7 +124,7 @@
 - structured intent: `search_pitching`
 - question_intent: `search_pitching`
 - answer_mode: `direct_answer`
-- repositories: `["searchPitchingLines","listSourceSnapshotsByGameIds"]`
+- repositories: `searchPitchingLines, listSourceSnapshotsByGameIds`
 - player_id: `51055137`
 - http_status: 200
 - pass/fail: Pass
@@ -129,11 +133,11 @@
 ### Q-07: 山川穂高は今どこの球団ですか？
 
 - QA正: 山川穂高選手は2026年シーズン、福岡ソフトバンクホークスに所属しています。
-- 本番回答: 山川穂高選手は2026年シーズン、福岡ソフトバンクホークスに所属しています。5月30日の試合でも同球団のロースターに名前が確認でき、継続して出場していることがわかります。
+- 本番回答: 山川穂高選手は2026年シーズン、福岡ソフトバンクホークスに所属しています。5月30日の試合でも同球団のロースターに名前が確認されていますので、今シーズンはソフトバンクの一員としてプレーしていることが確実です。
 - structured intent: `player_affiliation`
 - question_intent: `player_affiliation`
 - answer_mode: `direct_answer`
-- repositories: `["searchPlayerAffiliations","listSourceSnapshotsByGameIds"]`
+- repositories: `searchPlayerAffiliations, listSourceSnapshotsByGameIds`
 - player_id: `null`
 - http_status: 200
 - pass/fail: Pass
@@ -146,7 +150,7 @@
 - structured intent: `aggregate_batting`
 - question_intent: `aggregate_batting`
 - answer_mode: `direct_answer`
-- repositories: `["aggregateBattingLines","listSourceSnapshotsByGameIds"]`
+- repositories: `aggregateBattingLines, listSourceSnapshotsByGameIds`
 - player_id: `null`
 - http_status: 200
 - pass/fail: Pass
@@ -159,7 +163,7 @@
 - structured intent: `search_batting`
 - question_intent: `search_batting`
 - answer_mode: `direct_answer`
-- repositories: `["searchBattingLines","listSourceSnapshotsByGameIds"]`
+- repositories: `searchBattingLines, listSourceSnapshotsByGameIds`
 - player_id: `13115153`
 - http_status: 200
 - pass/fail: Pass
@@ -172,7 +176,7 @@
 - structured intent: `search_batting`
 - question_intent: `search_batting`
 - answer_mode: `direct_answer`
-- repositories: `["searchBattingLines","listSourceSnapshotsByGameIds"]`
+- repositories: `searchBattingLines, listSourceSnapshotsByGameIds`
 - player_id: `71075138`
 - http_status: 200
 - pass/fail: Pass
@@ -185,7 +189,7 @@
 - structured intent: `search_batting`
 - question_intent: `search_batting`
 - answer_mode: `direct_answer`
-- repositories: `["searchBattingLines","listSourceSnapshotsByGameIds"]`
+- repositories: `searchBattingLines, listSourceSnapshotsByGameIds`
 - player_id: `11915134`
 - http_status: 200
 - pass/fail: Pass
@@ -198,7 +202,7 @@
 - structured intent: `aggregate_batting`
 - question_intent: `aggregate_batting`
 - answer_mode: `direct_answer`
-- repositories: `["aggregateBattingLines","listSourceSnapshotsByGameIds"]`
+- repositories: `aggregateBattingLines, listSourceSnapshotsByGameIds`
 - player_id: `13115153`
 - http_status: 200
 - pass/fail: Pass
@@ -211,7 +215,7 @@
 - structured intent: `aggregate_batting`
 - question_intent: `aggregate_batting`
 - answer_mode: `direct_answer`
-- repositories: `["aggregateBattingLines","listSourceSnapshotsByGameIds"]`
+- repositories: `aggregateBattingLines, listSourceSnapshotsByGameIds`
 - player_id: `13115153`
 - http_status: 200
 - pass/fail: Pass
@@ -224,7 +228,7 @@
 - structured intent: `aggregate_batting`
 - question_intent: `aggregate_batting`
 - answer_mode: `direct_answer`
-- repositories: `["aggregateBattingLines","listSourceSnapshotsByGameIds"]`
+- repositories: `aggregateBattingLines, listSourceSnapshotsByGameIds`
 - player_id: `null`
 - http_status: 200
 - pass/fail: Pass
@@ -237,7 +241,7 @@
 - structured intent: `search_batting`
 - question_intent: `search_batting`
 - answer_mode: `direct_answer`
-- repositories: `["searchBattingLines","listSourceSnapshotsByGameIds"]`
+- repositories: `searchBattingLines, listSourceSnapshotsByGameIds`
 - player_id: `13315153`
 - http_status: 200
 - pass/fail: Pass
@@ -250,7 +254,7 @@
 - structured intent: `search_batting`
 - question_intent: `search_batting`
 - answer_mode: `direct_answer`
-- repositories: `["searchBattingLines","listSourceSnapshotsByGameIds"]`
+- repositories: `searchBattingLines, listSourceSnapshotsByGameIds`
 - player_id: `null`
 - http_status: 200
 - pass/fail: Pass
@@ -263,7 +267,7 @@
 - structured intent: `search_pitching`
 - question_intent: `search_pitching`
 - answer_mode: `direct_answer`
-- repositories: `["searchPitchingLines","listSourceSnapshotsByGameIds"]`
+- repositories: `searchPitchingLines, listSourceSnapshotsByGameIds`
 - player_id: `null`
 - http_status: 200
 - pass/fail: Pass
@@ -276,7 +280,7 @@
 - structured intent: `aggregate_pitching`
 - question_intent: `aggregate_pitching`
 - answer_mode: `direct_answer`
-- repositories: `["aggregatePitchingLines","listSourceSnapshotsByGameIds"]`
+- repositories: `aggregatePitchingLines, listSourceSnapshotsByGameIds`
 - player_id: `null`
 - http_status: 200
 - pass/fail: Pass
@@ -289,7 +293,7 @@
 - structured intent: `aggregate_pitching`
 - question_intent: `aggregate_pitching`
 - answer_mode: `direct_answer`
-- repositories: `["aggregatePitchingLines","listSourceSnapshotsByGameIds"]`
+- repositories: `aggregatePitchingLines, listSourceSnapshotsByGameIds`
 - player_id: `null`
 - http_status: 200
 - pass/fail: Pass
@@ -302,7 +306,7 @@
 - structured intent: `aggregate_batting`
 - question_intent: `aggregate_batting`
 - answer_mode: `direct_answer`
-- repositories: `["aggregateBattingLines","listSourceSnapshotsByGameIds"]`
+- repositories: `aggregateBattingLines, listSourceSnapshotsByGameIds`
 - player_id: `null`
 - http_status: 200
 - pass/fail: Pass
@@ -315,7 +319,7 @@
 - structured intent: `search_pitching`
 - question_intent: `search_pitching`
 - answer_mode: `direct_answer`
-- repositories: `["searchPitchingLines","listSourceSnapshotsByGameIds"]`
+- repositories: `searchPitchingLines, listSourceSnapshotsByGameIds`
 - player_id: `null`
 - http_status: 200
 - pass/fail: Pass
@@ -328,7 +332,7 @@
 - structured intent: `game_detail`
 - question_intent: `game_detail`
 - answer_mode: `direct_answer`
-- repositories: `["searchGameDetails","searchEvents","searchBattingLines","searchPitchingLines","listSourceSnapshotsByGameIds"]`
+- repositories: `searchGameDetails, searchEvents, searchBattingLines, searchPitchingLines, listSourceSnapshotsByGameIds`
 - player_id: `null`
 - http_status: 200
 - pass/fail: Pass
@@ -337,11 +341,11 @@
 ### Q-23: 2026年5月15日の阪神の試合詳細
 
 - QA正: 2026年5月15日の甲子園での阪神対広島戦は、広島が2-0で阪神に勝利しました。試合のポイントは4回表に広島が先制点を奪ったことです。この1点が決勝点となりました。広島は6回にも1点を追加し、合計2点を挙げています。阪神はこの日、わずか1安打に抑えられてしまい、攻撃面で苦戦しました。一方の広島は8安打を放ち、効率よく得点につなげました。
-- 本番回答: ### 試合結果 / 2026年5月15日 甲子園 / 広島 2 - 0 阪神 / 広島が阪神に2-0で勝利しました。 /  / ### 得点経過 / ・4回表 広島1点（1-0） / ・6回表 広島1点（2-0） /  / ### 主な投手 / ・投手成績は確認できませんでした。 /  / ### 主な打者 / ・打撃成績は確認できませんでした。 /  / ### 主な得点シーン / ・主な得点シーンは確認できませんでした。 /  / 安打: 広島 8 / 阪神 1 / 失策: 広島 1 / 阪神 1
+- 本番回答: **この試合は両軍の投手が試合を作った投手戦でした。** / 広島が4回表に先制し、そこから試合が動きました。 /  / ### 試合結果 / 2026年5月15日 甲子園 / 広島 2 - 0 阪神 / 広島が阪神に2-0で勝利しました。 /  / ### 得点経過 / ・4回表 広島1点（1-0） / ・6回表 広島1点（2-0） /  / ### 主な投手 / ・投手成績は確認できませんでした。 /  / ### 主な打者 / ・打撃成績は確認できませんでした。 /  / ### 主な得点シーン / ・主な得点シーンは確認できませんでした。 /  / 安打: 広島 8 / 阪神 1 / 失策: 広島 1 / 阪神 1
 - structured intent: `game_detail`
 - question_intent: `game_detail`
 - answer_mode: `direct_answer`
-- repositories: `["searchGameDetails","searchEvents","searchBattingLines","searchPitchingLines","listSourceSnapshotsByGameIds"]`
+- repositories: `searchGameDetails, searchEvents, searchBattingLines, searchPitchingLines, listSourceSnapshotsByGameIds`
 - player_id: `null`
 - http_status: 200
 - pass/fail: Pass
@@ -350,11 +354,11 @@
 ### Q-24: 2026年5月21日の巨人対DeNAの試合結果を教えてください
 
 - QA正: 2026年5月21日に巨人対DeNAの試合は組まれていませんでした。その日、巨人はヤクルトと対戦し、ヤクルトが3-1で勝利しています。ヤクルトが1回裏に2点を先制し、そのリードを守り切った形です。巨人は9安打を放ちながらも得点は1点にとどまりました。
-- 本番回答: ### 試合結果 / 2026年5月21日 Jingu / 巨人 1 - 3 ヤクルト / ヤクルトが巨人に3-1で勝利しました。 /  / ### 得点経過 / ・1回裏 ヤクルト2点（0-2） / ・2回裏 ヤクルト1点（0-3） / ・3回表 巨人1点（1-3） /  / ### 主な投手 / ・投手成績は確認できませんでした。 /  / ### 主な打者 / ・打撃成績は確認できませんでした。 /  / ### 主な得点シーン / ・主な得点シーンは確認できませんでした。 /  / 安打: 巨人 9 / ヤクルト 5 / 失策: 巨人 0 / ヤクルト 0
+- 本番回答: **この試合は最後まで大きく離れない接戦でした。** / ヤクルトが1回裏に先制し、そこから試合が動きました。 /  / ### 試合結果 / 2026年5月21日 Jingu / 巨人 1 - 3 ヤクルト / ヤクルトが巨人に3-1で勝利しました。 /  / ### 得点経過 / ・1回裏 ヤクルト2点（0-2） / ・2回裏 ヤクルト1点（0-3） / ・3回表 巨人1点（1-3） /  / ### 主な投手 / ・投手成績は確認できませんでした。 /  / ### 主な打者 / ・打撃成績は確認できませんでした。 /  / ### 主な得点シーン / ・主な得点シーンは確認できませんでした。 /  / 安打: 巨人 9 / ヤクルト 5 / 失策: 巨人 0 / ヤクルト 0
 - structured intent: `game_detail`
 - question_intent: `game_detail`
 - answer_mode: `direct_answer`
-- repositories: `["searchGameDetails","searchEvents","searchBattingLines","searchPitchingLines","listSourceSnapshotsByGameIds"]`
+- repositories: `searchGameDetails, searchEvents, searchBattingLines, searchPitchingLines, listSourceSnapshotsByGameIds`
 - player_id: `null`
 - http_status: 200
 - pass/fail: Pass
@@ -367,7 +371,7 @@
 - structured intent: `search_games`
 - question_intent: `search_games`
 - answer_mode: `direct_answer`
-- repositories: `["searchGames","listSourceSnapshotsByGameIds"]`
+- repositories: `searchGames, listSourceSnapshotsByGameIds`
 - player_id: `null`
 - http_status: 200
 - pass/fail: Pass
@@ -380,7 +384,7 @@
 - structured intent: `search_batting`
 - question_intent: `search_batting`
 - answer_mode: `direct_answer`
-- repositories: `["searchBattingLines","listSourceSnapshotsByGameIds"]`
+- repositories: `searchBattingLines, listSourceSnapshotsByGameIds`
 - player_id: `null`
 - http_status: 200
 - pass/fail: Pass
@@ -393,7 +397,7 @@
 - structured intent: `search_batting`
 - question_intent: `search_batting`
 - answer_mode: `direct_answer`
-- repositories: `["searchBattingLines","listSourceSnapshotsByGameIds"]`
+- repositories: `searchBattingLines, listSourceSnapshotsByGameIds`
 - player_id: `null`
 - http_status: 200
 - pass/fail: Pass
@@ -402,11 +406,11 @@
 ### Q-28: 今シーズンのヤクルトで最も多く4番に起用されている選手は誰ですか？
 
 - QA正: 打撃集計結果は1件です。 1位: オスナ（東京ヤクルトスワローズ） 試合26、打率N/A、本塁打2、打点10、盗塁0、OPSN/A、IsoPN/A、BB%N/A 打率=安打÷打数、OPS=出塁率+長打率、IsoP=長打率-打率、BB%=四球÷打席で計算しています。
-- 本番回答: 打撃集計の上位結果です。 / 1位: オスナ（東京ヤクルトスワローズ） 試合33、打率.231、本塁打2、打点14、盗塁0、OPS.537、IsoP.000、BB%9.7% / 2位: サンタナ（東京ヤクルトスワローズ） 試合12、打率.226、本塁打3、打点7、盗塁0、OPS.668、IsoP.000、BB%27.9% / 3位: 増田（東京ヤクルトスワローズ） 試合9、打率.161、本塁打1、打点3、盗塁0、OPS.397、IsoP.000、BB%8.8% / 4位: 塩見（東京ヤクルトスワローズ） 試合5、打率.125、本塁打1、打点2、盗塁0、OPS.301、IsoP.000、BB%5.9% / 5位: 赤羽（東京ヤクルトスワローズ） 試合2、打率.000、本塁打0、打点0、盗塁0、OPS.000、IsoP.000、BB%0.0% / 6位: 澤井（東京ヤクルトスワローズ） 試合1、打率.000、本塁打0、打点0、盗塁0、OPS.000、IsoP.000、BB%0.0% / 対象: 6件
+- 本番回答: 打撃集計の上位結果です。 / 1位: オスナ（東京ヤクルトスワローズ） 試合33、打率.231、本塁打2、打点14、盗塁0、OPS.537、IsoP.000、BB%9.7% / 対象: 1件
 - structured intent: `aggregate_batting`
 - question_intent: `aggregate_batting`
 - answer_mode: `direct_answer`
-- repositories: `["aggregateBattingLines","listSourceSnapshotsByGameIds"]`
+- repositories: `aggregateBattingLines, listSourceSnapshotsByGameIds`
 - player_id: `null`
 - http_status: 200
 - pass/fail: Pass
@@ -419,7 +423,7 @@
 - structured intent: `aggregate_batting`
 - question_intent: `aggregate_batting`
 - answer_mode: `direct_answer`
-- repositories: `["aggregateBattingLines","listSourceSnapshotsByGameIds"]`
+- repositories: `aggregateBattingLines, listSourceSnapshotsByGameIds`
 - player_id: `null`
 - http_status: 200
 - pass/fail: Pass
@@ -432,7 +436,7 @@
 - structured intent: `aggregate_batting`
 - question_intent: `aggregate_batting`
 - answer_mode: `direct_answer`
-- repositories: `["aggregateBattingLines","listSourceSnapshotsByGameIds"]`
+- repositories: `aggregateBattingLines, listSourceSnapshotsByGameIds`
 - player_id: `null`
 - http_status: 200
 - pass/fail: Pass
@@ -445,7 +449,7 @@
 - structured intent: `aggregate_batting`
 - question_intent: `aggregate_batting`
 - answer_mode: `direct_answer`
-- repositories: `["aggregateBattingLines","listSourceSnapshotsByGameIds"]`
+- repositories: `aggregateBattingLines, listSourceSnapshotsByGameIds`
 - player_id: `null`
 - http_status: 200
 - pass/fail: Pass
@@ -458,7 +462,7 @@
 - structured intent: `aggregate_batting`
 - question_intent: `aggregate_batting`
 - answer_mode: `direct_answer`
-- repositories: `["aggregateBattingLines","listSourceSnapshotsByGameIds"]`
+- repositories: `aggregateBattingLines, listSourceSnapshotsByGameIds`
 - player_id: `null`
 - http_status: 200
 - pass/fail: Pass
@@ -471,7 +475,7 @@
 - structured intent: `aggregate_batting`
 - question_intent: `aggregate_batting`
 - answer_mode: `direct_answer`
-- repositories: `["aggregateBattingLines","listSourceSnapshotsByGameIds"]`
+- repositories: `aggregateBattingLines, listSourceSnapshotsByGameIds`
 - player_id: `null`
 - http_status: 200
 - pass/fail: Pass
@@ -484,7 +488,7 @@
 - structured intent: `aggregate_batting`
 - question_intent: `aggregate_batting`
 - answer_mode: `direct_answer`
-- repositories: `["aggregateBattingLines","listSourceSnapshotsByGameIds"]`
+- repositories: `aggregateBattingLines, listSourceSnapshotsByGameIds`
 - player_id: `null`
 - http_status: 200
 - pass/fail: Pass
@@ -497,7 +501,7 @@
 - structured intent: `aggregate_batting`
 - question_intent: `aggregate_batting`
 - answer_mode: `direct_answer`
-- repositories: `["aggregateBattingLines","listSourceSnapshotsByGameIds"]`
+- repositories: `aggregateBattingLines, listSourceSnapshotsByGameIds`
 - player_id: `null`
 - http_status: 200
 - pass/fail: Pass
@@ -510,7 +514,7 @@
 - structured intent: `aggregate_batting`
 - question_intent: `aggregate_batting`
 - answer_mode: `direct_answer`
-- repositories: `["aggregateBattingLines","listSourceSnapshotsByGameIds"]`
+- repositories: `aggregateBattingLines, listSourceSnapshotsByGameIds`
 - player_id: `null`
 - http_status: 200
 - pass/fail: Pass
@@ -523,7 +527,7 @@
 - structured intent: `aggregate_batting`
 - question_intent: `aggregate_batting`
 - answer_mode: `direct_answer`
-- repositories: `["aggregateBattingLines","listSourceSnapshotsByGameIds"]`
+- repositories: `aggregateBattingLines, listSourceSnapshotsByGameIds`
 - player_id: `null`
 - http_status: 200
 - pass/fail: Pass
@@ -536,7 +540,7 @@
 - structured intent: `aggregate_pitching`
 - question_intent: `aggregate_pitching`
 - answer_mode: `direct_answer`
-- repositories: `["aggregatePitchingLines","listSourceSnapshotsByGameIds"]`
+- repositories: `aggregatePitchingLines, listSourceSnapshotsByGameIds`
 - player_id: `null`
 - http_status: 200
 - pass/fail: Pass
@@ -549,7 +553,7 @@
 - structured intent: `aggregate_pitching`
 - question_intent: `aggregate_pitching`
 - answer_mode: `direct_answer`
-- repositories: `["aggregatePitchingLines","listSourceSnapshotsByGameIds"]`
+- repositories: `aggregatePitchingLines, listSourceSnapshotsByGameIds`
 - player_id: `null`
 - http_status: 200
 - pass/fail: Pass
@@ -562,7 +566,7 @@
 - structured intent: `aggregate_pitching`
 - question_intent: `aggregate_pitching`
 - answer_mode: `direct_answer`
-- repositories: `["aggregatePitchingLines","listSourceSnapshotsByGameIds"]`
+- repositories: `aggregatePitchingLines, listSourceSnapshotsByGameIds`
 - player_id: `null`
 - http_status: 200
 - pass/fail: Pass
@@ -575,7 +579,7 @@
 - structured intent: `aggregate_pitching`
 - question_intent: `aggregate_pitching`
 - answer_mode: `direct_answer`
-- repositories: `["aggregatePitchingLines","listSourceSnapshotsByGameIds"]`
+- repositories: `aggregatePitchingLines, listSourceSnapshotsByGameIds`
 - player_id: `null`
 - http_status: 200
 - pass/fail: Pass
@@ -588,7 +592,7 @@
 - structured intent: `aggregate_pitching`
 - question_intent: `aggregate_pitching`
 - answer_mode: `direct_answer`
-- repositories: `["aggregatePitchingLines","listSourceSnapshotsByGameIds"]`
+- repositories: `aggregatePitchingLines, listSourceSnapshotsByGameIds`
 - player_id: `null`
 - http_status: 200
 - pass/fail: Pass
@@ -601,7 +605,7 @@
 - structured intent: `aggregate_pitching`
 - question_intent: `aggregate_pitching`
 - answer_mode: `direct_answer`
-- repositories: `["aggregatePitchingLines","listSourceSnapshotsByGameIds"]`
+- repositories: `aggregatePitchingLines, listSourceSnapshotsByGameIds`
 - player_id: `null`
 - http_status: 200
 - pass/fail: Pass
@@ -614,7 +618,7 @@
 - structured intent: `aggregate_pitching`
 - question_intent: `aggregate_pitching`
 - answer_mode: `direct_answer`
-- repositories: `["aggregatePitchingLines","listSourceSnapshotsByGameIds"]`
+- repositories: `aggregatePitchingLines, listSourceSnapshotsByGameIds`
 - player_id: `null`
 - http_status: 200
 - pass/fail: Pass
@@ -627,7 +631,7 @@
 - structured intent: `aggregate_pitching`
 - question_intent: `aggregate_pitching`
 - answer_mode: `direct_answer`
-- repositories: `["aggregatePitchingLines","listSourceSnapshotsByGameIds"]`
+- repositories: `aggregatePitchingLines, listSourceSnapshotsByGameIds`
 - player_id: `null`
 - http_status: 200
 - pass/fail: Pass
@@ -640,7 +644,7 @@
 - structured intent: `aggregate_pitching`
 - question_intent: `aggregate_pitching`
 - answer_mode: `direct_answer`
-- repositories: `["aggregatePitchingLines","listSourceSnapshotsByGameIds"]`
+- repositories: `aggregatePitchingLines, listSourceSnapshotsByGameIds`
 - player_id: `null`
 - http_status: 200
 - pass/fail: Pass
@@ -653,7 +657,7 @@
 - structured intent: `aggregate_games`
 - question_intent: `aggregate_games`
 - answer_mode: `direct_answer`
-- repositories: `["aggregateGameResults","listSourceSnapshotsByGameIds"]`
+- repositories: `aggregateGameResults, listSourceSnapshotsByGameIds`
 - player_id: `null`
 - http_status: 200
 - pass/fail: Pass
@@ -666,7 +670,7 @@
 - structured intent: `aggregate_games`
 - question_intent: `aggregate_games`
 - answer_mode: `direct_answer`
-- repositories: `["aggregateGameResults","listSourceSnapshotsByGameIds"]`
+- repositories: `aggregateGameResults, listSourceSnapshotsByGameIds`
 - player_id: `null`
 - http_status: 200
 - pass/fail: Pass
@@ -679,7 +683,7 @@
 - structured intent: `aggregate_games`
 - question_intent: `aggregate_games`
 - answer_mode: `direct_answer`
-- repositories: `["aggregateGameResults","listSourceSnapshotsByGameIds"]`
+- repositories: `aggregateGameResults, listSourceSnapshotsByGameIds`
 - player_id: `null`
 - http_status: 200
 - pass/fail: Pass
@@ -692,7 +696,7 @@
 - structured intent: `aggregate_games`
 - question_intent: `aggregate_games`
 - answer_mode: `direct_answer`
-- repositories: `["aggregateGameResults","listSourceSnapshotsByGameIds"]`
+- repositories: `aggregateGameResults, listSourceSnapshotsByGameIds`
 - player_id: `null`
 - http_status: 200
 - pass/fail: Pass
@@ -705,7 +709,7 @@
 - structured intent: `aggregate_batting`
 - question_intent: `aggregate_batting`
 - answer_mode: `direct_answer`
-- repositories: `["aggregateBattingLines","listSourceSnapshotsByGameIds"]`
+- repositories: `aggregateBattingLines, listSourceSnapshotsByGameIds`
 - player_id: `13115153`
 - http_status: 200
 - pass/fail: Pass
@@ -718,7 +722,7 @@
 - structured intent: `aggregate_batting`
 - question_intent: `aggregate_batting`
 - answer_mode: `direct_answer`
-- repositories: `["aggregateBattingLines","listSourceSnapshotsByGameIds"]`
+- repositories: `aggregateBattingLines, listSourceSnapshotsByGameIds`
 - player_id: `null`
 - http_status: 200
 - pass/fail: Pass
@@ -731,7 +735,7 @@
 - structured intent: `aggregate_batting`
 - question_intent: `aggregate_batting`
 - answer_mode: `direct_answer`
-- repositories: `["aggregateBattingLines","listSourceSnapshotsByGameIds"]`
+- repositories: `aggregateBattingLines, listSourceSnapshotsByGameIds`
 - player_id: `null`
 - http_status: 200
 - pass/fail: Pass
@@ -744,7 +748,7 @@
 - structured intent: `aggregate_games`
 - question_intent: `aggregate_games`
 - answer_mode: `direct_answer`
-- repositories: `["aggregateGameResults","listSourceSnapshotsByGameIds"]`
+- repositories: `aggregateGameResults, listSourceSnapshotsByGameIds`
 - player_id: `null`
 - http_status: 200
 - pass/fail: Pass
@@ -757,7 +761,7 @@
 - structured intent: `search_events`
 - question_intent: `search_events`
 - answer_mode: `direct_answer`
-- repositories: `["searchEvents","listSourceSnapshotsByGameIds"]`
+- repositories: `searchEvents, listSourceSnapshotsByGameIds`
 - player_id: `null`
 - http_status: 200
 - pass/fail: Pass
@@ -770,7 +774,7 @@
 - structured intent: `search_games`
 - question_intent: `search_games`
 - answer_mode: `direct_answer`
-- repositories: `["searchGames","listSourceSnapshotsByGameIds"]`
+- repositories: `searchGames, listSourceSnapshotsByGameIds`
 - player_id: `null`
 - http_status: 200
 - pass/fail: Pass
@@ -783,7 +787,7 @@
 - structured intent: `search_pitching`
 - question_intent: `search_pitching`
 - answer_mode: `direct_answer`
-- repositories: `["searchPitchingLines","listSourceSnapshotsByGameIds"]`
+- repositories: `searchPitchingLines, listSourceSnapshotsByGameIds`
 - player_id: `null`
 - http_status: 200
 - pass/fail: Pass
@@ -796,7 +800,7 @@
 - structured intent: `aggregate_pitching`
 - question_intent: `aggregate_pitching`
 - answer_mode: `direct_answer`
-- repositories: `["aggregatePitchingLines","listSourceSnapshotsByGameIds"]`
+- repositories: `aggregatePitchingLines, listSourceSnapshotsByGameIds`
 - player_id: `null`
 - http_status: 200
 - pass/fail: Pass
@@ -809,7 +813,7 @@
 - structured intent: `aggregate_batting`
 - question_intent: `aggregate_batting`
 - answer_mode: `direct_answer`
-- repositories: `["aggregateBattingLines","listSourceSnapshotsByGameIds"]`
+- repositories: `aggregateBattingLines, listSourceSnapshotsByGameIds`
 - player_id: `null`
 - http_status: 200
 - pass/fail: Pass
@@ -822,7 +826,7 @@
 - structured intent: `search_games`
 - question_intent: `search_games`
 - answer_mode: `direct_answer`
-- repositories: `["searchGames","listSourceSnapshotsByGameIds"]`
+- repositories: `searchGames, listSourceSnapshotsByGameIds`
 - player_id: `null`
 - http_status: 200
 - pass/fail: Pass
@@ -835,7 +839,7 @@
 - structured intent: `aggregate_batting`
 - question_intent: `aggregate_batting`
 - answer_mode: `direct_answer`
-- repositories: `["aggregateBattingLines","listSourceSnapshotsByGameIds"]`
+- repositories: `aggregateBattingLines, listSourceSnapshotsByGameIds`
 - player_id: `01405150`
 - http_status: 200
 - pass/fail: Pass
@@ -848,7 +852,7 @@
 - structured intent: `aggregate_batting`
 - question_intent: `aggregate_batting`
 - answer_mode: `direct_answer`
-- repositories: `["aggregateBattingLines","listSourceSnapshotsByGameIds"]`
+- repositories: `aggregateBattingLines, listSourceSnapshotsByGameIds`
 - player_id: `61965155`
 - http_status: 200
 - pass/fail: Pass
@@ -861,7 +865,7 @@
 - structured intent: `search_batting`
 - question_intent: `search_batting`
 - answer_mode: `direct_answer`
-- repositories: `["searchBattingLines","listSourceSnapshotsByGameIds"]`
+- repositories: `searchBattingLines, listSourceSnapshotsByGameIds`
 - player_id: `null`
 - http_status: 200
 - pass/fail: Pass
@@ -874,7 +878,7 @@
 - structured intent: `aggregate_batting`
 - question_intent: `aggregate_batting`
 - answer_mode: `direct_answer`
-- repositories: `["aggregateBattingLines","listSourceSnapshotsByGameIds"]`
+- repositories: `aggregateBattingLines, listSourceSnapshotsByGameIds`
 - player_id: `null`
 - http_status: 200
 - pass/fail: Pass
@@ -887,7 +891,7 @@
 - structured intent: `aggregate_pitching`
 - question_intent: `aggregate_pitching`
 - answer_mode: `direct_answer`
-- repositories: `["aggregatePitchingLines","listSourceSnapshotsByGameIds"]`
+- repositories: `aggregatePitchingLines, listSourceSnapshotsByGameIds`
 - player_id: `null`
 - http_status: 200
 - pass/fail: Pass
@@ -900,7 +904,7 @@
 - structured intent: `aggregate_batting`
 - question_intent: `aggregate_batting`
 - answer_mode: `direct_answer`
-- repositories: `["aggregateBattingLines","listSourceSnapshotsByGameIds"]`
+- repositories: `aggregateBattingLines, listSourceSnapshotsByGameIds`
 - player_id: `null`
 - http_status: 200
 - pass/fail: Pass
@@ -913,7 +917,7 @@
 - structured intent: `aggregate_batting`
 - question_intent: `aggregate_batting`
 - answer_mode: `direct_answer`
-- repositories: `["aggregateBattingLines","listSourceSnapshotsByGameIds"]`
+- repositories: `aggregateBattingLines, listSourceSnapshotsByGameIds`
 - player_id: `null`
 - http_status: 200
 - pass/fail: Pass
@@ -926,7 +930,7 @@
 - structured intent: `aggregate_pitching`
 - question_intent: `aggregate_pitching`
 - answer_mode: `direct_answer`
-- repositories: `["aggregatePitchingLines","listSourceSnapshotsByGameIds"]`
+- repositories: `aggregatePitchingLines, listSourceSnapshotsByGameIds`
 - player_id: `null`
 - http_status: 200
 - pass/fail: Pass
@@ -939,7 +943,7 @@
 - structured intent: `aggregate_batting`
 - question_intent: `aggregate_batting`
 - answer_mode: `direct_answer`
-- repositories: `["aggregateBattingLines","listSourceSnapshotsByGameIds"]`
+- repositories: `aggregateBattingLines, listSourceSnapshotsByGameIds`
 - player_id: `null`
 - http_status: 200
 - pass/fail: Pass
@@ -952,7 +956,7 @@
 - structured intent: `aggregate_batting`
 - question_intent: `aggregate_batting`
 - answer_mode: `direct_answer`
-- repositories: `["aggregateBattingLines","listSourceSnapshotsByGameIds"]`
+- repositories: `aggregateBattingLines, listSourceSnapshotsByGameIds`
 - player_id: `null`
 - http_status: 200
 - pass/fail: Pass
@@ -965,7 +969,7 @@
 - structured intent: `aggregate_batting`
 - question_intent: `aggregate_batting`
 - answer_mode: `direct_answer`
-- repositories: `["aggregateBattingLines","listSourceSnapshotsByGameIds"]`
+- repositories: `aggregateBattingLines, listSourceSnapshotsByGameIds`
 - player_id: `null`
 - http_status: 200
 - pass/fail: Pass
@@ -978,7 +982,7 @@
 - structured intent: `aggregate_batting`
 - question_intent: `aggregate_batting`
 - answer_mode: `direct_answer`
-- repositories: `["aggregateBattingLines","listSourceSnapshotsByGameIds"]`
+- repositories: `aggregateBattingLines, listSourceSnapshotsByGameIds`
 - player_id: `null`
 - http_status: 200
 - pass/fail: Pass
@@ -990,8 +994,8 @@
 - 本番回答: このサービスはNPB（日本プロ野球）に関するご質問にお答えするサービスです。試合結果・選手成績・特定の打席など、プロ野球のことなら何でもお気軽にどうぞ！
 - structured intent: `off_topic`
 - question_intent: `off_topic`
-- answer_mode: `missing`
-- repositories: `[]`
+- answer_mode: `unknown`
+- repositories: ``
 - player_id: `null`
 - http_status: 200
 - pass/fail: Pass
@@ -1003,8 +1007,8 @@
 - 本番回答: このサービスはNPB（日本プロ野球）に関するご質問にお答えするサービスです。試合結果・選手成績・特定の打席など、プロ野球のことなら何でもお気軽にどうぞ！
 - structured intent: `off_topic`
 - question_intent: `off_topic`
-- answer_mode: `missing`
-- repositories: `[]`
+- answer_mode: `unknown`
+- repositories: ``
 - player_id: `null`
 - http_status: 200
 - pass/fail: Pass
@@ -1016,8 +1020,8 @@
 - 本番回答: このサービスはNPB（日本プロ野球）に関するご質問にお答えするサービスです。試合結果・選手成績・特定の打席など、プロ野球のことなら何でもお気軽にどうぞ！
 - structured intent: `off_topic`
 - question_intent: `off_topic`
-- answer_mode: `missing`
-- repositories: `[]`
+- answer_mode: `unknown`
+- repositories: ``
 - player_id: `null`
 - http_status: 200
 - pass/fail: Pass
@@ -1030,7 +1034,7 @@
 - structured intent: `aggregate_batting`
 - question_intent: `aggregate_batting`
 - answer_mode: `direct_answer`
-- repositories: `["aggregateBattingLines","listSourceSnapshotsByGameIds"]`
+- repositories: `aggregateBattingLines, listSourceSnapshotsByGameIds`
 - player_id: `null`
 - http_status: 200
 - pass/fail: Pass
@@ -1043,7 +1047,7 @@
 - structured intent: `aggregate_pitching`
 - question_intent: `aggregate_pitching`
 - answer_mode: `direct_answer`
-- repositories: `["aggregatePitchingLines","listSourceSnapshotsByGameIds"]`
+- repositories: `aggregatePitchingLines, listSourceSnapshotsByGameIds`
 - player_id: `13315153`
 - http_status: 200
 - pass/fail: Pass
@@ -1056,7 +1060,7 @@
 - structured intent: `award_winners`
 - question_intent: `award_winners`
 - answer_mode: `direct_answer`
-- repositories: `["searchAwardWinners","listSourceSnapshotsByGameIds"]`
+- repositories: `searchAwardWinners, listSourceSnapshotsByGameIds`
 - player_id: `null`
 - http_status: 200
 - pass/fail: Pass
@@ -1069,7 +1073,7 @@
 - structured intent: `aggregate_batting`
 - question_intent: `aggregate_batting`
 - answer_mode: `direct_answer`
-- repositories: `["aggregateBattingLines","listSourceSnapshotsByGameIds"]`
+- repositories: `aggregateBattingLines, listSourceSnapshotsByGameIds`
 - player_id: `null`
 - http_status: 200
 - pass/fail: Pass
@@ -1078,11 +1082,11 @@
 ### Q-80: 2024年のDeNA日本一の最終戦の詳細を教えてください
 
 - QA正: 該当する試合は5件です。  1. 2024年11月3日 Yokohama、横浜DeNAベイスターズ DeNAが福岡ソフトバンクホークス ソフトバンクに11-2で勝利しました。    2回裏に横浜DeNAベイスターズ DeNAが3点を取り、ここでリードを奪いました。    安打数は福岡ソフトバンクホークス ソフトバンクが6本、横浜DeNAベイスターズ DeNAが13本でした。    失策は福岡ソフトバンクホークス ソフトバンクが1、横浜DeNAベイスターズ DeNAが0です。    主な得点・長打イベント:    - 2回裏 DeNA 筒香: センターソロホームラン（打点1）    - 2回裏 DeNA 桑原: レフト前タイムリーヒット（打点2）    - 3回裏 DeNA 森敬: フォアボール（打点1）    - 4回表 ソフトバンク 柳田: センター2ランホームラン（打点2）    - 5回裏 DeNA 桑原: フォアボール（打点1）    - 5回裏 DeNA 梶原: センター前タイムリーヒット（打点1） 2. 2024年10月31日 MIZUHO PayPay、横浜DeNAベイスターズ DeNAが福岡ソフトバンクホークス ソフトバンクに7-0で勝利しました。    3回表に横浜DeNAベイスターズ DeNAが1点を取り、ここでリードを奪いました。    安打数は横浜DeNAベイスターズ DeNAが13本、福岡ソフトバンクホークス ソフトバンクが4本でした。    主な得点・長打イベント:    - 3回表 DeNA 筒香: センター前タイムリーヒット（打点1）    - 4回表 DeNA 牧: レフト3ランホームラン（打点3）    - 9回表 DeNA 桑原: デッドボール（打点1）    - 9回表 DeNA 梶原: 左中間タイムリーツーベース（打点2） 3. 2024年10月30日 MIZUHO PayPay、横浜DeNAベイスターズ DeNAが福岡ソフトバンクホークス ソフトバンクに5-0で勝利しました。    4回表に横浜DeNAベイスターズ DeNAが1点を取り、ここでリードを奪いました。    安打数は横浜DeNAベイスターズ DeNAが11本、福岡ソフトバンクホークス ソフトバンクが5本でした。    主な得点・長打イベント:    - 4回表 DeNA オースティン: ライトソロホームラン（打点1）    - 7回表 DeNA 宮﨑: レフトソロホームラン（打点1）    - 7回表 DeNA 桑原: レフトオーバータイムリーツーベース（打点2）    - 7回表 DeNA オースティン: レフト前タイムリーヒット（打点1） 4. 2024年10月29日 MIZUHO PayPay、横浜DeNAベイスターズ DeNAが福岡ソフトバンクホークス ソフトバンクに4-1で勝利しました。    1回表に横浜DeNAベイスターズ DeNAが1点を取り、ここでリードを奪いました。    安打数は横浜DeNAベイスターズ DeNAが6本、福岡ソフトバンクホークス ソフトバンクが10本でした。    主な得点・長打イベント:    - 1回表 DeNA 牧: ショートゴロ（打点1）    - 1回裏 ソフトバンク 近藤: 左中間タイムリーツーベース（打点1）    - 5回表 DeNA 桑原: 左中間ソロホームラン（打点1）    - 5回表 DeNA 筒香: ライト犠牲フライ（打点1）    - 8回表 DeNA 戸柱: 右中間タイムリーツーベース（打点1） 5. 2024年10月27日 Yokohama、福岡ソフトバンクホークス ソフトバンクが横浜DeNAベイスターズ DeNAに6-3で勝利しました。    1回表に福岡ソフトバンクホークス ソフトバンクが2点を取り、ここでリードを奪いました。    安打数は福岡ソフトバンクホークス ソフトバンクが9本、横浜DeNAベイスターズ DeNAが9本でした。    失策は福岡ソフトバンクホークス ソフトバンクが0、横浜DeNAベイスターズ DeNAが1です。    主な得点・長打イベント:    - 1回表 ソフトバンク 山川: レフト2ランホームラン（打点2）    - 3回表 ソフトバンク 牧原大: ライト前タイムリーヒット（打点2）    - 3回表 ソフトバンク 甲斐: ライト犠牲フライ（打点1）    - 4回表 ソフトバンク 山川: レフト前タイムリーヒット（打点1）    - 5回裏 DeNA 桑原: 左中間タイムリーツーベース（打点2）    - 7回裏 DeNA 牧: レフトオーバータイムリーツーベース（打点1）
-- 本番回答: 該当する試合は20件です。 /  / ## 1試合目 / ### 試合結果 / 2024年11月3日 横浜 / 福岡ソフトバンクホークス ソフトバンク 2 - 11 横浜DeNAベイスターズ DeNA / 横浜DeNAベイスターズ DeNAが福岡ソフトバンクホークス ソフトバンクに11-2で勝利しました。 /  / ### 得点経過 / ・2回裏 横浜DeNAベイスターズ DeNA3点（0-3） / ・3回裏 横浜DeNAベイスターズ DeNA1点（0-4） / ・4回表 福岡ソフトバンクホークス ソフトバンク2点（2-4） / ・5回裏 横浜DeNAベイスターズ DeNA7点（2-11） /  / ### 主な投手 / ・横浜DeNAベイスターズ 大貫 /   4回 / 56球 / 3奪三振 / 失点2 / 自責2 /  / ### 主な打者 / ・横浜DeNAベイスターズ 筒香 /   5打数2安打 / 4打点 / 2得点 / ・横浜DeNAベイスターズ 桑原 /   4打数3安打 / 3打点 / 1得点 / ・横浜DeNAベイスターズ 梶原 /   5打数1安打 / 1打点 / 1得点 / ・横浜DeNAベイスターズ 宮﨑 /   4打数1安打 / 1打点 / ・横浜DeNAベイスターズ 森敬 /   2打数1安打 / 1打点 / 2得点 / ・横浜DeNAベイスターズ オースティン /   3打数0安打 / 1打点 / 1得点 /  / ### 主な得点シーン / ・2回裏 DeNA 筒香: センターソロホームラン（打点1） / ・2回裏 DeNA 桑原: レフト前タイムリーヒット（打点2） / ・3回裏 DeNA 森敬: フォアボール（打点1） / ・4回表 ソフトバンク 柳田: センター2ランホームラン（打点2） / ・5回裏 DeNA 桑原: フォアボール（打点1） / ・5回裏 DeNA 梶原: センター前タイムリーヒット（打点1） / ・5回裏 DeNA オースティン: デッドボール（打点1） / ・5回裏 DeNA 筒香: 左中間タイムリーツーベース（打点3） / ・5回裏 DeNA 宮﨑: 左中間タイムリーツーベース（打点1） /  / 安打: 福岡ソフトバンクホークス ソフトバンク 6 / 横浜DeNAベイスターズ DeNA 13 / 失策: 福岡ソフトバンクホークス ソフトバンク 1 / 横浜DeNAベイスターズ DeNA 0 / ## 2試合目 / ### 試合結果 / 2024年11月2日 横浜 / YOKOHAMA DeNA BAYSTARS 0 - 0 Fukuoka SoftBank Hawks / YOKOHAMA DeNA BAYSTARSとFukuoka SoftBank Hawksは0-0で引き分けました。 /  / ### 得点経過 / ・得点経過なし（0-0） /  / ### 主な投手 / ・投手成績は確認できませんでした。 /  / ### 主な打者 / ・打撃成績は確認できませんでした。 /  / ### 主な得点シーン / ・主な得点シーンは確認できませんでした。 /  / 安打: YOKOHAMA DeNA BAYSTARS 0 / Fukuoka SoftBank Hawks 0 / 失策: YOKOHAMA DeNA BAYSTARS 0 / Fukuoka SoftBank Hawks 0 / ## 3試合目 / ### 試合結果 / 2024年10月31日 みずほPayPayドーム / 横浜DeNAベイスターズ DeNA 7 - 0 福岡ソフトバンクホークス ソフトバンク / 横浜DeNAベイスターズ DeNAが福岡ソフトバンクホークス ソフトバンクに7-0で勝利しました。 /  / ### 得点経過 / ・3回表 横浜DeNAベイスターズ DeNA1点（1-0） / ・4回表 横浜DeNAベイスターズ DeNA3点（4-0） / ・9回表 横浜DeNAベイスターズ DeNA3点（7-0） /  / ### 主な投手 / ・投手成績は確認できませんでした。 /  / ### 主な打者 / ・打撃成績は確認できませんでした。 /  / ### 主な得点シーン / ・3回表 DeNA 筒香: センター前タイムリーヒット（打点1） / ・4回表 DeNA 牧: レフト3ランホームラン（打点3） / ・9回表 DeNA 桑原: デッドボール（打点1） / ・9回表 DeNA 梶原: 左中間タイムリーツーベース（打点2） /  / 安打: 横浜DeNAベイスターズ DeNA 13 / 福岡ソフトバンクホークス ソフトバンク 4 / 失策: 横浜DeNAベイスターズ DeNA 0 / 福岡ソフトバンクホークス ソフトバンク 0 / ## 4試合目 / ### 試合結果 / 2024年10月30日 みずほPayPayドーム / 横浜DeNAベイスターズ DeNA 5 - 0 福岡ソフトバンクホークス ソフトバンク / 横浜DeNAベイスターズ DeNAが福岡ソフトバンクホークス ソフトバンクに5-0で勝利しました。 /  / ### 得点経過 / ・4回表 横浜DeNAベイスターズ DeNA1点（1-0） / ・7回表 横浜DeNAベイスターズ DeNA4点（5-0） /  / ### 主な投手 / ・投手成績は確認できませんでした。 /  / ### 主な打者 / ・打撃成績は確認できませんでした。 /  / ### 主な得点シーン / ・4回表 DeNA オースティン: ライトソロホームラン（打点1） / ・7回表 DeNA 宮﨑: レフトソロホームラン（打点1） / ・7回表 DeNA 桑原: レフトオーバータイムリーツーベース（打点2） / ・7回表 DeNA オースティン: レフト前タイムリーヒット（打点1） /  / 安打: 横浜DeNAベイスターズ DeNA 11 / 福岡ソフトバンクホークス ソフトバンク 5 / 失策: 横浜DeNAベイスターズ DeNA 0 / 福岡ソフトバンクホークス ソフトバンク 0 / ## 5試合目 / ### 試合結果 / 2024年10月29日 みずほPayPayドーム / 横浜DeNAベイスターズ DeNA 4 - 1 福岡ソフトバンクホークス ソフトバンク / 横浜DeNAベイスターズ DeNAが福岡ソフトバンクホークス ソフトバンクに4-1で勝利しました。 /  / ### 得点経過 / ・1回表 横浜DeNAベイスターズ DeNA1点（1-0） / ・1回裏 福岡ソフトバンクホークス ソフトバンク1点（1-1） / ・5回表 横浜DeNAベイスターズ DeNA2点（3-1） / ・8回表 横浜DeNAベイスターズ DeNA1点（4-1） /  / ### 主な投手 / ・投手成績は確認できませんでした。 /  / ### 主な打者 / ・打撃成績は確認できませんでした。 /  / ### 主な得点シーン / ・1回表 DeNA 牧: ショートゴロ（打点1） / ・1回裏 ソフトバンク 近藤: 左中間タイムリーツーベース（打点1） / ・5回表 DeNA 桑原: 左中間ソロホームラン（打点1） / ・5回表 DeNA 筒香: ライト犠牲フライ（打点1） / ・8回表 DeNA 戸柱: 右中間タイムリーツーベース（打点1） /  / 安打: 横浜DeNAベイスターズ DeNA 6 / 福岡ソフトバンクホークス ソフトバンク 10 / 失策: 横浜DeNAベイスターズ DeNA 0 / 福岡ソフトバンクホークス ソフトバンク 0 /  / ほか15件は省略しています。
+- 本番回答: 該当する試合は20件です。 /  / ## 1試合目 / **この試合は横浜DeNAベイスターズ DeNAが主導権を握ったワンサイドゲームでした。** / 横浜DeNAベイスターズ DeNAが2回裏に先制し、そこから試合が動きました。 / 2回裏にはDeNAの筒香がセンターソロホームラン（打点1）を記録しました。 /  / ### 試合結果 / 2024年11月3日 横浜 / 福岡ソフトバンクホークス ソフトバンク 2 - 11 横浜DeNAベイスターズ DeNA / 横浜DeNAベイスターズ DeNAが福岡ソフトバンクホークス ソフトバンクに11-2で勝利しました。 /  / ### 得点経過 / ・2回裏 横浜DeNAベイスターズ DeNA3点（0-3） / ・3回裏 横浜DeNAベイスターズ DeNA1点（0-4） / ・4回表 福岡ソフトバンクホークス ソフトバンク2点（2-4） / ・5回裏 横浜DeNAベイスターズ DeNA7点（2-11） /  / ### 主な投手 / ・横浜DeNAベイスターズ 大貫 /   4回 / 56球 / 3奪三振 / 失点2 / 自責2 /  / ### 主な打者 / ・横浜DeNAベイスターズ 筒香 /   5打数2安打 / 4打点 / 2得点 / ・横浜DeNAベイスターズ 桑原 /   4打数3安打 / 3打点 / 1得点 / ・横浜DeNAベイスターズ 梶原 /   5打数1安打 / 1打点 / 1得点 / ・横浜DeNAベイスターズ 宮﨑 /   4打数1安打 / 1打点 / ・横浜DeNAベイスターズ 森敬 /   2打数1安打 / 1打点 / 2得点 / ・横浜DeNAベイスターズ オースティン /   3打数0安打 / 1打点 / 1得点 /  / ### 主な得点シーン / ・2回裏 DeNA 筒香: センターソロホームラン（打点1） / ・2回裏 DeNA 桑原: レフト前タイムリーヒット（打点2） / ・3回裏 DeNA 森敬: フォアボール（打点1） / ・4回表 ソフトバンク 柳田: センター2ランホームラン（打点2） / ・5回裏 DeNA 桑原: フォアボール（打点1） / ・5回裏 DeNA 梶原: センター前タイムリーヒット（打点1） / ・5回裏 DeNA オースティン: デッドボール（打点1） / ・5回裏 DeNA 筒香: 左中間タイムリーツーベース（打点3） / ・5回裏 DeNA 宮﨑: 左中間タイムリーツーベース（打点1） /  / 安打: 福岡ソフトバンクホークス ソフトバンク 6 / 横浜DeNAベイスターズ DeNA 13 / 失策: 福岡ソフトバンクホークス ソフトバンク 1 / 横浜DeNAベイスターズ DeNA 0 / ## 2試合目 / **この試合は両軍の投手が試合を作った投手戦でした。** / 得点は入らず、最後まで0-0のまま進みました。 /  / ### 試合結果 / 2024年11月2日 横浜 / YOKOHAMA DeNA BAYSTARS 0 - 0 Fukuoka SoftBank Hawks / YOKOHAMA DeNA BAYSTARSとFukuoka SoftBank Hawksは0-0で引き分けました。 /  / ### 得点経過 / ・得点経過なし（0-0） /  / ### 主な投手 / ・投手成績は確認できませんでした。 /  / ### 主な打者 / ・打撃成績は確認できませんでした。 /  / ### 主な得点シーン / ・主な得点シーンは確認できませんでした。 /  / 安打: YOKOHAMA DeNA BAYSTARS 0 / Fukuoka SoftBank Hawks 0 / 失策: YOKOHAMA DeNA BAYSTARS 0 / Fukuoka SoftBank Hawks 0 / ## 3試合目 / **この試合は横浜DeNAベイスターズ DeNAが主導権を握ったワンサイドゲームでした。** / 横浜DeNAベイスターズ DeNAが3回表に先制し、そこから試合が動きました。 / 4回表にはDeNAの牧がレフト3ランホームラン（打点3）を記録しました。 /  / ### 試合結果 / 2024年10月31日 みずほPayPayドーム / 横浜DeNAベイスターズ DeNA 7 - 0 福岡ソフトバンクホークス ソフトバンク / 横浜DeNAベイスターズ DeNAが福岡ソフトバンクホークス ソフトバンクに7-0で勝利しました。 /  / ### 得点経過 / ・3回表 横浜DeNAベイスターズ DeNA1点（1-0） / ・4回表 横浜DeNAベイスターズ DeNA3点（4-0） / ・9回表 横浜DeNAベイスターズ DeNA3点（7-0） /  / ### 主な投手 / ・投手成績は確認できませんでした。 /  / ### 主な打者 / ・打撃成績は確認できませんでした。 /  / ### 主な得点シーン / ・3回表 DeNA 筒香: センター前タイムリーヒット（打点1） / ・4回表 DeNA 牧: レフト3ランホームラン（打点3） / ・9回表 DeNA 桑原: デッドボール（打点1） / ・9回表 DeNA 梶原: 左中間タイムリーツーベース（打点2） /  / 安打: 横浜DeNAベイスターズ DeNA 13 / 福岡ソフトバンクホークス ソフトバンク 4 / 失策: 横浜DeNAベイスターズ DeNA 0 / 福岡ソフトバンクホークス ソフトバンク 0 / ## 4試合目 / **この試合は横浜DeNAベイスターズ DeNAが主導権を握ったワンサイドゲームでした。** / 横浜DeNAベイスターズ DeNAが4回表に先制し、そこから試合が動きました。 / 4回表にはDeNAのオースティンがライトソロホームラン（打点1）を記録しました。 /  / ### 試合結果 / 2024年10月30日 みずほPayPayドーム / 横浜DeNAベイスターズ DeNA 5 - 0 福岡ソフトバンクホークス ソフトバンク / 横浜DeNAベイスターズ DeNAが福岡ソフトバンクホークス ソフトバンクに5-0で勝利しました。 /  / ### 得点経過 / ・4回表 横浜DeNAベイスターズ DeNA1点（1-0） / ・7回表 横浜DeNAベイスターズ DeNA4点（5-0） /  / ### 主な投手 / ・投手成績は確認できませんでした。 /  / ### 主な打者 / ・打撃成績は確認できませんでした。 /  / ### 主な得点シーン / ・4回表 DeNA オースティン: ライトソロホームラン（打点1） / ・7回表 DeNA 宮﨑: レフトソロホームラン（打点1） / ・7回表 DeNA 桑原: レフトオーバータイムリーツーベース（打点2） / ・7回表 DeNA オースティン: レフト前タイムリーヒット（打点1） /  / 安打: 横浜DeNAベイスターズ DeNA 11 / 福岡ソフトバンクホークス ソフトバンク 5 / 失策: 横浜DeNAベイスターズ DeNA 0 / 福岡ソフトバンクホークス ソフトバンク 0 / ## 5試合目 / **この試合は横浜DeNAベイスターズ DeNAが3点差で勝ち切った試合でした。** / 横浜DeNAベイスターズ DeNAが1回表に先制し、そこから試合が動きました。 / 5回表にはDeNAの桑原が左中間ソロホームラン（打点1）を記録しました。 /  / ### 試合結果 / 2024年10月29日 みずほPayPayドーム / 横浜DeNAベイスターズ DeNA 4 - 1 福岡ソフトバンクホークス ソフトバンク / 横浜DeNAベイスターズ DeNAが福岡ソフトバンクホークス ソフトバンクに4-1で勝利しました。 /  / ### 得点経過 / ・1回表 横浜DeNAベイスターズ DeNA1点（1-0） / ・1回裏 福岡ソフトバンクホークス ソフトバンク1点（1-1） / ・5回表 横浜DeNAベイスターズ DeNA2点（3-1） / ・8回表 横浜DeNAベイスターズ DeNA1点（4-1） /  / ### 主な投手 / ・投手成績は確認できませんでした。 /  / ### 主な打者 / ・打撃成績は確認できませんでした。 /  / ### 主な得点シーン / ・1回表 DeNA 牧: ショートゴロ（打点1） / ・1回裏 ソフトバンク 近藤: 左中間タイムリーツーベース（打点1） / ・5回表 DeNA 桑原: 左中間ソロホームラン（打点1） / ・5回表 DeNA 筒香: ライト犠牲フライ（打点1） / ・8回表 DeNA 戸柱: 右中間タイムリーツーベース（打点1） /  / 安打: 横浜DeNAベイスターズ DeNA 6 / 福岡ソフトバンクホークス ソフトバンク 10 / 失策: 横浜DeNAベイスターズ DeNA 0 / 福岡ソフトバンクホークス ソフトバンク 0 /  / ほか15件は省略しています。
 - structured intent: `game_detail`
 - question_intent: `game_detail`
 - answer_mode: `direct_answer`
-- repositories: `["searchGameDetails","searchEvents","searchBattingLines","searchPitchingLines","listSourceSnapshotsByGameIds"]`
+- repositories: `searchGameDetails, searchEvents, searchBattingLines, searchPitchingLines, listSourceSnapshotsByGameIds`
 - player_id: `null`
 - http_status: 200
 - pass/fail: Pass
@@ -1095,7 +1099,7 @@
 - structured intent: `search_pitching`
 - question_intent: `search_pitching`
 - answer_mode: `direct_answer`
-- repositories: `["searchPitchingLines","listSourceSnapshotsByGameIds"]`
+- repositories: `searchPitchingLines, listSourceSnapshotsByGameIds`
 - player_id: `41045137`
 - http_status: 200
 - pass/fail: Pass
@@ -1108,7 +1112,7 @@
 - structured intent: `search_pitching`
 - question_intent: `search_pitching`
 - answer_mode: `direct_answer`
-- repositories: `["searchPitchingLines","listSourceSnapshotsByGameIds"]`
+- repositories: `searchPitchingLines, listSourceSnapshotsByGameIds`
 - player_id: `41045137`
 - http_status: 200
 - pass/fail: Pass
@@ -1121,7 +1125,7 @@
 - structured intent: `search_events`
 - question_intent: `search_events`
 - answer_mode: `direct_answer`
-- repositories: `["searchEvents","listSourceSnapshotsByGameIds"]`
+- repositories: `searchEvents, listSourceSnapshotsByGameIds`
 - player_id: `41045137`
 - http_status: 200
 - pass/fail: Pass
@@ -1134,7 +1138,7 @@
 - structured intent: `search_games`
 - question_intent: `search_games`
 - answer_mode: `contextual_answer`
-- repositories: `["searchGames","listSourceSnapshotsByGameIds"]`
+- repositories: `searchGames, listSourceSnapshotsByGameIds`
 - player_id: `null`
 - http_status: 200
 - pass/fail: Pass
@@ -1147,7 +1151,7 @@
 - structured intent: `search_pitching`
 - question_intent: `search_pitching`
 - answer_mode: `direct_answer`
-- repositories: `["searchPitchingLines","listSourceSnapshotsByGameIds"]`
+- repositories: `searchPitchingLines, listSourceSnapshotsByGameIds`
 - player_id: `null`
 - http_status: 200
 - pass/fail: Pass
@@ -1160,7 +1164,7 @@
 - structured intent: `search_events`
 - question_intent: `search_events`
 - answer_mode: `direct_answer`
-- repositories: `["searchEvents","listSourceSnapshotsByGameIds"]`
+- repositories: `searchEvents, listSourceSnapshotsByGameIds`
 - player_id: `null`
 - http_status: 200
 - pass/fail: Pass
@@ -1173,7 +1177,7 @@
 - structured intent: `search_events`
 - question_intent: `search_events`
 - answer_mode: `direct_answer`
-- repositories: `["searchEvents","listSourceSnapshotsByGameIds"]`
+- repositories: `searchEvents, listSourceSnapshotsByGameIds`
 - player_id: `null`
 - http_status: 200
 - pass/fail: Pass
@@ -1186,7 +1190,7 @@
 - structured intent: `search_events`
 - question_intent: `search_events`
 - answer_mode: `direct_answer`
-- repositories: `["searchEvents","listSourceSnapshotsByGameIds"]`
+- repositories: `searchEvents, listSourceSnapshotsByGameIds`
 - player_id: `null`
 - http_status: 200
 - pass/fail: Pass
@@ -1199,7 +1203,7 @@
 - structured intent: `search_events`
 - question_intent: `search_events`
 - answer_mode: `direct_answer`
-- repositories: `["searchEvents","listSourceSnapshotsByGameIds"]`
+- repositories: `searchEvents, listSourceSnapshotsByGameIds`
 - player_id: `null`
 - http_status: 200
 - pass/fail: Pass
@@ -1212,7 +1216,7 @@
 - structured intent: `search_events`
 - question_intent: `search_events`
 - answer_mode: `direct_answer`
-- repositories: `["searchEvents","listSourceSnapshotsByGameIds"]`
+- repositories: `searchEvents, listSourceSnapshotsByGameIds`
 - player_id: `null`
 - http_status: 200
 - pass/fail: Pass
@@ -1225,7 +1229,7 @@
 - structured intent: `search_events`
 - question_intent: `search_events`
 - answer_mode: `contextual_answer`
-- repositories: `["searchEvents","listSourceSnapshotsByGameIds"]`
+- repositories: `searchEvents, listSourceSnapshotsByGameIds`
 - player_id: `41045137`
 - http_status: 200
 - pass/fail: Pass
@@ -1238,7 +1242,7 @@
 - structured intent: `search_events`
 - question_intent: `search_events`
 - answer_mode: `reason_explanation`
-- repositories: `["searchEvents","listSourceSnapshotsByGameIds"]`
+- repositories: `searchEvents, listSourceSnapshotsByGameIds`
 - player_id: `41045137`
 - http_status: 200
 - pass/fail: Pass
@@ -1251,7 +1255,7 @@
 - structured intent: `search_events`
 - question_intent: `search_events`
 - answer_mode: `summary_explanation`
-- repositories: `["searchEvents","listSourceSnapshotsByGameIds"]`
+- repositories: `searchEvents, listSourceSnapshotsByGameIds`
 - player_id: `41045137`
 - http_status: 200
 - pass/fail: Pass
@@ -1264,7 +1268,7 @@
 - structured intent: `search_batting`
 - question_intent: `search_batting`
 - answer_mode: `correction_explanation`
-- repositories: `["searchBattingLines","listSourceSnapshotsByGameIds"]`
+- repositories: `searchBattingLines, listSourceSnapshotsByGameIds`
 - player_id: `13315153`
 - http_status: 200
 - pass/fail: Pass
@@ -1277,7 +1281,7 @@
 - structured intent: `search_batting`
 - question_intent: `search_batting`
 - answer_mode: `evaluation_explanation`
-- repositories: `["searchBattingLines","listSourceSnapshotsByGameIds"]`
+- repositories: `searchBattingLines, listSourceSnapshotsByGameIds`
 - player_id: `13315153`
 - http_status: 200
 - pass/fail: Pass
@@ -1290,7 +1294,7 @@
 - structured intent: `search_events`
 - question_intent: `search_events`
 - answer_mode: `recheck_explanation`
-- repositories: `["searchEvents","listSourceSnapshotsByGameIds"]`
+- repositories: `searchEvents, listSourceSnapshotsByGameIds`
 - player_id: `41045137`
 - http_status: 200
 - pass/fail: Pass
@@ -1303,7 +1307,7 @@
 - structured intent: `search_pitching`
 - question_intent: `search_pitching`
 - answer_mode: `comparison_explanation`
-- repositories: `["searchPitchingLines","listSourceSnapshotsByGameIds"]`
+- repositories: `searchPitchingLines, listSourceSnapshotsByGameIds`
 - player_id: `41045137`
 - http_status: 200
 - pass/fail: Pass
@@ -1316,7 +1320,7 @@
 - structured intent: `search_pitching`
 - question_intent: `search_pitching`
 - answer_mode: `direct_answer`
-- repositories: `["searchPitchingLines","listSourceSnapshotsByGameIds"]`
+- repositories: `searchPitchingLines, listSourceSnapshotsByGameIds`
 - player_id: `41045137`
 - http_status: 200
 - pass/fail: Pass
@@ -1329,7 +1333,7 @@
 - structured intent: `search_events`
 - question_intent: `search_events`
 - answer_mode: `contextual_answer`
-- repositories: `["searchEvents","listSourceSnapshotsByGameIds"]`
+- repositories: `searchEvents, listSourceSnapshotsByGameIds`
 - player_id: `41045137`
 - http_status: 200
 - pass/fail: Pass
@@ -1338,12 +1342,12 @@
 ### Q-100: （直前にQ-83の回答がある状態で）これやばくない？
 
 - QA正: たしかにやばい試合です。藤浪が投手として無失点で踏ん張り、打者としても2ランを放って勝ち切っています。2021年4月16日の阪神は、投打の両面で流れを持っていった試合でした。
-- 本番回答: イベントです。 / 対象: 50件 / データを見る限り、評価はこの成績面の根拠に限って述べられます。ニュース、ケガ、契約、首脳陣の意図は推測せず、確認できる数字から判断すると上の内容が現時点の見立てです。
+- 本番回答: 条件に一致するイベントは見つかりませんでした。 / データ上の根拠が足りないため、評価は保留です。ニュースやコンディションは推測せず、確認できる成績が増えた段階で見直すのが妥当です。
 - structured intent: `search_events`
 - question_intent: `search_events`
 - answer_mode: `evaluation_explanation`
-- repositories: `["searchEvents","listSourceSnapshotsByGameIds"]`
-- player_id: `null`
+- repositories: `searchEvents, listSourceSnapshotsByGameIds`
+- player_id: `41045137`
 - http_status: 200
 - pass/fail: Pass
 - fail理由: なし
@@ -1351,11 +1355,11 @@
 ### Q-101: （直前にQ-84の回答がある状態で）それってどういう意味？
 
 - QA正: 2021年4月16日の阪神対ヤクルトでは、藤浪が投手として無失点で抑え、打者としても2ランを打って勝利に直結させた、という意味です。
-- 本番回答: ### 試合結果 / 2016年3月25日 Kobo Sta. Miyagi / 福岡ソフトバンクホークス 0 - 0 東北楽天ゴールデンイーグルス / 福岡ソフトバンクホークスと東北楽天ゴールデンイーグルスは0-0で引き分けました。 /  / ### 得点経過 / ・得点経過なし（0-0） /  / ### 主な投手 / ・福岡ソフトバンクホークス 攝津 /   3回 / 80球 / 0奪三振 / 失点6 / 自責5 /  / ### 主な打者 / ・福岡ソフトバンクホークス 福田 /   4打数2安打 / 1打点 / 1得点 / ・福岡ソフトバンクホークス 松田 /   4打数1安打 / 1打点 / ・福岡ソフトバンクホークス 内川 /   4打数1安打 / 1打点 / ・福岡ソフトバンクホークス 今宮 /   3打数1安打 / ・福岡ソフトバンクホークス 斐紹 /   3打数1安打 /  / ### 主な得点シーン / ・1回表 ソフトバンク 内川: レフト前タイムリーヒット（打点1） / ・1回表 ソフトバンク 松田: セカンドタイムリーヒット（打点1） / ・2回表 ソフトバンク 福田: ライト前タイムリーヒット（打点1） / ・2回裏 楽天 藤田: レフト前タイムリーヒット（打点2） / ・2回裏 楽天 岡島: レフト前タイムリーヒット（打点2） / ・3回裏 楽天 嶋: 左中間タイムリーツーベース（打点1） / ・5回裏 楽天 岡島: レフト前タイムリーヒット（打点1） /  / 安打: 福岡ソフトバンクホークス 0 / 東北楽天ゴールデンイーグルス 0 / 失策: 福岡ソフトバンクホークス 0 / 東北楽天ゴールデンイーグルス 0
+- 本番回答: **この試合は両軍の投手が試合を作った投手戦でした。** / 得点は入らず、最後まで0-0のまま進みました。 / 1回表にはソフトバンクの内川がレフト前タイムリーヒット（打点1）を記録しました。 /  / ### 試合結果 / 2016年3月25日 Kobo Sta. Miyagi / 福岡ソフトバンクホークス 0 - 0 東北楽天ゴールデンイーグルス / 福岡ソフトバンクホークスと東北楽天ゴールデンイーグルスは0-0で引き分けました。 /  / ### 得点経過 / ・得点経過なし（0-0） /  / ### 主な投手 / ・福岡ソフトバンクホークス 攝津 /   3回 / 80球 / 0奪三振 / 失点6 / 自責5 /  / ### 主な打者 / ・福岡ソフトバンクホークス 福田 /   4打数2安打 / 1打点 / 1得点 / ・福岡ソフトバンクホークス 松田 /   4打数1安打 / 1打点 / ・福岡ソフトバンクホークス 内川 /   4打数1安打 / 1打点 / ・福岡ソフトバンクホークス 今宮 /   3打数1安打 / ・福岡ソフトバンクホークス 斐紹 /   3打数1安打 /  / ### 主な得点シーン / ・1回表 ソフトバンク 内川: レフト前タイムリーヒット（打点1） / ・1回表 ソフトバンク 松田: セカンドタイムリーヒット（打点1） / ・2回表 ソフトバンク 福田: ライト前タイムリーヒット（打点1） / ・2回裏 楽天 藤田: レフト前タイムリーヒット（打点2） / ・2回裏 楽天 岡島: レフト前タイムリーヒット（打点2） / ・3回裏 楽天 嶋: 左中間タイムリーツーベース（打点1） / ・5回裏 楽天 岡島: レフト前タイムリーヒット（打点1） /  / 安打: 福岡ソフトバンクホークス 0 / 東北楽天ゴールデンイーグルス 0 / 失策: 福岡ソフトバンクホークス 0 / 東北楽天ゴールデンイーグルス 0
 - structured intent: `game_detail`
 - question_intent: `game_detail`
 - answer_mode: `detail_explanation`
-- repositories: `["searchGameDetails","searchEvents","searchBattingLines","searchPitchingLines","listSourceSnapshotsByGameIds"]`
+- repositories: `searchGameDetails, searchEvents, searchBattingLines, searchPitchingLines, listSourceSnapshotsByGameIds`
 - player_id: `null`
 - http_status: 200
 - pass/fail: Pass
@@ -1368,7 +1372,7 @@
 - structured intent: `search_pitching`
 - question_intent: `search_pitching`
 - answer_mode: `clarification_request`
-- repositories: `["searchPitchingLines","listSourceSnapshotsByGameIds"]`
+- repositories: `searchPitchingLines, listSourceSnapshotsByGameIds`
 - player_id: `41045137`
 - http_status: 200
 - pass/fail: Pass
@@ -1381,7 +1385,7 @@
 - structured intent: `aggregate_batting`
 - question_intent: `aggregate_batting`
 - answer_mode: `correction_explanation`
-- repositories: `["aggregateBattingLines","listSourceSnapshotsByGameIds"]`
+- repositories: `aggregateBattingLines, listSourceSnapshotsByGameIds`
 - player_id: `null`
 - http_status: 200
 - pass/fail: Pass
@@ -1390,11 +1394,11 @@
 ### Q-104: （直前にQ-23の回答がある状態で）なんで負けたん？
 
 - QA正: 広島が4回表と6回に得点し、阪神は1安打に抑えられたので、攻撃面で差がついたためです。
-- 本番回答: ### 試合結果 / 2026年5月15日 甲子園 / 広島 2 - 0 阪神 / 広島が阪神に2-0で勝利しました。 /  / ### 得点経過 / ・4回表 広島1点（1-0） / ・6回表 広島1点（2-0） /  / ### 主な投手 / ・投手成績は確認できませんでした。 /  / ### 主な打者 / ・打撃成績は確認できませんでした。 /  / ### 主な得点シーン / ・主な得点シーンは確認できませんでした。 /  / 安打: 広島 8 / 阪神 1 / 失策: 広島 1 / 阪神 1
+- 本番回答: **この試合は両軍の投手が試合を作った投手戦でした。** / 広島が4回表に先制し、そこから試合が動きました。 /  / ### 試合結果 / 2026年5月15日 甲子園 / 広島 2 - 0 阪神 / 広島が阪神に2-0で勝利しました。 /  / ### 得点経過 / ・4回表 広島1点（1-0） / ・6回表 広島1点（2-0） /  / ### 主な投手 / ・投手成績は確認できませんでした。 /  / ### 主な打者 / ・打撃成績は確認できませんでした。 /  / ### 主な得点シーン / ・主な得点シーンは確認できませんでした。 /  / 安打: 広島 8 / 阪神 1 / 失策: 広島 1 / 阪神 1
 - structured intent: `game_detail`
 - question_intent: `game_detail`
 - answer_mode: `reason_explanation`
-- repositories: `["searchGameDetails","searchEvents","searchBattingLines","searchPitchingLines","listSourceSnapshotsByGameIds"]`
+- repositories: `searchGameDetails, searchEvents, searchBattingLines, searchPitchingLines, listSourceSnapshotsByGameIds`
 - player_id: `null`
 - http_status: 200
 - pass/fail: Pass
@@ -1407,7 +1411,7 @@
 - structured intent: `search_pitching`
 - question_intent: `search_pitching`
 - answer_mode: `evaluation_explanation`
-- repositories: `["searchPitchingLines","listSourceSnapshotsByGameIds"]`
+- repositories: `searchPitchingLines, listSourceSnapshotsByGameIds`
 - player_id: `41045137`
 - http_status: 200
 - pass/fail: Pass
@@ -1416,11 +1420,11 @@
 ### Q-106: （直前にQ-83の回答がある状態で）なんで勝てたん？
 
 - QA正: 藤浪が5回2/3を無失点に抑え、さらに自ら2ランを打って2-0にしたので、投打がかみ合って勝てた試合です。
-- 本番回答: ## 1試合目 / ### 試合結果 / 2026年7月18日 ZOZO Marine / 福岡ソフトバンクホークス ソフトバンク 5 - 4 千葉ロッテマリーンズ ロッテ / 福岡ソフトバンクホークス ソフトバンクが千葉ロッテマリーンズ ロッテに5-4で勝利しました。 /  / ### 得点経過 / ・1回裏 千葉ロッテマリーンズ ロッテ1点（0-1） / ・3回表 福岡ソフトバンクホークス ソフトバンク3点（3-1） / ・4回表 福岡ソフトバンクホークス ソフトバンク2点（5-1） / ・5回裏 千葉ロッテマリーンズ ロッテ2点（5-3） / ・9回裏 千葉ロッテマリーンズ ロッテ1点（5-4） /  / ### 主な投手 / ・福岡ソフトバンクホークス 大津 /   5回 / 98球 / 4奪三振 / 失点3 / 自責3 / ・千葉ロッテマリーンズ 廣池 /   4回 / 86球 / 1奪三振 / 失点5 / 自責5 /  / ### 主な打者 / ・千葉ロッテマリーンズ 安田 /   5打数2安打 / 3打点 / ・福岡ソフトバンクホークス 栗原 /   2打数1安打 / 2打点 / ・福岡ソフトバンクホークス 近藤 /   5打数2安打 / 1打点 / 2得点 / ・千葉ロッテマリーンズ 山口 /   4打数2安打 / 1打点 / ・福岡ソフトバンクホークス 牧原大 /   4打数2安打 / 1打点 / ・千葉ロッテマリーンズ 西川 /   5打数2安打 / 2得点 /  / ### 主な得点シーン / ・1回裏 ロッテ 安田: センター前タイムリーヒット（打点1） / ・3回表 ソフトバンク 近藤: センター前タイムリーヒット（打点1） / ・3回表 ソフトバンク 牧原大: レフト前タイムリーヒット（打点1） / ・4回表 ソフトバンク 栗原: 左中間タイムリーツーベース（打点2） / ・5回裏 ロッテ 安田: ライト前タイムリーヒット（打点2） / ・9回裏 ロッテ 山口: レフト前タイムリーヒット（打点1） /  / 安打: 福岡ソフトバンクホークス ソフトバンク 8 / 千葉ロッテマリーンズ ロッテ 10 / 失策: 福岡ソフトバンクホークス ソフトバンク 0 / 千葉ロッテマリーンズ ロッテ 0 / ## 2試合目 / ### 試合結果 / 2026年7月18日 東京ドーム / 中日ドラゴンズ 中日 5 - 1 読売ジャイアンツ 巨人 / 中日ドラゴンズ 中日が読売ジャイアンツ 巨人に5-1で勝利しました。 /  / ### 得点経過 / ・4回表 中日ドラゴンズ 中日2点（2-0） / ・6回表 中日ドラゴンズ 中日1点（3-0） / ・7回裏 読売ジャイアンツ 巨人1点（3-1） / ・9回表 中日ドラゴンズ 中日2点（5-1） /  / ### 主な投手 / ・投手成績は確認できませんでした。 /  / ### 主な打者 / ・打撃成績は確認できませんでした。 /  / ### 主な得点シーン / ・4回表 中日 サノー: レフト2ランホームラン（打点2） / ・6回表 中日 細川: レフトソロホームラン（打点1） / ・7回裏 巨人 ダルベック: センター前タイムリーヒット（打点1） / ・9回表 中日 木下: ライトオーバータイムリーツーベース（打点1） / ・9回表 中日 福永: レフト前タイムリーヒット（打点1） /  / 安打: 中日ドラゴンズ 中日 9 / 読売ジャイアンツ 巨人 13 / 失策: 中日ドラゴンズ 中日 0 / 読売ジャイアンツ 巨人 0 / ## 3試合目 / ### 試合結果 / 2026年7月18日 Rakuten Mobile / 埼玉西武ライオンズ 西武 2 - 3 東北楽天ゴールデンイーグルス 楽天 / 東北楽天ゴールデンイーグルス 楽天が埼玉西武ライオンズ 西武に3-2で勝利しました。 /  / ### 得点経過 / ・2回裏 東北楽天ゴールデンイーグルス 楽天1点（0-1） / ・3回表 埼玉西武ライオンズ 西武1点（1-1） / ・5回裏 東北楽天ゴールデンイーグルス 楽天1点（1-2） / ・6回表 埼玉西武ライオンズ 西武1点（2-2） / ・7回裏 東北楽天ゴールデンイーグルス 楽天1点（2-3） /  / ### 主な投手 / ・投手成績は確認できませんでした。 /  / ### 主な打者 / ・打撃成績は確認できませんでした。 /  / ### 主な得点シーン / ・2回裏 楽天 マッカスカー: レフトソロホームラン（打点1） / ・3回表 西武 蛭間: センター前タイムリーヒット（打点1） / ・5回裏 楽天 太田: ライトソロホームラン（打点1） / ・6回表 西武 石井: ライト前タイムリーヒット（打点1） / ・7回裏 楽天 繁永: レフト前タイムリーヒット（打点1） /  / 安打: 埼玉西武ライオンズ 西武 8 / 東北楽天ゴールデンイーグルス 楽天 6 / 失策: 埼玉西武ライオンズ 西武 0 / 東北楽天ゴールデンイーグルス 楽天 0 / ## 4試合目 / ### 試合結果 / 2026年7月18日 横浜 / 東京ヤクルトスワローズ ヤクルト 0 - 8 横浜DeNAベイスターズ DeNA / 横浜DeNAベイスターズ DeNAが東京ヤクルトスワローズ ヤクルトに8-0で勝利しました。 /  / ### 得点経過 / ・4回裏 横浜DeNAベイスターズ DeNA3点（0-3） / ・5回裏 横浜DeNAベイスターズ DeNA3点（0-6） / ・7回裏 横浜DeNAベイスターズ DeNA2点（0-8） /  / ### 主な投手 / ・投手成績は確認できませんでした。 /  / ### 主な打者 / ・打撃成績は確認できませんでした。 /  / ### 主な得点シーン / ・4回裏 DeNA 筒香: レフト前タイムリーヒット（打点1） / ・4回裏 DeNA 林: ライトオーバータイムリーツーベース（打点2） / ・5回裏 DeNA 佐野: 左中間タイムリーツーベース（打点2） / ・5回裏 DeNA エンカーナシオン: ライト前タイムリーヒット（打点1） / ・7回裏 DeNA 筒香: 右中間2ランホームラン（打点2） /  / 安打: 東京ヤクルトスワローズ ヤクルト 4 / 横浜DeNAベイスターズ DeNA 11 / 失策: 東京ヤクルトスワローズ ヤクルト 2 / 横浜DeNAベイスターズ DeNA 0 / ## 5試合目 / ### 試合結果 / 2026年7月18日 Mazda Stadium / 阪神タイガース 阪神 1 - 2 広島東洋カープ 広島 / 広島東洋カープ 広島が阪神タイガース 阪神に2-1で勝利しました。 /  / ### 得点経過 / ・5回表 阪神タイガース 阪神1点（1-0） / ・5回裏 広島東洋カープ 広島1点（1-1） / ・6回裏 広島東洋カープ 広島1点（1-2） /  / ### 主な投手 / ・投手成績は確認できませんでした。 /  / ### 主な打者 / ・打撃成績は確認できませんでした。 /  / ### 主な得点シーン / ・5回表 阪神 髙寺: ライトオーバータイムリーツーベース（打点1） / ・5回裏 広島 菊池: ライト犠牲フライ（打点1） / ・6回裏 広島 坂倉: レフトソロホームラン（打点1） /  / 安打: 阪神タイガース 阪神 8 / 広島東洋カープ 広島 7 / 失策: 阪神タイガース 阪神 0 / 広島東洋カープ 広島 1 /  / ほか15件は省略しています。
+- 本番回答: ## 1試合目 / **この試合は福岡ソフトバンクホークス ソフトバンクが逆転し、終盤まで緊張感のある接戦でした。** / 福岡ソフトバンクホークス ソフトバンクは4回表に2点を取り、5-1として流れを引き寄せました。 / 1回裏にはロッテの安田がセンター前タイムリーヒット（打点1）を記録しました。 / 投手では福岡ソフトバンクホークスの大津が5回を投げ、4奪三振でした。 /  / ### 試合結果 / 2026年7月18日 ZOZO Marine / 福岡ソフトバンクホークス ソフトバンク 5 - 4 千葉ロッテマリーンズ ロッテ / 福岡ソフトバンクホークス ソフトバンクが千葉ロッテマリーンズ ロッテに5-4で勝利しました。 /  / ### 得点経過 / ・1回裏 千葉ロッテマリーンズ ロッテ1点（0-1） / ・3回表 福岡ソフトバンクホークス ソフトバンク3点（3-1） / ・4回表 福岡ソフトバンクホークス ソフトバンク2点（5-1） / ・5回裏 千葉ロッテマリーンズ ロッテ2点（5-3） / ・9回裏 千葉ロッテマリーンズ ロッテ1点（5-4） /  / ### 主な投手 / ・福岡ソフトバンクホークス 大津 /   5回 / 98球 / 4奪三振 / 失点3 / 自責3 / ・千葉ロッテマリーンズ 廣池 /   4回 / 86球 / 1奪三振 / 失点5 / 自責5 /  / ### 主な打者 / ・千葉ロッテマリーンズ 安田 /   5打数2安打 / 3打点 / ・福岡ソフトバンクホークス 栗原 /   2打数1安打 / 2打点 / ・福岡ソフトバンクホークス 近藤 /   5打数2安打 / 1打点 / 2得点 / ・千葉ロッテマリーンズ 山口 /   4打数2安打 / 1打点 / ・福岡ソフトバンクホークス 牧原大 /   4打数2安打 / 1打点 / ・千葉ロッテマリーンズ 西川 /   5打数2安打 / 2得点 /  / ### 主な得点シーン / ・1回裏 ロッテ 安田: センター前タイムリーヒット（打点1） / ・3回表 ソフトバンク 近藤: センター前タイムリーヒット（打点1） / ・3回表 ソフトバンク 牧原大: レフト前タイムリーヒット（打点1） / ・4回表 ソフトバンク 栗原: 左中間タイムリーツーベース（打点2） / ・5回裏 ロッテ 安田: ライト前タイムリーヒット（打点2） / ・9回裏 ロッテ 山口: レフト前タイムリーヒット（打点1） /  / 安打: 福岡ソフトバンクホークス ソフトバンク 8 / 千葉ロッテマリーンズ ロッテ 10 / 失策: 福岡ソフトバンクホークス ソフトバンク 0 / 千葉ロッテマリーンズ ロッテ 0 / ## 2試合目 / **この試合は中日ドラゴンズ 中日が4点差で勝ち切った試合でした。** / 中日ドラゴンズ 中日が4回表に先制し、そこから試合が動きました。 / 4回表には中日のサノーがレフト2ランホームラン（打点2）を記録しました。 /  / ### 試合結果 / 2026年7月18日 東京ドーム / 中日ドラゴンズ 中日 5 - 1 読売ジャイアンツ 巨人 / 中日ドラゴンズ 中日が読売ジャイアンツ 巨人に5-1で勝利しました。 /  / ### 得点経過 / ・4回表 中日ドラゴンズ 中日2点（2-0） / ・6回表 中日ドラゴンズ 中日1点（3-0） / ・7回裏 読売ジャイアンツ 巨人1点（3-1） / ・9回表 中日ドラゴンズ 中日2点（5-1） /  / ### 主な投手 / ・投手成績は確認できませんでした。 /  / ### 主な打者 / ・打撃成績は確認できませんでした。 /  / ### 主な得点シーン / ・4回表 中日 サノー: レフト2ランホームラン（打点2） / ・6回表 中日 細川: レフトソロホームラン（打点1） / ・7回裏 巨人 ダルベック: センター前タイムリーヒット（打点1） / ・9回表 中日 木下: ライトオーバータイムリーツーベース（打点1） / ・9回表 中日 福永: レフト前タイムリーヒット（打点1） /  / 安打: 中日ドラゴンズ 中日 9 / 読売ジャイアンツ 巨人 13 / 失策: 中日ドラゴンズ 中日 0 / 読売ジャイアンツ 巨人 0 / ## 3試合目 / **この試合は最後まで大きく離れない接戦でした。** / 東北楽天ゴールデンイーグルス 楽天が2回裏に先制し、そこから試合が動きました。 / 2回裏には楽天のマッカスカーがレフトソロホームラン（打点1）を記録しました。 /  / ### 試合結果 / 2026年7月18日 Rakuten Mobile / 埼玉西武ライオンズ 西武 2 - 3 東北楽天ゴールデンイーグルス 楽天 / 東北楽天ゴールデンイーグルス 楽天が埼玉西武ライオンズ 西武に3-2で勝利しました。 /  / ### 得点経過 / ・2回裏 東北楽天ゴールデンイーグルス 楽天1点（0-1） / ・3回表 埼玉西武ライオンズ 西武1点（1-1） / ・5回裏 東北楽天ゴールデンイーグルス 楽天1点（1-2） / ・6回表 埼玉西武ライオンズ 西武1点（2-2） / ・7回裏 東北楽天ゴールデンイーグルス 楽天1点（2-3） /  / ### 主な投手 / ・投手成績は確認できませんでした。 /  / ### 主な打者 / ・打撃成績は確認できませんでした。 /  / ### 主な得点シーン / ・2回裏 楽天 マッカスカー: レフトソロホームラン（打点1） / ・3回表 西武 蛭間: センター前タイムリーヒット（打点1） / ・5回裏 楽天 太田: ライトソロホームラン（打点1） / ・6回表 西武 石井: ライト前タイムリーヒット（打点1） / ・7回裏 楽天 繁永: レフト前タイムリーヒット（打点1） /  / 安打: 埼玉西武ライオンズ 西武 8 / 東北楽天ゴールデンイーグルス 楽天 6 / 失策: 埼玉西武ライオンズ 西武 0 / 東北楽天ゴールデンイーグルス 楽天 0 / ## 4試合目 / **この試合は横浜DeNAベイスターズ DeNAが主導権を握ったワンサイドゲームでした。** / 横浜DeNAベイスターズ DeNAが4回裏に先制し、そこから試合が動きました。 / 7回裏にはDeNAの筒香が右中間2ランホームラン（打点2）を記録しました。 /  / ### 試合結果 / 2026年7月18日 横浜 / 東京ヤクルトスワローズ ヤクルト 0 - 8 横浜DeNAベイスターズ DeNA / 横浜DeNAベイスターズ DeNAが東京ヤクルトスワローズ ヤクルトに8-0で勝利しました。 /  / ### 得点経過 / ・4回裏 横浜DeNAベイスターズ DeNA3点（0-3） / ・5回裏 横浜DeNAベイスターズ DeNA3点（0-6） / ・7回裏 横浜DeNAベイスターズ DeNA2点（0-8） /  / ### 主な投手 / ・投手成績は確認できませんでした。 /  / ### 主な打者 / ・打撃成績は確認できませんでした。 /  / ### 主な得点シーン / ・4回裏 DeNA 筒香: レフト前タイムリーヒット（打点1） / ・4回裏 DeNA 林: ライトオーバータイムリーツーベース（打点2） / ・5回裏 DeNA 佐野: 左中間タイムリーツーベース（打点2） / ・5回裏 DeNA エンカーナシオン: ライト前タイムリーヒット（打点1） / ・7回裏 DeNA 筒香: 右中間2ランホームラン（打点2） /  / 安打: 東京ヤクルトスワローズ ヤクルト 4 / 横浜DeNAベイスターズ DeNA 11 / 失策: 東京ヤクルトスワローズ ヤクルト 2 / 横浜DeNAベイスターズ DeNA 0 / ## 5試合目 / **この試合は広島東洋カープ 広島が逆転し、終盤まで緊張感のある接戦でした。** / 広島東洋カープ 広島は6回裏に1点を取り、1-2として流れを引き寄せました。 / 6回裏には広島の坂倉がレフトソロホームラン（打点1）を記録しました。 /  / ### 試合結果 / 2026年7月18日 Mazda Stadium / 阪神タイガース 阪神 1 - 2 広島東洋カープ 広島 / 広島東洋カープ 広島が阪神タイガース 阪神に2-1で勝利しました。 /  / ### 得点経過 / ・5回表 阪神タイガース 阪神1点（1-0） / ・5回裏 広島東洋カープ 広島1点（1-1） / ・6回裏 広島東洋カープ 広島1点（1-2） /  / ### 主な投手 / ・投手成績は確認できませんでした。 /  / ### 主な打者 / ・打撃成績は確認できませんでした。 /  / ### 主な得点シーン / ・5回表 阪神 髙寺: ライトオーバータイムリーツーベース（打点1） / ・5回裏 広島 菊池: ライト犠牲フライ（打点1） / ・6回裏 広島 坂倉: レフトソロホームラン（打点1） /  / 安打: 阪神タイガース 阪神 8 / 広島東洋カープ 広島 7 / 失策: 阪神タイガース 阪神 0 / 広島東洋カープ 広島 1 /  / ほか15件は省略しています。
 - structured intent: `game_detail`
 - question_intent: `game_detail`
 - answer_mode: `reason_explanation`
-- repositories: `["searchGameDetails","searchEvents","searchBattingLines","searchPitchingLines","listSourceSnapshotsByGameIds"]`
+- repositories: `searchGameDetails, searchEvents, searchBattingLines, searchPitchingLines, listSourceSnapshotsByGameIds`
 - player_id: `null`
 - http_status: 200
 - pass/fail: Pass
@@ -1433,7 +1437,7 @@
 - structured intent: `search_batting`
 - question_intent: `search_batting`
 - answer_mode: `correction_explanation`
-- repositories: `["searchBattingLines","listSourceSnapshotsByGameIds"]`
+- repositories: `searchBattingLines, listSourceSnapshotsByGameIds`
 - player_id: `null`
 - http_status: 200
 - pass/fail: Pass
@@ -1446,7 +1450,7 @@
 - structured intent: `search_events`
 - question_intent: `search_events`
 - answer_mode: `contextual_answer`
-- repositories: `["searchEvents","listSourceSnapshotsByGameIds"]`
+- repositories: `searchEvents, listSourceSnapshotsByGameIds`
 - player_id: `41045137`
 - http_status: 200
 - pass/fail: Pass
@@ -1459,7 +1463,7 @@
 - structured intent: `search_pitching`
 - question_intent: `search_pitching`
 - answer_mode: `direct_answer`
-- repositories: `["searchPitchingLines","listSourceSnapshotsByGameIds"]`
+- repositories: `searchPitchingLines, listSourceSnapshotsByGameIds`
 - player_id: `null`
 - http_status: 200
 - pass/fail: Pass
@@ -1472,7 +1476,7 @@
 - structured intent: `search_pitching`
 - question_intent: `search_pitching`
 - answer_mode: `correction_explanation`
-- repositories: `["searchPitchingLines","listSourceSnapshotsByGameIds"]`
+- repositories: `searchPitchingLines, listSourceSnapshotsByGameIds`
 - player_id: `null`
 - http_status: 200
 - pass/fail: Pass
@@ -1485,7 +1489,7 @@
 - structured intent: `search_batting`
 - question_intent: `search_batting`
 - answer_mode: `direct_answer`
-- repositories: `["searchBattingLines","listSourceSnapshotsByGameIds"]`
+- repositories: `searchBattingLines, listSourceSnapshotsByGameIds`
 - player_id: `null`
 - http_status: 200
 - pass/fail: Pass
@@ -1498,7 +1502,7 @@
 - structured intent: `search_pitching`
 - question_intent: `search_pitching`
 - answer_mode: `direct_answer`
-- repositories: `["searchPitchingLines","listSourceSnapshotsByGameIds"]`
+- repositories: `searchPitchingLines, listSourceSnapshotsByGameIds`
 - player_id: `null`
 - http_status: 200
 - pass/fail: Pass
@@ -1511,7 +1515,7 @@
 - structured intent: `aggregate_batting`
 - question_intent: `aggregate_batting`
 - answer_mode: `correction_explanation`
-- repositories: `["aggregateBattingLines","listSourceSnapshotsByGameIds"]`
+- repositories: `aggregateBattingLines, listSourceSnapshotsByGameIds`
 - player_id: `null`
 - http_status: 200
 - pass/fail: Pass
@@ -1524,7 +1528,7 @@
 - structured intent: `aggregate_batting`
 - question_intent: `aggregate_batting`
 - answer_mode: `direct_answer`
-- repositories: `["aggregateBattingLines","listSourceSnapshotsByGameIds"]`
+- repositories: `aggregateBattingLines, listSourceSnapshotsByGameIds`
 - player_id: `null`
 - http_status: 200
 - pass/fail: Pass
@@ -1537,7 +1541,7 @@
 - structured intent: `search_batting`
 - question_intent: `search_batting`
 - answer_mode: `correction_explanation`
-- repositories: `["searchBattingLines","listSourceSnapshotsByGameIds"]`
+- repositories: `searchBattingLines, listSourceSnapshotsByGameIds`
 - player_id: `null`
 - http_status: 200
 - pass/fail: Pass
@@ -1550,7 +1554,7 @@
 - structured intent: `search_pitching`
 - question_intent: `search_pitching`
 - answer_mode: `clarification_request`
-- repositories: `["searchPitchingLines","listSourceSnapshotsByGameIds"]`
+- repositories: `searchPitchingLines, listSourceSnapshotsByGameIds`
 - player_id: `41045137`
 - http_status: 200
 - pass/fail: Pass
@@ -1563,7 +1567,7 @@
 - structured intent: `search_games`
 - question_intent: `search_games`
 - answer_mode: `direct_answer`
-- repositories: `["searchGames","listSourceSnapshotsByGameIds"]`
+- repositories: `searchGames, listSourceSnapshotsByGameIds`
 - player_id: `null`
 - http_status: 200
 - pass/fail: Pass
@@ -1572,11 +1576,11 @@
 ### Q-118: 2021年4月16日の阪神対ヤクルトの試合結果を教えて
 
 - QA正: 2021年4月16日の阪神対ヤクルト戦は、甲子園で阪神タイガースが東京ヤクルトスワローズに2-0で勝利した。得点経過、安打数、失策を含む試合結果を historical_record 経路で返す。
-- 本番回答: ### 試合結果 / 2021年4月16日 甲子園 / 東京ヤクルトスワローズ 0 - 2 阪神タイガース / 阪神タイガースが東京ヤクルトスワローズに2-0で勝利しました。 /  / ### 得点経過 / ・5回裏 阪神タイガース2点（0-2） /  / ### 主な投手 / ・阪神タイガース 藤浪 /   5回2/3 / 94球 / 6奪三振 / 失点0 / 自責0 /  / ### 主な打者 / ・阪神タイガース 藤浪 /   1打数1安打 / 2打点 / 1得点 / ・阪神タイガース サンズ /   3打数1安打 / ・阪神タイガース 糸原 /   4打数1安打 / ・阪神タイガース 大山 /   3打数1安打 / ・阪神タイガース 中野 /   3打数1安打 /  / ### 主な得点シーン / ・5回裏 阪神 藤浪: レフト2ランホームラン（打点2） /  / 安打: 東京ヤクルトスワローズ 5 / 阪神タイガース 5 / 失策: 東京ヤクルトスワローズ 1 / 阪神タイガース 0
+- 本番回答: **この試合は両軍の投手が試合を作った投手戦でした。** / 阪神タイガースが5回裏に先制し、そこから試合が動きました。 / 5回裏には阪神の藤浪がレフト2ランホームラン（打点2）を記録しました。 / 投手では阪神タイガースの藤浪が5回2/3を無失点に抑え、試合を作りました。 /  / ### 試合結果 / 2021年4月16日 甲子園 / 東京ヤクルトスワローズ 0 - 2 阪神タイガース / 阪神タイガースが東京ヤクルトスワローズに2-0で勝利しました。 /  / ### 得点経過 / ・5回裏 阪神タイガース2点（0-2） /  / ### 主な投手 / ・阪神タイガース 藤浪 /   5回2/3 / 94球 / 6奪三振 / 失点0 / 自責0 /  / ### 主な打者 / ・阪神タイガース 藤浪 /   1打数1安打 / 2打点 / 1得点 / ・阪神タイガース サンズ /   3打数1安打 / ・阪神タイガース 糸原 /   4打数1安打 / ・阪神タイガース 大山 /   3打数1安打 / ・阪神タイガース 中野 /   3打数1安打 /  / ### 主な得点シーン / ・5回裏 阪神 藤浪: レフト2ランホームラン（打点2） /  / 安打: 東京ヤクルトスワローズ 5 / 阪神タイガース 5 / 失策: 東京ヤクルトスワローズ 1 / 阪神タイガース 0
 - structured intent: `game_detail`
 - question_intent: `game_detail`
 - answer_mode: `direct_answer`
-- repositories: `["searchGameDetails","searchEvents","searchBattingLines","searchPitchingLines","listSourceSnapshotsByGameIds"]`
+- repositories: `searchGameDetails, searchEvents, searchBattingLines, searchPitchingLines, listSourceSnapshotsByGameIds`
 - player_id: `null`
 - http_status: 200
 - pass/fail: Pass
@@ -1589,7 +1593,7 @@
 - structured intent: `aggregate_batting`
 - question_intent: `aggregate_batting`
 - answer_mode: `direct_answer`
-- repositories: `["aggregateBattingLines","listSourceSnapshotsByGameIds"]`
+- repositories: `aggregateBattingLines, listSourceSnapshotsByGameIds`
 - player_id: `13115153`
 - http_status: 200
 - pass/fail: Pass
@@ -1602,7 +1606,7 @@
 - structured intent: `search_batting`
 - question_intent: `search_batting`
 - answer_mode: `direct_answer`
-- repositories: `["searchBattingLines","listSourceSnapshotsByGameIds"]`
+- repositories: `searchBattingLines, listSourceSnapshotsByGameIds`
 - player_id: `13115153`
 - http_status: 200
 - pass/fail: Pass
@@ -1615,7 +1619,7 @@
 - structured intent: `search_events`
 - question_intent: `search_events`
 - answer_mode: `direct_answer`
-- repositories: `[]`
+- repositories: ``
 - player_id: `null`
 - http_status: 200
 - pass/fail: Pass
@@ -1628,7 +1632,7 @@
 - structured intent: `search_batting`
 - question_intent: `search_batting`
 - answer_mode: `direct_answer`
-- repositories: `[]`
+- repositories: ``
 - player_id: `null`
 - http_status: 200
 - pass/fail: Pass
@@ -1641,7 +1645,7 @@
 - structured intent: `search_events`
 - question_intent: `search_events`
 - answer_mode: `direct_answer`
-- repositories: `["searchEvents","listSourceSnapshotsByGameIds"]`
+- repositories: `searchEvents, listSourceSnapshotsByGameIds`
 - player_id: `33035152`
 - http_status: 200
 - pass/fail: Pass
@@ -1654,7 +1658,7 @@
 - structured intent: `search_events`
 - question_intent: `search_events`
 - answer_mode: `direct_answer`
-- repositories: `["searchEvents","listSourceSnapshotsByGameIds"]`
+- repositories: `searchEvents, listSourceSnapshotsByGameIds`
 - player_id: `33035152`
 - http_status: 200
 - pass/fail: Pass
@@ -1663,11 +1667,11 @@
 ### Q-125: 2021年4月16日の阪神対ヤクルトの試合詳細をスマホで見やすく教えて
 
 - QA正: 試合詳細を「試合結果」「得点経過」「主な投手」「主な打者」「主な得点シーン」の見出しと箇条書きで返す。2021年4月16日甲子園、阪神がヤクルトに2-0で勝利したこと、5回裏に阪神が2点を取ったこと、藤浪の投球と2ラン本塁打、安打・失策を含める。
-- 本番回答: ### 試合結果 / 2021年4月16日 甲子園 / 東京ヤクルトスワローズ 0 - 2 阪神タイガース / 阪神タイガースが東京ヤクルトスワローズに2-0で勝利しました。 /  / ### 得点経過 / ・5回裏 阪神タイガース2点（0-2） /  / ### 主な投手 / ・阪神タイガース 藤浪 /   5回2/3 / 94球 / 6奪三振 / 失点0 / 自責0 /  / ### 主な打者 / ・阪神タイガース 藤浪 /   1打数1安打 / 2打点 / 1得点 / ・阪神タイガース サンズ /   3打数1安打 / ・阪神タイガース 糸原 /   4打数1安打 / ・阪神タイガース 大山 /   3打数1安打 / ・阪神タイガース 中野 /   3打数1安打 /  / ### 主な得点シーン / ・5回裏 阪神 藤浪: レフト2ランホームラン（打点2） /  / 安打: 東京ヤクルトスワローズ 5 / 阪神タイガース 5 / 失策: 東京ヤクルトスワローズ 1 / 阪神タイガース 0
+- 本番回答: **この試合は両軍の投手が試合を作った投手戦でした。** / 阪神タイガースが5回裏に先制し、そこから試合が動きました。 / 5回裏には阪神の藤浪がレフト2ランホームラン（打点2）を記録しました。 / 投手では阪神タイガースの藤浪が5回2/3を無失点に抑え、試合を作りました。 /  / ### 試合結果 / 2021年4月16日 甲子園 / 東京ヤクルトスワローズ 0 - 2 阪神タイガース / 阪神タイガースが東京ヤクルトスワローズに2-0で勝利しました。 /  / ### 得点経過 / ・5回裏 阪神タイガース2点（0-2） /  / ### 主な投手 / ・阪神タイガース 藤浪 /   5回2/3 / 94球 / 6奪三振 / 失点0 / 自責0 /  / ### 主な打者 / ・阪神タイガース 藤浪 /   1打数1安打 / 2打点 / 1得点 / ・阪神タイガース サンズ /   3打数1安打 / ・阪神タイガース 糸原 /   4打数1安打 / ・阪神タイガース 大山 /   3打数1安打 / ・阪神タイガース 中野 /   3打数1安打 /  / ### 主な得点シーン / ・5回裏 阪神 藤浪: レフト2ランホームラン（打点2） /  / 安打: 東京ヤクルトスワローズ 5 / 阪神タイガース 5 / 失策: 東京ヤクルトスワローズ 1 / 阪神タイガース 0
 - structured intent: `game_detail`
 - question_intent: `game_detail`
 - answer_mode: `direct_answer`
-- repositories: `["searchGameDetails","searchEvents","searchBattingLines","searchPitchingLines","listSourceSnapshotsByGameIds"]`
+- repositories: `searchGameDetails, searchEvents, searchBattingLines, searchPitchingLines, listSourceSnapshotsByGameIds`
 - player_id: `null`
 - http_status: 200
 - pass/fail: Pass
@@ -1680,7 +1684,72 @@
 - structured intent: `aggregate_batting`
 - question_intent: `aggregate_batting`
 - answer_mode: `direct_answer`
-- repositories: `["aggregateBattingLines","listSourceSnapshotsByGameIds"]`
+- repositories: `aggregateBattingLines, listSourceSnapshotsByGameIds`
+- player_id: `null`
+- http_status: 200
+- pass/fail: Pass
+- fail理由: なし
+
+### Q-127: 2021年4月16日の阪神対ヤクルトの試合詳細をハイライト付きで教えて
+
+- QA正: Summary先頭に2〜4文の試合ハイライトを置き、その後に「試合結果」を表示する。投手戦として要約し、阪神が2-0で勝利したこと、5回裏の藤浪の2ラン本塁打、藤浪の5回2/3無失点を含める。
+- 本番回答: **この試合は両軍の投手が試合を作った投手戦でした。** / 阪神タイガースが5回裏に先制し、そこから試合が動きました。 / 5回裏には阪神の藤浪がレフト2ランホームラン（打点2）を記録しました。 / 投手では阪神タイガースの藤浪が5回2/3を無失点に抑え、試合を作りました。 /  / ### 試合結果 / 2021年4月16日 甲子園 / 東京ヤクルトスワローズ 0 - 2 阪神タイガース / 阪神タイガースが東京ヤクルトスワローズに2-0で勝利しました。 /  / ### 得点経過 / ・5回裏 阪神タイガース2点（0-2） /  / ### 主な投手 / ・阪神タイガース 藤浪 /   5回2/3 / 94球 / 6奪三振 / 失点0 / 自責0 /  / ### 主な打者 / ・阪神タイガース 藤浪 /   1打数1安打 / 2打点 / 1得点 / ・阪神タイガース サンズ /   3打数1安打 / ・阪神タイガース 糸原 /   4打数1安打 / ・阪神タイガース 大山 /   3打数1安打 / ・阪神タイガース 中野 /   3打数1安打 /  / ### 主な得点シーン / ・5回裏 阪神 藤浪: レフト2ランホームラン（打点2） /  / 安打: 東京ヤクルトスワローズ 5 / 阪神タイガース 5 / 失策: 東京ヤクルトスワローズ 1 / 阪神タイガース 0
+- structured intent: `game_detail`
+- question_intent: `game_detail`
+- answer_mode: `direct_answer`
+- repositories: `searchGameDetails, searchEvents, searchBattingLines, searchPitchingLines, listSourceSnapshotsByGameIds`
+- player_id: `null`
+- http_status: 200
+- pass/fail: Pass
+- fail理由: なし
+
+### Q-128: 2026年7月11日のDeNA対巨人の試合詳細をハイライト付きで教えて
+
+- QA正: Summary先頭に2〜4文の試合ハイライトを置き、その後に「試合結果」を表示する。シーソーゲームとして要約し、巨人が5-4で勝利したこと、1回裏のエンカーナシオンの3ラン、7回表に巨人が5-4とした得点経過を含める。
+- 本番回答: **この試合は両チームがリードを奪い合うシーソーゲームでした。** / 読売ジャイアンツ 巨人は7回表に2点を取り、5-4として流れを引き寄せました。 / 1回裏にはDeNAのエンカーナシオンがレフト3ランホームラン（打点3）を記録しました。 /  / ### 試合結果 / 2026年7月11日 横浜 / 読売ジャイアンツ 巨人 5 - 4 横浜DeNAベイスターズ DeNA / 読売ジャイアンツ 巨人が横浜DeNAベイスターズ DeNAに5-4で勝利しました。 /  / ### 得点経過 / ・1回表 読売ジャイアンツ 巨人2点（2-0） / ・1回裏 横浜DeNAベイスターズ DeNA3点（2-3） / ・3回表 読売ジャイアンツ 巨人1点（3-3） / ・6回裏 横浜DeNAベイスターズ DeNA1点（3-4） / ・7回表 読売ジャイアンツ 巨人2点（5-4） /  / ### 主な投手 / ・横浜DeNAベイスターズ 藤浪 /   3回 / 94球 / 4奪三振 / 失点3 / 自責3 /  / ### 主な打者 / ・横浜DeNAベイスターズ エンカーナシオン /   4打数1安打 / 3打点 / 1得点 / ・横浜DeNAベイスターズ 蝦名 /   4打数1安打 / 1打点 / ・横浜DeNAベイスターズ 宮下 /   3打数2安打 / ・横浜DeNAベイスターズ 佐野 /   4打数1安打 / 1得点 / ・横浜DeNAベイスターズ 勝又 /   4打数1安打 / 1得点 / ・横浜DeNAベイスターズ 牧 /   4打数1安打 / 1得点 /  / ### 主な得点シーン / ・1回表 巨人 ダルベック: レフト犠牲フライ（打点1） / ・1回表 巨人 大城: レフト線タイムリーツーベース（打点1） / ・1回裏 DeNA エンカーナシオン: レフト3ランホームラン（打点3） / ・3回表 巨人 笹原: レフト前タイムリーヒット（打点1） / ・6回裏 DeNA 蝦名: レフト前タイムリーヒット（打点1） / ・7回表 巨人 泉口: センター前タイムリーヒット（打点1） / ・7回表 巨人 門脇: ファースト犠牲バント（打点1） /  / 安打: 読売ジャイアンツ 巨人 8 / 横浜DeNAベイスターズ DeNA 7 / 失策: 読売ジャイアンツ 巨人 1 / 横浜DeNAベイスターズ DeNA 1
+- structured intent: `game_detail`
+- question_intent: `game_detail`
+- answer_mode: `direct_answer`
+- repositories: `searchGameDetails, searchEvents, searchBattingLines, searchPitchingLines, listSourceSnapshotsByGameIds`
+- player_id: `null`
+- http_status: 200
+- pass/fail: Pass
+- fail理由: なし
+
+### Q-129: 2024年11月3日のDeNA対ソフトバンクの試合詳細をハイライト付きで教えて
+
+- QA正: Summary先頭に2〜4文の試合ハイライトを置き、その後に「試合結果」を表示する。DeNAが主導権を握ったワンサイドゲームとして要約し、DeNAが11-2で勝利したこと、2回裏の先制、5回裏の7得点、筒香と桑原の主な打撃内容を含める。
+- 本番回答: **この試合は横浜DeNAベイスターズ DeNAが主導権を握ったワンサイドゲームでした。** / 横浜DeNAベイスターズ DeNAが2回裏に先制し、そこから試合が動きました。 / 2回裏にはDeNAの筒香がセンターソロホームラン（打点1）を記録しました。 /  / ### 試合結果 / 2024年11月3日 横浜 / 福岡ソフトバンクホークス ソフトバンク 2 - 11 横浜DeNAベイスターズ DeNA / 横浜DeNAベイスターズ DeNAが福岡ソフトバンクホークス ソフトバンクに11-2で勝利しました。 /  / ### 得点経過 / ・2回裏 横浜DeNAベイスターズ DeNA3点（0-3） / ・3回裏 横浜DeNAベイスターズ DeNA1点（0-4） / ・4回表 福岡ソフトバンクホークス ソフトバンク2点（2-4） / ・5回裏 横浜DeNAベイスターズ DeNA7点（2-11） /  / ### 主な投手 / ・横浜DeNAベイスターズ 大貫 /   4回 / 56球 / 3奪三振 / 失点2 / 自責2 /  / ### 主な打者 / ・横浜DeNAベイスターズ 筒香 /   5打数2安打 / 4打点 / 2得点 / ・横浜DeNAベイスターズ 桑原 /   4打数3安打 / 3打点 / 1得点 / ・横浜DeNAベイスターズ 梶原 /   5打数1安打 / 1打点 / 1得点 / ・横浜DeNAベイスターズ 宮﨑 /   4打数1安打 / 1打点 / ・横浜DeNAベイスターズ 森敬 /   2打数1安打 / 1打点 / 2得点 / ・横浜DeNAベイスターズ オースティン /   3打数0安打 / 1打点 / 1得点 /  / ### 主な得点シーン / ・2回裏 DeNA 筒香: センターソロホームラン（打点1） / ・2回裏 DeNA 桑原: レフト前タイムリーヒット（打点2） / ・3回裏 DeNA 森敬: フォアボール（打点1） / ・4回表 ソフトバンク 柳田: センター2ランホームラン（打点2） / ・5回裏 DeNA 桑原: フォアボール（打点1） / ・5回裏 DeNA 梶原: センター前タイムリーヒット（打点1） / ・5回裏 DeNA オースティン: デッドボール（打点1） / ・5回裏 DeNA 筒香: 左中間タイムリーツーベース（打点3） / ・5回裏 DeNA 宮﨑: 左中間タイムリーツーベース（打点1） /  / 安打: 福岡ソフトバンクホークス ソフトバンク 6 / 横浜DeNAベイスターズ DeNA 13 / 失策: 福岡ソフトバンクホークス ソフトバンク 1 / 横浜DeNAベイスターズ DeNA 0
+- structured intent: `game_detail`
+- question_intent: `game_detail`
+- answer_mode: `direct_answer`
+- repositories: `searchGameDetails, searchEvents, searchBattingLines, searchPitchingLines, listSourceSnapshotsByGameIds`
+- player_id: `null`
+- http_status: 200
+- pass/fail: Pass
+- fail理由: なし
+
+### Q-130: 2026年5月21日のヤクルト対巨人の試合詳細をハイライト付きで教えて
+
+- QA正: Summary先頭に2〜4文の試合ハイライトを置き、その後に「試合結果」を表示する。接戦として要約し、ヤクルトが3-1で勝利したこと、1回裏と2回裏の得点、巨人が3回表に1点を返したことを含める。
+- 本番回答: **この試合は最後まで大きく離れない接戦でした。** / ヤクルトが1回裏に先制し、そこから試合が動きました。 /  / ### 試合結果 / 2026年5月21日 Jingu / 巨人 1 - 3 ヤクルト / ヤクルトが巨人に3-1で勝利しました。 /  / ### 得点経過 / ・1回裏 ヤクルト2点（0-2） / ・2回裏 ヤクルト1点（0-3） / ・3回表 巨人1点（1-3） /  / ### 主な投手 / ・投手成績は確認できませんでした。 /  / ### 主な打者 / ・打撃成績は確認できませんでした。 /  / ### 主な得点シーン / ・主な得点シーンは確認できませんでした。 /  / 安打: 巨人 9 / ヤクルト 5 / 失策: 巨人 0 / ヤクルト 0
+- structured intent: `game_detail`
+- question_intent: `game_detail`
+- answer_mode: `direct_answer`
+- repositories: `searchGameDetails, searchEvents, searchBattingLines, searchPitchingLines, listSourceSnapshotsByGameIds`
+- player_id: `null`
+- http_status: 200
+- pass/fail: Pass
+- fail理由: なし
+
+### Q-131: 今シーズンのサヨナラ勝ちの試合詳細を1つ教えて
+
+- QA正: production DB上で該当するサヨナラ勝ちがない場合は、サヨナラ勝ちを捏造せず「該当なし」を返す。試合詳細ハイライトは該当試合がある場合のみ生成し、該当なしの場合は通常の不足回答にする。
+- 本番回答: 条件期間の一軍公式戦では、該当チームのサヨナラ勝ちは0試合です。
+- structured intent: `search_games`
+- question_intent: `search_games`
+- answer_mode: `direct_answer`
+- repositories: `searchGames, listSourceSnapshotsByGameIds`
 - player_id: `null`
 - http_status: 200
 - pass/fail: Pass
