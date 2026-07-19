@@ -3678,7 +3678,7 @@ describe('chat-service', () => {
     expect(response.answer.result_count).toBe(1)
     expect(response.results.gameDetails).toHaveLength(1)
     expect(response.results.events).toHaveLength(1)
-    expect(response.answer.summary).toContain('主な得点・長打イベント')
+    expect(response.answer.summary).toContain('### 主な得点シーン')
     expect(response.answer.summary).not.toContain('条件に一致するイベントは見つかりません')
   })
 

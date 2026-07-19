@@ -336,7 +336,7 @@ function buildSummary(
     return `${yearShiftPrefix}${formatAggregateSummary(question, structuredQuery, results.aggregates as AggregateRow[], playerResolution, executionMetadata)}`
   }
 
-  return `${yearShiftPrefix}${formatEventListSummary(structuredQuery, results.events, resultCount, playerResolution)}`
+  return `${yearShiftPrefix}${formatEventListSummary(question, structuredQuery, results.events, resultCount, playerResolution)}`
 }
 
 function formatZeroResultPitchingScopeClarification(
@@ -836,24 +836,11 @@ function formatGameDetailSummary(
 ): string {
   const lines = rows.slice(0, 5).flatMap((row, index) => {
     const linescore = parseLinescore(row.linescoreJson)
-    const result = linescore ? describeGameResult(row, linescore) : `${row.awayTeamName} vs ${row.homeTeamName}`
-    const highlights = linescore ? describeGameHighlights(linescore) : []
     const gameEvents = events.filter((event) => event.gameId === row.gameId)
-    const eventHighlights = describeEventHighlights(gameEvents)
     const gameBattingRows = battingRows.filter((line) => line.gameId === row.gameId)
     const gamePitchingRows = pitchingRows.filter((line) => line.gameId === row.gameId)
-    const detailLines = [
-      ...(linescore ? describeScoringFlow(linescore) : []),
-      ...describePitchingLines(gamePitchingRows),
-      ...describeBattingLines(gameBattingRows),
-    ]
-    return [
-      `${index + 1}. ${formatDateJa(row.date)} ${displayVenueName(row.venue)}、${result}`,
-      ...highlights.map((highlight) => `   ${highlight}`),
-      ...detailLines.map((detail) => `   ${detail}`),
-      ...eventHighlights.map((highlight) => `   ${highlight}`),
-      ...(gameEvents.length === 0 && !linescore ? ['   詳細な打席情報は確認できませんでした。'] : []),
-    ]
+    const prefix = resultCount > 1 ? `## ${index + 1}試合目\n` : ''
+    return `${prefix}${formatSingleGameDetail(row, linescore, gameEvents, gameBattingRows, gamePitchingRows)}`
   })
   const suppressCountLine =
     executionMetadata?.followUpType !== undefined &&
@@ -866,48 +853,84 @@ function formatGameDetailSummary(
       executionMetadata.answerMode === 'evaluation_explanation' ||
       executionMetadata.answerMode === 'clarification_request')
   return [
-    ...(!suppressCountLine
-      ? [resultCount === 1
-          ? '該当する試合は1件です。'
-          : `該当する試合は${resultCount}件です。`, '']
-      : []),
+    ...(!suppressCountLine && resultCount > 1 ? [`該当する試合は${resultCount}件です。`, ''] : []),
     ...lines,
     ...(resultCount > 5 ? ['', `ほか${resultCount - 5}件は省略しています。`] : []),
   ].join('\n')
 }
 
-function describeScoringFlow(linescore: ParsedLinescore): string[] {
-  const scoring = scoringInnings(linescore)
-  if (scoring.length === 0) {
-    return ['得点経過はなく、0-0のまま終了しています。']
+function formatSingleGameDetail(
+  row: GameDetailRow,
+  linescore: ParsedLinescore | null,
+  gameEvents: EventSummaryRow[],
+  gameBattingRows: BattingLineRow[],
+  gamePitchingRows: PitchingLineRow[],
+): string {
+  if (!linescore) {
+    return [
+      '### 試合結果',
+      `${formatDateJa(row.date)} ${displayVenueName(row.venue)}`,
+      `${displayTeamName(row.awayTeamName)} vs ${displayTeamName(row.homeTeamName)}`,
+      ...(gameEvents.length === 0 ? ['', '詳細な打席情報は確認できませんでした。'] : []),
+    ].join('\n')
   }
-  const flow = scoring
-    .map((score) => `${score.inning}回${score.half}に${score.team}が${score.runs}点（${score.awayScoreAfter}-${score.homeScoreAfter}）`)
-    .join('、')
-  return [`得点経過: ${flow}。`]
+
+  return [
+    '### 試合結果',
+    `${formatDateJa(row.date)} ${displayVenueName(row.venue)}`,
+    `${formatScoreLine(linescore)}`,
+    describeGameResult(row, linescore),
+    '',
+    '### 得点経過',
+    ...describeScoringFlowLines(linescore),
+    '',
+    '### 主な投手',
+    ...describePitchingLinesForMobile(gamePitchingRows),
+    '',
+    '### 主な打者',
+    ...describeBattingLinesForMobile(gameBattingRows),
+    '',
+    '### 主な得点シーン',
+    ...describeEventHighlightsForMobile(gameEvents),
+    '',
+    `安打: ${displayTeamName(linescore.away.team)} ${linescore.away.totals.hits} / ${displayTeamName(linescore.home.team)} ${linescore.home.totals.hits}`,
+    `失策: ${displayTeamName(linescore.away.team)} ${linescore.away.totals.errors} / ${displayTeamName(linescore.home.team)} ${linescore.home.totals.errors}`,
+  ].join('\n')
 }
 
-function describePitchingLines(rows: PitchingLineRow[]): string[] {
+function formatScoreLine(linescore: ParsedLinescore): string {
+  return `${displayTeamName(linescore.away.team)} ${linescore.away.totals.runs} - ${linescore.home.totals.runs} ${displayTeamName(linescore.home.team)}`
+}
+
+function describeScoringFlowLines(linescore: ParsedLinescore): string[] {
+  const scoring = scoringInnings(linescore)
+  if (scoring.length === 0) {
+    return ['・得点経過なし（0-0）']
+  }
+  return scoring.map((score) =>
+    `・${score.inning}回${score.half} ${score.team}${score.runs}点（${score.awayScoreAfter}-${score.homeScoreAfter}）`,
+  )
+}
+
+function describePitchingLinesForMobile(rows: PitchingLineRow[]): string[] {
   const boxRows = rows.filter((row) => row.sourceKind === 'box')
   if (boxRows.length === 0) {
-    return []
+    return ['・投手成績は確認できませんでした。']
   }
   const starters = boxRows
     .filter((row) => Number.parseFloat(String(row.inningsPitched)) >= 3 || row.pitchCount >= 50)
     .slice(0, 4)
   const targetRows = starters.length > 0 ? starters : boxRows.slice(0, 4)
-  return [
-    `主な投手成績: ${targetRows.map((row) => {
-      const pitchCount = row.pitchCount > 0 ? `、${row.pitchCount}球` : ''
-      return `${row.team} ${row.pitcherName} ${formatInningsForDisplay(row.inningsPitched)}${pitchCount}、${row.strikeouts}奪三振、失点${row.runs}、自責点${row.earnedRuns}`
-    }).join(' / ')}。`,
-  ]
+  return targetRows.map((row) => {
+    const pitchCount = row.pitchCount > 0 ? ` / ${row.pitchCount}球` : ''
+    return `・${displayTeamName(row.team)} ${row.pitcherName}\n  ${formatInningsForDisplay(row.inningsPitched)}${pitchCount} / ${row.strikeouts}奪三振 / 失点${row.runs} / 自責${row.earnedRuns}`
+  })
 }
 
-function describeBattingLines(rows: BattingLineRow[]): string[] {
+function describeBattingLinesForMobile(rows: BattingLineRow[]): string[] {
   const boxRows = rows.filter((row) => row.sourceKind === 'box')
   if (boxRows.length === 0) {
-    return []
+    return ['・打撃成績は確認できませんでした。']
   }
   const notable = boxRows
     .filter((row) => row.hits > 0 || row.runsBattedIn > 0 || /本|ホームラン|二塁打|三塁打/u.test(row.rawText ?? ''))
@@ -918,34 +941,26 @@ function describeBattingLines(rows: BattingLineRow[]): string[] {
     )
     .slice(0, 6)
   if (notable.length === 0) {
-    return []
+    return ['・主な打撃成績は確認できませんでした。']
   }
-  return [
-    `主な打撃成績: ${notable.map((row) => {
-      const extras = [
-        row.runsBattedIn > 0 ? `${row.runsBattedIn}打点` : undefined,
-        row.runs > 0 ? `${row.runs}得点` : undefined,
-      ].filter(Boolean).join('、')
-      return `${row.team} ${row.playerName} ${row.atBats}打数${row.hits}安打${extras ? `、${extras}` : ''}`
-    }).join(' / ')}。`,
-  ]
+  return notable.map((row) => {
+    const extras = [
+      row.runsBattedIn > 0 ? `${row.runsBattedIn}打点` : undefined,
+      row.runs > 0 ? `${row.runs}得点` : undefined,
+    ].filter(Boolean).join(' / ')
+    return `・${displayTeamName(row.team)} ${row.playerName}\n  ${row.atBats}打数${row.hits}安打${extras ? ` / ${extras}` : ''}`
+  })
 }
 
-function describeEventHighlights(events: EventSummaryRow[]): string[] {
+function describeEventHighlightsForMobile(events: EventSummaryRow[]): string[] {
   const scoringEvents = events
     .filter((event) => isLikelyRunEvent(event.resultText))
     .slice(0, 10)
     .map((event) => {
       const batter = event.batterName ? `${event.batterName}: ` : ''
-      return `${event.inning}回${event.half === 'top' ? '表' : '裏'} ${displayTeamName(event.offenseTeam)} ${batter}${event.resultText}`
+      return `・${event.inning}回${event.half === 'top' ? '表' : '裏'} ${displayTeamName(event.offenseTeam)} ${batter}${event.resultText}`
     })
-  if (scoringEvents.length === 0) {
-    return []
-  }
-  return [
-    '主な得点・長打イベント:',
-    ...scoringEvents.map((event) => `- ${event}`),
-  ]
+  return scoringEvents.length > 0 ? scoringEvents : ['・主な得点シーンは確認できませんでした。']
 }
 
 function isLikelyRunEvent(resultText: string): boolean {
@@ -1101,24 +1116,6 @@ function describeGameResult(row: GameDetailRow, linescore: ParsedLinescore): str
   return `${awayTeam}と${homeTeam}は${score}で引き分けました。`
 }
 
-function describeGameHighlights(linescore: ParsedLinescore): string[] {
-  const highlights: string[] = []
-  const scoring = scoringInnings(linescore)
-  const decisive = decisiveScoring(linescore, scoring)
-  if (decisive) {
-    highlights.push(decisive)
-  }
-  highlights.push(
-    `安打数は${displayTeamName(linescore.away.team)}が${linescore.away.totals.hits}本、${displayTeamName(linescore.home.team)}が${linescore.home.totals.hits}本でした。`,
-  )
-  if (linescore.away.totals.errors > 0 || linescore.home.totals.errors > 0) {
-    highlights.push(
-      `失策は${displayTeamName(linescore.away.team)}が${linescore.away.totals.errors}、${displayTeamName(linescore.home.team)}が${linescore.home.totals.errors}です。`,
-    )
-  }
-  return highlights
-}
-
 type ScoringHalfInning = {
   inning: number
   half: '表' | '裏'
@@ -1160,29 +1157,6 @@ function scoringInnings(linescore: ParsedLinescore): ScoringHalfInning[] {
     }
   }
   return scoring
-}
-
-function decisiveScoring(linescore: ParsedLinescore, scoring: ScoringHalfInning[]): string | undefined {
-  const awayWon = linescore.away.totals.runs > linescore.home.totals.runs
-  const homeWon = linescore.home.totals.runs > linescore.away.totals.runs
-  if (!awayWon && !homeWon) {
-    const last = scoring.at(-1)
-    return last ? `${last.inning}回${last.half}に${last.team}が${last.runs}点を取り、終盤まで競った展開でした。` : undefined
-  }
-  const winner = awayWon ? displayTeamName(linescore.away.team) : displayTeamName(linescore.home.team)
-  const decisive = scoring.find((score) => {
-    if (awayWon && score.team === winner) {
-      return score.awayScoreAfter > score.homeScoreAfter
-    }
-    if (homeWon && score.team === winner) {
-      return score.homeScoreAfter > score.awayScoreAfter
-    }
-    return false
-  })
-  if (!decisive) {
-    return undefined
-  }
-  return `${decisive.inning}回${decisive.half}に${winner}が${decisive.runs}点を取り、ここでリードを奪いました。`
 }
 
 function inningRuns(value: string | undefined): number {
@@ -1873,6 +1847,7 @@ function teamAliasKey(team: string): string {
 }
 
 function formatEventListSummary(
+  question: string,
   structuredQuery: ChatStructuredQuery,
   events: EventSummaryRow[],
   resultCount: number,
@@ -1881,6 +1856,10 @@ function formatEventListSummary(
   const title = describeEventSearch(structuredQuery, playerResolution)
   const filters = structuredQuery.filters as { result_text_contains?: string }
   const shouldIncludeDetails = resultCount <= 5 && /ホームラン|本塁打|HR/iu.test(filters.result_text_contains ?? '')
+  const initialRecordSummary = formatInitialRecordEventSummary(question, structuredQuery, events, playerResolution)
+  if (initialRecordSummary) {
+    return initialRecordSummary
+  }
   const detailLines = shouldIncludeDetails ? events.slice(0, 5).map((event, index) => {
     const half = event.half === 'top' ? '表' : '裏'
     const batter = event.batterName ? `${event.batterName}: ` : ''
@@ -1891,6 +1870,93 @@ function formatEventListSummary(
     ...detailLines,
     ...(detailLines.length > 0 && resultCount > detailLines.length ? [`ほか${resultCount - detailLines.length}件は省略しています。`] : []),
   ].join('\n')
+}
+
+function formatInitialRecordEventSummary(
+  question: string,
+  structuredQuery: ChatStructuredQuery,
+  events: EventSummaryRow[],
+  playerResolution: PlayerResolution | null,
+): string | null {
+  const ordinal = initialRecordOrdinal(question)
+  const filters = structuredQuery.filters as { result_text_contains?: string; batter_name?: string; player_name?: string }
+  if (!ordinal || !/ホームラン|本塁打|HR/iu.test(filters.result_text_contains ?? question)) {
+    return null
+  }
+  const ordered = [...events].sort((a, b) =>
+    a.gameDate.localeCompare(b.gameDate) ||
+    a.sequence - b.sequence,
+  )
+  const event = ordered[ordinal - 1]
+  if (!event) {
+    return null
+  }
+  const playerName = playerResolution?.status === 'resolved'
+    ? playerResolution.name ?? filters.batter_name ?? filters.player_name ?? event.batterName ?? '対象選手'
+    : filters.batter_name ?? filters.player_name ?? event.batterName ?? '対象選手'
+  const ordinalLabel = ordinal === 1 ? '1号ホームラン' : `${ordinal}号ホームラン`
+  const half = event.half === 'top' ? '表' : '裏'
+  const opponent = opponentFromEvent(event)
+  const opponentText = opponent ? `の${opponent}戦` : ''
+  const pitcherText = event.pitcherName ? `、${event.pitcherName}投手から` : ''
+  const detail = `${event.inning}回${half}${pitcherText}${event.resultText}を放ちました。`
+  return [
+    `${playerName}の${ordinalLabel}は、${formatDateJa(event.gameDate)}${opponentText}です。`,
+    '',
+    detail,
+    `対象記録: ${events.length}件`,
+  ].join('\n')
+}
+
+function initialRecordOrdinal(question: string): number | null {
+  if (/初|1号|初本塁打|初ホームラン/u.test(question)) {
+    return 1
+  }
+  const match = question.match(/(?:通算)?(\d+)号/u)
+  if (!match) {
+    return null
+  }
+  const value = Number(match[1])
+  return Number.isFinite(value) && value > 0 ? value : null
+}
+
+function opponentFromEvent(event: EventSummaryRow): string | null {
+  const slug = event.sourceUrl?.match(/\/([a-z]+-[a-z]+-\d+)\/(?:playbyplay|box|index|roster)\.html/iu)?.[1]
+    ?? event.gameId.match(/[rf]\d{8}([a-z]+-[a-z]+-\d+)/iu)?.[1]
+  if (!slug) {
+    return null
+  }
+  const [awayCode, homeCode] = slug.split('-')
+  const away = teamCodeToDisplayName(awayCode)
+  const home = teamCodeToDisplayName(homeCode)
+  const offense = displayTeamName(event.offenseTeam)
+  if (away && home) {
+    if (offense === away) return home
+    if (offense === home) return away
+  }
+  return away && home ? `${away}対${home}` : null
+}
+
+function teamCodeToDisplayName(code: string | undefined): string | null {
+  if (!code) {
+    return null
+  }
+  const map: Record<string, string> = {
+    b: 'オリックス',
+    bs: 'オリックス',
+    c: '広島',
+    d: '中日',
+    db: 'DeNA',
+    e: '楽天',
+    f: '日本ハム',
+    g: '巨人',
+    h: 'ソフトバンク',
+    l: '西武',
+    m: 'ロッテ',
+    s: 'ヤクルト',
+    t: '阪神',
+  }
+  return map[code.toLowerCase()] ?? null
 }
 
 function describeEventSearch(

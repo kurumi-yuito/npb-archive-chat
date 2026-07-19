@@ -65,6 +65,57 @@ function structuredQueryLabel(q: ChatStructuredQuery): string {
   return 'イベント集計'
 }
 
+function shouldShowResultCount(response: ChatResponse): boolean {
+  return response.structured_query.intent !== 'game_detail'
+}
+
+function gameDetailCardTitle(response: ChatResponse): string | null {
+  if (response.structured_query.intent !== 'game_detail') return null
+  const row = response.results.gameDetails[0]
+  if (!row) return null
+  const score = scoreLineFromLinescore(row.linescoreJson)
+  const date = row.date.replaceAll('-', '/')
+  const matchup = score || `${displayTeamLabel(row.awayTeamName)} vs ${displayTeamLabel(row.homeTeamName)}`
+  return `${date}\n${matchup}`
+}
+
+function scoreLineFromLinescore(value: string | null | undefined): string | null {
+  if (!value) return null
+  try {
+    const parsed = JSON.parse(value) as Record<string, unknown>
+    const away = parsed.away as Record<string, unknown> | undefined
+    const home = parsed.home as Record<string, unknown> | undefined
+    const awayTotals = away?.totals as Record<string, unknown> | undefined
+    const homeTotals = home?.totals as Record<string, unknown> | undefined
+    const awayTeam = typeof away?.team === 'string' ? away.team : ''
+    const homeTeam = typeof home?.team === 'string' ? home.team : ''
+    const awayRuns = Number(awayTotals?.runs)
+    const homeRuns = Number(homeTotals?.runs)
+    if (!Number.isFinite(awayRuns) || !Number.isFinite(homeRuns)) return null
+    return `${displayTeamLabel(awayTeam)} ${awayRuns}-${homeRuns} ${displayTeamLabel(homeTeam)}`
+  } catch {
+    return null
+  }
+}
+
+function displayTeamLabel(team: string): string {
+  const aliases: Record<string, string> = {
+    Yomiuri: '巨人',
+    DeNA: 'DeNA',
+    Hanshin: '阪神',
+    Hiroshima: '広島',
+    Chunichi: '中日',
+    Yakult: 'ヤクルト',
+    'Nippon-Ham': '日本ハム',
+    Rakuten: '楽天',
+    Seibu: '西武',
+    Lotte: 'ロッテ',
+    ORIX: 'オリックス',
+    SoftBank: 'ソフトバンク',
+  }
+  return aliases[team] ?? team
+}
+
 function inningHalfLabel(half: 'top' | 'bottom'): string {
   return half === 'top' ? '表' : '裏'
 }
@@ -224,7 +275,7 @@ function toggleSidebar() {
         <template v-else>
           <div class="last-query">
             <span>{{ structuredQueryLabel(lastAssistant.structured_query) }}</span>
-            <strong>{{ lastAssistant.answer.result_count }}件</strong>
+            <strong>{{ gameDetailCardTitle(lastAssistant) ?? `${lastAssistant.answer.result_count}件` }}</strong>
           </div>
         </template>
       </section>
@@ -284,7 +335,13 @@ function toggleSidebar() {
             <div class="answer">
               <div class="answer__meta">
                 <span class="intent-chip">{{ structuredQueryLabel(turn.assistant.structured_query) }}</span>
-                <span class="answer__count">{{ turn.assistant.answer.result_count }}件</span>
+                <span
+                  v-if="gameDetailCardTitle(turn.assistant)"
+                  class="answer__detail-title"
+                >{{ gameDetailCardTitle(turn.assistant) }}</span>
+                <span v-else-if="shouldShowResultCount(turn.assistant)" class="answer__count">
+                  {{ turn.assistant.answer.result_count }}件
+                </span>
                 <span v-if="turn.assistant.answer.remaining_count" class="answer__count">
                   省略 {{ turn.assistant.answer.remaining_count }}件
                 </span>
@@ -961,6 +1018,14 @@ function toggleSidebar() {
 .answer__count {
   font-size: 0.78rem;
   color: var(--c-muted);
+}
+
+.answer__detail-title {
+  white-space: pre-line;
+  font-size: 0.82rem;
+  font-weight: 700;
+  line-height: 1.35;
+  color: var(--c-text);
 }
 
 .answer__summary {

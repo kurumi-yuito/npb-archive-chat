@@ -74,6 +74,48 @@ describe('chat-answer-formatter', () => {
     expect(answer.summary).not.toContain('打ったイベント')
   })
 
+  it('answers first home run questions with the achievement first', () => {
+    const results = emptyResults()
+    results.events = [{
+      ...eventRow(2),
+      gameDate: '2026-07-11',
+      gameId: 'r20260711db-g-12',
+      sourceUrl: 'https://npb.jp/scores/2026/0711/db-g-12/playbyplay.html',
+      offenseTeam: 'DeNA',
+      batterName: 'エンカーナシオン',
+      pitcherName: '竹丸',
+      resultText: 'レフト3ランホームラン（打点3）',
+    }]
+
+    const answer = formatChatAnswer({
+      question: 'エンカーナシオンの1号ホームランはいつ？',
+      structuredQuery: {
+        intent: 'search_events',
+        filters: {
+          year: 2026,
+          team: 'DeNA',
+          batter_name: 'エンカーナシオン',
+          event_type: 'plate_appearance',
+          result_text_contains: 'ホームラン',
+        },
+      },
+      results,
+      sources: [],
+      playerResolution: {
+        input: 'エンカーナシオン',
+        player_id: 'encarnacion',
+        name: 'エンカーナシオン',
+        primary_team: 'DeNA',
+        status: 'resolved',
+        candidates: [],
+      },
+    })
+
+    expect(answer.summary).toMatch(/^エンカーナシオンの1号ホームランは、2026年7月11日の巨人戦です。/u)
+    expect(answer.summary).toContain('1回裏、竹丸投手からレフト3ランホームラン（打点3）を放ちました。')
+    expect(answer.summary).not.toMatch(/^DeNAエンカーナシオン.*は1件です/u)
+  })
+
   it('describes batter-vs-pitcher event searches from structured filters without matchup words', () => {
     const results = emptyResults()
     results.events = [{
@@ -244,9 +286,13 @@ describe('chat-answer-formatter', () => {
       sources: [],
     })
 
-    expect(answer.summary).toContain('2026年5月16日 東京ドーム、巨人がDeNAに4-3で勝利しました。')
-    expect(answer.summary).toContain('7回裏に巨人が1点を取り、ここでリードを奪いました。')
-    expect(answer.summary).toContain('安打数はDeNAが10本、巨人が11本でした。')
+    expect(answer.summary).toContain('### 試合結果')
+    expect(answer.summary).toContain('2026年5月16日 東京ドーム')
+    expect(answer.summary).toContain('DeNA 3 - 4 巨人')
+    expect(answer.summary).toContain('### 得点経過')
+    expect(answer.summary).toContain('・7回裏 巨人1点（3-4）')
+    expect(answer.summary).toContain('安打: DeNA 10 / 巨人 11')
+    expect(answer.summary).not.toContain('該当する試合は1件です。')
     expect(answer.summary).not.toContain('r20260516g-db-08')
   })
 
@@ -283,8 +329,8 @@ describe('chat-answer-formatter', () => {
       sources: [],
     })
 
-    expect(answer.summary).toContain('主な得点・長打イベント')
-    expect(answer.summary).toContain('1回裏 巨人 大城: ライト2ランホームラン')
+    expect(answer.summary).toContain('### 主な得点シーン')
+    expect(answer.summary).toContain('・1回裏 巨人 大城: ライト2ランホームラン')
   })
 
   it('formats recent batting lines as current batting form', () => {
