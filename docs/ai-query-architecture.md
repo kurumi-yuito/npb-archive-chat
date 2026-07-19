@@ -668,6 +668,18 @@ Phase 8 では、data retrieval / Planner / Repository / D1 schema を変更せ�
 
 Phase 8 production QAでは `Q-127` から `Q-131` を追加し、投手戦、接戦、シーソーゲーム、ワンサイドゲーム、該当なしのサヨナラ検索を確認した。最新production deploy `109121a6-0109-40ac-a8f5-7dd1f1f83902` の通常LLM full QA `data/logs/qa-prod-1784468730551.json` は Pass 131 / Fail 0 / Blocked 0、HTTP 500/503 0 / 0、summary null 0、HTTP retry 0。
 
+## Phase 9 context-aware follow-up suggestions
+
+Phase 9 では、回答本文の後に表示する関連質問を `answer.suggested_questions` として追加した。UIはこの配列を回答末尾の `関連する質問` セクションに表示し、各ボタンを押すとその質問をそのまま送信する。
+
+提案はLLMの自由生成ではなく、`chat-answer-formatter.ts` のテンプレート生成で作る。入力は structured intent、capability route、resolved player、filters、実results、answer modeであり、Planner / Repository / D1 schema / data retrieval は変更していない。
+
+提案対象は、試合詳細、試合検索、選手成績、選手比較、チーム集計、記録系である。news / realtime / off_topic / 0件回答では提案を返さない。提案文は3件までに制限し、今日、現在、ライブ、速報、スタメン、ケガ、契約、移籍、ニュースなどのリアルタイム・ニュース語を含めない。
+
+Final Answer LLMは `suggested_questions` を生成・編集しない。最終回答summary本文には「関連する質問」や提案リストを混ぜず、UIが別枠で表示する。
+
+Phase 9 production QAでは `Q-132` から `Q-138` を追加し、試合詳細、選手成績、比較、チーム、entity継承、news/realtime非表示、提案数3件を確認した。最新production deploy `a1fe05cc-6f8a-4fe7-b88c-9df3ba2b0169` の通常LLM full QA `data/logs/qa-prod-1784476152704.json` は Pass 138 / Fail 0 / Blocked 0、HTTP 500/503 0 / 0、summary null 0、HTTP retry 0。
+
 ## Phase 2 completion
 
 Phase 2 は、Identity Layer 本体を DB 化する前に、既存 chat-service / planner / executor から安定して参照できる identity 境界を整える段階として完了した。
