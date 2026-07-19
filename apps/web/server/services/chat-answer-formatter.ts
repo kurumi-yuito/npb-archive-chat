@@ -903,6 +903,8 @@ function formatSingleGameDetail(
   }
 
   return [
+    ...formatGameHighlightSummary(row, linescore, gameEvents, gamePitchingRows),
+    '',
     '### 試合結果',
     `${formatDateJa(row.date)} ${displayVenueName(row.venue)}`,
     `${formatScoreLine(linescore)}`,
@@ -923,6 +925,197 @@ function formatSingleGameDetail(
     `安打: ${displayTeamName(linescore.away.team)} ${linescore.away.totals.hits} / ${displayTeamName(linescore.home.team)} ${linescore.home.totals.hits}`,
     `失策: ${displayTeamName(linescore.away.team)} ${linescore.away.totals.errors} / ${displayTeamName(linescore.home.team)} ${linescore.home.totals.errors}`,
   ].join('\n')
+}
+
+function formatGameHighlightSummary(
+  row: GameDetailRow,
+  linescore: ParsedLinescore,
+  gameEvents: EventSummaryRow[],
+  gamePitchingRows: PitchingLineRow[],
+): string[] {
+  const awayTeam = displayTeamName(linescore.away.team || row.awayTeamName)
+  const homeTeam = displayTeamName(linescore.home.team || row.homeTeamName)
+  const awayRuns = linescore.away.totals.runs
+  const homeRuns = linescore.home.totals.runs
+  const totalRuns = awayRuns + homeRuns
+  const margin = Math.abs(awayRuns - homeRuns)
+  const winner = awayRuns > homeRuns ? awayTeam : homeRuns > awayRuns ? homeTeam : null
+  const scoring = scoringInnings(linescore)
+  const leadChanges = countLeadChanges(scoring)
+  const winnerTrailed = winner ? didTeamTrail(winner, scoring) : false
+  const walkOff = isWalkOffWin(linescore)
+  const firstSentence = highlightOpeningSentence({
+    awayTeam,
+    homeTeam,
+    winner,
+    totalRuns,
+    margin,
+    leadChanges,
+    winnerTrailed,
+    walkOff,
+  })
+  const flowSentence = highlightFlowSentence(scoring, winner, leadChanges, winnerTrailed)
+  const eventSentence = highlightEventSentence(gameEvents, scoring, winner)
+  const pitchingSentence = highlightPitchingSentence(gamePitchingRows)
+  return [
+    firstSentence,
+    flowSentence,
+    eventSentence,
+    pitchingSentence,
+  ].filter((line): line is string => Boolean(line)).slice(0, 4)
+}
+
+function highlightOpeningSentence(input: {
+  awayTeam: string
+  homeTeam: string
+  winner: string | null
+  totalRuns: number
+  margin: number
+  leadChanges: number
+  winnerTrailed: boolean
+  walkOff: boolean
+}): string {
+  if (input.walkOff && input.winner) {
+    return `**この試合は${input.winner}が最後に決めたサヨナラゲームでした。**`
+  }
+  if (input.leadChanges >= 2) {
+    return '**この試合は両チームがリードを奪い合うシーソーゲームでした。**'
+  }
+  if (input.winnerTrailed && input.winner && input.margin <= 2) {
+    return `**この試合は${input.winner}が逆転し、終盤まで緊張感のある接戦でした。**`
+  }
+  if (input.totalRuns <= 3) {
+    return '**この試合は両軍の投手が試合を作った投手戦でした。**'
+  }
+  if (input.totalRuns >= 8 && input.margin <= 3) {
+    return '**この試合は両チームが点を取り合う打撃戦でした。**'
+  }
+  if (input.winner && input.margin >= 5) {
+    return `**この試合は${input.winner}が主導権を握ったワンサイドゲームでした。**`
+  }
+  if (input.margin <= 2) {
+    return '**この試合は最後まで大きく離れない接戦でした。**'
+  }
+  return input.winner
+    ? `**この試合は${input.winner}が${input.margin}点差で勝ち切った試合でした。**`
+    : `**この試合は${input.awayTeam}と${input.homeTeam}が譲らない展開でした。**`
+}
+
+function highlightFlowSentence(
+  scoring: ScoringHalfInning[],
+  winner: string | null,
+  leadChanges: number,
+  winnerTrailed: boolean,
+): string | null {
+  if (scoring.length === 0) {
+    return '得点は入らず、最後まで0-0のまま進みました。'
+  }
+  const first = scoring[0]
+  const decisive = winner ? decisiveScoringForWinner(scoring, winner) : null
+  if (winner && decisive && (winnerTrailed || leadChanges > 0)) {
+    return `${winner}は${decisive.inning}回${decisive.half}に${decisive.runs}点を取り、${decisive.awayScoreAfter}-${decisive.homeScoreAfter}として流れを引き寄せました。`
+  }
+  if (leadChanges >= 2) {
+    const last = scoring.at(-1)
+    return last
+      ? `${first.inning}回${first.half}から得点が動き、最後は${last.inning}回${last.half}の得点まで勝敗が動く展開でした。`
+      : null
+  }
+  return `${first.team}が${first.inning}回${first.half}に先制し、そこから試合が動きました。`
+}
+
+function highlightEventSentence(
+  gameEvents: EventSummaryRow[],
+  scoring: ScoringHalfInning[],
+  winner: string | null,
+): string | null {
+  const decisive = winner ? decisiveScoringForWinner(scoring, winner) : null
+  const ranked = [...gameEvents]
+    .filter((event) => isLikelyRunEvent(event.resultText))
+    .sort((a, b) => eventHighlightRank(a, decisive) - eventHighlightRank(b, decisive) || a.sequence - b.sequence)
+  const event = ranked[0]
+  if (!event) {
+    return null
+  }
+  const batter = event.batterName ? `${event.batterName}が` : ''
+  return `${event.inning}回${event.half === 'top' ? '表' : '裏'}には${displayTeamName(event.offenseTeam)}の${batter}${event.resultText}を記録しました。`
+}
+
+function eventHighlightRank(event: EventSummaryRow, decisive: ScoringHalfInning | null): number {
+  const decisiveMatch = decisive &&
+    event.inning === decisive.inning &&
+    (event.half === 'top' ? '表' : '裏') === decisive.half &&
+    displayTeamName(event.offenseTeam) === decisive.team
+  if (/サヨナラ/u.test(event.resultText)) return 0
+  if (decisiveMatch && /逆転|勝ち越し|ホームラン|本塁打|適時打|タイムリー|打点/u.test(event.resultText)) return 1
+  if (/満塁ホームラン|満塁本塁打/u.test(event.resultText)) return 2
+  if (/逆転/u.test(event.resultText)) return 3
+  if (/勝ち越し/u.test(event.resultText)) return 4
+  if (/ホームラン|本塁打/u.test(event.resultText)) return 5
+  if (/適時打|タイムリー|二塁打|三塁打|犠飛|打点/u.test(event.resultText)) return 6
+  return 10
+}
+
+function highlightPitchingSentence(rows: PitchingLineRow[]): string | null {
+  const boxRows = rows.filter((row) => row.sourceKind === 'box')
+  const shutoutStarter = boxRows
+    .filter((row) => Number.parseFloat(String(row.inningsPitched)) >= 5 && row.runs === 0)
+    .sort((a, b) => Number.parseFloat(String(b.inningsPitched)) - Number.parseFloat(String(a.inningsPitched)) || b.strikeouts - a.strikeouts)[0]
+  if (shutoutStarter) {
+    return `投手では${displayTeamName(shutoutStarter.team)}の${shutoutStarter.pitcherName}が${formatInningsForDisplay(shutoutStarter.inningsPitched)}を無失点に抑え、試合を作りました。`
+  }
+  const starter = boxRows
+    .filter((row) => Number.parseFloat(String(row.inningsPitched)) >= 5)
+    .sort((a, b) => Number.parseFloat(String(b.inningsPitched)) - Number.parseFloat(String(a.inningsPitched)) || a.earnedRuns - b.earnedRuns)[0]
+  if (!starter) {
+    return null
+  }
+  return `投手では${displayTeamName(starter.team)}の${starter.pitcherName}が${formatInningsForDisplay(starter.inningsPitched)}を投げ、${starter.strikeouts}奪三振でした。`
+}
+
+function countLeadChanges(scoring: ScoringHalfInning[]): number {
+  let previousLeader: string | null = null
+  let changes = 0
+  for (const score of scoring) {
+    const leader = leaderAfterScore(score)
+    if (leader && previousLeader && leader !== previousLeader) {
+      changes += 1
+    }
+    if (leader) {
+      previousLeader = leader
+    }
+  }
+  return changes
+}
+
+function didTeamTrail(team: string, scoring: ScoringHalfInning[]): boolean {
+  return scoring.some((score) => {
+    if (score.awayScoreAfter === score.homeScoreAfter) {
+      return false
+    }
+    const leader = leaderAfterScore(score)
+    return leader !== null && leader !== team
+  })
+}
+
+function leaderAfterScore(score: ScoringHalfInning): string | null {
+  if (score.awayScoreAfter === score.homeScoreAfter) {
+    return null
+  }
+  if (score.awayScoreAfter > score.homeScoreAfter) {
+    return score.half === '表' ? score.team : null
+  }
+  return score.half === '裏' ? score.team : null
+}
+
+function decisiveScoringForWinner(scoring: ScoringHalfInning[], winner: string): ScoringHalfInning | null {
+  let decisive: ScoringHalfInning | null = null
+  for (const score of scoring) {
+    if (leaderAfterScore(score) === winner) {
+      decisive = score
+    }
+  }
+  return decisive
 }
 
 function formatScoreLine(linescore: ParsedLinescore): string {
@@ -1187,10 +1380,10 @@ function scoringInnings(linescore: ParsedLinescore): ScoringHalfInning[] {
 }
 
 function inningRuns(value: string | undefined): number {
-  if (!value || /x|X|－|-/.test(value)) {
+  if (!value || /－|-/.test(value)) {
     return 0
   }
-  const parsed = Number.parseInt(value, 10)
+  const parsed = Number.parseInt(value.replace(/[xX]/g, ''), 10)
   return Number.isFinite(parsed) ? parsed : 0
 }
 

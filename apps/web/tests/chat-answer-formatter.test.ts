@@ -294,6 +294,8 @@ describe('chat-answer-formatter', () => {
     expect(answer.summary).toContain('安打: DeNA 10 / 巨人 11')
     expect(answer.summary).not.toContain('該当する試合は1件です。')
     expect(answer.summary).not.toContain('r20260516g-db-08')
+    expect(answer.summary).toMatch(/^\*\*この試合は巨人が逆転し、終盤まで緊張感のある接戦でした。\*\*/u)
+    expect(answer.summary.indexOf('**この試合')).toBeLessThan(answer.summary.indexOf('### 試合結果'))
   })
 
   it('adds play-by-play evidence to game detail summaries for game reviews', () => {
@@ -331,6 +333,75 @@ describe('chat-answer-formatter', () => {
 
     expect(answer.summary).toContain('### 主な得点シーン')
     expect(answer.summary).toContain('・1回裏 巨人 大城: ライト2ランホームラン')
+  })
+
+  it('starts low-scoring game details with a pitching battle highlight', () => {
+    const results = emptyResults()
+    results.gameDetails = [{
+      gameId: 'r20210416t-s-01',
+      date: '2021-04-16',
+      venue: 'Koshien',
+      competition: null,
+      awayTeamName: 'Yakult',
+      homeTeamName: 'Hanshin',
+      matchupText: 'Yakult vs Hanshin',
+      linescoreJson: JSON.stringify({
+        away: { team: 'Yakult', innings: ['0', '0', '0', '0', '0', '0', '0', '0', '0'], totals: { runs: 0, hits: 5, errors: 1 } },
+        home: { team: 'Hanshin', innings: ['0', '0', '0', '0', '2', '0', '0', '0', 'X'], totals: { runs: 2, hits: 5, errors: 0 } },
+      }),
+    }]
+    results.pitching = [
+      regularBoxRow('2021-04-16', 'r20210416t-s-01', '阪神', '藤浪', '5.2', 6, 0),
+    ]
+
+    const answer = formatChatAnswer({
+      question: '2021年4月16日の阪神対ヤクルトの試合詳細',
+      structuredQuery: { intent: 'game_detail', filters: { game_date: '2021-04-16' } },
+      results,
+      sources: [],
+    })
+
+    expect(answer.summary).toMatch(/^\*\*この試合は両軍の投手が試合を作った投手戦でした。\*\*/u)
+    expect(answer.summary).toContain('投手では阪神の藤浪が5回2/3を無失点に抑え、試合を作りました。')
+    expect(answer.summary.indexOf('投手戦')).toBeLessThan(answer.summary.indexOf('### 試合結果'))
+  })
+
+  it('prioritizes walk-off and decisive events in game detail highlights', () => {
+    const results = emptyResults()
+    results.gameDetails = [{
+      gameId: 'r20260516db-g-01',
+      date: '2026-05-16',
+      venue: 'Yokohama',
+      competition: null,
+      awayTeamName: 'Yomiuri',
+      homeTeamName: 'DeNA',
+      matchupText: 'Yomiuri vs DeNA',
+      linescoreJson: JSON.stringify({
+        away: { team: 'Yomiuri', innings: ['0', '0', '0', '0', '0', '0', '0', '0', '1'], totals: { runs: 1, hits: 6, errors: 0 } },
+        home: { team: 'DeNA', innings: ['0', '0', '0', '0', '0', '0', '0', '0', '1x'], totals: { runs: 2, hits: 7, errors: 0 } },
+      }),
+    }]
+    results.events = [{
+      ...eventRow(1),
+      gameId: 'r20260516db-g-01',
+      gameDate: '2026-05-16',
+      inning: 9,
+      half: 'bottom',
+      offenseTeam: 'DeNA',
+      batterName: '牧',
+      resultText: 'サヨナラタイムリーヒット（打点1）',
+    }]
+
+    const answer = formatChatAnswer({
+      question: '2026年5月16日のDeNA対巨人の試合詳細',
+      structuredQuery: { intent: 'game_detail', filters: { game_date: '2026-05-16' } },
+      results,
+      sources: [],
+    })
+
+    expect(answer.summary).toMatch(/^\*\*この試合はDeNAが最後に決めたサヨナラゲームでした。\*\*/u)
+    expect(answer.summary).toContain('9回裏にはDeNAの牧がサヨナラタイムリーヒット（打点1）を記録しました。')
+    expect(answer.summary.indexOf('サヨナラゲーム')).toBeLessThan(answer.summary.indexOf('### 試合結果'))
   })
 
   it('formats recent batting lines as current batting form', () => {
