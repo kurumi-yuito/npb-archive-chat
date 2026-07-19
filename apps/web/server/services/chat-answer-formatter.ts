@@ -251,7 +251,7 @@ function buildSummary(
     if (first.sourceKind === 'bis_pitching' || first.sourceKind === 'bis_pitching_farm') {
       return `${yearShiftPrefix}${formatBisPitchingSummary(first, resultCount)}`
     }
-    return `${yearShiftPrefix}条件に一致する投手成績が${resultCount}件あります。先頭は${first.gameDate}の${first.pitcherName}で、${formatInningsForDisplay(first.inningsPitched)} ${first.strikeouts}奪三振です。`
+    return `${yearShiftPrefix}${formatDefaultPitchingLineSummary(first, resultCount)}`
   }
 
   if (structuredQuery.intent === 'search_batting') {
@@ -283,7 +283,7 @@ function buildSummary(
     if (filters.group_by === 'year' || (/年別/u.test(question) && /本塁打|ホームラン|HR/iu.test(question))) {
       return `${yearShiftPrefix}${formatYearlyHomeRunSummary(results.batting as BattingLineRow[])}`
     }
-    return `${yearShiftPrefix}条件に一致する打撃成績が${resultCount}件あります。先頭は${formatDateJa(first.gameDate)}の${first.playerName}で、${first.atBats}打数${first.hits}安打${first.runsBattedIn}打点です。`
+    return `${yearShiftPrefix}${formatDefaultBattingLineSummary(first, resultCount)}`
   }
 
   if (structuredQuery.intent === 'search_roster') {
@@ -499,8 +499,9 @@ function formatGameSearchSummary(question: string, rows: GameSummaryRow[], resul
     ].join('\n')
   }
   return [
-    `条件に一致する試合が${resultCount}件あります。`,
-    ...targetRows.slice(0, 20).map((row) => formatGameSummaryLine(row)),
+    `${formatGameSummaryLine(targetRows[0] ?? rows[0])}`,
+    `対象: ${resultCount}件`,
+    ...(targetRows.length > 1 ? targetRows.slice(1, 20).map((row) => formatGameSummaryLine(row)) : []),
     ...(resultCount > 20 ? [`ほか${resultCount - 20}件は省略しています。`] : []),
   ].join('\n')
 }
@@ -580,11 +581,12 @@ function formatAggregateSummary(
       return formatSinglePlayerBattingAggregate(question, rows[0])
     }
     return [
-      `打撃集計結果は${rows.length}件です。`,
+      '打撃集計の上位結果です。',
       ...rows.slice(0, 10).map((row, index) => {
         const s = row.stats
         return `${index + 1}位: ${row.label}（${s.team ?? ''}） 試合${s.games ?? row.total}、打率${formatMaybeRate(s.battingAverage)}、本塁打${s.homeRuns ?? 0}、打点${s.runsBattedIn ?? 0}、盗塁${s.stolenBases ?? 0}、OPS${formatMaybeRate(s.ops)}、IsoP${formatMaybeRate(s.isoP)}、BB%${formatMaybePercent(s.bbRate)}`
       }),
+      `対象: ${rows.length}件`,
     ].join('\n')
   }
   if (structuredQuery.intent === 'aggregate_pitching') {
@@ -593,7 +595,7 @@ function formatAggregateSummary(
       return comparisonSummary
     }
     return [
-      `投手集計結果は${rows.length}件です。`,
+      '投手集計の上位結果です。',
       ...rows.slice(0, 10).map((row, index) => {
         const s = row.stats
         const ip = Number(s.inningsPitched ?? 0)
@@ -602,11 +604,13 @@ function formatAggregateSummary(
         const saveText = s.saves != null ? `、セーブ${s.saves}` : ''
         return `${index + 1}位: ${row.label}（${s.team ?? ''}） 登板${s.games ?? row.total}${saveText}、投球回${formatDecimalStat(ip)}、奪三振${s.strikeouts ?? 0}、自責点${s.earnedRuns ?? 0}、防御率${formatMaybeDecimal(era)}、WHIP${formatMaybeDecimal(whip)}、球数${s.pitches ?? 0}`
       }),
+      `対象: ${rows.length}件`,
     ].join('\n')
   }
   return [
-    `イベント集計結果は${rows.length}件です。`,
+    'イベント集計の上位結果です。',
     ...rows.slice(0, 10).map((row, index) => `${index + 1}位: ${row.label} ${row.total}件`),
+    `対象: ${rows.length}件`,
   ].join('\n')
 }
 
@@ -804,6 +808,29 @@ function formatTopPitchCountAppearance(row: PitchingLineRow | undefined): string
   }
   const league = row.gameId.startsWith('f') ? '二軍' : '一軍'
   return `条件期間で最も球数が多かった登板は、${formatDateJa(row.gameDate)}の${league}・${row.team} ${row.pitcherName}です。${formatInningsForDisplay(row.inningsPitched)}を投げ、${row.pitchCount}球、${row.strikeouts}奪三振、失点${row.runs}、自責点${row.earnedRuns}でした。`
+}
+
+function formatDefaultPitchingLineSummary(row: PitchingLineRow, resultCount: number): string {
+  const league = row.gameId.startsWith('f') ? '二軍' : '一軍'
+  const pitchText = row.pitchCount > 0 ? `、${row.pitchCount}球` : ''
+  return [
+    `${formatDateJa(row.gameDate)}の${league}・${displayTeamName(row.team)} ${row.pitcherName}は、${formatInningsForDisplay(row.inningsPitched)}${pitchText}、${row.strikeouts}奪三振、失点${row.runs}、自責点${row.earnedRuns}でした。`,
+    `対象: ${resultCount}件`,
+  ].join('\n')
+}
+
+function formatDefaultBattingLineSummary(row: BattingLineRow, resultCount: number): string {
+  const league = row.gameId.startsWith('f') ? '二軍' : '一軍'
+  const homeRuns = countHomeRunsFromBattingText(row.rawText)
+  const extra = [
+    row.runsBattedIn > 0 ? `${row.runsBattedIn}打点` : undefined,
+    homeRuns > 0 ? `${homeRuns}本塁打` : undefined,
+    row.runs > 0 ? `${row.runs}得点` : undefined,
+  ].filter(Boolean).join('、')
+  return [
+    `${formatDateJa(row.gameDate)}の${league}・${displayTeamName(row.team)} ${row.playerName}の打撃成績は、${row.atBats}打数${row.hits}安打${extra ? `、${extra}` : ''}でした。`,
+    `対象: ${resultCount}件`,
+  ].join('\n')
 }
 
 function formatInningsForDisplay(value: string | number): string {
@@ -1866,8 +1893,9 @@ function formatEventListSummary(
     return `${index + 1}. ${formatDateJa(event.gameDate)} ${event.inning}回${half} ${displayTeamName(event.offenseTeam)} ${batter}${event.resultText}`
   }) : []
   return [
-    `${title}は${resultCount}件です。`,
-    ...detailLines,
+    detailLines[0] ?? `${title}です。`,
+    `対象: ${resultCount}件`,
+    ...detailLines.slice(1),
     ...(detailLines.length > 0 && resultCount > detailLines.length ? [`ほか${resultCount - detailLines.length}件は省略しています。`] : []),
   ].join('\n')
 }

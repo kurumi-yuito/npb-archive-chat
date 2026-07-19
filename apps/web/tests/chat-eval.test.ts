@@ -74,7 +74,7 @@ describe('chat eval: db-backed query plan, result, formatter regression', () => 
     })
     expect(response.answer.result_count).toBe(12)
     expect(response.results.events).toHaveLength(12)
-    expect(response.answer.summary).toBe('2025年ヤクルト山田が打ったホームランは12件です。')
+    expect(response.answer.summary).toBe('2025年ヤクルト山田が打ったホームランです。\n対象: 12件')
   })
 
   it('03 romanized name without qualifier: stops safely instead of guessing', async () => {

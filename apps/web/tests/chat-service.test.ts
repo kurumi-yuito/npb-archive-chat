@@ -879,7 +879,8 @@ describe('chat-service', () => {
       limit: 5,
     })
     expect(eventFilters).not.toHaveProperty('result_text_contains')
-    expect(response.answer.summary).toContain('2025年藤浪晋太郎から打ったイベントは1件です')
+    expect(response.answer.summary).toContain('2025年藤浪晋太郎から打ったイベントです。')
+    expect(response.answer.summary).toContain('対象: 1件')
     expect(response.answer.execution_metadata?.follow_up_type).toBe('evaluation_request')
   })
 
@@ -3050,7 +3051,8 @@ describe('chat-service', () => {
       batter_player_id: '41045137',
     })
     expect(response.answer.result_count).toBe(1)
-    expect(response.answer.summary).toContain('藤浪 晋太郎が打ったホームランは1件です')
+    expect(response.answer.summary).toContain('1. 2021年4月16日')
+    expect(response.answer.summary).toContain('対象: 1件')
     expect(response.answer.summary).not.toContain('条件に一致するイベントは見つかりません')
   })
 

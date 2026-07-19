@@ -37,7 +37,7 @@ describe('chat-answer-formatter', () => {
 
     expect(answer.result_count).toBe(21)
     expect(answer.remaining_count).toBe(1)
-    expect(answer.summary).toBe('2025年ヤクルト山田が打ったホームランは21件です。')
+    expect(answer.summary).toBe('2025年ヤクルト山田が打ったホームランです。\n対象: 21件')
   })
 
   it('describes batter-vs-pitcher event searches with both player names', () => {
