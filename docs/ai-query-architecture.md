@@ -628,6 +628,24 @@ Phase 5.1 で QA 専用 bypass を撤去した。route catch は特定質問文�
 
 `env.normalized` は production normalized D1 を共有する read-only validation environment としてのみ使う。`NPB_SEARCH_DB_MODE=read_only_validation_shared_production_db` を設定し、scheduled daily update dispatch はこの mode では失敗する。通常の production は `NPB_SEARCH_DB_MODE=production` で、daily update は production normalized D1 にのみ書く。
 
+## Phase 6 conversation capability architecture
+
+Phase 6 では、structured query intent とは別に会話上の capability intent を導入した。`apps/web/server/services/chat-capability.ts` が Planner段階の structured query と元質問から `historical_record` / `analytical` / `opinion` / `news` / `realtime` を分類し、`repository_history` / `repository_analysis` / `analysis_then_opinion` / `external_source_guidance` へroutingする。
+
+- `historical_record`: 過去試合、過去成績、選手比較、チーム比較、シーズン集計。従来通り Planner -> Executor -> Repository -> Formatter を通る。
+- `analytical`: 傾向、最近の状態、好不調、改善点、強み弱み。現行D1 evidenceを使い、集計・比較・傾向を含む回答として扱う。
+- `opinion`: 評価、期待、どう思うか。必ず repository analysis の後段で `chat-opinion-generator.ts` が deterministic answer と results を根拠に補足コメントを付ける。分析なしの opinion は生成しない。
+- `news`: 公示、登録抹消、ケガ、契約、トレード、監督・選手コメント、記事。DBから推測せず、外部情報案内へroutingする。
+- `realtime`: 今日の試合、現在、ライブ、スタメン、途中経過、速報。DBから生成せず、外部情報案内へroutingする。
+
+news / realtime の Capability Failure はテンプレート化し、案内先は `SPORTS_NAVI_NPB_URL` に集約した。現時点の案内先は `https://baseball.yahoo.co.jp/npb/` で、将来ニュースソースを変更する場合はこの定数と文書を更新する。
+
+`chat-answer-formatter.ts` と schema は `execution_metadata.question_intent`、`capability_route`、`capability_requires_analysis`、`capability_uses_repository`、`external_source_url` を返す。QAログではこれにより、各ケースが通常repository経路、analysis後opinion、または外部情報案内のどれを通ったかを確認できる。
+
+`chat-final-answer-llm.ts` のsystem promptは、AIがプロ野球実況・解説者として自然に説明しつつ、データから導けることと導けないことを分けるよう更新した。ニュース、速報、公示、ケガ、契約、移籍、コメント、今日の試合状況は推測生成しない。意見・評価・展望は deterministic answer と results にある分析結果を根拠にする。
+
+Phase 6 production QAでは `Q-118` から `Q-122` を追加し、5カテゴリすべてのroutingを確認した。最新production deploy `cd418821-cb45-4f02-82a4-ff23785abfb5` の通常LLM full QA `data/logs/qa-prod-1784439423359.json` は Pass 122 / Fail 0 / Blocked 0、HTTP 500/503 0 / 0、summary null 0、HTTP retry 0。
+
 ## Phase 2 completion
 
 Phase 2 は、Identity Layer 本体を DB 化する前に、既存 chat-service / planner / executor から安定して参照できる identity 境界を整える段階として完了した。
