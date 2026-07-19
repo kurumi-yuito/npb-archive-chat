@@ -646,6 +646,18 @@ news / realtime の Capability Failure はテンプレート化し、案内先�
 
 Phase 6 production QAでは `Q-118` から `Q-122` を追加し、5カテゴリすべてのroutingを確認した。最新production deploy `cd418821-cb45-4f02-82a4-ff23785abfb5` の通常LLM full QA `data/logs/qa-prod-1784439423359.json` は Pass 122 / Fail 0 / Blocked 0、HTTP 500/503 0 / 0、summary null 0、HTTP retry 0。
 
+## Phase 7 answer presentation
+
+Phase 7 では、data retrieval / planner / repository の挙動は変えず、Answer Generator と UI の表示構成だけを改善した。
+
+序数・初記録系の本塁打質問は、検索結果件数ではなく「いつ・どの相手に・何を達成したか」をSummary先頭で返す。例: `エンカーナシオンの1号ホームランはいつ？` では `2026年7月11日の巨人戦` を先頭に出し、1回裏、竹丸投手からのレフト3ランを補足する。
+
+generic fallback summary は `条件に一致する...がN件あります` を先頭に置かず、先頭結果または上位結果説明から始める。件数は `対象: N件` として補足へ移動する。
+
+試合詳細はスマートフォンで読めるよう、`試合結果`、`得点経過`、`主な投手`、`主な打者`、`主な得点シーン` の見出しと箇条書きで構成する。UI側の試合詳細カードタイトルも `1件` ではなく、日付とスコア/対戦カードを表示する。
+
+Phase 7 production QAでは `Q-123` から `Q-126` を追加し、初記録/通算1号/試合詳細レイアウト/Summary先頭の表示を確認した。最新production deploy `aec15b3c-2189-414c-875f-78dc7f9b507a` の通常LLM full QA `data/logs/qa-prod-1784459567807.json` は Pass 126 / Fail 0 / Blocked 0、HTTP 500/503 0 / 0、summary null 0、HTTP retry 0。
+
 ## Phase 2 completion
 
 Phase 2 は、Identity Layer 本体を DB 化する前に、既存 chat-service / planner / executor から安定して参照できる identity 境界を整える段階として完了した。
