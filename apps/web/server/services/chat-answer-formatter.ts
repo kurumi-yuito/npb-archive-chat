@@ -70,6 +70,7 @@ export function formatChatAnswer({
     summary: buildSummary(question, structuredQuery, results, resultCount, playerResolution, executionMetadata),
     result_count: resultCount,
     ...(remainingCount > 0 ? { remaining_count: remainingCount } : {}),
+    suggested_questions: buildSuggestedQuestions(structuredQuery, results, resultCount, playerResolution, executionMetadata),
     source_urls: sourceUrls,
     resolved_player: playerResolution,
     applied_filters: structuredQuery.filters,
@@ -122,6 +123,225 @@ export function formatChatAnswer({
 }
 
 const SEARCH_EVENTS_SUMMARY_LIMIT = 20
+
+function buildSuggestedQuestions(
+  structuredQuery: ChatStructuredQuery,
+  results: ChatResponse['results'],
+  resultCount: number,
+  playerResolution: PlayerResolution | null,
+  executionMetadata?: ChatExecutionMetadata,
+): string[] {
+  if (resultCount === 0 || structuredQuery.intent === 'off_topic') {
+    return []
+  }
+  if (
+    executionMetadata?.questionIntent === 'news' ||
+    executionMetadata?.questionIntent === 'realtime' ||
+    executionMetadata?.capabilityRoute === 'external_source_guidance'
+  ) {
+    return []
+  }
+
+  const filters = structuredQuery.filters as Record<string, unknown>
+  const playerName = suggestionPlayerName(structuredQuery, results, playerResolution)
+  const teamName = suggestionTeamName(structuredQuery, results)
+  const gameLabel = suggestionGameLabel(results)
+  const pitcherName = suggestionPitcherName(results)
+  const batterName = suggestionBatterName(results)
+
+  if (structuredQuery.intent === 'game_detail') {
+    return uniqueSuggestedQuestions([
+      gameLabel ? `${gameLabel}の全得点シーンを教えて` : 'この試合の全得点シーンを教えて',
+      pitcherName ? `${pitcherName}投手の投球内容を詳しく教えて` : 'この試合の先発投手を教えて',
+      batterName ? `${batterName}選手の全打席を教えて` : 'この試合の主な打者を教えて',
+    ])
+  }
+
+  if (structuredQuery.intent === 'search_games') {
+    const row = results.games[0]
+    const prefix = row ? `${formatDateJa(row.date)}の${displayTeamName(row.awayTeamName)}対${displayTeamName(row.homeTeamName)}` : 'この試合'
+    return uniqueSuggestedQuestions([
+      `${prefix}について詳しく教えて`,
+      `${prefix}のハイライトを教えて`,
+      `${prefix}の先発投手を教えて`,
+    ])
+  }
+
+  if (isPlayerComparisonQuery(structuredQuery, executionMetadata)) {
+    const label = suggestionComparisonLabel(structuredQuery, executionMetadata)
+    const metricQuestion = structuredQuery.intent === 'search_pitching' || structuredQuery.intent === 'aggregate_pitching'
+      ? '防御率と奪三振も比較して'
+      : 'OPSと本塁打も比較して'
+    return uniqueSuggestedQuestions([
+      label ? `${label}の${metricQuestion}` : metricQuestion,
+      label ? `${label}を直近3年間だけ比較して` : '直近3年間だけ比較すると？',
+      label ? `${label}の直近3試合も比較して` : '直近3試合も比較して',
+    ])
+  }
+
+  if (isTeamSuggestionIntent(structuredQuery)) {
+    const team = teamName ?? 'このチーム'
+    return uniqueSuggestedQuestions([
+      `${team}の最近10試合の成績は？`,
+      `${team}のチーム打撃成績を教えて`,
+      `${team}のチーム投手成績を教えて`,
+    ])
+  }
+
+  if (isRecordSuggestionQuery(structuredQuery, filters)) {
+    const player = playerName ?? 'この選手'
+    return uniqueSuggestedQuestions([
+      `${player}の次のホームランはいつ？`,
+      `${player}の通算成績を教えて`,
+      `${player}のホームラン一覧を教えて`,
+    ])
+  }
+
+  if (isPlayerSuggestionIntent(structuredQuery)) {
+    const player = playerName ?? 'この選手'
+    return uniqueSuggestedQuestions([
+      `${player}の最近5試合の成績は？`,
+      `${player}の今季成績を教えて`,
+      `${player}の通算成績を教えて`,
+    ])
+  }
+
+  return []
+}
+
+function uniqueSuggestedQuestions(questions: Array<string | null | undefined>): string[] {
+  const blocked = /今日|現在|ライブ|速報|スタメン|登録|抹消|ケガ|怪我|契約|移籍|トレード|ニュース|記事|コメント/u
+  const unique: string[] = []
+  for (const question of questions) {
+    const value = question?.trim()
+    if (!value || blocked.test(value) || unique.includes(value)) {
+      continue
+    }
+    unique.push(value)
+    if (unique.length >= 3) {
+      break
+    }
+  }
+  return unique
+}
+
+function suggestionPlayerName(
+  structuredQuery: ChatStructuredQuery,
+  results: ChatResponse['results'],
+  playerResolution: PlayerResolution | null,
+): string | null {
+  if (playerResolution?.status === 'resolved' && playerResolution.name) {
+    return playerResolution.name
+  }
+  const filters = structuredQuery.filters as Record<string, unknown>
+  const filterName = stringFilter(filters.player_name) ??
+    stringFilter(filters.batter_name) ??
+    stringFilter(filters.pitcher_name)
+  if (filterName) {
+    return filterName
+  }
+  return results.batting[0]?.playerName ??
+    results.pitching[0]?.pitcherName ??
+    results.affiliations[0]?.playerName ??
+    results.events[0]?.batterName ??
+    results.events[0]?.pitcherName ??
+    null
+}
+
+function suggestionTeamName(structuredQuery: ChatStructuredQuery, results: ChatResponse['results']): string | null {
+  const filters = structuredQuery.filters as Record<string, unknown>
+  return stringFilter(filters.team) ??
+    results.batting[0]?.team ??
+    results.pitching[0]?.team ??
+    results.affiliations[0]?.team ??
+    results.games[0]?.homeTeamName ??
+    results.gameDetails[0]?.homeTeamName ??
+    null
+}
+
+function suggestionGameLabel(results: ChatResponse['results']): string | null {
+  const row = results.gameDetails[0]
+  if (!row) {
+    return null
+  }
+  return `${formatDateJa(row.date)}の${displayTeamName(row.awayTeamName)}対${displayTeamName(row.homeTeamName)}`
+}
+
+function suggestionPitcherName(results: ChatResponse['results']): string | null {
+  return results.pitching[0]?.pitcherName ??
+    results.events.find((row) => row.pitcherName)?.pitcherName ??
+    null
+}
+
+function suggestionBatterName(results: ChatResponse['results']): string | null {
+  return results.batting[0]?.playerName ??
+    results.events.find((row) => row.batterName)?.batterName ??
+    null
+}
+
+function isPlayerSuggestionIntent(structuredQuery: ChatStructuredQuery): boolean {
+  return structuredQuery.intent === 'search_batting' ||
+    structuredQuery.intent === 'search_pitching' ||
+    structuredQuery.intent === 'player_affiliation' ||
+    structuredQuery.intent === 'aggregate_batting' ||
+    structuredQuery.intent === 'aggregate_pitching'
+}
+
+function isTeamSuggestionIntent(structuredQuery: ChatStructuredQuery): boolean {
+  if (structuredQuery.intent !== 'aggregate_games') {
+    return false
+  }
+  const filters = structuredQuery.filters as Record<string, unknown>
+  return Boolean(filters.team)
+}
+
+function isPlayerComparisonQuery(
+  structuredQuery: ChatStructuredQuery,
+  executionMetadata?: ChatExecutionMetadata,
+): boolean {
+  const filters = structuredQuery.filters as Record<string, unknown>
+  return Array.isArray(filters.player_names) ||
+    Array.isArray(filters.pitcher_names) ||
+    Array.isArray(filters.player_ids) ||
+    Array.isArray(filters.pitcher_player_ids) ||
+    executionMetadata?.answerMode === 'comparison_explanation'
+}
+
+function suggestionComparisonLabel(
+  structuredQuery: ChatStructuredQuery,
+  executionMetadata?: ChatExecutionMetadata,
+): string | null {
+  const filters = structuredQuery.filters as Record<string, unknown>
+  const names = arrayStringFilter(filters.player_names) ?? arrayStringFilter(filters.pitcher_names)
+  if (names?.length) {
+    return names.join('と')
+  }
+  const players = executionMetadata?.playerResolutions
+    ?.filter((resolution) => resolution.status === 'resolved' && resolution.name)
+    .map((resolution) => resolution.name as string)
+  return players && players.length >= 2 ? players.join('と') : null
+}
+
+function isRecordSuggestionQuery(structuredQuery: ChatStructuredQuery, filters: Record<string, unknown>): boolean {
+  return structuredQuery.intent === 'search_events' &&
+    (
+      /ホームラン|本塁打|HR/iu.test(String(filters.result_text_contains ?? '')) ||
+      typeof filters.batter_name === 'string' ||
+      typeof filters.player_name === 'string'
+    )
+}
+
+function stringFilter(value: unknown): string | null {
+  return typeof value === 'string' && value.trim() ? value.trim() : null
+}
+
+function arrayStringFilter(value: unknown): string[] | null {
+  if (!Array.isArray(value)) {
+    return null
+  }
+  const values = value.filter((item): item is string => typeof item === 'string' && item.trim().length > 0)
+  return values.length > 0 ? values : null
+}
 
 function buildSummary(
   question: string,

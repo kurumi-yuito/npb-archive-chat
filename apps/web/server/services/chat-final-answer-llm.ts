@@ -153,6 +153,7 @@ export function createChatFinalAnswerLlm(config: ChatFinalAnswerLlmConfig): Chat
             '',
             '## 文体',
             '簡潔かつ会話的に、長い一覧以外はMarkdownの見出しを使わず、会話履歴の文脈を繋げて話してください。',
+            'deterministic_answer.suggested_questions はUIが別枠で表示します。最終回答summary本文へ「関連する質問」や提案リストを追加してはいけません。',
           ].join('\n'),
         },
         {

@@ -128,6 +128,10 @@ function visibleSources(response: ChatResponse): string[] {
   return response.answer.source_urls.slice(0, 8)
 }
 
+function visibleSuggestedQuestions(response: ChatResponse): string[] {
+  return response.answer.suggested_questions?.slice(0, 3) ?? []
+}
+
 function sourceHost(url: string): string {
   try {
     return new URL(url).hostname
@@ -439,6 +443,23 @@ function toggleSidebar() {
                     </li>
                   </ul>
                 </details>
+              </div>
+
+              <div v-if="visibleSuggestedQuestions(turn.assistant).length" class="result-section related-questions">
+                <h3 class="result-title">関連する質問</h3>
+                <div class="related-questions__list">
+                  <button
+                    v-for="question in visibleSuggestedQuestions(turn.assistant)"
+                    :key="question"
+                    class="related-questions__item"
+                    type="button"
+                    :disabled="loading"
+                    @click="submitText(question)"
+                  >
+                    <span aria-hidden="true">□</span>
+                    <span>{{ question }}</span>
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -1032,6 +1053,39 @@ function toggleSidebar() {
   margin: 0;
   white-space: pre-wrap;
   font-size: 0.9rem;
+}
+
+.related-questions__list {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.related-questions__item {
+  width: 100%;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: start;
+  gap: 0.45rem;
+  padding: 0.55rem 0.65rem;
+  border: 1px solid var(--c-border);
+  border-radius: 7px;
+  background: var(--c-surface);
+  color: var(--c-text);
+  font: inherit;
+  font-size: 0.85rem;
+  line-height: 1.45;
+  text-align: left;
+  cursor: pointer;
+}
+
+.related-questions__item:hover:not(:disabled) {
+  border-color: var(--c-accent);
+  background: var(--c-accent-dim);
+}
+
+.related-questions__item:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
 }
 
 /* Result sections */

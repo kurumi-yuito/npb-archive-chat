@@ -1241,6 +1241,136 @@ describe('chat-answer-formatter', () => {
     expect(answer.summary).toContain('BB%15.3%')
     expect(answer.summary).toContain('K%19.4%')
   })
+
+  it('suggests context-aware follow-up questions for game details', () => {
+    const results = emptyResults()
+    results.gameDetails = [{
+      gameId: 'r20260711db-g-12',
+      date: '2026-07-11',
+      venue: 'Yokohama',
+      competition: null,
+      awayTeamName: 'Yomiuri',
+      homeTeamName: 'DeNA',
+      matchupText: 'Yomiuri vs DeNA',
+      linescoreJson: JSON.stringify({
+        away: { team: 'Yomiuri', innings: ['2', '0', '1', '0', '0', '0', '2', '0', '0'], totals: { runs: 5, hits: 8, errors: 1 } },
+        home: { team: 'DeNA', innings: ['3', '0', '0', '0', '0', '1', '0', '0', '0'], totals: { runs: 4, hits: 7, errors: 1 } },
+      }),
+    }]
+    results.events = [{
+      ...eventRow(1),
+      gameId: 'r20260711db-g-12',
+      gameDate: '2026-07-11',
+      inning: 1,
+      half: 'bottom',
+      offenseTeam: 'DeNA',
+      batterName: 'エンカーナシオン',
+      pitcherName: '竹丸',
+      resultText: 'レフト3ランホームラン（打点3）',
+    }]
+    results.pitching = [
+      regularBoxRow('2026-07-11', 'r20260711db-g-12', 'DeNA', '藤浪', '3', 4, 3),
+    ]
+
+    const answer = formatChatAnswer({
+      question: '2026年7月11日のDeNA対巨人の試合詳細',
+      structuredQuery: { intent: 'game_detail', filters: { game_date: '2026-07-11', team: 'DeNA' } },
+      results,
+      sources: [],
+    })
+
+    expect(answer.suggested_questions).toEqual([
+      '2026年7月11日の巨人対DeNAの全得点シーンを教えて',
+      '藤浪投手の投球内容を詳しく教えて',
+      'エンカーナシオン選手の全打席を教えて',
+    ])
+  })
+
+  it('suggests player follow-ups with inherited entity', () => {
+    const results = emptyResults()
+    results.batting = [
+      battingRow('2026-05-16', 4, 2, 1, 0),
+    ]
+
+    const answer = formatChatAnswer({
+      question: '村上の最近の打撃成績',
+      structuredQuery: { intent: 'search_batting', filters: { player_name: '村上', recent: true } },
+      results,
+      sources: [],
+      playerResolution: {
+        input: '村上',
+        player_id: 'murakami',
+        name: '村上宗隆',
+        primary_team: 'ヤクルト',
+        status: 'resolved',
+        candidates: [],
+      },
+    })
+
+    expect(answer.suggested_questions).toEqual([
+      '村上宗隆の最近5試合の成績は？',
+      '村上宗隆の今季成績を教えて',
+      '村上宗隆の通算成績を教えて',
+    ])
+  })
+
+  it('suggests comparison follow-ups without news or realtime topics', () => {
+    const results = emptyResults()
+    results.pitching = [
+      regularBoxRow('2026-05-20', 'r20260520db-g-01', 'DeNA', '石田 裕太郎', '6', 5, 1),
+      regularBoxRow('2026-05-20', 'r20260520db-g-01', 'DeNA', '東 克樹', '7', 6, 2),
+    ]
+
+    const answer = formatChatAnswer({
+      question: '石田裕太郎と東克樹の直近3試合を比較して',
+      structuredQuery: { intent: 'search_pitching', filters: { pitcher_names: ['石田裕太郎', '東克樹'], recent: true } },
+      results,
+      sources: [],
+    })
+
+    expect(answer.suggested_questions).toEqual([
+      '石田裕太郎と東克樹の防御率と奪三振も比較して',
+      '石田裕太郎と東克樹を直近3年間だけ比較して',
+      '石田裕太郎と東克樹の直近3試合も比較して',
+    ])
+    expect(answer.suggested_questions?.join('\n')).not.toMatch(/今日|現在|速報|スタメン|ケガ|契約|移籍/u)
+  })
+
+  it('suggests team follow-ups from aggregate game answers', () => {
+    const results = emptyResults()
+    results.aggregates = [
+      { kind: 'games', label: '阪神', total: 50, stats: { wins: 30, losses: 18, draws: 2 } },
+    ]
+
+    const answer = formatChatAnswer({
+      question: '今シーズン阪神は何勝何敗ですか？',
+      structuredQuery: { intent: 'aggregate_games', filters: { year: 2026, team: '阪神' } },
+      results,
+      sources: [],
+    })
+
+    expect(answer.suggested_questions).toEqual([
+      '阪神の最近10試合の成績は？',
+      '阪神のチーム打撃成績を教えて',
+      '阪神のチーム投手成績を教えて',
+    ])
+  })
+
+  it('does not suggest follow-ups for news or realtime capability failures', () => {
+    const answer = formatChatAnswer({
+      question: '今日のスタメンは？',
+      structuredQuery: { intent: 'off_topic', filters: {} },
+      results: emptyResults(),
+      sources: [],
+      executionMetadata: {
+        ...evaluationMetadata(),
+        questionIntent: 'realtime',
+        capabilityRoute: 'external_source_guidance',
+      },
+    })
+
+    expect(answer.suggested_questions).toEqual([])
+  })
 })
 
 function emptyResults(): ChatResponse['results'] {

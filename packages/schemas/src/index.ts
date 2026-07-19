@@ -437,6 +437,7 @@ export const chatResponseSchema = z.object({
     summary: z.string().min(1),
     result_count: z.number().int().nonnegative(),
     remaining_count: z.number().int().nonnegative().optional(),
+    suggested_questions: z.array(z.string().min(1)).max(5).optional(),
     source_urls: z.array(z.string().url()),
     resolved_player: z.object({
       input: z.string().min(1),
