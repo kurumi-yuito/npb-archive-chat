@@ -70,7 +70,7 @@ export function formatChatAnswer({
     summary: buildSummary(question, structuredQuery, results, resultCount, playerResolution, executionMetadata),
     result_count: resultCount,
     ...(remainingCount > 0 ? { remaining_count: remainingCount } : {}),
-    suggested_questions: buildSuggestedQuestions(structuredQuery, results, resultCount, playerResolution, executionMetadata),
+    suggested_questions: buildSuggestedQuestions(question, structuredQuery, results, resultCount, playerResolution, executionMetadata),
     source_urls: sourceUrls,
     resolved_player: playerResolution,
     applied_filters: structuredQuery.filters,
@@ -125,6 +125,7 @@ export function formatChatAnswer({
 const SEARCH_EVENTS_SUMMARY_LIMIT = 20
 
 function buildSuggestedQuestions(
+  question: string,
   structuredQuery: ChatStructuredQuery,
   results: ChatResponse['results'],
   resultCount: number,
@@ -150,7 +151,7 @@ function buildSuggestedQuestions(
   const batterName = suggestionBatterName(results)
 
   if (structuredQuery.intent === 'game_detail') {
-    return uniqueSuggestedQuestions([
+    return uniqueSuggestedQuestions(question, structuredQuery, playerName, [
       gameLabel ? `${gameLabel}の全得点シーンを教えて` : 'この試合の全得点シーンを教えて',
       pitcherName ? `${pitcherName}投手の投球内容を詳しく教えて` : 'この試合の先発投手を教えて',
       batterName ? `${batterName}選手の全打席を教えて` : 'この試合の主な打者を教えて',
@@ -160,7 +161,7 @@ function buildSuggestedQuestions(
   if (structuredQuery.intent === 'search_games') {
     const row = results.games[0]
     const prefix = row ? `${formatDateJa(row.date)}の${displayTeamName(row.awayTeamName)}対${displayTeamName(row.homeTeamName)}` : 'この試合'
-    return uniqueSuggestedQuestions([
+    return uniqueSuggestedQuestions(question, structuredQuery, playerName, [
       `${prefix}について詳しく教えて`,
       `${prefix}のハイライトを教えて`,
       `${prefix}の先発投手を教えて`,
@@ -172,16 +173,17 @@ function buildSuggestedQuestions(
     const metricQuestion = structuredQuery.intent === 'search_pitching' || structuredQuery.intent === 'aggregate_pitching'
       ? '防御率と奪三振も比較して'
       : 'OPSと本塁打も比較して'
-    return uniqueSuggestedQuestions([
+    return uniqueSuggestedQuestions(question, structuredQuery, playerName, [
       label ? `${label}の${metricQuestion}` : metricQuestion,
       label ? `${label}を直近3年間だけ比較して` : '直近3年間だけ比較すると？',
       label ? `${label}の直近3試合も比較して` : '直近3試合も比較して',
+      label ? `${label}の通算成績も比較して` : '通算成績も比較して',
     ])
   }
 
   if (isTeamSuggestionIntent(structuredQuery)) {
     const team = teamName ?? 'このチーム'
-    return uniqueSuggestedQuestions([
+    return uniqueSuggestedQuestions(question, structuredQuery, playerName, [
       `${team}の最近10試合の成績は？`,
       `${team}のチーム打撃成績を教えて`,
       `${team}のチーム投手成績を教えて`,
@@ -190,7 +192,7 @@ function buildSuggestedQuestions(
 
   if (isRecordSuggestionQuery(structuredQuery, filters)) {
     const player = playerName ?? 'この選手'
-    return uniqueSuggestedQuestions([
+    return uniqueSuggestedQuestions(question, structuredQuery, player, [
       `${player}の次のホームランはいつ？`,
       `${player}の通算成績を教えて`,
       `${player}のホームラン一覧を教えて`,
@@ -199,22 +201,34 @@ function buildSuggestedQuestions(
 
   if (isPlayerSuggestionIntent(structuredQuery)) {
     const player = playerName ?? 'この選手'
-    return uniqueSuggestedQuestions([
+    return uniqueSuggestedQuestions(question, structuredQuery, player, [
       `${player}の最近5試合の成績は？`,
       `${player}の今季成績を教えて`,
       `${player}の通算成績を教えて`,
+      `${player}のホームラン一覧を教えて`,
+      `${player}の所属チームを教えて`,
     ])
   }
 
   return []
 }
 
-function uniqueSuggestedQuestions(questions: Array<string | null | undefined>): string[] {
+function uniqueSuggestedQuestions(
+  currentQuestion: string,
+  structuredQuery: ChatStructuredQuery,
+  entityName: string | null,
+  questions: Array<string | null | undefined>,
+): string[] {
   const blocked = /今日|現在|ライブ|速報|スタメン|登録|抹消|ケガ|怪我|契約|移籍|トレード|ニュース|記事|コメント/u
   const unique: string[] = []
   for (const question of questions) {
     const value = question?.trim()
-    if (!value || blocked.test(value) || unique.includes(value)) {
+    if (
+      !value ||
+      blocked.test(value) ||
+      unique.includes(value) ||
+      isEquivalentSuggestedQuestion(currentQuestion, value, structuredQuery, entityName)
+    ) {
       continue
     }
     unique.push(value)
@@ -223,6 +237,71 @@ function uniqueSuggestedQuestions(questions: Array<string | null | undefined>): 
     }
   }
   return unique
+}
+
+function isEquivalentSuggestedQuestion(
+  currentQuestion: string,
+  suggestedQuestion: string,
+  structuredQuery: ChatStructuredQuery,
+  entityName: string | null,
+): boolean {
+  const current = normalizeQuestionForComparison(currentQuestion)
+  const suggested = normalizeQuestionForComparison(suggestedQuestion)
+  if (!current || !suggested) {
+    return false
+  }
+  if (current === suggested) {
+    return true
+  }
+  const entity = entityName ? normalizeQuestionForComparison(entityName) : ''
+  const currentKind = suggestionQuestionKind(current, structuredQuery)
+  const suggestedKind = suggestionQuestionKind(suggested, structuredQuery)
+  if (currentKind === 'other' || currentKind !== suggestedKind) {
+    return false
+  }
+  return !entity || current.includes(entity) || suggested.includes(entity) || hasPlayerStatQuestionShape(current, suggested)
+}
+
+function normalizeQuestionForComparison(value: string): string {
+  return value
+    .normalize('NFKC')
+    .replace(/\s+/gu, '')
+    .replace(/[?？。!！、,，]/gu, '')
+    .replace(/教えて(?:ください)?$/u, '')
+    .trim()
+}
+
+function suggestionQuestionKind(value: string, structuredQuery: ChatStructuredQuery): string {
+  if (/直近\d+年間|直近[0-9０-９]+年間|年間|年だけ/u.test(value)) {
+    return 'multi_year_comparison'
+  }
+  if (/最近|直近|最新|5試合|5登板/u.test(value)) {
+    return structuredQuery.intent === 'search_pitching' || structuredQuery.intent === 'aggregate_pitching'
+      ? 'recent_pitching'
+      : 'recent_stats'
+  }
+  if (/今季|今シーズン|今年|シーズン成績/u.test(value)) {
+    return structuredQuery.intent === 'search_pitching' || structuredQuery.intent === 'aggregate_pitching'
+      ? 'season_pitching'
+      : structuredQuery.intent === 'search_batting' || structuredQuery.intent === 'aggregate_batting'
+        ? 'season_batting'
+        : 'season_stats'
+  }
+  if (/通算/u.test(value)) {
+    return 'career_stats'
+  }
+  if (/ホームラン一覧|本塁打一覧/u.test(value)) {
+    return 'home_run_list'
+  }
+  if (/所属/u.test(value)) {
+    return 'affiliation'
+  }
+  return 'other'
+}
+
+function hasPlayerStatQuestionShape(currentQuestion: string, suggestedQuestion: string): boolean {
+  return /成績|調子|状態|評価|投球内容|打撃成績/u.test(currentQuestion) &&
+    /成績|調子|状態|評価|投球内容|打撃成績/u.test(suggestedQuestion)
 }
 
 function suggestionPlayerName(

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { ChatPlan, ChatResponse, ChatStructuredQuery } from '@npb/schemas'
-import { computed, nextTick, ref } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
 import { useChat } from '~/composables/useChat'
 
 defineOptions({ name: 'ChatPage' })
@@ -150,9 +150,20 @@ async function submitText(text = input.value) {
   if (!trimmed) return
   await sendMessage(trimmed)
   input.value = ''
-  await nextTick()
-  conversationRef.value?.scrollTo({ top: conversationRef.value.scrollHeight, behavior: 'smooth' })
+  await scrollToLatest()
 }
+
+async function scrollToLatest(behavior: 'auto' | 'smooth' = 'smooth') {
+  await nextTick()
+  conversationRef.value?.scrollTo({ top: conversationRef.value.scrollHeight, behavior })
+}
+
+watch(
+  () => turns.value.map((turn) => `${turn.id}:${turn.assistant ? 'a' : ''}:${turn.errorMessage ?? ''}`).join('|'),
+  () => {
+    void scrollToLatest()
+  },
+)
 
 function useExample(prompt: string) {
   input.value = prompt
@@ -521,7 +532,8 @@ function toggleSidebar() {
 
 /* ── Shell ──────────────────────────────────────────── */
 .chat-shell {
-  height: 100vh;
+  height: 100dvh;
+  min-height: 100dvh;
   overflow: hidden;
   display: grid;
   grid-template-columns: var(--sidebar-w) minmax(0, 1fr);
@@ -534,7 +546,7 @@ function toggleSidebar() {
 
 /* ── Sidebar ────────────────────────────────────────── */
 .sidebar {
-  height: 100vh;
+  height: 100dvh;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
@@ -784,11 +796,12 @@ function toggleSidebar() {
 
 /* ── Workspace ──────────────────────────────────────── */
 .workspace {
-  height: 100vh;
+  height: 100dvh;
   display: flex;
   flex-direction: column;
   overflow: hidden;
   min-width: 0;
+  min-height: 0;
 }
 
 /* ── Topbar ─────────────────────────────────────────── */
@@ -872,7 +885,9 @@ function toggleSidebar() {
 .conversation {
   flex: 1 1 0;
   overflow-y: auto;
-  padding: 1.5rem 1.25rem;
+  min-height: 0;
+  overscroll-behavior: contain;
+  padding: 1.5rem 1.25rem 2rem;
 }
 
 /* ── Empty state ────────────────────────────────────── */
@@ -1305,22 +1320,26 @@ function toggleSidebar() {
 
 /* ── Composer ───────────────────────────────────────── */
 .composer {
+  position: sticky;
+  bottom: 0;
+  z-index: 5;
   display: flex;
   align-items: flex-end;
   gap: 0.6rem;
-  margin: 0.5rem 1.25rem 1rem;
+  margin: 0;
   padding: 0.6rem 0.6rem 0.6rem 1rem;
-  border: 1px solid var(--c-border);
-  border-radius: 14px;
+  padding-bottom: calc(0.6rem + env(safe-area-inset-bottom));
+  border: 0;
+  border-top: 1px solid var(--c-border);
+  border-radius: 0;
   background: var(--c-surface);
-  box-shadow: 0 2px 20px rgba(15, 23, 42, 0.08);
+  box-shadow: 0 -2px 20px rgba(15, 23, 42, 0.08);
   flex-shrink: 0;
   transition: box-shadow 0.15s, border-color 0.15s;
 }
 
 .composer:focus-within {
-  box-shadow: 0 2px 20px rgba(15, 23, 42, 0.12), 0 0 0 2px rgba(79, 70, 229, 0.15);
-  border-color: rgba(79, 70, 229, 0.35);
+  box-shadow: 0 -2px 20px rgba(15, 23, 42, 0.12), 0 0 0 2px rgba(79, 70, 229, 0.15);
 }
 
 .composer__input {
@@ -1409,7 +1428,7 @@ function toggleSidebar() {
     position: fixed;
     inset: 0 auto 0 0;
     width: min(var(--sidebar-w), 85vw);
-    height: 100%;
+    height: 100dvh;
     z-index: 300;
     transform: translateX(-100%);
     box-shadow: none;
@@ -1448,11 +1467,11 @@ function toggleSidebar() {
   }
 
   .composer {
-    margin: 0.5rem 0.75rem 0.75rem;
+    margin: 0;
   }
 
   .conversation {
-    padding: 1rem 0.85rem;
+    padding: 1rem 0.85rem 1.5rem;
   }
 }
 </style>

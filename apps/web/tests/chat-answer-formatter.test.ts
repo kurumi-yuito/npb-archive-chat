@@ -1308,10 +1308,48 @@ describe('chat-answer-formatter', () => {
     })
 
     expect(answer.suggested_questions).toEqual([
-      '村上宗隆の最近5試合の成績は？',
       '村上宗隆の今季成績を教えて',
       '村上宗隆の通算成績を教えて',
+      '村上宗隆のホームラン一覧を教えて',
     ])
+  })
+
+  it('does not suggest the same player stat question that was just asked', () => {
+    const results = emptyResults()
+    results.pitching = [
+      bisPitchingRegularRow('2026', '福岡ソフトバンクホークス', '尾形 崇斗', {
+        登板: '18', 勝利: '1', 敗北: '0', セーブ: '0', 三振: '20', 投球回: '17', 防御率: '2.12',
+      }),
+    ]
+
+    const answer = formatChatAnswer({
+      question: '尾形の今季成績を教えて',
+      structuredQuery: { intent: 'search_pitching', filters: { pitcher_name: '尾形 崇斗', pitcher_player_id: 'ogata', year: 2026 } },
+      results,
+      sources: [],
+      playerResolution: {
+        input: '尾形',
+        player_id: 'ogata',
+        name: '尾形 崇斗',
+        primary_team: '福岡ソフトバンクホークス',
+        status: 'resolved',
+        candidates: [{
+          player_id: 'ogata',
+          name: '尾形 崇斗',
+          primary_team: '福岡ソフトバンクホークス',
+          roles: ['pitcher', 'bis_pitching'],
+          teams: ['福岡ソフトバンクホークス'],
+          years: [2026],
+        }],
+      },
+    })
+
+    expect(answer.suggested_questions).toEqual([
+      '尾形 崇斗の最近5試合の成績は？',
+      '尾形 崇斗の通算成績を教えて',
+      '尾形 崇斗のホームラン一覧を教えて',
+    ])
+    expect(answer.suggested_questions).not.toContain('尾形 崇斗の今季成績を教えて')
   })
 
   it('suggests comparison follow-ups without news or realtime topics', () => {
@@ -1331,8 +1369,9 @@ describe('chat-answer-formatter', () => {
     expect(answer.suggested_questions).toEqual([
       '石田裕太郎と東克樹の防御率と奪三振も比較して',
       '石田裕太郎と東克樹を直近3年間だけ比較して',
-      '石田裕太郎と東克樹の直近3試合も比較して',
+      '石田裕太郎と東克樹の通算成績も比較して',
     ])
+    expect(answer.suggested_questions).not.toContain('石田裕太郎と東克樹の直近3試合も比較して')
     expect(answer.suggested_questions?.join('\n')).not.toMatch(/今日|現在|速報|スタメン|ケガ|契約|移籍/u)
   })
 

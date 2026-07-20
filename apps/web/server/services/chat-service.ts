@@ -1730,18 +1730,28 @@ async function rewriteGenericSeasonStatToPitchingIfNeeded(
   if (structuredQuery.intent !== 'search_batting' && structuredQuery.intent !== 'aggregate_batting') {
     return { structuredQuery, playerResolution }
   }
-  if (!/成績/u.test(message) || !/今シーズン|今季|今期|今年/u.test(message)) {
+  if (!/成績/u.test(message)) {
     return { structuredQuery, playerResolution }
   }
   if (/打率|OPS|IsoP|四球率|BB%|打点|安打|本塁打|ホームラン|HR|出塁率|長打率|打撃/u.test(message)) {
     return { structuredQuery, playerResolution }
   }
+  if (!isPitcherPrimaryResolution(playerResolution)) {
+    return { structuredQuery, playerResolution }
+  }
 
   const filters = structuredQuery.filters as Record<string, unknown>
+  const latestChatYear = DEFAULT_CHAT_QUERY_YEARS[DEFAULT_CHAT_QUERY_YEARS.length - 1]
+  const hasExplicitYearFilter =
+    typeof filters.year === 'number' ||
+    typeof filters.year_from === 'number' ||
+    typeof filters.year_to === 'number'
+  const hasCurrentSeasonHint = /今シーズン|今季|今期|今年/u.test(message)
   const commonFilters = {
     ...(typeof filters.year === 'number' ? { year: filters.year } : {}),
     ...(typeof filters.year_from === 'number' ? { year_from: filters.year_from } : {}),
     ...(typeof filters.year_to === 'number' ? { year_to: filters.year_to } : {}),
+    ...(!hasExplicitYearFilter && hasCurrentSeasonHint ? { year: latestChatYear } : {}),
     ...(typeof filters.team === 'string' ? { team: filters.team } : {}),
     limit: 5,
   }
@@ -1763,12 +1773,12 @@ async function rewriteGenericSeasonStatToPitchingIfNeeded(
 
   return {
     structuredQuery: {
-      intent: 'aggregate_pitching',
+      intent: 'search_pitching',
       filters: {
         ...commonFilters,
         pitcher_name: playerResolution.name ?? (typeof filters.pitcher_name === 'string' ? filters.pitcher_name : undefined),
         pitcher_player_id: playerResolution.player_id,
-        limit: 10,
+        limit: 20,
       },
     } as ChatStructuredQuery,
     playerResolution,
@@ -1799,6 +1809,19 @@ function isPitcherOnlyResolution(resolution: PlayerResolution | null): boolean {
   }
   const candidateRoles = resolution.candidates.flatMap((candidate: PlayerCandidate) => candidate.roles)
   return candidateRoles.length > 0 && candidateRoles.some((role) => /pitch/i.test(role))
+}
+
+function isPitcherPrimaryResolution(resolution: PlayerResolution | null): boolean {
+  if (resolution?.status !== 'resolved') {
+    return false
+  }
+  const roles = resolution.candidates.flatMap((candidate: PlayerCandidate) => candidate.roles)
+  const pitcherRoles = roles.filter((role) => /pitch/i.test(role)).length
+  const batterRoles = roles.filter((role) => /batter|batting/i.test(role)).length
+  if (pitcherRoles === 0) {
+    return false
+  }
+  return batterRoles === 0 || pitcherRoles >= batterRoles
 }
 
 async function listSourceSnapshotsByGameIdsBatched(

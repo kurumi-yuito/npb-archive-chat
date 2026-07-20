@@ -341,6 +341,112 @@ describe('chat-service', () => {
     expect(source).not.toMatch(/fetch\(/)
   })
 
+  it('routes generic stat questions for resolved pitchers to pitching stats', async () => {
+    let battingCalled = false
+    let pitchingFilters: Parameters<ChatQueryService['searchPitchingLines']>[0] | null = null
+    const service = createChatService(createFakeQueryService({
+      playerCandidates: [{
+        player_id: '01705156',
+        name: '尾形 崇斗',
+        primary_team: '福岡ソフトバンクホークス',
+        roles: ['pitcher', 'bis_pitching'],
+        teams: ['福岡ソフトバンクホークス'],
+        years: [2026],
+      }],
+      searchBattingLines: async () => {
+        battingCalled = true
+        return []
+      },
+      searchPitchingLines: async (filters) => {
+        pitchingFilters = filters
+        return [{
+          gameId: 'bis:2026:reg:idp1',
+          gameDate: '2026-01-01',
+          team: '福岡ソフトバンクホークス',
+          pitcherName: '尾形 崇斗',
+          inningsPitched: '17',
+          pitchCount: 0,
+          hitsAllowed: 10,
+          homeRunsAllowed: 1,
+          walks: 5,
+          hitBatters: 0,
+          strikeouts: 20,
+          runs: 4,
+          earnedRuns: 4,
+          rawText: JSON.stringify({ 登板: '18', 三振: '20', 投球回: '17', 防御率: '2.12' }),
+          sourceKind: 'bis_pitching',
+          sourceUrl: 'https://npb.jp/bis/2026/stats/idp1_h.html',
+          statsJson: JSON.stringify({ 登板: '18', 三振: '20', 投球回: '17', 防御率: '2.12' }),
+        }]
+      },
+    }), {
+      parseStructuredQueryFromMessage: async () => ({
+        intent: 'search_batting',
+        filters: { player_name: '尾形' },
+      }),
+    })
+
+    const response = await service.answerQuestion('尾形の成績を教えて')
+
+    expect(battingCalled).toBe(true)
+    expect(response.structured_query.intent).toBe('search_pitching')
+    expect(pitchingFilters).toMatchObject({
+      pitcher_name: '尾形 崇斗',
+      pitcher_player_id: '01705156',
+    })
+    expect(response.answer.summary).toContain('投手成績')
+    expect(response.answer.summary).not.toContain('打撃成績')
+  })
+
+  it('keeps generic stat questions for resolved fielders on batting stats', async () => {
+    let pitchingCalled = false
+    const service = createChatService(createFakeQueryService({
+      playerCandidates: [{
+        player_id: 'murakami',
+        name: '村上 宗隆',
+        primary_team: '東京ヤクルトスワローズ',
+        roles: ['batter', 'bis_batting'],
+        teams: ['東京ヤクルトスワローズ'],
+        years: [2026],
+      }],
+      searchPitchingLines: async () => {
+        pitchingCalled = true
+        return []
+      },
+      searchBattingLines: async () => [{
+        gameId: 'bis:2026:reg:idb1',
+        gameDate: '2026-01-01',
+        team: '東京ヤクルトスワローズ',
+        playerName: '村上 宗隆',
+        battingOrder: null,
+        position: null,
+        atBats: 120,
+        runs: 0,
+        hits: 36,
+        runsBattedIn: 22,
+        stolenBases: 0,
+        strikeouts: 30,
+        walks: 20,
+        rawText: JSON.stringify({ 試合: '40', 打数: '120', 安打: '36', 本塁打: '8', 打点: '22', 打率: '.300' }),
+        sourceKind: 'bis_batting',
+        sourceUrl: 'https://npb.jp/bis/2026/stats/idb1_s.html',
+        statsJson: JSON.stringify({ 試合: '40', 打数: '120', 安打: '36', 本塁打: '8', 打点: '22', 打率: '.300' }),
+      }],
+    }), {
+      parseStructuredQueryFromMessage: async () => ({
+        intent: 'search_batting',
+        filters: { player_name: '村上' },
+      }),
+    })
+
+    const response = await service.answerQuestion('村上の成績を教えて')
+
+    expect(response.structured_query.intent).toBe('search_batting')
+    expect(pitchingCalled).toBe(false)
+    expect(response.answer.summary).toContain('打撃成績')
+    expect(response.answer.summary).not.toContain('投手成績')
+  })
+
   it('rejects non-baseball topics before invoking the query parser', async () => {
     let parserCalled = false
     const service = createChatService(createFakeQueryService(), {
