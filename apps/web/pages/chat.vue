@@ -533,7 +533,7 @@ function toggleSidebar() {
 /* ── Shell ──────────────────────────────────────────── */
 .chat-shell {
   height: 100dvh;
-  min-height: 100dvh;
+  min-height: 0;
   overflow: hidden;
   display: grid;
   grid-template-columns: var(--sidebar-w) minmax(0, 1fr);
@@ -1320,9 +1320,6 @@ function toggleSidebar() {
 
 /* ── Composer ───────────────────────────────────────── */
 .composer {
-  position: sticky;
-  bottom: 0;
-  z-index: 5;
   display: flex;
   align-items: flex-end;
   gap: 0.6rem;
@@ -1334,7 +1331,7 @@ function toggleSidebar() {
   border-radius: 0;
   background: var(--c-surface);
   box-shadow: 0 -2px 20px rgba(15, 23, 42, 0.08);
-  flex-shrink: 0;
+  flex: 0 0 auto;
   transition: box-shadow 0.15s, border-color 0.15s;
 }
 

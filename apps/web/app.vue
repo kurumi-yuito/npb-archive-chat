@@ -6,10 +6,17 @@
 
 <style>
 html,
-body {
+body,
+#__nuxt {
+  width: 100%;
+  height: 100%;
   margin: 0;
+  overflow: hidden;
 }
+
 .app-root {
-  min-height: 100vh;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
 }
 </style>

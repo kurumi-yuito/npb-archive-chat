@@ -8,6 +8,13 @@ const devAppManifestPath = fileURLToPath(new URL('./.nuxt/manifest/meta/dev.json
 
 export default defineNuxtConfig({
   compatibilityDate: '2025-01-15',
+  app: {
+    head: {
+      meta: [
+        { name: 'viewport', content: 'width=device-width, initial-scale=1, interactive-widget=resizes-content' },
+      ],
+    },
+  },
   typescript: {
     strict: true,
   },
