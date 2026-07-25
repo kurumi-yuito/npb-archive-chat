@@ -564,3 +564,6 @@ A: UIは Header / Scrollable Message Area / Fixed Input Bar の構造とする�
 
 Q-145: 回答後とFollow-up送信後のスクロール
 A: 回答生成後と関連質問タップ送信後は、メッセージ領域が最新回答まで自動スクロールする。入力バー自体の位置は変化しない。スマートフォンのソフトウェアキーボード表示時も safe-area と dynamic viewport を考慮して入力欄が隠れない。
+
+Q-146: 長文回答スクロール中のComposer固定
+A: 長文回答と関連質問が表示された状態でメッセージ領域を上下へスクロールしても、Composer は viewport 下端から動かない。Header も固定され、scrollTop が変化するのはメッセージ領域のみとする。window / body / workspace はスクロールしない。
