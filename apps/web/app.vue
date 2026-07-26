@@ -16,7 +16,7 @@ body,
 
 .app-root {
   width: 100%;
-  height: 100%;
+  height: 100dvh;
   overflow: hidden;
 }
 </style>

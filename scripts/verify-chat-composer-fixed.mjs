@@ -24,6 +24,7 @@ try {
   })
   await client.send('Page.navigate', { url: targetUrl })
   await waitForExpression(client, 'document.querySelector(".conversation") && document.querySelector(".composer") && document.querySelector(".topbar")')
+  await waitForExpression(client, 'document.readyState === "complete" && Array.from(document.styleSheets).some((sheet) => !sheet.disabled)')
 
   const result = await client.send('Runtime.evaluate', {
     expression: measurementExpression(),
@@ -120,6 +121,34 @@ function measurementExpression() {
       throw new Error('Required chat layout elements were not found')
     }
 
+    const composers = Array.from(document.querySelectorAll('.composer'))
+    const initialComposerRect = composer.getBoundingClientRect()
+    const initialHeaderRect = header.getBoundingClientRect()
+    const visualViewportHeight = window.visualViewport?.height ?? window.innerHeight
+    const initial = {
+      composerCount: composers.length,
+      composerVisible: composer.checkVisibility
+        ? composer.checkVisibility({ checkOpacity: true, checkVisibilityCSS: true })
+        : getComputedStyle(composer).display !== 'none' && getComputedStyle(composer).visibility !== 'hidden',
+      composer: {
+        top: initialComposerRect.top,
+        bottom: initialComposerRect.bottom,
+        height: initialComposerRect.height,
+      },
+      header: {
+        top: initialHeaderRect.top,
+        bottom: initialHeaderRect.bottom,
+        height: initialHeaderRect.height,
+      },
+      innerHeight: window.innerHeight,
+      visualViewportHeight,
+      composerInLayoutViewport: initialComposerRect.top >= 0 && initialComposerRect.bottom <= window.innerHeight,
+      composerInVisualViewport: initialComposerRect.top >= 0 && initialComposerRect.bottom <= visualViewportHeight,
+      windowScrollY: window.scrollY,
+      bodyScrollTop: document.body.scrollTop,
+      documentScrollTop: document.documentElement.scrollTop,
+    }
+
     const paragraphs = Array.from({ length: 90 }, (_, index) => (
       '<p>Composer fixed scroll verification paragraph ' + (index + 1) + ': game result, scoring, pitching, batting, and follow-up content.</p>'
     )).join('')
@@ -187,12 +216,18 @@ function measurementExpression() {
       targetViewport: { width: 390, height: 844 },
       composerParentClass: composer.parentElement?.className ?? null,
       conversationContainsComposer: conversation.contains(composer),
+      initial,
       before,
       after800,
       after1600,
       invariants: {
         composerOutsideConversation: !conversation.contains(composer),
         composerParentIsWorkspace: composer.parentElement === workspace,
+        exactlyOneComposer: initial.composerCount === 1,
+        initialComposerVisible: initial.composerVisible,
+        initialComposerInLayoutViewport: initial.composerInLayoutViewport,
+        initialComposerInVisualViewport: initial.composerInVisualViewport,
+        initialPageDidNotScroll: initial.windowScrollY === 0 && initial.bodyScrollTop === 0 && initial.documentScrollTop === 0,
         composerStableAfter800: stableRect(before.composer, after800.composer),
         composerStableAfter1600: stableRect(before.composer, after1600.composer),
         composerOffsetTopStableAfter1600: Math.abs(before.composerOffsetTop - after1600.composerOffsetTop) <= ${tolerancePx},

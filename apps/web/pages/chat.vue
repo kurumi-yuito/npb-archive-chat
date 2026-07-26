@@ -532,7 +532,7 @@ function toggleSidebar() {
 
 /* ── Shell ──────────────────────────────────────────── */
 .chat-shell {
-  height: 100dvh;
+  height: 100%;
   min-height: 0;
   overflow: hidden;
   display: grid;
@@ -546,7 +546,6 @@ function toggleSidebar() {
 
 /* ── Sidebar ────────────────────────────────────────── */
 .sidebar {
-  height: 100dvh;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
@@ -796,7 +795,7 @@ function toggleSidebar() {
 
 /* ── Workspace ──────────────────────────────────────── */
 .workspace {
-  height: 100dvh;
+  height: 100%;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -1425,7 +1424,6 @@ function toggleSidebar() {
     position: fixed;
     inset: 0 auto 0 0;
     width: min(var(--sidebar-w), 85vw);
-    height: 100dvh;
     z-index: 300;
     transform: translateX(-100%);
     box-shadow: none;
