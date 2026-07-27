@@ -58,6 +58,10 @@ describe('chat UI layout', () => {
     expect(source).toContain('@click="submitText(question)"')
     expect(source).not.toMatch(/window\.scrollTo|window\.scrollY|document\.body\.scrollTop|document\.documentElement\.scrollTop/u)
   })
+
+  it('labels a singular recent pitching result as appearance detail', () => {
+    expect(source).toContain("q.filters.recent === true && q.filters.limit === 1 ? '登板内容' : '投手成績'")
+  })
 })
 
 function templateBlock(source: string, startMarker: string, endMarker: string): string {

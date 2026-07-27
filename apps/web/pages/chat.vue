@@ -56,7 +56,9 @@ function structuredQueryLabel(q: ChatStructuredQuery): string {
   if (q.intent === 'search_events') return 'イベント検索'
   if (q.intent === 'search_games') return '試合一覧'
   if (q.intent === 'search_batting') return '打撃成績'
-  if (q.intent === 'search_pitching') return '投手成績'
+  if (q.intent === 'search_pitching') {
+    return q.filters.recent === true && q.filters.limit === 1 ? '登板内容' : '投手成績'
+  }
   if (q.intent === 'search_roster') return 'スタメン'
   if (q.intent === 'player_affiliation') return '所属'
   if (q.intent === 'game_detail') return '試合詳細'

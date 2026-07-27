@@ -599,7 +599,7 @@ export function createChatService(
                     }
                   : { ...emptyResults, batting: await queryService.searchBattingLines(structuredQuery.filters) }
               } else if (structuredQuery.intent === 'search_pitching') {
-                if (structuredQuery.filters.recent === true && typeof structuredQuery.filters.pitcher_player_id === 'string') {
+                if (structuredQuery.filters.recent === true) {
                   results = {
                     ...emptyResults,
                     pitching: await searchRecentPitchingLinesForChat(queryService, structuredQuery.filters, playerResolution, {
@@ -1848,9 +1848,16 @@ async function searchRecentPitchingLinesForChat(
   playerResolution: PlayerResolution | null = null,
   options: { firstTeamOnly?: boolean } = {},
 ) {
+  const requestedLimit = typeof filters.limit === 'number'
+    ? Math.max(1, Math.min(50, Math.trunc(filters.limit)))
+    : 20
   const pitcherPlayerId = typeof filters.pitcher_player_id === 'string' ? filters.pitcher_player_id : null
   if (!pitcherPlayerId) {
-    return queryService.searchPitchingLines(filters as Parameters<ChatQueryService['searchPitchingLines']>[0])
+    const rows = await queryService.searchPitchingLines({
+      ...filters,
+      limit: requestedLimit,
+    } as Parameters<ChatQueryService['searchPitchingLines']>[0])
+    return limitRecentPitchingRows(rows, requestedLimit)
   }
   const baseFilters = {
     ...(typeof filters.pitcher_name === 'string' ? { pitcher_name: filters.pitcher_name } : {}),
@@ -1861,7 +1868,7 @@ async function searchRecentPitchingLinesForChat(
         : {}),
     pitcher_player_id: pitcherPlayerId,
     recent: true,
-    limit: 20,
+    limit: requestedLimit,
   }
   if (typeof filters.year === 'number') {
     const rows = filterPitchingRowsForLeague(await queryService.searchPitchingLines({
@@ -1869,7 +1876,7 @@ async function searchRecentPitchingLinesForChat(
       year: filters.year,
     } as Parameters<ChatQueryService['searchPitchingLines']>[0]), options)
     if (rows.length > 0) {
-      return rows
+      return limitRecentPitchingRows(rows, requestedLimit)
     }
     if (options.firstTeamOnly) {
       return []
@@ -1891,7 +1898,7 @@ async function searchRecentPitchingLinesForChat(
       year,
     } as Parameters<ChatQueryService['searchPitchingLines']>[0]), options)
     if (rows.length > 0) {
-      return rows
+      return limitRecentPitchingRows(rows, requestedLimit)
     }
     if (options.firstTeamOnly) {
       continue
@@ -1907,6 +1914,16 @@ async function searchRecentPitchingLinesForChat(
     }
   }
   return []
+}
+
+function limitRecentPitchingRows(
+  rows: PitchingLineRow[],
+  limit: number,
+): PitchingLineRow[] {
+  const gameRows = rows
+    .filter((row) => row.sourceKind !== 'bis_pitching' && row.sourceKind !== 'bis_pitching_farm')
+    .sort((a, b) => `${b.gameDate}:${b.gameId}`.localeCompare(`${a.gameDate}:${a.gameId}`, 'ja'))
+  return (gameRows.length > 0 ? gameRows : rows).slice(0, limit)
 }
 
 function filterPitchingRowsForLeague<T extends { gameId: string }>(

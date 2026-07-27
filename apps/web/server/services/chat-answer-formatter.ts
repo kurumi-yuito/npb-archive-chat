@@ -536,15 +536,18 @@ function buildSummary(
       return `${yearShiftPrefix}${formatPitchingGoodPointSummary(results.pitching as PitchingLineRow[])}`
     }
     if (isEvaluationQuestion(question, structuredQuery.filters, executionMetadata)) {
+      const requestedLimit = typeof (structuredQuery.filters as Record<string, unknown>).limit === 'number'
+        ? Math.max(1, Math.trunc(Number((structuredQuery.filters as Record<string, unknown>).limit)))
+        : 5
       const boxGameDates = (results.pitching as PitchingLineRow[])
         .filter((r) => r.sourceKind === 'box')
-        .slice(0, 5)
+        .slice(0, requestedLimit)
         .map((r) => r.gameDate)
       const gapNote = buildRecentGapNote(
         boxGameDates,
         structuredQuery.filters,
       )
-      const summary = formatPitchingEvaluationSummary(results.pitching as PitchingLineRow[])
+      const summary = formatPitchingEvaluationSummary(results.pitching as PitchingLineRow[], requestedLimit)
       return `${yearShiftPrefix}${appendContinuityGapNote(summary, boxGameDates)}${gapNote}`
     }
     if (first.sourceKind === 'bis_pitching' || first.sourceKind === 'bis_pitching_farm') {
@@ -1817,7 +1820,7 @@ function positiveCountStatPart(stats: Record<string, unknown>, key: string, labe
   return `${label}${String(value)}`
 }
 
-function formatPitchingEvaluationSummary(rows: PitchingLineRow[]): string {
+function formatPitchingEvaluationSummary(rows: PitchingLineRow[], limit = 5): string {
   const pitcherName = rows[0]?.pitcherName ?? '対象投手'
   const boxRows = rows.filter((row) => row.sourceKind !== 'bis_pitching' && row.sourceKind !== 'bis_pitching_farm')
   if (boxRows.length === 0) {
@@ -1826,7 +1829,7 @@ function formatPitchingEvaluationSummary(rows: PitchingLineRow[]): string {
       return formatBisPitchingEvaluationSummary(seasonRow, [])
     }
   }
-  const gameRows = boxRows.slice(0, 5)
+  const gameRows = boxRows.slice(0, limit)
   const totals = gameRows.reduce(
     (acc, row) => ({
       strikeouts: acc.strikeouts + row.strikeouts,

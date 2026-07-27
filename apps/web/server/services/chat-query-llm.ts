@@ -5,6 +5,7 @@ import {
   buildChatQueryParserUserPrompt,
   chatQueryParserSystemPrompt,
 } from './chat-query-parser-prompt'
+import { inferRecentAppearanceLimit } from './chat-recent-scope'
 
 const openAiCompatibleChatCompletionSchema = z.object({
   choices: z.array(
@@ -194,6 +195,17 @@ export function normalizeStructuredQueryFromLlmMessage(message: string, value: u
 
   if (query.intent === 'search_pitching' && query.filters && typeof query.filters === 'object') {
     const filters = query.filters as Record<string, unknown>
+    const recentAppearanceLimit = inferRecentAppearanceLimit(message)
+    if (recentAppearanceLimit !== undefined) {
+      return {
+        intent: 'search_pitching',
+        filters: {
+          ...filters,
+          recent: true,
+          limit: recentAppearanceLimit,
+        },
+      }
+    }
     const sortBy = typeof filters.sort_by === 'string' ? filters.sort_by : undefined
     if (sortBy === 'inningsPitched' || isAggregatePitchingSortBy(sortBy)) {
       return {

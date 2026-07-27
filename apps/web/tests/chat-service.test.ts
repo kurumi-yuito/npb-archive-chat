@@ -3479,9 +3479,12 @@ describe('chat-service', () => {
     expect(response.answer.summary).toContain('坂倉')
   })
 
-  it('treats 直近 pitching questions as recent and returns the newest appearance', async () => {
+  it('keeps a singular latest pitching request to one appearance through repository and formatter', async () => {
+    const pitchingFilters: Array<Record<string, unknown>> = []
     const service = createChatService(createFakeQueryService({
-      searchPitchingLines: async () => [
+      searchPitchingLines: async (filters) => {
+        pitchingFilters.push(filters)
+        return [
         {
           gameId: 'f20260610db-e-01',
           gameDate: '2026-06-10',
@@ -3506,17 +3509,25 @@ describe('chat-service', () => {
           earnedRuns: 1,
           sourceKind: 'box',
         },
-      ],
+        ]
+      },
     }), {
       parseStructuredQueryFromMessage: async () => ({
         intent: 'search_pitching',
-        filters: { pitcher_name: '藤浪', recent: true },
+        filters: { pitcher_name: '藤浪', recent: true, limit: 1 },
       }),
     })
 
-    const response = await service.answerQuestion('藤浪の直近の試合ではどんな投球だった？')
+    const response = await service.answerQuestion('藤浪の直近試合の内容は')
 
+    expect(response.structured_query.filters).toMatchObject({ recent: true, limit: 1 })
+    expect(pitchingFilters).toContainEqual(expect.objectContaining({ recent: true, limit: 1 }))
+    expect(response.results.pitching).toHaveLength(1)
+    expect(response.answer.result_count).toBe(1)
+    expect(response.answer.summary).toContain('最新1試合')
     expect(response.answer.summary).toContain('2026年6月10日')
+    expect(response.answer.summary).not.toContain('最新5試合')
+    expect(response.answer.summary).not.toContain('2026年5月22日')
     expect(response.answer.summary).toContain('確認できる最新の出場記録は2026年6月10日')
   })
 

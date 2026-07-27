@@ -180,4 +180,44 @@ describe('chat-query-llm', () => {
       },
     })
   })
+
+  it.each([
+    ['藤浪の直近試合の内容は', 1],
+    ['藤浪の直近の試合はどうだった', 1],
+    ['藤浪の最新登板を教えて', 1],
+    ['藤浪が最後に投げた試合の内容は', 1],
+    ['藤浪の直近5試合の内容は', 5],
+    ['藤浪の最近5試合の成績は', 5],
+    ['藤浪のここ5登板を教えて', 5],
+  ])('normalizes recent appearance scope for %s', (message, limit) => {
+    expect(
+      normalizeStructuredQueryFromLlmMessage(message, {
+        intent: 'search_pitching',
+        filters: {
+          pitcher_name: '藤浪',
+          recent: true,
+          limit: limit === 1 ? 5 : undefined,
+        },
+      }),
+    ).toEqual({
+      intent: 'search_pitching',
+      filters: {
+        pitcher_name: '藤浪',
+        recent: true,
+        limit,
+      },
+    })
+  })
+
+  it.each([
+    '藤浪の今季成績は',
+    '藤浪の通算成績は',
+    '藤浪の最近の投球成績は',
+  ])('does not force a single appearance for aggregate wording: %s', (message) => {
+    const value = {
+      intent: 'aggregate_pitching',
+      filters: { pitcher_name: '藤浪' },
+    }
+    expect(normalizeStructuredQueryFromLlmMessage(message, value)).toEqual(value)
+  })
 })
