@@ -220,4 +220,23 @@ describe('chat-query-llm', () => {
     }
     expect(normalizeStructuredQueryFromLlmMessage(message, value)).toEqual(value)
   })
+
+  it('does not collapse a compound season question to its latest-appearance clause', () => {
+    const value = {
+      intent: 'search_pitching',
+      filters: {
+        pitcher_name: '藤浪',
+        league_level: 'farm',
+        year: 2026,
+        recent: true,
+        limit: 5,
+      },
+    }
+    expect(
+      normalizeStructuredQueryFromLlmMessage(
+        '藤浪は今シーズン二軍で何回登板してる？直近の試合ではどんな投球だった？',
+        value,
+      ),
+    ).toEqual(value)
+  })
 })

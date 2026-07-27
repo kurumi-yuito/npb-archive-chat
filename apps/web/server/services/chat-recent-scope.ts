@@ -5,6 +5,9 @@ export function inferRecentAppearanceLimit(message: string): number | undefined 
     const count = Number(explicitCount[1])
     return Number.isInteger(count) && count > 0 ? count : undefined
   }
+  if (/(?:何回登板|登板数|防御率|シーズン成績)/u.test(normalized)) {
+    return undefined
+  }
   if (
     /(?:直近|最新|最後|最終)(?:の)?(?:試合|登板)/u.test(normalized) ||
     /最後に投げた試合/u.test(normalized)
