@@ -1111,10 +1111,15 @@ function parseScoreSummaryEntries(
       /^(.+?)\s+\d+\s+Game\s+\d+\s+(.+?)\s+\d+\s+(.+)$/,
     )
     if (scoreMatch) {
+      const homeLabel = normalizeTeamLabel(scoreMatch[1])
+      const awayLabel = normalizeTeamLabel(scoreMatch[3])
+      if (isLeagueSelectionLabel(homeLabel) || isLeagueSelectionLabel(awayLabel)) {
+        continue
+      }
       results.push({
-        homeLabel: normalizeTeamLabel(scoreMatch[1]),
+        homeLabel,
         venue: scoreMatch[2].trim(),
-        awayLabel: normalizeTeamLabel(scoreMatch[3]),
+        awayLabel,
         startsAt: null,
         gameNumber: extractGameNumber(anchorText),
         listingStatus: 'listed',
@@ -1125,10 +1130,15 @@ function parseScoreSummaryEntries(
 
     const postponedMatch = anchorText.match(/^(.+?)\s+Postponed\s+(.+?)\s+(.+)$/)
     if (postponedMatch) {
+      const homeLabel = normalizeTeamLabel(postponedMatch[1])
+      const awayLabel = normalizeTeamLabel(postponedMatch[3])
+      if (isLeagueSelectionLabel(homeLabel) || isLeagueSelectionLabel(awayLabel)) {
+        continue
+      }
       results.push({
-        homeLabel: normalizeTeamLabel(postponedMatch[1]),
+        homeLabel,
         venue: postponedMatch[2].trim(),
-        awayLabel: normalizeTeamLabel(postponedMatch[3]),
+        awayLabel,
         startsAt: null,
         gameNumber: null,
         listingStatus: 'postponed',
@@ -1299,6 +1309,11 @@ function lookupTeamCode(label: string): string {
 
 function isKnownTeam(label: string): boolean {
   return Object.hasOwn(TEAM_CODE_BY_LABEL, label)
+}
+
+function isLeagueSelectionLabel(label: string): boolean {
+  const normalized = label.replace(/\s+/gu, ' ').trim()
+  return /^(?:C\.?L\.?|P\.?L\.?|Central League|Pacific League)$/iu.test(normalized)
 }
 
 function normalizeTeamLabel(label: string): string {

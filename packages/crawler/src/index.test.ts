@@ -303,6 +303,29 @@ describe('@npb/crawler', () => {
     ])
   })
 
+  it.each([
+    ['C.L.', 'P.L.'],
+    ['P.L.', 'C.L.'],
+    ['Central League', 'Pacific League'],
+    ['Pacific League', 'Central League'],
+  ])('skips BIS league-selection score labels %s and %s', (homeLabel, awayLabel) => {
+    const html = `
+      <html>
+        <head><title>All-Star Game (Scores)</title></head>
+        <body>
+          <a href="s2026072801234.html">${homeLabel} 5 Game 1 Tokyo Dome 7 ${awayLabel}</a>
+        </body>
+      </html>
+    `
+
+    expect(parseDailyPage(html, {
+      url: 'https://npb.jp/bis/eng/2026/games/gm20260728.html',
+      date: '2026-07-28',
+      competition: 'regular',
+      calendarPageUrl: 'https://npb.jp/bis/eng/2026/calendar/index_07.html',
+    })).toEqual([])
+  })
+
   it('discovers yearly games and infers score game IDs', async () => {
     const fixtures: Record<string, string> = {
       'https://npb.jp/bis/eng/2026/calendar/': await loadFixture(
