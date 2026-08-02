@@ -296,6 +296,11 @@ function toggleSidebar() {
           </div>
         </template>
       </section>
+
+      <NuxtLink class="sidebar-link" to="/contact" @click="sidebarOpen = false">
+        <span class="sidebar-link__icon" aria-hidden="true">✉️</span>
+        <span>お問い合わせ</span>
+      </NuxtLink>
     </aside>
 
     <section class="workspace" aria-label="チャット">
@@ -596,6 +601,32 @@ function toggleSidebar() {
   margin-top: auto;
   background: transparent;
   border-color: transparent;
+}
+
+.sidebar-link {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.7rem 0.9rem;
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  color: #e2e8f0;
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.sidebar-link:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: var(--c-sidebar-border);
+}
+
+.sidebar-link__icon {
+  width: 1.25rem;
+  font-size: 1rem;
+  line-height: 1;
+  text-align: center;
 }
 
 .panel__head {

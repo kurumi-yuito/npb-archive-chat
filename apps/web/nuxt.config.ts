@@ -42,6 +42,11 @@ export default defineNuxtConfig({
       }
     : {},
   runtimeConfig: {
+    public: {
+      emailjsPublicKey: process.env.NUXT_PUBLIC_EMAILJS_PUBLIC_KEY ?? '',
+      emailjsServiceId: process.env.NUXT_PUBLIC_EMAILJS_SERVICE_ID ?? '',
+      emailjsTemplateId: process.env.NUXT_PUBLIC_EMAILJS_TEMPLATE_ID ?? '',
+    },
     npbSqlitePath: process.env.NPB_SQLITE_PATH ?? '',
     npbSqliteDir: process.env.NPB_SQLITE_DIR ?? '',
     chatQueryLlmBaseUrl: process.env.CHAT_QUERY_LLM_BASE_URL ?? 'https://api.openai.com/v1',
