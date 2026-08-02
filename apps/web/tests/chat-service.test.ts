@@ -669,6 +669,27 @@ describe('chat-service', () => {
     })
   })
 
+  it('allows an elliptical recent player question through topic detection and planner normalization', async () => {
+    let parserCalled = false
+    const service = createChatService(createFakeQueryService(), {
+      parseStructuredQueryFromMessage: async () => {
+        parserCalled = true
+        return {
+          intent: 'search_pitching',
+          filters: { pitcher_name: '藤浪', recent: true, limit: 1 },
+        }
+      },
+    })
+
+    const response = await service.answerQuestion('藤浪の直近の内容')
+
+    expect(parserCalled).toBe(true)
+    expect(response.structured_query).toMatchObject({
+      intent: 'search_pitching',
+      filters: { pitcher_name: '藤浪', recent: true, limit: 1 },
+    })
+  })
+
   it('applies limited player stats follow-up context to missing player, team, season and scope', async () => {
     let pitchingFilters: Parameters<ChatQueryService['searchPitchingLines']>[0] | null = null
     const currentResolver = vi.fn(async (_queryService, structuredQuery) => ({
@@ -986,7 +1007,7 @@ describe('chat-service', () => {
     })
     expect(eventFilters).not.toHaveProperty('result_text_contains')
     expect(response.answer.summary).toContain('2025年藤浪晋太郎から打ったイベントです。')
-    expect(response.answer.summary).toContain('対象: 1件')
+    expect(response.answer.summary).toContain('該当数: 1件')
     expect(response.answer.execution_metadata?.follow_up_type).toBe('evaluation_request')
   })
 
@@ -3158,7 +3179,7 @@ describe('chat-service', () => {
     })
     expect(response.answer.result_count).toBe(1)
     expect(response.answer.summary).toContain('1. 2021年4月16日')
-    expect(response.answer.summary).toContain('対象: 1件')
+    expect(response.answer.summary).toContain('該当数: 1件')
     expect(response.answer.summary).not.toContain('条件に一致するイベントは見つかりません')
   })
 
@@ -3448,8 +3469,7 @@ describe('chat-service', () => {
     })
     expect(pitchingFilters).not.toMatchObject({ team: '阪神' })
     expect(response.answer.summary).toContain('現在のNPB所属は横浜DeNAベイスターズです')
-    expect(response.answer.summary).toContain('確認できる最新')
-    expect(response.answer.summary).toContain('投球内容')
+    expect(response.answer.summary).toContain('2026年5月22日の二軍登板')
   })
 
   it.skip('routes 最近の打席内容 to batting instead of events', async () => {
@@ -3524,11 +3544,11 @@ describe('chat-service', () => {
     expect(pitchingFilters).toContainEqual(expect.objectContaining({ recent: true, limit: 1 }))
     expect(response.results.pitching).toHaveLength(1)
     expect(response.answer.result_count).toBe(1)
-    expect(response.answer.summary).toContain('最新1試合')
+    expect(response.answer.summary).toContain('2026年6月10日')
     expect(response.answer.summary).toContain('2026年6月10日')
     expect(response.answer.summary).not.toContain('最新5試合')
     expect(response.answer.summary).not.toContain('2026年5月22日')
-    expect(response.answer.summary).toContain('確認できる最新の出場記録は2026年6月10日')
+    expect(response.answer.summary).not.toMatch(/確認できる|対象試合|対象記録|対象データ|イベント集計|最新1試合|内容は1試合で/u)
   })
 
   it('resolves a surname through player_id-bearing roster rows before treating transfer history as ambiguous', async () => {
@@ -3578,7 +3598,7 @@ describe('chat-service', () => {
       expect(response.answer.result_count).toBe(1)
       expect(response.answer.summary).not.toContain('どの藤浪ですか')
       expect(response.answer.summary).toContain('横浜DeNAベイスターズ 藤浪')
-      expect(response.answer.summary).toContain('2026年二軍')
+      expect(response.answer.summary).toContain('2026年5月22日の二軍登板')
     } finally {
       database.close()
     }

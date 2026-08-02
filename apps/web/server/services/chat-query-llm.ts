@@ -155,6 +155,14 @@ export function normalizeStructuredQueryFromLlmMessage(message: string, value: u
     filters?: unknown
   }
 
+  const ellipticalRecentTarget = extractEllipticalRecentTarget(message)
+  if (query.intent === 'off_topic' && ellipticalRecentTarget) {
+    return {
+      intent: 'search_pitching',
+      filters: { pitcher_name: ellipticalRecentTarget, recent: true, limit: 1 },
+    }
+  }
+
   const comparisonTarget = extractMultiPlayerComparisonTarget(message)
   if (comparisonTarget && comparisonTarget.names.length >= 2) {
     const comparisonNameField = comparisonTarget.kind === 'pitching' ? 'pitcher_names' : 'player_names'
@@ -263,6 +271,14 @@ export function normalizeStructuredQueryFromLlmMessage(message: string, value: u
           : 10,
     },
   }
+}
+
+function extractEllipticalRecentTarget(message: string): string | null {
+  const match = message.normalize('NFKC').trim().match(
+    /^([^\s、。！？?]+?)(?:選手|投手)?の(?:直近|最新)の内容(?:は|を教えて(?:ください)?)?[？?。]?$/u,
+  )
+  const name = match?.[1]?.trim()
+  return name && !/試合|チーム|球団|リーグ/u.test(name) ? name : null
 }
 
 function isAggregatePitchingSortBy(value: unknown): value is Exclude<AggregatePitchingFilters['sort_by'], undefined> {

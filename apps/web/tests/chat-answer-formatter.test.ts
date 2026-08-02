@@ -37,7 +37,7 @@ describe('chat-answer-formatter', () => {
 
     expect(answer.result_count).toBe(21)
     expect(answer.remaining_count).toBe(1)
-    expect(answer.summary).toBe('2025年ヤクルト山田が打ったホームランです。\n対象: 21件')
+    expect(answer.summary).toBe('2025年ヤクルト山田が打ったホームランです。\n該当数: 21件')
   })
 
   it('describes batter-vs-pitcher event searches with both player names', () => {
@@ -70,7 +70,7 @@ describe('chat-answer-formatter', () => {
       sources: [],
     })
 
-    expect(answer.summary).toBe('DeNAの京田と砂田には直接対決があります。 確認できる記録は2件です。 最初の対戦は2025年5月1日のヤクルト戦で京田が砂田からファーストゴロ。 直近の対戦は2025年5月2日のヤクルト戦で京田が砂田からセンター前ヒット。')
+    expect(answer.summary).toBe('DeNAの京田と砂田には直接対決があります。 両者の対戦は2件あります。 最初の対戦は2025年5月1日のヤクルト戦で京田が砂田からファーストゴロ。 直近の対戦は2025年5月2日のヤクルト戦で京田が砂田からセンター前ヒット。')
     expect(answer.summary).not.toContain('打ったイベント')
   })
 
@@ -259,7 +259,7 @@ describe('chat-answer-formatter', () => {
       sources: [],
     })
 
-    expect(answer.summary).toBe('田中 将大と柳には直接対決があります。 確認できる記録は1件です。 最初の対戦は2025年8月13日の巨人戦で田中 将大が柳から空振り三振。')
+    expect(answer.summary).toBe('田中 将大と柳には直接対決があります。 両者の対戦は1件あります。 最初の対戦は2025年8月13日の巨人戦で田中 将大が柳から空振り三振。')
     expect(answer.summary).not.toContain('打ったイベント')
   })
 
@@ -418,7 +418,7 @@ describe('chat-answer-formatter', () => {
       sources: [],
     })
 
-    expect(answer.summary).toContain('ヤクルト 村上の確認できる最新2出場の打撃内容です。')
+    expect(answer.summary).toContain('ヤクルト 村上は直近2試合で3安打')
     expect(answer.summary).toContain('2試合で3安打')
     expect(answer.summary).toContain('打点')
     expect(answer.summary).toContain('打率.429')
@@ -439,7 +439,7 @@ describe('chat-answer-formatter', () => {
       executionMetadata: evaluationMetadata(),
     })
 
-    expect(answer.summary).toContain('ヤクルト 村上の確認できる最新2出場の打撃内容です。')
+    expect(answer.summary).toContain('ヤクルト 村上は直近2試合で3安打')
     expect(answer.summary).toContain('2試合で3安打')
     expect(answer.summary).toContain('打率.429')
   })
@@ -513,14 +513,13 @@ describe('chat-answer-formatter', () => {
 
     expect(answer.result_count).toBe(6)
     // recent はBISシーズン行ではなく、試合単位の最新登板を優先する
-    expect(answer.summary).toContain('横浜DeNAベイスターズ 藤浪 晋太郎の確認できる最新5試合の投球内容です。')
-    expect(answer.summary).toContain('2026年二軍での対象試合です。')
+    expect(answer.summary).toContain('横浜DeNAベイスターズ 藤浪 晋太郎は2026年5月22日の二軍登板で')
     expect(answer.summary).not.toContain('シーズン成績')
 
     // 個別試合は全て「二軍」として扱う（「一軍」は一切出ない）
     expect(answer.summary).toContain('2026年5月22日')
     expect(answer.summary).toContain('2026年5月13日')
-    expect(answer.summary).toContain('5試合で19奪三振')
+    expect(answer.summary).toContain('直近5登板の合計は19奪三振')
     expect(answer.summary).not.toContain('一軍')
 
     // 5W1H: いつ・どこで（チーム）・誰が・何回・何奪三振・自責
@@ -548,8 +547,8 @@ describe('chat-answer-formatter', () => {
       sources: [],
     })
 
-    expect(answer.summary).toContain('確認できる最新5試合')
-    expect(answer.summary).toContain('対象試合: 2026年7月11日、2026年7月1日、2026年6月21日、2026年6月13日、2026年6月5日')
+    expect(answer.summary).toContain('直近5登板の合計')
+    expect(answer.summary).toContain('登板日: 2026年7月11日、2026年7月1日、2026年6月21日、2026年6月13日、2026年6月5日')
     expect(answer.summary).not.toContain('2026年5月8日から2026年4月1日')
     expect(answer.summary).not.toContain('最新7件')
   })
@@ -622,7 +621,7 @@ describe('chat-answer-formatter', () => {
       },
     })
 
-    expect(answer.summary).toContain('2026年の確認できる最新2試合は11奪三振、1自責点です。')
+    expect(answer.summary).toContain('2026年の直近2登板は11奪三振、自責点1です。')
     expect(answer.summary).toContain('昨年の同条件と直接の通算比較はできません')
   })
 
@@ -661,7 +660,7 @@ describe('chat-answer-formatter', () => {
       },
     })
 
-    expect(answer.summary).toBe('いいえ、二軍の話です。確認できる最新5試合は二軍での登板です。')
+    expect(answer.summary).toBe('いいえ、二軍の話です。直近5登板はいずれも二軍です。')
   })
 
   it('formats top pitch count appearances from structured sort filters instead of question text', () => {
@@ -809,8 +808,7 @@ describe('chat-answer-formatter', () => {
     })
 
     // recent はBISシーズン行ではなく、試合単位の最新登板を優先する
-    expect(answer.summary).toContain('阪神タイガース 青柳 晃洋の確認できる最新2試合の投球内容です。')
-    expect(answer.summary).toContain('2025年一軍での対象試合です。')
+    expect(answer.summary).toContain('阪神タイガース 青柳 晃洋は2025年9月20日の一軍登板で')
     expect(answer.summary).toContain('青柳 晃洋')
 
     // 個別試合は「一軍」として表示（「二軍」は出ない）

@@ -466,21 +466,21 @@ function buildSummary(
     if (structuredQuery.intent === 'search_games') {
       notFoundMsg = '条件に一致する試合は見つかりませんでした。'
     } else if (structuredQuery.intent === 'search_batting' || structuredQuery.intent === 'aggregate_batting') {
-      notFoundMsg = '条件に一致する打撃成績は見つかりませんでした。確認できる記録にないため、推測では回答しません。'
+      notFoundMsg = '条件に一致する打撃成績は見つかりませんでした。記録にない内容は推測せずにお答えします。'
     } else if (structuredQuery.intent === 'search_pitching') {
       notFoundMsg = '条件に一致する投手成績は見つかりませんでした。'
     } else if (structuredQuery.intent === 'aggregate_pitching') {
-      notFoundMsg = '条件に一致する投手集計は見つかりませんでした。確認できる記録にないため、推測では回答しません。'
+      notFoundMsg = '条件に一致する投手成績は見つかりませんでした。記録にない内容は推測せずにお答えします。'
     } else if (structuredQuery.intent === 'search_roster') {
-      notFoundMsg = '条件に一致するロスターは見つかりませんでした。確認できる記録にないため、推測では回答しません。'
+      notFoundMsg = '条件に一致する登録情報は見つかりませんでした。'
     } else if (structuredQuery.intent === 'player_affiliation') {
-      notFoundMsg = '条件に一致する所属チーム情報は見つかりませんでした。確認できる記録にないため、推測では回答しません。'
+      notFoundMsg = '条件に一致する所属チーム情報は見つかりませんでした。'
     } else if (structuredQuery.intent === 'game_detail') {
-      notFoundMsg = '条件に一致する試合詳細は見つかりませんでした。確認できる記録にないため、推測では回答しません。'
+      notFoundMsg = '条件に一致する試合は見つかりませんでした。'
     } else if (structuredQuery.intent === 'aggregate_events') {
-      notFoundMsg = '条件に一致するイベント集計は見つかりませんでした。確認できる記録にないため、推測では回答しません。'
+      notFoundMsg = '条件に一致するプレーはありませんでした。'
     } else if (structuredQuery.intent === 'aggregate_games') {
-      notFoundMsg = '条件に一致する試合結果が見つかりませんでした。確認できる記録にないため、推測では回答しません。'
+      notFoundMsg = '条件に一致する試合結果は見つかりませんでした。'
     } else {
       notFoundMsg = '条件に一致するイベントは見つかりませんでした。'
     }
@@ -662,7 +662,7 @@ function formatPitchingScopeClarificationOverride(
     return null
   }
   if ((filters.year === 2025 || filters.year === 2026) && filters.team === 'DeNA' && /藤浪/u.test(String(filters.pitcher_name ?? ''))) {
-    return 'いいえ、二軍の話です。確認できる最新5試合は二軍での登板です。'
+    return 'いいえ、二軍の話です。直近5登板はいずれも二軍です。'
   }
   return null
 }
@@ -739,7 +739,7 @@ function formatBatterPitcherMatchupSummary(
       : ''
   return [
     `${teamPrefix}${batter}と${pitcher}には直接対決があります。`,
-    `確認できる記録は${resultCount}件です。`,
+    `両者の対戦は${resultCount}件あります。`,
     first ? `最初の対戦は${first}。` : undefined,
     latestLine ? `${latestLine}。` : undefined,
   ].filter(Boolean).join(' ')
@@ -802,7 +802,7 @@ function formatGameSearchSummary(question: string, rows: GameSummaryRow[], resul
   }
   return [
     `${formatGameSummaryLine(targetRows[0] ?? rows[0])}`,
-    `対象: ${resultCount}件`,
+    `該当数: ${resultCount}件`,
     ...(targetRows.length > 1 ? targetRows.slice(1, 20).map((row) => formatGameSummaryLine(row)) : []),
     ...(resultCount > 20 ? [`ほか${resultCount - 20}件は省略しています。`] : []),
   ].join('\n')
@@ -888,7 +888,7 @@ function formatAggregateSummary(
         const s = row.stats
         return `${index + 1}位: ${row.label}（${s.team ?? ''}） 試合${s.games ?? row.total}、打率${formatMaybeRate(s.battingAverage)}、本塁打${s.homeRuns ?? 0}、打点${s.runsBattedIn ?? 0}、盗塁${s.stolenBases ?? 0}、OPS${formatMaybeRate(s.ops)}、IsoP${formatMaybeRate(s.isoP)}、BB%${formatMaybePercent(s.bbRate)}`
       }),
-      `対象: ${rows.length}件`,
+      `該当数: ${rows.length}件`,
     ].join('\n')
   }
   if (structuredQuery.intent === 'aggregate_pitching') {
@@ -906,13 +906,13 @@ function formatAggregateSummary(
         const saveText = s.saves != null ? `、セーブ${s.saves}` : ''
         return `${index + 1}位: ${row.label}（${s.team ?? ''}） 登板${s.games ?? row.total}${saveText}、投球回${formatDecimalStat(ip)}、奪三振${s.strikeouts ?? 0}、自責点${s.earnedRuns ?? 0}、防御率${formatMaybeDecimal(era)}、WHIP${formatMaybeDecimal(whip)}、球数${s.pitches ?? 0}`
       }),
-      `対象: ${rows.length}件`,
+      `該当数: ${rows.length}件`,
     ].join('\n')
   }
   return [
-    'イベント集計の上位結果です。',
+    '該当するプレーが多い順です。',
     ...rows.slice(0, 10).map((row, index) => `${index + 1}位: ${row.label} ${row.total}件`),
-    `対象: ${rows.length}件`,
+    `該当数: ${rows.length}件`,
   ].join('\n')
 }
 
@@ -1117,7 +1117,7 @@ function formatDefaultPitchingLineSummary(row: PitchingLineRow, resultCount: num
   const pitchText = row.pitchCount > 0 ? `、${row.pitchCount}球` : ''
   return [
     `${formatDateJa(row.gameDate)}の${league}・${displayTeamName(row.team)} ${row.pitcherName}は、${formatInningsForDisplay(row.inningsPitched)}${pitchText}、${row.strikeouts}奪三振、失点${row.runs}、自責点${row.earnedRuns}でした。`,
-    `対象: ${resultCount}件`,
+    `該当数: ${resultCount}件`,
   ].join('\n')
 }
 
@@ -1131,7 +1131,7 @@ function formatDefaultBattingLineSummary(row: BattingLineRow, resultCount: numbe
   ].filter(Boolean).join('、')
   return [
     `${formatDateJa(row.gameDate)}の${league}・${displayTeamName(row.team)} ${row.playerName}の打撃成績は、${row.atBats}打数${row.hits}安打${extra ? `、${extra}` : ''}でした。`,
-    `対象: ${resultCount}件`,
+    `該当数: ${resultCount}件`,
   ].join('\n')
 }
 
@@ -1709,17 +1709,16 @@ function formatBattingEvaluationSummary(rows: BattingLineRow[], resultCount: num
   )
   const average = totals.atBats > 0 ? totals.hits / totals.atBats : null
   const positives = [
-    totals.hits > 0 ? `${gameRows.length}試合で${totals.hits}安打` : undefined,
+    totals.hits > 0 ? `${totals.hits}安打` : undefined,
     totals.runsBattedIn > 0 ? `${totals.runsBattedIn}打点` : undefined,
     totals.walks > 0 ? `${totals.walks}四球` : undefined,
     average !== null ? `打率${average.toFixed(3).replace(/^0/u, '')}` : undefined,
   ].filter(Boolean)
   return [
-    `${teamPrefix}${playerName}の確認できる最新${gameRows.length}出場の打撃内容です。`,
     positives.length > 0
-      ? `内容は${positives.join('、')}です。`
-      : '安打や打点はありませんが、対象試合には出場しています。',
-    `対象試合: ${gameRows.map((row) => formatDateJa(row.gameDate)).join('、')}`,
+      ? `${teamPrefix}${playerName}は直近${gameRows.length}試合で${positives.join('、')}でした。`
+      : `${teamPrefix}${playerName}は直近${gameRows.length}試合で安打・打点ともに0でした。`,
+    `出場日: ${gameRows.map((row) => formatDateJa(row.gameDate)).join('、')}`,
     buildInternalRecentGapNote(gameRows.map((row) => row.gameDate)),
   ].filter(Boolean).join('\n')
 }
@@ -1741,7 +1740,7 @@ function formatBisBattingEvaluationSummary(row: BattingLineRow, resultCount: num
     sabermetrics.bbK !== null ? `BB/K${formatDecimal(sabermetrics.bbK)}` : undefined,
   ].filter(Boolean)
   return [
-    `${row.team} ${row.playerName}の${year}年に確認できる最新のシーズン打撃成績です。`,
+    `${row.team} ${row.playerName}の${year}年シーズン成績です。`,
     positives.length > 0
       ? `内容は${positives.join('、')}です。`
       : '主要指標は成績行から取り出せませんでした。',
@@ -1840,11 +1839,10 @@ function formatPitchingEvaluationSummary(rows: PitchingLineRow[], limit = 5): st
     { strikeouts: 0, runs: 0, earnedRuns: 0, pitchCount: 0 },
   )
   const positives = [
-    totals.strikeouts > 0 ? `${gameRows.length}試合で${totals.strikeouts}奪三振` : undefined,
+    totals.strikeouts > 0 ? `${totals.strikeouts}奪三振` : undefined,
     totals.earnedRuns === 0 ? '自責点0' : `${totals.earnedRuns}自責点`,
     totals.pitchCount > 0 ? `${totals.pitchCount}球` : undefined,
   ].filter(Boolean)
-  const year = gameRows[0]?.gameDate.slice(0, 4) ?? ''
   const league = gameRows.every((row) => row.gameId.startsWith('f'))
     ? '二軍'
     : gameRows.every((row) => !row.gameId.startsWith('f'))
@@ -1853,11 +1851,9 @@ function formatPitchingEvaluationSummary(rows: PitchingLineRow[], limit = 5): st
   const teamPrefix = gameRows[0]?.team ? `${gameRows[0].team} ` : ''
   const latest = gameRows[0]
   return [
-    `${teamPrefix}${pitcherName}の確認できる最新${gameRows.length}試合の投球内容です。`,
-    `${year}年${league}での対象試合です。`,
-    `内容は${positives.join('、')}です。`,
-    latest ? `最新登板は${formatDateJa(latest.gameDate)}で、${formatInningsForDisplay(latest.inningsPitched)}、${latest.strikeouts}奪三振、自責点${latest.earnedRuns}です。` : undefined,
-    `対象試合: ${gameRows.map((row) => formatDateJa(row.gameDate)).join('、')}`,
+    latest ? `${teamPrefix}${pitcherName}は${formatDateJa(latest.gameDate)}の${league}登板で、${formatInningsForDisplay(latest.inningsPitched)}、${latest.strikeouts}奪三振、自責点${latest.earnedRuns}${latest.pitchCount > 0 ? `、${latest.pitchCount}球` : ''}でした。` : undefined,
+    ...(gameRows.length > 1 ? [`直近${gameRows.length}登板の合計は${positives.join('、')}です。`] : []),
+    ...(gameRows.length > 1 ? [`登板日: ${gameRows.map((row) => formatDateJa(row.gameDate)).join('、')}`] : []),
     buildInternalRecentGapNote(gameRows.map((row) => row.gameDate)),
   ].filter(Boolean).join('\n')
 }
@@ -1898,7 +1894,7 @@ function formatPitchingScopeClarificationSummary(
   if (targetRows.length === 0 || !targetRows.every((row) => row.gameId.startsWith('f'))) {
     return null
   }
-  return `いいえ、二軍の話です。確認できる最新${targetRows.length}試合は二軍での登板です。`
+  return `いいえ、二軍の話です。直近${targetRows.length}登板はいずれも二軍です。`
 }
 
 function formatRecentPitchingComparisonFollowUpSummary(rows: PitchingLineRow[]): string | null {
@@ -1914,7 +1910,7 @@ function formatRecentPitchingComparisonFollowUpSummary(rows: PitchingLineRow[]):
     }),
     { strikeouts: 0, earnedRuns: 0 },
   )
-  return `${year}年の確認できる最新${boxRows.length}試合は${totals.strikeouts}奪三振、${totals.earnedRuns}自責点です。昨年の同条件と直接の通算比較はできませんが、少なくとも直近は失点を抑えて試合を作れています。`
+  return `${year}年の直近${boxRows.length}登板は${totals.strikeouts}奪三振、自責点${totals.earnedRuns}です。昨年の同条件と直接の通算比較はできませんが、少なくとも直近は失点を抑えて試合を作れています。`
 }
 
 function formatMultiPlayerRecentBattingSummary(
@@ -2081,11 +2077,11 @@ function formatBisPitchingEvaluationSummary(row: PitchingLineRow, gameRows: Pitc
     return `  ${r.gameDate} ${gameLeague} ${r.team} ${r.pitcherName}: ${formatInningsForDisplay(r.inningsPitched)} ${r.strikeouts}奪三振 自責${r.earnedRuns}`
   })
   return [
-    `確認できる最新のシーズン成績では、${row.team} ${row.pitcherName}は${year}年${league}で${appearances ?? '複数'}試合に登板しています。`,
+    `${row.team} ${row.pitcherName}は${year}年${league}で${appearances ?? '複数'}試合に登板しています。`,
     positives.length > 0
       ? `シーズン成績は${positives.join('、')}です。`
       : '主要指標は成績行から取り出せませんでした。',
-    ...(gameLines.length > 0 ? [`確認できる個別試合記録（最新${gameLines.length}件）:`, ...gameLines] : []),
+    ...(gameLines.length > 0 ? ['直近の登板:', ...gameLines] : []),
   ].join('\n')
 }
 
@@ -2107,7 +2103,7 @@ function buildRecentGapNote(gameDates: string[], filters: Record<string, unknown
     (new Date(todayJst).getTime() - new Date(newest).getTime()) / (1000 * 60 * 60 * 24),
   )
   if (diffDays < 7) return ''
-  return `\n確認できる最新の出場記録は${formatDateJa(newest)}です。現在（${formatDateJa(todayJst)}）から${diffDays}日空いているため、これだけでは現在の調子とは言えません。`
+  return `\n最後の出場は${formatDateJa(newest)}で、現在（${formatDateJa(todayJst)}）から${diffDays}日空いています。この記録だけでは現在の調子とは言えません。`
 }
 
 function buildInternalRecentGapNote(gameDates: string[]): string {
@@ -2389,7 +2385,7 @@ function formatEventListSummary(
   }) : []
   return [
     detailLines[0] ?? `${title}です。`,
-    `対象: ${resultCount}件`,
+    `該当数: ${resultCount}件`,
     ...detailLines.slice(1),
     ...(detailLines.length > 0 && resultCount > detailLines.length ? [`ほか${resultCount - detailLines.length}件は省略しています。`] : []),
   ].join('\n')
@@ -2427,7 +2423,7 @@ function formatInitialRecordEventSummary(
     `${playerName}の${ordinalLabel}は、${formatDateJa(event.gameDate)}${opponentText}です。`,
     '',
     detail,
-    `対象記録: ${events.length}件`,
+    `該当数: ${events.length}件`,
   ].join('\n')
 }
 

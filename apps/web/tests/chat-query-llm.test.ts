@@ -209,6 +209,18 @@ describe('chat-query-llm', () => {
     })
   })
 
+  it('recovers an elliptical recent player question from an off-topic parser result', () => {
+    expect(
+      normalizeStructuredQueryFromLlmMessage('藤浪の直近の内容', {
+        intent: 'off_topic',
+        filters: {},
+      }),
+    ).toEqual({
+      intent: 'search_pitching',
+      filters: { pitcher_name: '藤浪', recent: true, limit: 1 },
+    })
+  })
+
   it.each([
     '藤浪の今季成績は',
     '藤浪の通算成績は',
