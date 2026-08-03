@@ -95,6 +95,8 @@ export function formatChatAnswer({
           target_player_id: executionMetadata.targetPlayerId,
           answer_mode: executionMetadata.answerMode,
           identity_resolution_scope: executionMetadata.identityResolutionScope,
+          domain: executionMetadata.domain,
+          planner_validation: executionMetadata.validation,
           ...(executionMetadata.questionIntent
             ? { question_intent: executionMetadata.questionIntent }
             : {}),

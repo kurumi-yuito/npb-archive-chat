@@ -447,22 +447,21 @@ describe('chat-service', () => {
     expect(response.answer.summary).not.toContain('投手成績')
   })
 
-  it('rejects non-baseball topics before invoking the query parser', async () => {
+  it('lets the Planner classify non-baseball topics', async () => {
     let parserCalled = false
     const service = createChatService(createFakeQueryService(), {
       parseStructuredQueryFromMessage: async () => {
         parserCalled = true
-        return {
-          intent: 'search_events',
-          filters: { player_name: '天気' },
-        }
+        return { intent: 'off_topic', filters: {} }
       },
     })
 
     const response = await service.answerQuestion('今日の天気はどうですか？')
 
-    expect(parserCalled).toBe(false)
+    expect(parserCalled).toBe(true)
     expect(response.structured_query).toEqual({ intent: 'off_topic', filters: {} })
+    expect(response.answer.summary).toContain('NPB（日本プロ野球）')
+    expect(response.answer.summary).not.toContain('文脈を特定しきれません')
     expect(response.answer.result_count).toBe(0)
     expect(response.results.events).toHaveLength(0)
   })

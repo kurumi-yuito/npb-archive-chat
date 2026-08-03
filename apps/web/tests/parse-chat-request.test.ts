@@ -43,4 +43,15 @@ describe('parse-chat-request', () => {
   it('rejects an empty message', () => {
     expect(() => parseChatRequestBody({ message: '' })).toThrow()
   })
+
+  it('rejects whitespace-only and overlong messages mechanically', () => {
+    expect(() => parseChatRequestBody({ message: '   ' })).toThrow()
+    expect(() => parseChatRequestBody({ message: 'a'.repeat(4001) })).toThrow()
+  })
+
+  it('trims request text without interpreting its topic', () => {
+    expect(parseChatRequestBody({ message: '  今日の天気  ' })).toEqual({
+      message: '今日の天気',
+    })
+  })
 })

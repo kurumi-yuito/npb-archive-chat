@@ -72,6 +72,8 @@ export function buildChatExecutionMetadata(
     targetPlayerId: plannerOutput?.targetPlayerId ?? null,
     answerMode: plannerOutput?.answerMode ?? 'direct_answer',
     identityResolutionScope: plannerOutput?.identityResolutionScope ?? 'unspecified',
+    domain: plannerOutput?.domain ?? (structuredQuery.intent === 'off_topic' ? 'non_npb' : 'npb'),
+    validation: plannerOutput?.validation ?? { valid: true, issues: [] },
     ...(plannerOutput?.questionIntent
       ? { questionIntent: plannerOutput.questionIntent }
       : {}),

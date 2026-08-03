@@ -120,6 +120,8 @@ export function buildCapabilityFailureResponse(
         target_player_id: executionMetadata.targetPlayerId,
         answer_mode: executionMetadata.answerMode,
         identity_resolution_scope: executionMetadata.identityResolutionScope,
+        domain: executionMetadata.domain,
+        planner_validation: executionMetadata.validation,
         question_intent: capability.intent,
         capability_route: capability.route,
         capability_requires_analysis: capability.requiresAnalysis,

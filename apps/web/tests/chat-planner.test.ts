@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { ChatStructuredQuery } from '@npb/schemas'
 import { buildPlannerOutput } from '../server/services/chat-planner'
+import { validateChatPlannerOutput } from '../server/services/chat-planner-validator'
 import { inferCorrectionGuardMetadata } from '../server/services/chat-query-plan'
 
 function baseGameQuery(overrides: Partial<ChatStructuredQuery['filters']> = {}): ChatStructuredQuery {
@@ -384,5 +385,53 @@ describe('chat-planner follow-up classification', () => {
       explicitScopeOverride: Boolean(expected.hasExplicitScopeOverride),
     })
     expect(planner.structuredQuery).toEqual(query)
+  })
+})
+
+describe('chat-planner output validation', () => {
+  it('accepts a self-consistent non-NPB result without reading the question', () => {
+    const output = buildPlannerOutput({ intent: 'off_topic', filters: {} }, false)
+
+    expect(validateChatPlannerOutput(output)).toMatchObject({
+      domain: 'non_npb',
+      clarificationRequired: false,
+      validation: { valid: true, issues: [] },
+    })
+  })
+
+  it('marks off_topic with a resolved entity as an ambiguous contradiction', () => {
+    const output = buildPlannerOutput({ intent: 'off_topic', filters: {} }, false)
+    const validated = validateChatPlannerOutput({
+      ...output,
+      entities: { player: '藤浪' },
+      targetPlayerId: '41045137',
+    })
+
+    expect(validated.domain).toBe('ambiguous')
+    expect(validated.clarificationRequired).toBe(true)
+    expect(validated.validation).toEqual({
+      valid: false,
+      issues: ['off_topic_with_entities', 'off_topic_with_target_id'],
+    })
+  })
+
+  it('marks off_topic with inherited NPB context as an ambiguous contradiction', () => {
+    const output = buildPlannerOutput({ intent: 'off_topic', filters: {} }, false)
+    const validated = validateChatPlannerOutput({
+      ...output,
+      referencedContext: { kind: 'player', value: '藤浪' },
+      followUpContext: {
+        ...output.followUpContext,
+        contextKind: 'player_stats',
+        inheritedPlayerName: '藤浪',
+        inheritanceSource: 'conversation_history',
+      },
+    })
+
+    expect(validated.domain).toBe('ambiguous')
+    expect(validated.validation.issues).toEqual([
+      'off_topic_with_referenced_context',
+      'off_topic_with_inherited_context',
+    ])
   })
 })

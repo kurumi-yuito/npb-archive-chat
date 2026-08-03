@@ -193,6 +193,18 @@ export const chatPlannerOutputSchema = z.object({
   identityResolutionScope: z.enum(['unspecified', 'current', 'historical']),
   confidence: z.number().min(0).max(1),
   clarificationRequired: z.boolean(),
+  domain: z.enum(['npb', 'non_npb', 'ambiguous']),
+  validation: z.object({
+    valid: z.boolean(),
+    issues: z.array(z.enum([
+      'off_topic_with_entities',
+      'off_topic_with_target_id',
+      'off_topic_with_referenced_context',
+      'off_topic_with_inherited_context',
+      'off_topic_with_data_requirements',
+      'off_topic_with_repository_route',
+    ])),
+  }),
   legacyStabilizationApplied: z.boolean(),
   questionIntent: z.enum([
     'historical_record',
@@ -239,6 +251,8 @@ export type ChatExecutionMetadata = {
   capabilityRequiresAnalysis?: boolean
   capabilityUsesRepository?: boolean
   capabilityExternalSourceUrl?: string | null
+  domain: 'npb' | 'non_npb' | 'ambiguous'
+  validation: ChatPlannerOutput['validation']
 }
 
 export function inferDataRequirements(query: ChatStructuredQuery): ChatDataRequirement[] {

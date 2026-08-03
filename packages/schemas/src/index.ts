@@ -293,11 +293,11 @@ export const chatIntentSchema = z.enum([
 
 export const chatHistoryMessageSchema = z.object({
   role: z.enum(['user', 'assistant']),
-  content: z.string().min(1).max(4000),
+  content: z.string().trim().min(1).max(4000),
 })
 
 export const chatRequestSchema = z.object({
-  message: z.string().min(1),
+  message: z.string().trim().min(1).max(4000),
   history: z.array(chatHistoryMessageSchema).max(12).optional(),
   fixture_structured_query: z.lazy(() => chatStructuredQuerySchema).optional(),
 })
@@ -511,6 +511,11 @@ export const chatResponseSchema = z.object({
       target_player_id: z.string().min(1).nullable(),
       answer_mode: z.string().min(1),
       identity_resolution_scope: z.enum(['unspecified', 'current', 'historical']).optional(),
+      domain: z.enum(['npb', 'non_npb', 'ambiguous']).optional(),
+      planner_validation: z.object({
+        valid: z.boolean(),
+        issues: z.array(z.string().min(1)),
+      }).optional(),
       question_intent: z.enum([
         'historical_record',
         'analytical',

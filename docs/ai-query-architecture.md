@@ -6,15 +6,34 @@
 
 今回の変更後の実処理フローは次の通り。
 
-1. `chat.post.ts` が request body、認証、usage、D1/SQLite、LLM設定を解決する。
-2. `chat-service.ts` がユースケースのオーケストレーターとして動く。
-3. `chat-planner.ts` が LLM parser と normalizer を呼び、Planner出力を `chat-query-plan.ts` の schema で検証する。
-4. `chat-service.ts` 内の既存QA安定化 rewrite 群を通し、最終 structured query を再度 Planner出力として検証する。
-5. `player-resolution.ts` が選手名を player_id に解決する。
-6. `chat-executor.ts` が data_requirements、使用repository、player_id必須状態を実行メタデータとして組み立てる。
-7. 実際の repository 呼び出しは、段階移管中のため `chat-service.ts` 内の既存分岐で行う。
-8. `chat-answer-generator.ts` が Answer Generator の入口として `chat-answer-formatter.ts` を呼び、Executorが取得した results と sources だけから deterministic answer を作る。
-9. 条件を満たす場合のみ `chat-final-answer-llm.ts` が DB結果、deterministic answer、sources、history を入力に最終文面を生成する。
+1. `chat.post.ts` と `parse-chat-request.ts` が request schema、空文字、最大長、履歴形式、認証、usageを機械的に検証する。このRequest Guardは自然文のtopicを判定しない。
+2. `chat-service.ts` が、検証済みの全メッセージを例外なくPlannerへ渡す。
+3. `chat-planner.ts` が LLM parser と normalizer を呼び、domain、intent、entities、filters、capabilityを含むPlanner出力を組み立てる。
+4. `chat-planner-validator.ts` がPlanner出力フィールド間の自己矛盾だけを検査する。元の質問文を再解釈しない。
+5. `chat-service.ts` 内の既存QA安定化 rewrite 群を通し、最終 structured query を再度 Planner出力として検証する。
+6. `player-resolution.ts` が選手名を player_id に解決する。
+7. `chat-executor.ts` が data_requirements、使用repository、player_id必須状態を実行メタデータとして組み立てる。
+8. 実際の repository 呼び出しは、段階移管中のため `chat-service.ts` 内の既存分岐で行う。
+9. `chat-answer-generator.ts` が Answer Generator の入口として `chat-answer-formatter.ts` を呼び、Executorが取得した results と sources だけから deterministic answer を作る。
+10. 条件を満たす場合のみ `chat-final-answer-llm.ts` が DB結果、deterministic answer、sources、history を入力に最終文面を生成する。
+
+## Phase 15 Topic判定境界
+
+`isLikelyNpbTopic` によるPlanner前段のsemantic gateは廃止した。Request Guardが扱うのは、Zod schemaで決定できる空文字、4000文字上限、履歴件数・role・content形式などだけである。選手質問、チーム質問、省略、野球かどうかの判断は行わない。
+
+Plannerは全入力について `npb` / `non_npb` / `ambiguous` のdomain状態を持つ。`off_topic` はPlannerが十分に非NPBと判断し、かつ出力内にNPB entity・target ID・会話参照・data requirement・repository routeがない場合だけ利用者へ返す。
+
+Planner Validationは次の矛盾だけを検出する。
+
+- `off_topic` なのにentitiesがある
+- `off_topic` なのにplayer/game target IDがある
+- `off_topic` なのに会話参照または継承contextがある
+- `off_topic` なのにdata requirementsがある
+- `off_topic` なのにrepository routeが有効である
+
+矛盾時は自然文を別ルールで再分類せず、`domain: ambiguous`、`clarificationRequired: true` として対象確認を返す。Entity Resolutionの候補曖昧性は従来どおりResolverが扱い、非NPB判定とは混ぜない。
+
+Phase 14の `RECENT_PLAYER_TOPIC_PATTERN` と `KNOWN_PLAYER_SHORT_STATUS_PATTERN`（および旧topic語彙）は `chat-topic-migration.ts` に移行用inventoryとして残すが、request routingからは参照しない。`chat-query-llm.ts` の楕円表現救済は移行期間中のPlanner内stabilizationとして残す。能力単位QAが安定した後、これらを順に撤去する。
 
 ## 現状の問題点
 

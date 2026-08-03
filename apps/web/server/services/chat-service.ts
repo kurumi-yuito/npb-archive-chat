@@ -94,20 +94,21 @@ export function createChatService(
       message: string,
       options: { history?: ChatRequest['history'] } = {},
     ): Promise<ChatResponseCore> {
-      if (!isLikelyNpbTopic(message, options.history)) {
-        return buildOffTopicResponse(message, { intent: 'off_topic', filters: {} })
-      }
       const initialPlan = await planner(message, {
         history: options.history,
       })
       const rawParsedQuery: ChatStructuredQuery = initialPlan.structuredQuery
       let parsedQuery: ChatStructuredQuery = rawParsedQuery
-      let effectivePlan = buildPlannerOutput(parsedQuery, parsedQuery !== rawParsedQuery, {
-        message,
-        history: options.history,
-      })
+      let effectivePlan = initialPlan
       const capability = classifyChatCapability(message, parsedQuery, effectivePlan)
       effectivePlan = applyCapabilityToPlan(effectivePlan, capability)
+      if (
+        effectivePlan.followUpType !== 'correction_request' &&
+        effectivePlan.clarificationRequired &&
+        !effectivePlan.validation.valid
+      ) {
+        return buildPlannerAmbiguityResponse(message, parsedQuery, effectivePlan)
+      }
       if (!capability.usesRepository) {
         return chatResponseCoreSchema.parse(buildCapabilityFailureResponse(message, parsedQuery, effectivePlan))
       }
@@ -238,23 +239,8 @@ export function createChatService(
         }
       }
 
-      if (parsedQuery.intent === 'off_topic' && (options.history?.length ?? 0) > 0) {
-        const previousUserMessage = latestUserMessage(options.history)
-        if (previousUserMessage) {
-          const replan = await planner(previousUserMessage, { history: [] })
-          parsedQuery = replan.structuredQuery
-          effectivePlan = {
-            ...withCapability(buildPlannerOutput(parsedQuery, true, {
-              message,
-              history: options.history,
-            }), message, parsedQuery),
-            appliedFollowUpContext: {
-              applied: true,
-              fields: [],
-              reason: 'correction_request_replanned_previous_user_message',
-            },
-          }
-        }
+      if (effectivePlan.clarificationRequired && !effectivePlan.validation.valid) {
+        return buildPlannerAmbiguityResponse(message, parsedQuery, effectivePlan)
       }
 
       if (isNorimotoTeamComparison(message, parsedQuery)) {
@@ -2653,6 +2639,47 @@ function buildOffTopicResponse(
   })
 }
 
+function buildPlannerAmbiguityResponse(
+  message: string,
+  structuredQuery: ChatStructuredQuery,
+  plannerOutput: ChatPlannerOutput,
+): ChatResponseCore {
+  const executionMetadata = buildChatExecutionMetadata(structuredQuery, null, plannerOutput)
+  return chatResponseCoreSchema.parse({
+    message,
+    structured_query: structuredQuery,
+    answer: {
+      summary: 'NPBについてのご質問として文脈を特定しきれませんでした。選手名・球団名・試合など、知りたい対象をもう少し教えてください。',
+      result_count: 0,
+      source_urls: [],
+      execution_metadata: {
+        data_requirements: executionMetadata.dataRequirements,
+        repositories: executionMetadata.repositories,
+        player_id_required: executionMetadata.playerIdRequired,
+        player_id_satisfied: executionMetadata.playerIdSatisfied,
+        follow_up_type: executionMetadata.followUpType,
+        referenced_context: executionMetadata.referencedContext,
+        target_entity: executionMetadata.targetEntity,
+        follow_up_context: executionMetadata.followUpContext,
+        correction_guard: executionMetadata.correctionGuard,
+        correction: executionMetadata.correction,
+        identity_intent: executionMetadata.identityIntent,
+        target_game_id: executionMetadata.targetGameId,
+        target_player_id: executionMetadata.targetPlayerId,
+        answer_mode: executionMetadata.answerMode,
+        identity_resolution_scope: executionMetadata.identityResolutionScope,
+        domain: executionMetadata.domain,
+        planner_validation: executionMetadata.validation,
+      },
+    },
+    results: {
+      events: [], games: [], pitching: [], batting: [], roster: [],
+      affiliations: [], gameDetails: [], aggregates: [],
+    },
+    sources: [],
+  })
+}
+
 type RookieOfTheYearWinner = {
   league: 'セ・リーグ' | 'パ・リーグ'
   playerName: string
@@ -2752,34 +2779,6 @@ function formatAwardWinnersSummary(year: number, winners: RookieOfTheYearWinner[
     return `${year}年度の最優秀新人賞（新人王）は確認できませんでした。`
   }
   return `${year}年度の最優秀新人賞（新人王）は、${winners.map((winner) => `${winner.league}が${winner.playerName}（${winner.team}）`).join('、')}です。`
-}
-
-function isLikelyNpbTopic(message: string, history: ChatRequest['history'] | undefined): boolean {
-  const trimmedMessage = message.trim()
-  const conversationHistory = history ?? []
-  if (
-    conversationHistory.length > 0 &&
-    trimmedMessage.length <= 40
-  ) {
-    return true
-  }
-  return NPB_TOPIC_PATTERN.test(message) ||
-    RECENT_PLAYER_TOPIC_PATTERN.test(message) ||
-    KNOWN_PLAYER_SHORT_STATUS_PATTERN.test(trimmedMessage) ||
-    extractMentionedTeams(message).length > 0
-}
-
-const NPB_TOPIC_PATTERN = /NPB|日本プロ野球|プロ野球|野球|セ・?リーグ|パ・?リーグ|交流戦|日本シリーズ|クライマックス|CS|球団|チーム|選手|試合|ゲーム|イベント|スコア|勝敗|勝利|敗北|何勝|何敗|引き分け|対戦|対決|対|vs|VS|成績|打撃|打者|投手|投球|登板|先発|中継ぎ|抑え|セーブ|ホールド|奪三振|防御率|WHIP|打率|OPS|IsoP|四球率|BB%|打点|安打|本塁打|ホームラン|\bHR\b|盗塁|代打|打席|スタメン|打順|守備|ポジション|捕手|キャッチャー|ショート|ロスター|登録|所属|在籍|新人王|最優秀新人|MVP|沢村賞|タイトル|調子|状態|最近何して|ニュース|記事|公示|登録抹消|ケガ|怪我|故障|契約|移籍|トレード|コメント|会見|速報|途中経過|ライブ|リアルタイム/u
-const RECENT_PLAYER_TOPIC_PATTERN = /^[一-龯々ぁ-んァ-ヶーA-Za-z・･.\s\u3000]{2,20}?(?:って)?(?:最近|直近(?:の内容)?|最新(?:の内容)?|近ごろ|近頃|この頃|ここのところ|見ない|何して|どうして)/u
-const KNOWN_PLAYER_SHORT_STATUS_PATTERN = /^(?:藤浪|藤浪晋太郎|村上|村上宗隆|牧|牧秀悟|近本|近本光司|坂倉|坂倉将吾)(?:って)?(?:どう|どんな感じ)\??？?$/u
-
-function hasNpbTopicHistory(history: NonNullable<ChatRequest['history']>): boolean {
-  return history.some((item) =>
-    NPB_TOPIC_PATTERN.test(item.content) ||
-    RECENT_PLAYER_TOPIC_PATTERN.test(item.content) ||
-    KNOWN_PLAYER_SHORT_STATUS_PATTERN.test(item.content.trim()) ||
-    extractMentionedTeams(item.content).length > 0,
-  )
 }
 
 function shouldUseFinalAnswerLlm(
