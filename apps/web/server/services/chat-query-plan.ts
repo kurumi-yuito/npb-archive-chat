@@ -174,7 +174,6 @@ export const chatExecutionRepositorySchema = z.enum([
 export type ChatExecutionRepository = z.infer<typeof chatExecutionRepositorySchema>
 
 export const chatPlannerOutputSchema = z.object({
-  intent: z.string().min(1),
   structuredQuery: z.custom<ChatStructuredQuery>(),
   entities: z.record(z.unknown()),
   followUpType: chatFollowUpTypeSchema,
@@ -192,36 +191,20 @@ export const chatPlannerOutputSchema = z.object({
   answerMode: chatAnswerModeSchema,
   identityResolutionScope: z.enum(['unspecified', 'current', 'historical']),
   confidence: z.number().min(0).max(1),
-  clarificationRequired: z.boolean(),
-  domain: z.enum(['npb', 'non_npb', 'ambiguous']),
-  validation: z.object({
-    valid: z.boolean(),
-    issues: z.array(z.enum([
-      'off_topic_with_entities',
-      'off_topic_with_target_id',
-      'off_topic_with_referenced_context',
-      'off_topic_with_inherited_context',
-      'off_topic_with_data_requirements',
-      'off_topic_with_repository_route',
-    ])),
-  }),
+  domain: z.enum(['npb', 'non_npb', 'undetermined']),
   legacyStabilizationApplied: z.boolean(),
-  questionIntent: z.enum([
-    'historical_record',
-    'analytical',
-    'opinion',
-    'news',
-    'realtime',
-  ]).optional(),
-  capabilityRoute: z.enum([
-    'repository_history',
-    'repository_analysis',
-    'analysis_then_opinion',
-    'external_source_guidance',
-  ]).optional(),
-  capabilityRequiresAnalysis: z.boolean().optional(),
-  capabilityUsesRepository: z.boolean().optional(),
-  capabilityExternalSourceUrl: z.string().url().nullable().optional(),
+  capability: z.object({
+    kind: z.enum(['historical_record', 'analytical', 'opinion', 'news', 'realtime']),
+    route: z.enum([
+      'repository_history',
+      'repository_analysis',
+      'analysis_then_opinion',
+      'external_source_guidance',
+    ]),
+    requiresAnalysis: z.boolean(),
+    usesRepository: z.boolean(),
+    externalSourceUrl: z.string().url().nullable(),
+  }).optional(),
 })
 
 export type ChatPlannerOutput = z.infer<typeof chatPlannerOutputSchema>
@@ -251,9 +234,27 @@ export type ChatExecutionMetadata = {
   capabilityRequiresAnalysis?: boolean
   capabilityUsesRepository?: boolean
   capabilityExternalSourceUrl?: string | null
-  domain: 'npb' | 'non_npb' | 'ambiguous'
-  validation: ChatPlannerOutput['validation']
+  domain: 'npb' | 'non_npb' | 'undetermined'
+  validation: ChatPlannerValidationResult
 }
+
+export const chatPlannerValidationIssueSchema = z.enum([
+  'schema_invalid',
+  'intent_mismatch',
+  'off_topic_with_entities',
+  'off_topic_with_target_id',
+  'off_topic_with_referenced_context',
+  'off_topic_with_inherited_context',
+  'off_topic_with_data_requirements',
+  'off_topic_with_repository_route',
+])
+
+export const chatPlannerValidationResultSchema = z.object({
+  status: z.enum(['valid', 'planner_output_invalid', 'planner_output_inconsistent']),
+  issues: z.array(chatPlannerValidationIssueSchema),
+})
+
+export type ChatPlannerValidationResult = z.infer<typeof chatPlannerValidationResultSchema>
 
 export function inferDataRequirements(query: ChatStructuredQuery): ChatDataRequirement[] {
   const base: ChatDataRequirement[] = (() => {

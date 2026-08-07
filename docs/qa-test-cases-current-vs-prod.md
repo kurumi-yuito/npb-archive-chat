@@ -1,12 +1,21 @@
 # QAテストケース一覧 - 現行本番との差分
 
 - 現行ケース数: 164
-- 対象デプロイVersion ID: `8481baaa-2075-4d57-b15b-9a38b77f8676`
+- 対象デプロイVersion ID: `ad8faea3-c798-4a7e-aa47-13451e1a4d09`
 - QA実行モード: 通常本番API（LLM parser 実行）
 - 判定: Blocked（OpenAI API credit balance exhausted）
 - 許容外差分件数: 未確定（最新デプロイの全件QA未完走）
 
 ## 最新デプロイの本番確認
+
+- Phase 15.1最終Version `ad8faea3-c798-4a7e-aa47-13451e1a4d09` は、意味未確定時のService policyを含む。
+  - 最新確認ログ: [data/logs/qa-prod-1786113369419.json](../data/logs/qa-prod-1786113369419.json)
+  - Q-73: OpenAI API `429 insufficient_quota`が4回連続、Worker HTTP 503、summary null。
+
+- Phase 15.1 Version `70f412ba-9e6d-4c2f-b00e-72e432174b7c` の通常本番QAを開始した。
+  - 実行ログ: [data/logs/qa-prod-run/qa-prod-1786112333764](../data/logs/qa-prod-run/qa-prod-1786112333764)
+  - Q-73の初回からOpenAI API `429 insufficient_quota`（`credit_balance_exhausted`）が4回連続し、WorkerはHTTP 503、summary null。
+  - 同一障害が継続しているため、全164件の再試行は中断した。
 
 - Phase 15 Version `8481baaa-2075-4d57-b15b-9a38b77f8676` の通常本番QAを開始した。
   - 実行ログ: [data/logs/qa-prod-run/qa-prod-1785760029125](../data/logs/qa-prod-run/qa-prod-1785760029125)
@@ -32,4 +41,4 @@
 
 ## 完了に必要な再確認
 
-OpenAI APIのクレジット復旧後、Version `8481baaa-2075-4d57-b15b-9a38b77f8676` に対して全164件の通常本番QAを再実行する。HTTP 200かつsummary非nullが164/164、HTTP 500/503が0、禁止表現が0であることを確認してから、許容外差分件数を確定する。
+OpenAI APIのクレジット復旧後、Version `ad8faea3-c798-4a7e-aa47-13451e1a4d09` に対して全164件の通常本番QAを再実行する。HTTP 200かつsummary非nullが164/164、HTTP 500/503が0、禁止表現が0であることを確認してから、許容外差分件数を確定する。

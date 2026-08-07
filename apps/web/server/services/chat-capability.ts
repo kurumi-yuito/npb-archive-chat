@@ -76,15 +76,26 @@ export function buildCapabilityFailureResponse(
   structuredQuery: ChatStructuredQuery,
   plannerOutput: ChatPlannerOutput,
 ): ChatResponseCore {
-  const capability = classifyChatCapability(message, structuredQuery, plannerOutput)
+  if (!plannerOutput.capability) {
+    throw new Error('Planner capability is required for capability routing')
+  }
+  const capability = {
+    intent: plannerOutput.capability.kind,
+    route: plannerOutput.capability.route,
+    requiresAnalysis: plannerOutput.capability.requiresAnalysis,
+    usesRepository: plannerOutput.capability.usesRepository,
+    externalSourceUrl: plannerOutput.capability.externalSourceUrl,
+  }
   const executionMetadata = {
     ...buildChatExecutionMetadata(structuredQuery, null, {
       ...plannerOutput,
-      questionIntent: capability.intent,
-      capabilityRoute: capability.route,
-      capabilityRequiresAnalysis: capability.requiresAnalysis,
-      capabilityUsesRepository: capability.usesRepository,
-      capabilityExternalSourceUrl: capability.externalSourceUrl,
+      capability: {
+        kind: capability.intent,
+        route: capability.route,
+        requiresAnalysis: capability.requiresAnalysis,
+        usesRepository: capability.usesRepository,
+        externalSourceUrl: capability.externalSourceUrl,
+      },
     }),
     questionIntent: capability.intent,
     capabilityRoute: capability.route,

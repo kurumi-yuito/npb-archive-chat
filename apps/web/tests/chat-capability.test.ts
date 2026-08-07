@@ -99,7 +99,10 @@ describe('chat capability routing', () => {
 
     const output = await planner('2025年に山田が打ったホームラン一覧')
 
-    expect(output.questionIntent).toBe('historical_record')
-    expect(output.capabilityRoute).toBe('repository_history')
+    expect(output.capability).toMatchObject({
+      kind: 'historical_record',
+      route: 'repository_history',
+      usesRepository: true,
+    })
   })
 })

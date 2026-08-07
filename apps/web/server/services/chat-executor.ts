@@ -73,21 +73,21 @@ export function buildChatExecutionMetadata(
     answerMode: plannerOutput?.answerMode ?? 'direct_answer',
     identityResolutionScope: plannerOutput?.identityResolutionScope ?? 'unspecified',
     domain: plannerOutput?.domain ?? (structuredQuery.intent === 'off_topic' ? 'non_npb' : 'npb'),
-    validation: plannerOutput?.validation ?? { valid: true, issues: [] },
-    ...(plannerOutput?.questionIntent
-      ? { questionIntent: plannerOutput.questionIntent }
+    validation: { status: 'valid', issues: [] },
+    ...(plannerOutput?.capability
+      ? { questionIntent: plannerOutput.capability.kind }
       : {}),
-    ...(plannerOutput?.capabilityRoute
-      ? { capabilityRoute: plannerOutput.capabilityRoute }
+    ...(plannerOutput?.capability
+      ? { capabilityRoute: plannerOutput.capability.route }
       : {}),
-    ...(plannerOutput?.capabilityRequiresAnalysis !== undefined
-      ? { capabilityRequiresAnalysis: plannerOutput.capabilityRequiresAnalysis }
+    ...(plannerOutput?.capability
+      ? { capabilityRequiresAnalysis: plannerOutput.capability.requiresAnalysis }
       : {}),
-    ...(plannerOutput?.capabilityUsesRepository !== undefined
-      ? { capabilityUsesRepository: plannerOutput.capabilityUsesRepository }
+    ...(plannerOutput?.capability
+      ? { capabilityUsesRepository: plannerOutput.capability.usesRepository }
       : {}),
-    ...(plannerOutput?.capabilityExternalSourceUrl !== undefined
-      ? { capabilityExternalSourceUrl: plannerOutput.capabilityExternalSourceUrl }
+    ...(plannerOutput?.capability
+      ? { capabilityExternalSourceUrl: plannerOutput.capability.externalSourceUrl }
       : {}),
   }
 }

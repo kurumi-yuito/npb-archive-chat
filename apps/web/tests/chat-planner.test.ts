@@ -392,34 +392,36 @@ describe('chat-planner output validation', () => {
   it('accepts a self-consistent non-NPB result without reading the question', () => {
     const output = buildPlannerOutput({ intent: 'off_topic', filters: {} }, false)
 
-    expect(validateChatPlannerOutput(output)).toMatchObject({
-      domain: 'non_npb',
-      clarificationRequired: false,
-      validation: { valid: true, issues: [] },
-    })
+    expect(validateChatPlannerOutput(output)).toEqual({ status: 'valid', issues: [] })
+    expect(output.domain).toBe('non_npb')
   })
 
   it('marks off_topic with a resolved entity as an ambiguous contradiction', () => {
     const output = buildPlannerOutput({ intent: 'off_topic', filters: {} }, false)
-    const validated = validateChatPlannerOutput({
+    const candidate = {
       ...output,
       entities: { player: '藤浪' },
       targetPlayerId: '41045137',
-    })
+    }
+    const validated = validateChatPlannerOutput(candidate)
 
-    expect(validated.domain).toBe('ambiguous')
-    expect(validated.clarificationRequired).toBe(true)
-    expect(validated.validation).toEqual({
-      valid: false,
+    expect(validated).toEqual({
+      status: 'planner_output_inconsistent',
       issues: ['off_topic_with_entities', 'off_topic_with_target_id'],
     })
+    expect(candidate.domain).toBe('non_npb')
   })
 
   it('marks off_topic with inherited NPB context as an ambiguous contradiction', () => {
     const output = buildPlannerOutput({ intent: 'off_topic', filters: {} }, false)
     const validated = validateChatPlannerOutput({
       ...output,
-      referencedContext: { kind: 'player', value: '藤浪' },
+      referencedContext: {
+        source: 'conversation_history',
+        anchor: '藤浪',
+        ordinal: null,
+        summary: null,
+      },
       followUpContext: {
         ...output.followUpContext,
         contextKind: 'player_stats',
@@ -428,10 +430,36 @@ describe('chat-planner output validation', () => {
       },
     })
 
-    expect(validated.domain).toBe('ambiguous')
-    expect(validated.validation.issues).toEqual([
-      'off_topic_with_referenced_context',
-      'off_topic_with_inherited_context',
-    ])
+    expect(validated).toEqual({
+      status: 'planner_output_inconsistent',
+      issues: ['off_topic_with_referenced_context', 'off_topic_with_inherited_context'],
+    })
+  })
+
+  it('reports schema failures without creating a replacement plan', () => {
+    expect(validateChatPlannerOutput({ domain: 'npb' })).toEqual({
+      status: 'planner_output_invalid',
+      issues: ['schema_invalid'],
+    })
+  })
+
+  it('reports domain/intent and repository-route contradictions', () => {
+    const output = buildPlannerOutput({ intent: 'off_topic', filters: {} }, false)
+    const validated = validateChatPlannerOutput({
+      ...output,
+      domain: 'npb',
+      capability: {
+        kind: 'historical_record',
+        route: 'repository_history',
+        requiresAnalysis: false,
+        usesRepository: true,
+        externalSourceUrl: null,
+      },
+    })
+
+    expect(validated).toEqual({
+      status: 'planner_output_inconsistent',
+      issues: ['intent_mismatch', 'off_topic_with_repository_route'],
+    })
   })
 })

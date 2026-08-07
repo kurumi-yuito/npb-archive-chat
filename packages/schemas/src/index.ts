@@ -511,9 +511,9 @@ export const chatResponseSchema = z.object({
       target_player_id: z.string().min(1).nullable(),
       answer_mode: z.string().min(1),
       identity_resolution_scope: z.enum(['unspecified', 'current', 'historical']).optional(),
-      domain: z.enum(['npb', 'non_npb', 'ambiguous']).optional(),
+      domain: z.enum(['npb', 'non_npb', 'undetermined']).optional(),
       planner_validation: z.object({
-        valid: z.boolean(),
+        status: z.enum(['valid', 'planner_output_invalid', 'planner_output_inconsistent']),
         issues: z.array(z.string().min(1)),
       }).optional(),
       question_intent: z.enum([

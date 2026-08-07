@@ -15,7 +15,6 @@ import {
 } from './chat-query-plan'
 import { inferIdentityResolutionScope } from './chat-identity-scope'
 import { classifyChatCapability } from './chat-capability'
-import { validateChatPlannerOutput } from './chat-planner-validator'
 
 export type ChatPlanner = (
   message: string,
@@ -41,17 +40,17 @@ export function createChatPlanner({
       message,
       history: context.history,
     })
-    if (structuredQuery.intent === 'off_topic') {
-      return validateChatPlannerOutput(plannerOutput)
-    }
+    if (structuredQuery.intent === 'off_topic') return plannerOutput
     const capability = classifyChatCapability(message, structuredQuery, plannerOutput)
-    return validateChatPlannerOutput({
+    return chatPlannerOutputSchema.parse({
       ...plannerOutput,
-      questionIntent: capability.intent,
-      capabilityRoute: capability.route,
-      capabilityRequiresAnalysis: capability.requiresAnalysis,
-      capabilityUsesRepository: capability.usesRepository,
-      capabilityExternalSourceUrl: capability.externalSourceUrl,
+      capability: {
+        kind: capability.intent,
+        route: capability.route,
+        requiresAnalysis: capability.requiresAnalysis,
+        usesRepository: capability.usesRepository,
+        externalSourceUrl: capability.externalSourceUrl,
+      },
     })
   }
 }
@@ -124,7 +123,6 @@ export function buildPlannerOutput(
     correctionGuard,
   })
   return chatPlannerOutputSchema.parse({
-    intent: structuredQuery.intent,
     structuredQuery,
     entities: extractPlannerEntities(structuredQuery),
     followUpType: classification.followUpType,
@@ -141,9 +139,7 @@ export function buildPlannerOutput(
     answerMode: classification.answerMode,
     identityResolutionScope: updatedIdentityResolutionScope,
     confidence: legacyStabilizationApplied ? 0.72 : 0.86,
-    clarificationRequired: false,
     domain: structuredQuery.intent === 'off_topic' ? 'non_npb' : 'npb',
-    validation: { valid: true, issues: [] },
     legacyStabilizationApplied,
   })
 }

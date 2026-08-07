@@ -1,5 +1,7 @@
 # AI Query Architecture
 
+Planner Contractと各レイヤーの正式な責務境界は [ADR 0015](adr/0015-planner-contract-and-layer-boundaries.md) を正とする。
+
 ## 現状構成
 
 このリポジトリのチャット入口は `apps/web/server/api/chat.post.ts` の `POST /api/chat` である。
@@ -21,7 +23,7 @@
 
 `isLikelyNpbTopic` によるPlanner前段のsemantic gateは廃止した。Request Guardが扱うのは、Zod schemaで決定できる空文字、4000文字上限、履歴件数・role・content形式などだけである。選手質問、チーム質問、省略、野球かどうかの判断は行わない。
 
-Plannerは全入力について `npb` / `non_npb` / `ambiguous` のdomain状態を持つ。`off_topic` はPlannerが十分に非NPBと判断し、かつ出力内にNPB entity・target ID・会話参照・data requirement・repository routeがない場合だけ利用者へ返す。
+Plannerは全入力について `npb` / `non_npb` / `undetermined` のdomain状態を持つ。`off_topic` はPlannerが十分に非NPBと判断した場合だけ利用者へ返す。
 
 Planner Validationは次の矛盾だけを検出する。
 
@@ -31,7 +33,7 @@ Planner Validationは次の矛盾だけを検出する。
 - `off_topic` なのにdata requirementsがある
 - `off_topic` なのにrepository routeが有効である
 
-矛盾時は自然文を別ルールで再分類せず、`domain: ambiguous`、`clarificationRequired: true` として対象確認を返す。Entity Resolutionの候補曖昧性は従来どおりResolverが扱い、非NPB判定とは混ぜない。
+Validationは `valid` / `planner_output_invalid` / `planner_output_inconsistent` とissueだけを返し、Planner出力を変更しない。その後の停止・再計画・応答はService policyが決める。意味の未確定は`domain: undetermined`、Entity候補の曖昧性はResolverの`status: ambiguous`として分離する。
 
 Phase 14の `RECENT_PLAYER_TOPIC_PATTERN` と `KNOWN_PLAYER_SHORT_STATUS_PATTERN`（および旧topic語彙）は `chat-topic-migration.ts` に移行用inventoryとして残すが、request routingからは参照しない。`chat-query-llm.ts` の楕円表現救済は移行期間中のPlanner内stabilizationとして残す。能力単位QAが安定した後、これらを順に撤去する。
 

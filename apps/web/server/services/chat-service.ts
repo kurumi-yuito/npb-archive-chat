@@ -46,6 +46,7 @@ import type { ChatFinalAnswerGenerator } from './chat-final-answer-llm'
 import { buildPlannerOutput, createChatPlanner } from './chat-planner'
 import { buildChatExecutionMetadata } from './chat-executor'
 import type { ChatPlannerOutput } from './chat-query-plan'
+import { validateChatPlannerOutput } from './chat-planner-validator'
 import {
   buildCapabilityFailureResponse,
   classifyChatCapability,
@@ -100,16 +101,19 @@ export function createChatService(
       const rawParsedQuery: ChatStructuredQuery = initialPlan.structuredQuery
       let parsedQuery: ChatStructuredQuery = rawParsedQuery
       let effectivePlan = initialPlan
-      const capability = classifyChatCapability(message, parsedQuery, effectivePlan)
-      effectivePlan = applyCapabilityToPlan(effectivePlan, capability)
+      let plannerValidation = validateChatPlannerOutput(effectivePlan)
+      const capability = capabilityFromPlan(effectivePlan)
+      plannerValidation = validateChatPlannerOutput(effectivePlan)
       if (
         effectivePlan.followUpType !== 'correction_request' &&
-        effectivePlan.clarificationRequired &&
-        !effectivePlan.validation.valid
+        plannerValidation.status !== 'valid'
       ) {
-        return buildPlannerAmbiguityResponse(message, parsedQuery, effectivePlan)
+        return buildPlannerContractFailureResponse(message, parsedQuery, effectivePlan, plannerValidation)
       }
-      if (!capability.usesRepository) {
+      if (effectivePlan.domain === 'undetermined') {
+        return buildSemanticAmbiguityResponse(message, parsedQuery, effectivePlan)
+      }
+      if (capability && !capability.usesRepository) {
         return chatResponseCoreSchema.parse(buildCapabilityFailureResponse(message, parsedQuery, effectivePlan))
       }
       const parsedEventResultTextContains = parsedQuery.intent === 'search_events' &&
@@ -239,8 +243,9 @@ export function createChatService(
         }
       }
 
-      if (effectivePlan.clarificationRequired && !effectivePlan.validation.valid) {
-        return buildPlannerAmbiguityResponse(message, parsedQuery, effectivePlan)
+      plannerValidation = validateChatPlannerOutput(effectivePlan)
+      if (plannerValidation.status !== 'valid') {
+        return buildPlannerContractFailureResponse(message, parsedQuery, effectivePlan, plannerValidation)
       }
 
       if (isNorimotoTeamComparison(message, parsedQuery)) {
@@ -898,7 +903,7 @@ export function createChatService(
         executionMetadata: buildChatExecutionMetadata(structuredQuery, playerResolution, effectivePlan),
       })
       const finalAnswer = appendOpinionComment(answer, {
-        intent: effectivePlan.questionIntent ?? 'historical_record',
+        intent: effectivePlan.capability?.kind ?? 'historical_record',
         answer,
         results,
       })
@@ -955,12 +960,28 @@ function applyCapabilityToPlan(
 ): ChatPlannerOutput {
   return {
     ...plannerOutput,
-    questionIntent: capability.intent,
-    capabilityRoute: capability.route,
-    capabilityRequiresAnalysis: capability.requiresAnalysis,
-    capabilityUsesRepository: capability.usesRepository,
-    capabilityExternalSourceUrl: capability.externalSourceUrl,
+    capability: {
+      kind: capability.intent,
+      route: capability.route,
+      requiresAnalysis: capability.requiresAnalysis,
+      usesRepository: capability.usesRepository,
+      externalSourceUrl: capability.externalSourceUrl,
+    },
   }
+}
+
+function capabilityFromPlan(
+  plannerOutput: ChatPlannerOutput,
+): ChatCapabilityClassification | null {
+  return plannerOutput.capability
+    ? {
+        intent: plannerOutput.capability.kind,
+        route: plannerOutput.capability.route,
+        requiresAnalysis: plannerOutput.capability.requiresAnalysis,
+        usesRepository: plannerOutput.capability.usesRepository,
+        externalSourceUrl: plannerOutput.capability.externalSourceUrl,
+      }
+    : null
 }
 
 function isChatQueryService(value: QueryDatabase | ChatQueryService): value is ChatQueryService {
@@ -2639,17 +2660,20 @@ function buildOffTopicResponse(
   })
 }
 
-function buildPlannerAmbiguityResponse(
+function buildPlannerContractFailureResponse(
   message: string,
   structuredQuery: ChatStructuredQuery,
   plannerOutput: ChatPlannerOutput,
+  validation: import('./chat-query-plan').ChatPlannerValidationResult,
 ): ChatResponseCore {
   const executionMetadata = buildChatExecutionMetadata(structuredQuery, null, plannerOutput)
   return chatResponseCoreSchema.parse({
     message,
     structured_query: structuredQuery,
     answer: {
-      summary: 'NPBについてのご質問として文脈を特定しきれませんでした。選手名・球団名・試合など、知りたい対象をもう少し教えてください。',
+      summary: validation.status === 'planner_output_invalid'
+        ? '質問の処理計画を作成できませんでした。少し表現を変えて、もう一度お試しください。'
+        : '質問の処理計画に矛盾があったため、回答を作成できませんでした。対象を明確にして、もう一度お試しください。',
       result_count: 0,
       source_urls: [],
       execution_metadata: {
@@ -2669,7 +2693,48 @@ function buildPlannerAmbiguityResponse(
         answer_mode: executionMetadata.answerMode,
         identity_resolution_scope: executionMetadata.identityResolutionScope,
         domain: executionMetadata.domain,
-        planner_validation: executionMetadata.validation,
+        planner_validation: validation,
+      },
+    },
+    results: {
+      events: [], games: [], pitching: [], batting: [], roster: [],
+      affiliations: [], gameDetails: [], aggregates: [],
+    },
+    sources: [],
+  })
+}
+
+function buildSemanticAmbiguityResponse(
+  message: string,
+  structuredQuery: ChatStructuredQuery,
+  plannerOutput: ChatPlannerOutput,
+): ChatResponseCore {
+  const executionMetadata = buildChatExecutionMetadata(structuredQuery, null, plannerOutput)
+  return chatResponseCoreSchema.parse({
+    message,
+    structured_query: structuredQuery,
+    answer: {
+      summary: 'NPBについてのご質問か判断できませんでした。知りたい選手、球団、試合などをもう少し具体的に教えてください。',
+      result_count: 0,
+      source_urls: [],
+      execution_metadata: {
+        data_requirements: executionMetadata.dataRequirements,
+        repositories: executionMetadata.repositories,
+        player_id_required: executionMetadata.playerIdRequired,
+        player_id_satisfied: executionMetadata.playerIdSatisfied,
+        follow_up_type: executionMetadata.followUpType,
+        referenced_context: executionMetadata.referencedContext,
+        target_entity: executionMetadata.targetEntity,
+        follow_up_context: executionMetadata.followUpContext,
+        correction_guard: executionMetadata.correctionGuard,
+        correction: executionMetadata.correction,
+        identity_intent: executionMetadata.identityIntent,
+        target_game_id: executionMetadata.targetGameId,
+        target_player_id: executionMetadata.targetPlayerId,
+        answer_mode: executionMetadata.answerMode,
+        identity_resolution_scope: executionMetadata.identityResolutionScope,
+        domain: 'undetermined',
+        planner_validation: { status: 'valid', issues: [] },
       },
     },
     results: {

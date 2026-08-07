@@ -79,12 +79,18 @@ The system does not generate:
 
 ## Architecture Summary
 
+Planner Contractと責務境界の決定は [ADR 0015](adr/0015-planner-contract-and-layer-boundaries.md) を参照してください。
+
 ```text
 User
   ↓
-Intent Classification
+Request Guard（機械的検証のみ）
   ↓
 Planner
+  ↓
+Planner Validation
+  ↓
+Capability Routing
   ↓
 Repository
   ↓
@@ -99,17 +105,29 @@ UI
 
 ## Component Responsibilities
 
-### Intent Classification
+### Request Guard
 
-- Classifies the user's conversational capability.
-- Supported capability intents: `historical_record`, `analytical`, `opinion`, `news`, `realtime`.
-- Routes unsupported news and realtime questions to source guidance.
+- Validates request schema, size, and conversation-history shape.
+- Does not classify topic, intent, entities, or omitted natural-language expressions.
 
 ### Planner
 
 - Converts user language and conversation history into structured query intent and filters.
 - Maintains follow-up context and correction metadata.
 - Determines whether player identity resolution is required.
+- Returns one nested capability contract; downstream layers do not reclassify the question.
+
+### Planner Validation
+
+- Validates schema and cross-field consistency only.
+- Returns a status and issue list without changing the plan.
+- Does not interpret the question or generate a response.
+
+### Capability Routing
+
+- Consumes the Planner's capability contract.
+- Routes historical, analytical, opinion, news, and realtime capabilities.
+- Does not classify the original natural-language message again.
 
 ### Repository
 
