@@ -304,6 +304,14 @@ function selectCandidatesForInput(
   candidates: PlayerCandidate[],
 ): PlayerCandidate[] {
   const inputKey = normalizeLookupKey(normalizeFreeText(input) ?? input)
+  if (inputKey.length <= 2) {
+    const surnameCandidates = candidates.filter((candidate) =>
+      normalizeCandidateName(candidate.name).startsWith(inputKey),
+    )
+    if (surnameCandidates.length > 0) {
+      return collapseSameEntityFallbacks(surnameCandidates)
+    }
+  }
   const exact = candidates.filter((candidate) => normalizeCandidateName(candidate.name) === inputKey)
   if (exact.length > 0) {
     return collapseSameEntityFallbacks(exact)
