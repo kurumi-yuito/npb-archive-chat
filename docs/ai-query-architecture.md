@@ -252,7 +252,7 @@ Planner が出す分類フィールド:
 
 `scripts/qa-prod-unanswered.mjs` は本番QA時に HTTP 429 / 503 / `chat_llm_unavailable` を再試行し、ケース間隔の既定値を7秒にした。これにより一時的なrate limitはQA上で即Failにしない。
 
-2026-06-19のリファクタ後本番QAでは、OpenAI APIが `insufficient_quota` を返したためQ-01単発でもPlannerが完了しなかった。これはproductionでstub fallbackを無効化した状態の外部LLM quotaエラーであり、quota復旧または有効なAPIキー更新が必要である。
+2026-06-19のリファクタ後本番QAでは、OpenAI APIが `insufficient_quota` を返したためQ-01単発でもPlannerが完了しなかった。これはproductionでstub fallbackを無効化した状態の外部LLM quotaエラーだった。2026-08-08にはCloudflare secret更新なしで本番WorkerのHTTP 200復帰を確認しており、現在はOpenAI起因でQAを実行不能な状態ではない。経緯と未確認事項は[障害記録](incidents/2026-08-08-openai-insufficient-quota.md)を参照する。
 
 ## 禁止事項
 
