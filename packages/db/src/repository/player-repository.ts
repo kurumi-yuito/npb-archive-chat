@@ -232,12 +232,13 @@ export async function searchPlayerCandidates(
     return []
   }
 
+  const isShortIdentityInput = normalizeIdentityKey(filters.name).length <= 2
   const profileMatches = mergeProfileMatches(
     await resolvePlayerIdsFromProfiles(database, [filters.name]),
     await resolvePlayerIdsFromAliases(database, aliases),
   )
   const profilePlayerIds = profileMatches.map((m) => m.player_id)
-  if (profileMatches.length > 1 && !filters.latestOnly) {
+  if (profileMatches.length > 1 && !filters.latestOnly && !isShortIdentityInput) {
     return profileMatches.map((profile) => ({
       player_id: profile.player_id,
       name: profile.fullName ?? filters.name,
@@ -248,7 +249,7 @@ export async function searchPlayerCandidates(
       match_kind: 'profile',
     } as PlayerCandidate & { match_kind: 'profile' }))
   }
-  if (profileMatches.length === 1 && !filters.latestOnly) {
+  if (profileMatches.length === 1 && !filters.latestOnly && !isShortIdentityInput) {
     const profile = profileMatches[0]!
     const inferredRoles = await inferPlayerRoles(database, profile.player_id)
     return [{
@@ -340,7 +341,7 @@ export async function searchPlayerCandidates(
   const candidateRows = filters.latestOnly ? latestMentionRows(rows) : rows
   let candidates = mergeFallbackCandidates(groupPlayerMentions(candidateRows, aliases))
 
-  if (profilePlayerIds.length > 0) {
+  if (profilePlayerIds.length > 0 && !isShortIdentityInput) {
     // When we know exactly which player the input refers to (unique profile match),
     // only keep candidates that are that player.
     const idFiltered = candidates

@@ -309,7 +309,7 @@ function selectCandidatesForInput(
       normalizeCandidateName(candidate.name).startsWith(inputKey),
     )
     if (surnameCandidates.length > 0) {
-      return collapseSameEntityFallbacks(surnameCandidates)
+      return collapseSameEntityFallbacks(surnameCandidates, inputKey)
     }
   }
   const exact = candidates.filter((candidate) => normalizeCandidateName(candidate.name) === inputKey)
@@ -344,7 +344,7 @@ function selectCandidatesForInput(
   return candidates
 }
 
-function collapseSameEntityFallbacks(candidates: PlayerCandidate[]): PlayerCandidate[] {
+function collapseSameEntityFallbacks(candidates: PlayerCandidate[], shortInputKey?: string): PlayerCandidate[] {
   const entities = candidates.filter((candidate) => candidate.player_id)
   if (entities.length !== 1) {
     return candidates
@@ -354,7 +354,11 @@ function collapseSameEntityFallbacks(candidates: PlayerCandidate[]): PlayerCandi
   const rest = candidates.filter((candidate) => candidate !== entities[0])
   const allFallbacksMatch = rest.every((candidate) =>
     candidate.player_id == null &&
-    candidate.name === entity.name &&
+    (candidate.name === entity.name || Boolean(
+      shortInputKey &&
+      normalizeCandidateName(candidate.name).startsWith(shortInputKey) &&
+      normalizeCandidateName(entity.name).startsWith(shortInputKey)
+    )) &&
     (
       // No-team candidates (e.g. pitcher events that record no offense team) could be from a
       // different player. Only collapse when their years overlap with the entity's years.
