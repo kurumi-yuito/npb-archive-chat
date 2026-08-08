@@ -9,14 +9,16 @@ import {
 import { richGameSchema } from '@npb/schemas'
 import path from 'node:path'
 import { readFileSync } from 'node:fs'
+import { fileURLToPath } from 'node:url'
 import { loadRichGame } from '../../../packages/db/src/loader'
 import { formatChatAnswer } from '../server/services/chat-answer-formatter'
 import { createChatService } from '../server/services/chat-service'
 import { ChatFinalAnswerLlmHttpError } from '../server/services/chat-final-answer-llm'
 
-const SQLITE_DIR = path.resolve(process.cwd(), 'data')
-const CHAT_SERVICE_SOURCE = path.resolve(process.cwd(), 'apps/web/server/services/chat-service.ts')
-const CHAT_POST_SOURCE = path.resolve(process.cwd(), 'apps/web/server/api/chat.post.ts')
+const REPOSITORY_ROOT = fileURLToPath(new URL('../../..', import.meta.url))
+const SQLITE_DIR = path.resolve(REPOSITORY_ROOT, 'data')
+const CHAT_SERVICE_SOURCE = path.resolve(REPOSITORY_ROOT, 'apps/web/server/services/chat-service.ts')
+const CHAT_POST_SOURCE = path.resolve(REPOSITORY_ROOT, 'apps/web/server/api/chat.post.ts')
 
 function buildFixtureRichGame() {
   return richGameSchema.parse({
@@ -4100,6 +4102,53 @@ describe('chat-service', () => {
     expect(searchedPitchingFilters).toHaveLength(0)
     expect(response.answer.summary).toContain('選手候補は0件です')
     expect(response.answer.execution_metadata?.player_id_satisfied).toBe(false)
+  })
+
+  it('compares recent batting rows for every resolved batter', async () => {
+    const searchedPlayers: string[] = []
+    const service = createChatService(createFakeQueryService({
+      playerCandidatesForFilters: (filters) => [{
+        player_id: filters.name === '佐藤輝明' ? 'sato' : 'maki',
+        name: filters.name,
+        primary_team: filters.name === '佐藤輝明' ? '阪神' : 'DeNA',
+        roles: ['batter'],
+        teams: [filters.name === '佐藤輝明' ? '阪神' : 'DeNA'],
+        years: [2026],
+      }],
+      searchBattingLines: async (filters) => {
+        searchedPlayers.push(filters.player_id ?? '')
+        return [{
+          gameId: filters.player_id === 'sato' ? 'r20260701t-db-01' : 'r20260701db-t-01',
+          gameDate: '2026-07-01',
+          team: filters.player_id === 'sato' ? '阪神' : 'DeNA',
+          playerName: filters.player_id === 'sato' ? '佐藤輝明' : '牧秀悟',
+          battingOrder: 4,
+          position: '三',
+          atBats: 4,
+          runs: 1,
+          hits: 2,
+          runsBattedIn: 1,
+          stolenBases: 0,
+          strikeouts: 1,
+          walks: 0,
+          rawText: null,
+        }]
+      },
+    }), {
+      parseStructuredQueryFromMessage: async () => ({
+        intent: 'search_batting',
+        filters: { player_names: ['佐藤輝明', '牧秀悟'], recent: true, limit: 3 },
+      }),
+      formatChatAnswer,
+    })
+
+    const response = await service.answerQuestion('佐藤輝明と牧秀悟のそれぞれ直近3試合の打撃成績を比較して')
+
+    expect(searchedPlayers).toEqual(expect.arrayContaining(['sato', 'maki']))
+    expect(response.structured_query.intent).toBe('search_batting')
+    expect(response.results.batting.map((row) => row.playerName)).toEqual(
+      expect.arrayContaining(['佐藤輝明', '牧秀悟']),
+    )
   })
 
 })

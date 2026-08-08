@@ -60,7 +60,11 @@ export async function resolveStructuredQueryPlayer(
   const input = target.value
   const aliases = buildAliases(input)
   const searchDomain: SearchPlayerCandidatesFilters['searchDomain'] =
-    structuredQuery.intent === 'search_batting' || structuredQuery.intent === 'aggregate_batting'
+    target.field === 'batter_name'
+      ? 'batting'
+      : target.field === 'pitcher_name'
+        ? 'pitching'
+        : structuredQuery.intent === 'search_batting' || structuredQuery.intent === 'aggregate_batting'
     ? 'batting'
     : structuredQuery.intent === 'search_pitching' || structuredQuery.intent === 'aggregate_pitching'
       ? 'pitching'
@@ -201,6 +205,8 @@ function replacePlayerFilter(
   // would exclude records from other teams — the player name alone is the correct search key.
   const distinctTeamKeys = new Set(candidate.teams.map(teamAliasKey))
   const injectTeam = structuredQuery.intent !== 'player_affiliation' &&
+    structuredQuery.intent !== 'search_events' &&
+    structuredQuery.intent !== 'aggregate_events' &&
     candidate.primary_team &&
     !existingTeam &&
     distinctTeamKeys.size <= 1

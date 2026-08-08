@@ -57,6 +57,11 @@ export async function searchPitchingLines(
     clauses.push('pitching_lines.game_id = ?')
     values.push(normalized.game_id)
   }
+  if (normalized.level === 'farm') {
+    clauses.push("pitching_lines.game_id LIKE 'f%'")
+  } else if (normalized.level === 'first') {
+    clauses.push("pitching_lines.game_id NOT LIKE 'f%'")
+  }
 
   if (normalized.year) {
     clauses.push('games.year = ?')
@@ -141,6 +146,11 @@ async function searchNormalizedPitchingLines(
     clauses.push('pitching_line_facts.game_id = ?')
     values.push(filters.game_id)
   }
+  if (filters.level === 'farm') {
+    clauses.push("pitching_line_facts.game_id LIKE 'f%'")
+  } else if (filters.level === 'first') {
+    clauses.push("pitching_line_facts.game_id NOT LIKE 'f%'")
+  }
   if (filters.year) {
     clauses.push('game_facts.year = ?')
     values.push(filters.year)
@@ -207,6 +217,11 @@ export async function searchCurrentPitchingStats(
   if (filters.year_to) {
     clauses.push('player_pitching_stats.year <= ?')
     values.push(filters.year_to)
+  }
+  if (filters.level === 'farm') {
+    clauses.push("player_pitching_stats.source_url LIKE '%idp2%'")
+  } else if (filters.level === 'first') {
+    clauses.push("player_pitching_stats.source_url NOT LIKE '%idp2%'")
   }
   if (filters.team) {
     const teams = teamAliases(filters.team)

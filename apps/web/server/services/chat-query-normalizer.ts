@@ -118,6 +118,7 @@ const positionAliasMap = new Map(
 
 const playerAliasMap = new Map([
   ['高松', '髙松'],
+  ['山崎伊織', '山﨑伊織'],
 ].map(([alias, canonical]) => [normalizeLookupKey(alias), canonical]))
 
 const teamAliasMap = new Map(
@@ -133,6 +134,7 @@ export function normalizeChatStructuredQuery(
       filters: {
         ...structuredQuery.filters,
         team: normalizeTeamName(structuredQuery.filters.team),
+        opponent: normalizeTeamName(structuredQuery.filters.opponent),
       },
     })
   }
@@ -192,6 +194,7 @@ export function normalizeChatStructuredQuery(
       filters: {
         ...structuredQuery.filters,
         team: normalizeTeamName(structuredQuery.filters.team),
+        opponent: normalizeTeamName(structuredQuery.filters.opponent),
         player_name: normalizePlayerName(structuredQuery.filters.player_name),
       },
     })
@@ -255,6 +258,7 @@ export function normalizeChatStructuredQuery(
       filters: {
         ...structuredQuery.filters,
         team: normalizeTeamName(structuredQuery.filters.team),
+        opponent: normalizeTeamName(structuredQuery.filters.opponent),
       },
     })
   }

@@ -59,6 +59,11 @@ if (fixtureMode && !fixtureToken) {
 const fixturesByCase = fixtureMode
   ? await readFixtureFile(fixturePath)
   : new Map()
+const uiCapabilityCases = new Set(['Q-144', 'Q-145', 'Q-146', 'Q-168'])
+const usageCapabilityCases = new Set([
+  'Q-165', 'Q-166', 'Q-167', 'Q-169', 'Q-170', 'Q-171',
+  'Q-172', 'Q-173', 'Q-174', 'Q-175', 'Q-176',
+])
 
 const text = await readFile(docPath, 'utf8')
 const cases = []
@@ -163,6 +168,23 @@ for (const [index, testCase] of cases.entries()) {
       totalCases: cases.length,
       updatedAt: new Date().toISOString(),
     })
+    continue
+  }
+  const capabilityRecord = await runCapabilityCheck(testCase, userId)
+  if (capabilityRecord) {
+    results.push(capabilityRecord)
+    await writeJson(`${runDir}/${testCase.id}.json`, capabilityRecord)
+    await saveState({
+      runId,
+      baseUrl,
+      docPath,
+      fixturePath,
+      lastSavedQ: testCase.id,
+      lastSavedIndex: index + 1,
+      totalCases: cases.length,
+      updatedAt: new Date().toISOString(),
+    })
+    if (index + 1 < cases.length) await delay(delayMs)
     continue
   }
   const controller = new AbortController()
@@ -447,6 +469,170 @@ function buildHistoryForCase(testCase, completedAnswers) {
 
 function normalizeQuestionForHistoryCase(question) {
   return question.replace(/^（直前にQ-\d+の回答がある状態で）/u, '').trim()
+}
+
+async function runCapabilityCheck(testCase, userId) {
+  if (!uiCapabilityCases.has(testCase.id) && !usageCapabilityCases.has(testCase.id)) {
+    return null
+  }
+  const evidence = {}
+  const checkedUrls = []
+  try {
+    if (uiCapabilityCases.has(testCase.id)) {
+      const url = `${baseUrl}/chat`
+      const response = await fetch(url, { headers: { 'user-agent': `npb-production-qa/${testCase.id}` } })
+      const html = await response.text()
+      checkedUrls.push(url)
+      evidence.ui = {
+        status: response.status,
+        hasHeader: html.includes('topbar'),
+        hasConversation: html.includes('conversation'),
+        hasComposer: html.includes('composer'),
+        hasUsageLabel: html.includes('残り質問数'),
+        usesDynamicViewport: html.includes('100dvh') || html.includes('100svh'),
+        locksPageOverflow: html.includes('overflow:hidden'),
+      }
+      assert(response.ok, `chat UI returned HTTP ${response.status}`)
+      assert(evidence.ui.hasHeader && evidence.ui.hasConversation && evidence.ui.hasComposer, 'chat layout regions are missing')
+      assert(evidence.ui.usesDynamicViewport && evidence.ui.locksPageOverflow, 'fixed composer viewport contract is missing')
+      if (testCase.id === 'Q-168') assert(evidence.ui.hasUsageLabel, 'usage indicator is missing')
+    }
+    if (usageCapabilityCases.has(testCase.id)) {
+      const usageUrl = `${baseUrl}/api/chat/usage`
+      const response = await fetch(usageUrl, {
+        headers: { 'user-agent': `npb-production-qa/${testCase.id}-${userId}` },
+      })
+      const usage = await response.json()
+      checkedUrls.push(usageUrl)
+      evidence.usage = {
+        status: response.status,
+        cacheControl: response.headers.get('cache-control'),
+        cdnCacheControl: response.headers.get('cdn-cache-control'),
+        cloudflareCdnCacheControl: response.headers.get('cloudflare-cdn-cache-control'),
+        cfCacheStatus: response.headers.get('cf-cache-status'),
+        vary: response.headers.get('vary'),
+        body: usage,
+      }
+      assert(response.ok, `usage API returned HTTP ${response.status}`)
+      assert(usage.timezone === 'Asia/Tokyo', 'usage timezone is not Asia/Tokyo')
+      assert(usage.limit === 10 && usage.refillIntervalMinutes === 120, 'runtime usage settings differ from 10/120')
+      assert(typeof usage.remaining === 'number' && usage.remaining >= 0 && usage.remaining <= usage.limit, 'usage remaining is invalid')
+      assert(String(evidence.usage.cacheControl).includes('no-store'), 'browser cache is not disabled')
+      assert(String(evidence.usage.cdnCacheControl).includes('no-store'), 'CDN cache is not disabled')
+      assert(String(evidence.usage.cloudflareCdnCacheControl).includes('no-store'), 'Cloudflare CDN cache is not disabled')
+      assert(evidence.usage.cfCacheStatus !== 'HIT', 'usage API returned a Cloudflare cache HIT')
+
+      if (testCase.id === 'Q-165' || testCase.id === 'Q-173' || testCase.id === 'Q-170') {
+        const userAgent = `npb-production-qa/usage-flow-${testCase.id}-${runId}`
+        let cookie = ''
+        const remainingSequence = []
+        const successfulRequests = testCase.id === 'Q-165' ? usage.limit : testCase.id === 'Q-173' ? 2 : 1
+        for (let attempt = 0; attempt < successfulRequests; attempt += 1) {
+          const chatResponse = await fetch(`${baseUrl}/api/chat`, {
+            method: 'POST',
+            headers: {
+              'content-type': 'application/json',
+              'user-agent': userAgent,
+              ...(cookie ? { cookie } : {}),
+            },
+            body: JSON.stringify({ message: 'test' }),
+          })
+          cookie = responseCookie(chatResponse) ?? cookie
+          const payload = await chatResponse.json()
+          assert(chatResponse.ok, `usage flow chat returned HTTP ${chatResponse.status}`)
+          remainingSequence.push(payload?.usage?.remaining)
+        }
+        evidence.usageFlow = { successfulRequests, remainingSequence }
+        assert(
+          remainingSequence.every((remaining, index) => remaining === usage.limit - index - 1),
+          `usage did not decrement immediately: ${remainingSequence.join(',')}`,
+        )
+        if (testCase.id === 'Q-165') {
+          const limitedResponse = await fetch(`${baseUrl}/api/chat`, {
+            method: 'POST',
+            headers: { 'content-type': 'application/json', 'user-agent': userAgent, cookie },
+            body: JSON.stringify({ message: 'test' }),
+          })
+          const limitedPayload = await limitedResponse.json()
+          evidence.usageFlow.limitResponse = { status: limitedResponse.status, body: limitedPayload }
+          assert(limitedResponse.status === 429, `usage limit returned HTTP ${limitedResponse.status}, expected 429`)
+          assert(limitedPayload?.data?.usage?.remaining === 0, '429 response does not contain remaining=0')
+          assert(limitedPayload?.data?.usage?.nextTokenAt, '429 response does not contain nextTokenAt')
+        }
+        if (testCase.id === 'Q-170') {
+          const deletedCookieResponse = await fetch(usageUrl, { headers: { 'user-agent': userAgent } })
+          const deletedCookieUsage = await deletedCookieResponse.json()
+          evidence.usageFlow.afterCookieDeletion = deletedCookieUsage
+          assert(deletedCookieUsage.remaining === usage.limit - 1, 'guest guard reset after deleting the account cookie')
+        }
+      }
+
+      if (['Q-166', 'Q-167', 'Q-169', 'Q-171'].includes(testCase.id)) {
+        const plansUrl = `${baseUrl}/api/billing/plans`
+        const plansResponse = await fetch(plansUrl)
+        const plans = await plansResponse.json()
+        checkedUrls.push(plansUrl)
+        evidence.plans = { status: plansResponse.status, body: plans }
+        assert(plansResponse.ok, `billing plans API returned HTTP ${plansResponse.status}`)
+        const free = plans.find((plan) => plan.key === 'free')
+        const pro = plans.find((plan) => plan.key === 'pro')
+        assert(free?.usageTokenCapacity === 10 && free?.usageRefillIntervalMinutes === 120, 'Free plan usage contract is invalid')
+        assert(pro?.usageTokenCapacity === null && pro?.usageRefillIntervalMinutes === null, 'Pro plan is not unlimited')
+      }
+    }
+    return capabilityRecord(testCase, 'success', 200, checkedUrls, evidence, null)
+  } catch (error) {
+    return capabilityRecord(
+      testCase,
+      'error',
+      'error',
+      checkedUrls,
+      evidence,
+      error instanceof Error ? error : new Error(String(error)),
+    )
+  }
+}
+
+function capabilityRecord(testCase, outcome, status, checkedUrls, evidence, error) {
+  return {
+    ...testCase,
+    status,
+    outcome,
+    request: { mode: 'capability', urls: checkedUrls },
+    structured_query: null,
+    intent: null,
+    entities: null,
+    player_id: null,
+    target_period: null,
+    data_requirements: ['production_capability_contract'],
+    repositories: [],
+    follow_up_type: null,
+    referenced_context: null,
+    target_entity: null,
+    target_game_id: null,
+    target_player_id: null,
+    answer_mode: 'capability_verification',
+    summary: outcome === 'success'
+      ? `Production capability check passed: ${checkedUrls.join(', ')}`
+      : null,
+    result_count: outcome === 'success' ? 1 : 0,
+    suggested_questions: [],
+    resolved_player: null,
+    source_urls: checkedUrls,
+    raw: evidence,
+    retries: null,
+    error: error ? { name: error.name, message: error.message, stack: error.stack, cause: null } : null,
+    saved_at: new Date().toISOString(),
+  }
+}
+
+function assert(condition, message) {
+  if (!condition) throw new Error(message)
+}
+
+function responseCookie(response) {
+  const setCookie = response.headers.get('set-cookie')
+  return setCookie ? setCookie.split(';', 1)[0] : null
 }
 
 async function readFixtureFile(path) {

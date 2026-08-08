@@ -385,10 +385,13 @@ describe('@npb/schemas', () => {
         ],
         usage: {
           plan: 'free',
-          month: '2025-08',
-          used: 1,
-          limit: 9,
+          timezone: 'Asia/Tokyo',
+          asOf: '2026-08-08T00:00:00.000Z',
+          limit: 10,
           remaining: 8,
+          refillIntervalMinutes: 120,
+          nextTokenAt: '2026-08-08T02:00:00.000Z',
+          fullAt: '2026-08-08T04:00:00.000Z',
         },
       }),
     ).toMatchObject({

@@ -21,6 +21,27 @@ describe('chat-query-normalizer', () => {
 
   it('applies dictionary aliases after basic text normalization', () => {
     expect(normalizePlayerName('高松')).toBe('髙松')
+    expect(normalizePlayerName('山崎伊織')).toBe('山﨑伊織')
+  })
+
+  it('normalizes both sides of an explicit matchup without dropping the venue', () => {
+    expect(normalizeChatStructuredQuery({
+      intent: 'game_detail',
+      filters: {
+        game_date: '2026-05-21',
+        team: '横浜DeNAベイスターズ',
+        opponent: '読売ジャイアンツ',
+        venue: '東京ドーム',
+      },
+    })).toEqual({
+      intent: 'game_detail',
+      filters: {
+        game_date: '2026-05-21',
+        team: 'DeNA',
+        opponent: '巨人',
+        venue: '東京ドーム',
+      },
+    })
   })
 
   it('keeps unknown values after basic normalization', () => {

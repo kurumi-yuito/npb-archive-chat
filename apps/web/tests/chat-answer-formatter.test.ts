@@ -205,6 +205,8 @@ describe('chat-answer-formatter', () => {
         targetPlayerId: null,
         answerMode: 'reason_explanation',
         identityResolutionScope: 'unspecified',
+        domain: 'npb',
+        validation: { status: 'valid', issues: [] },
       },
     })
 
@@ -618,6 +620,8 @@ describe('chat-answer-formatter', () => {
         targetPlayerId: null,
         answerMode: 'comparison_explanation',
         identityResolutionScope: 'current',
+        domain: 'npb',
+        validation: { status: 'valid', issues: [] },
       },
     })
 
@@ -1477,6 +1481,8 @@ function evaluationMetadata(): ChatExecutionMetadata {
     targetPlayerId: null,
     answerMode: 'evaluation_explanation',
     identityResolutionScope: 'current',
+    domain: 'npb',
+    validation: { status: 'valid', issues: [] },
   }
 }
 

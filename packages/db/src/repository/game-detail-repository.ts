@@ -53,6 +53,17 @@ export async function searchGameDetails(
       values.push(`%${term}%`, `%${term}%`)
     }
   }
+  if (normalized.opponent) {
+    const searchTerms = toGameTeamAliases(normalized.opponent)
+    const opponentClauses = searchTerms.flatMap(() => [
+      'games.home_team_name LIKE ?',
+      'games.away_team_name LIKE ?',
+    ])
+    clauses.push(`(${opponentClauses.join(' OR ')})`)
+    for (const term of searchTerms) {
+      values.push(`%${term}%`, `%${term}%`)
+    }
+  }
   if (normalized.venue) {
     const venues = venueSearchValues(normalized.venue)
     clauses.push(`games.venue IN (${venues.map(() => '?').join(', ')})`)

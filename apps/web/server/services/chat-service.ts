@@ -15,6 +15,7 @@ import {
   createSingleDatabaseQueryService,
   DEFAULT_CHAT_QUERY_YEARS,
   type ChatQueryService,
+  type BattingLineRow,
   type GameDetailRow,
   type PitchingLineRow,
   type QueryDatabase,
@@ -102,6 +103,31 @@ export function createChatService(
       let parsedQuery: ChatStructuredQuery = rawParsedQuery
       let effectivePlan = initialPlan
       let plannerValidation = validateChatPlannerOutput(effectivePlan)
+      if (
+        parsedQuery.intent === 'off_topic' &&
+        options.history?.length &&
+        effectivePlan.followUpType !== 'standalone'
+      ) {
+        const previousUserMessage = latestUserMessage(options.history)
+        if (previousUserMessage) {
+          const replanned = await planner(previousUserMessage, { history: [] })
+          parsedQuery = replanned.structuredQuery
+          effectivePlan = {
+            ...withCapability(buildPlannerOutput(parsedQuery, true, {
+              message,
+              history: options.history,
+            }), message, parsedQuery),
+            followUpType: initialPlan.followUpType,
+            answerMode: initialPlan.answerMode,
+            referencedContext: initialPlan.referencedContext,
+            appliedFollowUpContext: {
+              applied: true,
+              fields: [],
+              reason: 'contextual_follow_up_replanned_previous_user_message',
+            },
+          }
+        }
+      }
       const capability = capabilityFromPlan(effectivePlan)
       plannerValidation = validateChatPlannerOutput(effectivePlan)
       if (
@@ -249,7 +275,12 @@ export function createChatService(
       }
 
       if (isNorimotoTeamComparison(message, parsedQuery)) {
-        const results = await aggregatePitchingAcrossYears(queryService, parsedQuery)
+        const filters = parsedQuery.filters as Record<string, unknown>
+        const results = await aggregatePitchingAcrossYears(queryService, parsedQuery, undefined, {
+          ...(typeof filters.pitcher_name === 'string' ? { pitcher_name: filters.pitcher_name } : {}),
+          ...(typeof filters.pitcher_player_id === 'string' ? { pitcher_player_id: filters.pitcher_player_id } : {}),
+          ...(typeof filters.sort_by === 'string' ? { sort_by: filters.sort_by } : {}),
+        })
         const emptyResults: ChatResponseCore['results'] = {
           events: [],
           games: [],
@@ -746,7 +777,7 @@ export function createChatService(
               results = { ...emptyResults, aggregates: shiftedAggregates }
               playerResolution = {
                 ...playerResolution,
-                yearShiftNote: `${requestedYear}年の記録は確認できないため、代わりに最終確認年（${latestPriorYear}年）のデータを表示します。`,
+                yearShiftNote: `${requestedYear}年の記録がないため、${latestPriorYear}年の成績を表示します。`,
               }
             }
           }
@@ -824,14 +855,19 @@ export function createChatService(
         results.gameDetails.length === 0 &&
         structuredQuery.filters.game_date
       ) {
-        const fallbackGames = await queryService.searchGames({
+        const fallbackFilters = {
           game_date: structuredQuery.filters.game_date,
+          ...(structuredQuery.filters.team ? { team: structuredQuery.filters.team } : {}),
+          ...(structuredQuery.filters.opponent ? { opponent: structuredQuery.filters.opponent } : {}),
+          ...(structuredQuery.filters.venue ? { venue: structuredQuery.filters.venue } : {}),
+          ...(structuredQuery.filters.competition ? { competition: structuredQuery.filters.competition } : {}),
           limit: 12,
-        })
+        }
+        const fallbackGames = await queryService.searchGames(fallbackFilters)
         if (fallbackGames.length > 0) {
           structuredQuery = {
             intent: 'search_games',
-            filters: { game_date: structuredQuery.filters.game_date, limit: 12 },
+            filters: fallbackFilters,
           }
           results = { ...emptyResults, games: fallbackGames }
         }
@@ -1095,10 +1131,6 @@ async function answerMultiPlayerStatsComparisonIfNeeded({
     .filter((playerId): playerId is string => typeof playerId === 'string' && playerId.length > 0)
   const usePitching = multiTarget.kind === 'pitching' ||
     (multiTarget.kind === 'batting' && await allResolvedPlayersHavePitchingEvidence(queryService, resolvedOnly))
-  if (!usePitching) {
-    return null
-  }
-
   const requestedLimit = typeof (structuredQuery.filters as Record<string, unknown>).limit === 'number'
     ? Number((structuredQuery.filters as Record<string, unknown>).limit)
     : 3
@@ -1113,6 +1145,69 @@ async function answerMultiPlayerStatsComparisonIfNeeded({
     gameDetails: [],
     aggregates: [],
   }
+  if (!usePitching) {
+    const batting: BattingLineRow[] = []
+    const filters = structuredQuery.filters as Record<string, unknown>
+    for (const resolution of resolvedPlayers) {
+      const rows = await searchRecentBattingLinesForChat(
+        queryService,
+        {
+          player_name: resolution.name ?? resolution.input,
+          ...(typeof resolution.player_id === 'string' ? { player_id: resolution.player_id } : {}),
+          ...(resolution.primary_team ? { team: resolution.primary_team } : {}),
+          ...(typeof filters.year === 'number' ? { year: filters.year } : {}),
+          ...(typeof filters.year_from === 'number' ? { year_from: filters.year_from } : {}),
+          ...(typeof filters.year_to === 'number' ? { year_to: filters.year_to } : {}),
+          recent: true,
+          limit,
+        },
+        resolution,
+      )
+      batting.push(...rows
+        .sort((a, b) => `${b.gameDate}:${b.gameId}`.localeCompare(`${a.gameDate}:${a.gameId}`, 'ja'))
+        .slice(0, limit))
+    }
+    const finalStructuredQuery = {
+      intent: 'search_batting',
+      filters: {
+        ...(typeof filters.year === 'number' ? { year: filters.year } : {}),
+        ...(typeof filters.year_from === 'number' ? { year_from: filters.year_from } : {}),
+        ...(typeof filters.year_to === 'number' ? { year_to: filters.year_to } : {}),
+        player_names: multiTarget.names,
+        ...(resolvedPlayerIds.length > 0 ? { player_ids: resolvedPlayerIds } : {}),
+        recent: true,
+        limit,
+      },
+    } as ChatStructuredQuery
+    const finalResults = { ...emptyResults, batting }
+    const sources = await listSourceSnapshotsByGameIdsBatched(
+      queryService,
+      Array.from(new Set(batting.map((row) => row.gameId))),
+    )
+    const finalPlan = buildPlannerOutput(finalStructuredQuery, true, { message, history })
+    const executionMetadata = buildChatExecutionMetadata(
+      finalStructuredQuery,
+      null,
+      finalPlan,
+      resolvedPlayers,
+    )
+    const answer = answerFormatter({
+      question: message,
+      structuredQuery: finalStructuredQuery,
+      results: finalResults,
+      sources,
+      playerResolution: null,
+      executionMetadata,
+    })
+    return chatResponseCoreSchema.parse({
+      message,
+      structured_query: finalStructuredQuery,
+      answer,
+      results: finalResults,
+      sources,
+    })
+  }
+
   const pitching: PitchingLineRow[] = []
   for (const resolution of resolvedPlayers) {
     const rows = await searchRecentPitchingLinesForChat(
