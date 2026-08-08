@@ -3399,10 +3399,7 @@ describe('chat-service', () => {
     expect(response.answer.summary).not.toContain('打撃内容')
   })
 
-  it('resolves a surname through player_id-bearing roster rows when the year is explicit', async () => {
-    // Simulates "村上宗隆 vs 村上頌樹": year-filtered search only sees 村上頌樹 (stored as "村上 頌樹")
-    // but broad search reveals both. The old code used selectCandidatesForInput on the broad
-    // results which only counted exact name "村上" matches (村上宗隆), missing 村上頌樹 (name "村上 頌樹").
+  it('does not let an explicit year silently choose one player for an ambiguous surname', async () => {
     const service = createChatService(createFakeQueryService({
       playerCandidatesForFilters: (filters) => filters.year === 2026
         ? [{ player_id: '13315153', name: '村上 頌樹', primary_team: '阪神', roles: ['batter'], teams: ['阪神'], years: [2026] }]
@@ -3419,11 +3416,8 @@ describe('chat-service', () => {
 
     const response = await service.answerQuestion('村上の今シーズン成績')
 
-    expect(response.answer.resolved_player).toMatchObject({
-      input: '村上',
-      status: 'resolved',
-      player_id: '13315153',
-    })
+    expect(response.answer.resolved_player).toMatchObject({ input: '村上', status: 'ambiguous' })
+    expect(response.answer.summary).toContain('どの村上ですか')
   })
 
   it('uses a team-qualified mention as a resolution hint but searches current team for non-era recent questions', async () => {

@@ -61,8 +61,9 @@ export async function resolveStructuredQueryPlayer(
   const aliases = buildAliases(input)
   const inputKey = normalizeLookupKey(input)
   const hasTeamQualifier = teamQualifier(structuredQuery).length > 0
+  const isUnqualifiedShortName = inputKey.length <= 2 && !hasTeamQualifier
   const searchDomain: SearchPlayerCandidatesFilters['searchDomain'] =
-    inputKey.length <= 2 && !hasTeamQualifier
+    isUnqualifiedShortName
       ? 'all'
       : target.field === 'batter_name'
       ? 'batting'
@@ -74,7 +75,10 @@ export async function resolveStructuredQueryPlayer(
       ? 'pitching'
       : 'all'
   const candidateFilters = {
-    ...yearFilters(structuredQuery),
+    // A season narrows records, not identity. For an unqualified surname, inspect
+    // every covered season so a single current-season row cannot silently choose
+    // one person among historical namesakes.
+    ...(isUnqualifiedShortName ? {} : yearFilters(structuredQuery)),
     name: input,
     aliases,
     includeEvents: target.field === 'runner_name' || structuredQuery.intent === 'search_events' || structuredQuery.intent === 'aggregate_events',
