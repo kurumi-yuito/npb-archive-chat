@@ -47,6 +47,13 @@
 - login 復旧後に再度 `wrangler whoami` を実行し、対象 account と権限を確認してから `wrangler deploy` を再実行する。
 - deploy が成功したら、本番 QA を実行し、QA の A には本番実行結果だけを反映する。
 
+## 障害記録
+
+- OpenAI quota応答の2026-08-08調査記録は
+  [incidents/2026-08-08-openai-insufficient-quota.md](incidents/2026-08-08-openai-insufficient-quota.md)を参照する。
+- OpenAI上流のHTTP statusと、アプリが変換した公開HTTP statusを混同しない。
+- Cloudflare secret値・OpenAI Project・Organizationを確認できない場合は、キー同一性や原因を断定しない。
+
 ## 禁止事項
 
 - QA 失敗を期待値化すること。
