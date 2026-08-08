@@ -1,4 +1,5 @@
 import { getChatUsageBucket } from '@npb/db'
+import { setResponseHeaders } from 'h3'
 import { buildFreeUsageInfo, buildProUsageInfo } from '../../utils/build-chat-usage'
 import { resolveChatRuntimeAuthConfig, resolveChatRuntimeStripeBillingConfig, resolveChatRuntimeUsageConfig } from '../../utils/chat-runtime-config'
 import { getEffectiveChatAccount, isEffectivePro } from '../../utils/chat-account-response'
@@ -6,8 +7,10 @@ import { guestUsageGuardBucketKey } from '../../utils/guest-usage-guard'
 import { parseChatIdentity } from '../../utils/parse-chat-identity'
 import { createPublicApiError } from '../../utils/public-api-error'
 import { getServerMetaDatabase } from '../../utils/server-database'
+import { CHAT_USAGE_CACHE_HEADERS } from '../../utils/chat-usage-cache'
 
 export default defineEventHandler(async (event) => {
+  setResponseHeaders(event, CHAT_USAGE_CACHE_HEADERS)
   const config = useRuntimeConfig(event)
 
   try {

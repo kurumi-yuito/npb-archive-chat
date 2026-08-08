@@ -46,6 +46,8 @@ Cloudflare WorkerのRuntime Configとして解決するため、運用中はコ�
 
 `GET /api/chat/usage` と `POST /api/chat` の `usage` は、残り回数、最大数、回復間隔、次回回復時刻、満タン時刻、`Asia/Tokyo` を返す。残量0では `POST /api/chat` がHTTP 429と同じusage snapshotを返す。
 
+`GET /api/chat/usage` は `Cache-Control: private, no-store, max-age=0`、`CDN-Cache-Control: no-store`、`Cloudflare-CDN-Cache-Control: no-store`を明示し、ブラウザと共有CDNのどちらにも保存しない。
+
 UIは「残り質問数」「次の1回まで」「満タンまで」「回復間隔」を表示する。429時も残り回数と次回利用可能までを利用者向け文言にする。
 
 ## 主な実装

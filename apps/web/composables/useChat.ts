@@ -1,5 +1,5 @@
 import type { ChatAccount, ChatPlan, ChatRequest, ChatResponse, ChatUsageInfo } from '@npb/schemas'
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, onScopeDispose, ref, watch } from 'vue'
 
 export type ChatTurn = {
   id: string
@@ -53,6 +53,11 @@ export function formatRemainingDuration(target: string | null, from = new Date()
   if (hours === 0) return `${minutes}分`
   if (minutes === 0) return `${hours}時間`
   return `${hours}時間${minutes}分`
+}
+
+export function usageRefreshDelayMs(usage: ChatUsageInfo | null, nowMs = Date.now()): number | null {
+  if (!usage?.nextTokenAt) return null
+  return Math.max(250, Date.parse(usage.nextTokenAt) - nowMs + 250)
 }
 
 export function userFacingAccountError(status?: number): string {
@@ -128,6 +133,16 @@ export function useChat() {
   const plan = ref<ChatPlan>('free')
   const accountSaving = ref(false)
   const isGoogleAuthenticated = computed(() => accountInfo.value?.authProvider === 'google')
+  let usageRefreshTimer: ReturnType<typeof setTimeout> | undefined
+
+  function scheduleUsageRefresh(usage: ChatUsageInfo | null) {
+    if (usageRefreshTimer) clearTimeout(usageRefreshTimer)
+    usageRefreshTimer = undefined
+    if (!import.meta.client) return
+    const delay = usageRefreshDelayMs(usage)
+    if (delay === null) return
+    usageRefreshTimer = setTimeout(() => { void refreshUsage() }, Math.min(delay, 2_147_483_647))
+  }
 
   async function refreshAccount() {
     if (!import.meta.client) return
@@ -150,9 +165,14 @@ export function useChat() {
       if (!res.ok) return
       usageInfo.value = (await res.json()) as ChatUsageInfo
     } catch {
-      usageInfo.value = null
+      // Keep the last known value and retry at the next scheduled recovery boundary.
     }
   }
+
+  watch(usageInfo, scheduleUsageRefresh, { flush: 'sync' })
+  onScopeDispose(() => {
+    if (usageRefreshTimer) clearTimeout(usageRefreshTimer)
+  })
 
   onMounted(() => {
     void (async () => {
@@ -267,6 +287,7 @@ export function useChat() {
       lastError.value = msg
       const turn = turns.value.find((t) => t.id === id)
       if (turn) turn.errorMessage = msg
+      await refreshUsage()
     } finally {
       loading.value = false
     }

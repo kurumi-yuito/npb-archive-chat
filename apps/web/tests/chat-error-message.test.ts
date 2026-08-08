@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   extractSafeFallbackErrorMessage,
+  usageRefreshDelayMs,
   userFacingAccountError,
   userFacingBillingError,
   userFacingChatError,
@@ -41,5 +42,18 @@ describe('chat UI error messages', () => {
     expect(userFacingAccountError(400)).toBe('アカウント情報を更新できませんでした。')
     expect(userFacingBillingError(400)).toBe('プランを変更できませんでした。時間をおいて再度お試しください。')
     expect(userFacingBillingError(401)).toBe('Pro を開始するには Google ログインが必要です。')
+  })
+
+  it('refreshes usage just after the next token recovery instant', () => {
+    expect(usageRefreshDelayMs({
+      plan: 'free',
+      timezone: 'Asia/Tokyo',
+      asOf: '2026-08-08T12:00:00+09:00',
+      limit: 10,
+      remaining: 0,
+      refillIntervalMinutes: 120,
+      nextTokenAt: '2026-08-08T14:00:00+09:00',
+      fullAt: '2026-08-09T08:00:00+09:00',
+    }, Date.parse('2026-08-08T12:00:00+09:00'))).toBe(7_200_250)
   })
 })
