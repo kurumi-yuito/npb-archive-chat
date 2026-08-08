@@ -17,10 +17,7 @@ export type AliasResolution = {
 
 export function buildAliases(input: string): string[] {
   const normalizedInput = normalizeFreeText(input) ?? input
-  return normalizeAliases([
-    normalizedInput,
-    ...displayNameFallbackAliases(normalizedInput),
-  ])
+  return normalizeAliases([normalizedInput])
 }
 
 export function normalizeAliases(values: Array<string | undefined>): string[] {
@@ -29,11 +26,8 @@ export function normalizeAliases(values: Array<string | undefined>): string[] {
 
 export function resolveAlias(input: string): AliasResolution {
   const normalizedInput = normalizeFreeText(input) ?? input
-  const fallbackAliases = displayNameFallbackAliases(normalizedInput)
-  const aliases = normalizeAliases([
-    normalizedInput,
-    ...fallbackAliases,
-  ])
+  const fallbackAliases: string[] = []
+  const aliases = normalizeAliases([normalizedInput])
   return {
     aliases,
     metadata: {
@@ -44,27 +38,4 @@ export function resolveAlias(input: string): AliasResolution {
       status: aliases.length > 0 ? 'resolved' : 'empty',
     },
   }
-}
-
-function displayNameFallbackAliases(input: string): string[] {
-  const normalized = normalizeLookupKey(input)
-  if (!/^[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}]+$/u.test(normalized)) {
-    return []
-  }
-  if (normalized.length < 3) {
-    return []
-  }
-
-  const aliases: string[] = []
-  for (let length = normalized.length - 1; length >= 2; length -= 1) {
-    aliases.push(normalized.slice(0, length))
-  }
-  return aliases
-}
-
-function normalizeLookupKey(value: string): string {
-  return value
-    .normalize('NFKC')
-    .replace(/[・･.\-_\s\u3000]/gu, '')
-    .toLowerCase()
 }

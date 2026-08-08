@@ -3,7 +3,7 @@ import { buildAliases, normalizeAliases, resolveAlias } from '../server/services
 
 describe('player-alias', () => {
   it('builds normalized alias candidates with display-name prefixes for CJK names', () => {
-    expect(buildAliases('  山田太郎  ')).toEqual(['山田太郎', '山田太', '山田'])
+    expect(buildAliases('  山田太郎  ')).toEqual(['山田太郎'])
   })
 
   it('normalizes alias candidate lists', () => {
@@ -16,8 +16,8 @@ describe('player-alias', () => {
     expect(result.metadata).toMatchObject({
       input: '  山田太郎  ',
       normalizedInput: '山田太郎',
-      aliases: ['山田太郎', '山田太', '山田'],
-      fallbackAliases: ['山田太', '山田'],
+      aliases: ['山田太郎'],
+      fallbackAliases: [],
       status: 'resolved',
     })
   })

@@ -41,7 +41,7 @@ describe('player-identity facade', () => {
 
     expect(queryService.searchPlayerCandidates).toHaveBeenCalledWith(expect.objectContaining({
       name: '山田太郎',
-      aliases: ['山田太郎', '山田太', '山田'],
+        aliases: ['山田太郎'],
     }))
     expect(result.resolution?.player_id).toBe('yamada')
     expect(result.resolution?.status).toBe('resolved')
@@ -203,7 +203,7 @@ describe('player-identity facade', () => {
   it('exports alias resolution for downstream callers', () => {
     const alias = resolveAlias('山田太郎')
 
-    expect(alias.aliases).toEqual(['山田太郎', '山田太', '山田'])
+    expect(alias.aliases).toEqual(['山田太郎'])
     expect(alias.metadata.status).toBe('resolved')
   })
 

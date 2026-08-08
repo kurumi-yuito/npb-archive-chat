@@ -369,6 +369,7 @@ export async function searchPlayerCandidates(
         .map((c) => ({
           ...c,
           player_id: knownPlayerId,
+          name: profileMatches[0]!.fullName ?? c.name,
           teams: [...new Set([...c.teams, ...canonicalTeams])],
           match_kind: 'profile',
         }))

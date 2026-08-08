@@ -507,47 +507,18 @@ export function createChatService(
         results = emptyResults
       } else if (yearlyBattingFastPath) {
         const resolvedFilters = structuredQuery.filters as Record<string, unknown>
-        const yearsToQuery = DEFAULT_CHAT_QUERY_YEARS.filter((year) => {
-          if (typeof resolvedFilters.year === 'number') {
-            return year === resolvedFilters.year
-          }
-          if (typeof resolvedFilters.year_from === 'number' && year < resolvedFilters.year_from) {
-            return false
-          }
-          if (typeof resolvedFilters.year_to === 'number' && year > resolvedFilters.year_to) {
-            return false
-          }
-          return true
+        const aggregates = await queryService.aggregateBattingLines({
+          ...(typeof resolvedFilters.player_id === 'string' ? { player_id: resolvedFilters.player_id } : {}),
+          ...(typeof resolvedFilters.player_name === 'string' ? { player_name: resolvedFilters.player_name } : {}),
+          ...(typeof resolvedFilters.team === 'string' ? { team: resolvedFilters.team } : {}),
+          ...(typeof resolvedFilters.year === 'number' ? { year: resolvedFilters.year } : {}),
+          ...(typeof resolvedFilters.year_from === 'number' ? { year_from: resolvedFilters.year_from } : {}),
+          ...(typeof resolvedFilters.year_to === 'number' ? { year_to: resolvedFilters.year_to } : {}),
+          group_by: 'year',
+          sort_by: 'homeRuns',
+          limit: 50,
         })
-        const batting: ChatResponseCore['results']['batting'] = []
-        for (const year of yearsToQuery) {
-          const yearlyRows = await queryService.searchBattingLines({
-            ...(typeof resolvedFilters.player_id === 'string' ? { player_id: resolvedFilters.player_id } : {}),
-            ...(typeof resolvedFilters.player_name === 'string' ? { player_name: resolvedFilters.player_name } : {}),
-            ...(typeof resolvedFilters.team === 'string' ? { team: resolvedFilters.team } : {}),
-            year,
-            limit: 500,
-          })
-          batting.push(...yearlyRows)
-        }
-        if (playerResolution?.status === 'resolved' && playerResolution.name) {
-          for (const row of batting) {
-            row.playerName = playerResolution.name
-          }
-        }
-        structuredQuery = {
-          intent: 'search_batting',
-          filters: {
-            ...(typeof resolvedFilters.player_id === 'string' ? { player_id: resolvedFilters.player_id } : {}),
-            ...(typeof resolvedFilters.player_name === 'string' ? { player_name: resolvedFilters.player_name } : {}),
-            ...(typeof resolvedFilters.team === 'string' ? { team: resolvedFilters.team } : {}),
-            ...(typeof resolvedFilters.year === 'number' ? { year: resolvedFilters.year } : {}),
-            ...(typeof resolvedFilters.year_from === 'number' ? { year_from: resolvedFilters.year_from } : {}),
-            ...(typeof resolvedFilters.year_to === 'number' ? { year_to: resolvedFilters.year_to } : {}),
-            limit: 500,
-          },
-        }
-        results = { ...emptyResults, batting }
+        results = { ...emptyResults, aggregates }
       } else {
         const pitcherOnlySeasonQuery =
           (structuredQuery.intent === 'search_batting' || structuredQuery.intent === 'aggregate_batting') &&
@@ -1969,6 +1940,7 @@ async function searchRecentPitchingLinesForChat(
         ? { team: playerResolution.primary_team }
         : {}),
     pitcher_player_id: pitcherPlayerId,
+    ...(filters.level === 'first' || filters.level === 'farm' ? { level: filters.level } : {}),
     recent: true,
     limit: requestedLimit,
   }
@@ -2058,7 +2030,9 @@ async function searchRecentBattingLinesForChat(
     ...(typeof filters.year_from === 'number' ? { year_from: filters.year_from } : {}),
     ...(typeof filters.year_to === 'number' ? { year_to: filters.year_to } : {}),
     player_id: playerId,
-    limit: 5,
+    limit: typeof filters.limit === 'number'
+      ? Math.max(1, Math.min(50, Math.trunc(filters.limit)))
+      : 5,
   }
   if (typeof filters.year === 'number') {
     const recentRows = await queryService.searchBattingLines({

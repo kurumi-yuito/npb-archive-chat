@@ -18,6 +18,11 @@ export function generateOpinionComment({
   if (!hasAnalysisEvidence(results)) {
     return 'データ上の根拠が足りないため、評価は保留です。ニュースやコンディションは推測せず、成績が増えた段階で見直すのが妥当です。'
   }
+  const homeRunEvents = results.events.filter((event) => /本塁打|ホームラン/u.test(event.resultText ?? ''))
+  if (homeRunEvents.length > 0) {
+    const player = homeRunEvents[0]?.batterName ?? 'この選手'
+    return `${player}の本塁打が${homeRunEvents.length}件残っているのは、確かに目を引く実績です。`
+  }
   if (/データを見る限り|数字から判断すると|現時点の成績から考えると/u.test(answer.summary)) {
     return null
   }

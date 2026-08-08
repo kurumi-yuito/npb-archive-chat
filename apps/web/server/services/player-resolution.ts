@@ -59,8 +59,12 @@ export async function resolveStructuredQueryPlayer(
 
   const input = target.value
   const aliases = buildAliases(input)
+  const inputKey = normalizeLookupKey(input)
+  const hasTeamQualifier = teamQualifier(structuredQuery).length > 0
   const searchDomain: SearchPlayerCandidatesFilters['searchDomain'] =
-    target.field === 'batter_name'
+    inputKey.length <= 2 && !hasTeamQualifier
+      ? 'all'
+      : target.field === 'batter_name'
       ? 'batting'
       : target.field === 'pitcher_name'
         ? 'pitching'
