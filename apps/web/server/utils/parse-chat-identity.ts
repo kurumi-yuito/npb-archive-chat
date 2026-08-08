@@ -11,6 +11,7 @@ const COOKIE_MAX_AGE_SECONDS = 60 * 60 * 24 * 400
 export type ChatIdentity = {
   userId: string
   authProvider: 'guest' | 'google'
+  guestGuardEligible: boolean
 }
 
 export type ChatIdentityOptions = {
@@ -43,7 +44,7 @@ function parseHeaderIdentity(event: H3Event): ChatIdentity {
     throw createPublicApiError(400, 'missing_user_id', 'Missing user identity')
   }
 
-  return { userId, authProvider: 'guest' }
+  return { userId, authProvider: 'guest', guestGuardEligible: false }
 }
 
 export function getSignedGuestUserId(event: H3Event, secret: string): string | null {
@@ -77,17 +78,17 @@ export function clearSignedAuthUserId(event: H3Event): void {
 function getOrCreateCookieIdentity(event: H3Event, secret: string): ChatIdentity {
   const authUserId = parseSignedUserCookie(getCookie(event, AUTH_USER_COOKIE), secret)
   if (authUserId) {
-    return { userId: authUserId, authProvider: 'google' }
+    return { userId: authUserId, authProvider: 'google', guestGuardEligible: false }
   }
 
   const existing = parseSignedUserCookie(getCookie(event, USER_COOKIE), secret)
   if (existing) {
-    return { userId: existing, authProvider: 'guest' }
+    return { userId: existing, authProvider: 'guest', guestGuardEligible: true }
   }
 
   const userId = randomUUID()
   setSignedUserCookie(event, USER_COOKIE, userId, secret)
-  return { userId, authProvider: 'guest' }
+  return { userId, authProvider: 'guest', guestGuardEligible: true }
 }
 
 function setSignedUserCookie(event: H3Event, name: string, userId: string, secret: string): void {

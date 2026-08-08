@@ -2,7 +2,7 @@ import { readBody } from 'h3'
 import { ZodError } from 'zod'
 import { getChatAccount, getOrCreateChatAccount, updateChatAccountBillingState } from '@npb/db'
 import { billingActionResponseSchema, chatAccountSchema, updateChatSubscriptionRequestSchema } from '@npb/schemas'
-import { resolveChatRuntimeAuthConfig, resolveChatRuntimeStripeBillingConfig } from '../../utils/chat-runtime-config'
+import { resolveChatRuntimeAuthConfig, resolveChatRuntimeStripeBillingConfig, resolveChatRuntimeUsageConfig } from '../../utils/chat-runtime-config'
 import { buildChatAccountResponse } from '../../utils/chat-account-response'
 import { createStripeCheckoutSession, createStripePortalSession } from '../../utils/stripe-billing'
 import { parseChatIdentity } from '../../utils/parse-chat-identity'
@@ -15,6 +15,7 @@ export default defineEventHandler(async (event) => {
   try {
     const authConfig = resolveChatRuntimeAuthConfig(config, event)
     const billingConfig = resolveChatRuntimeStripeBillingConfig(config, event)
+    const usageConfig = resolveChatRuntimeUsageConfig(config, event)
     const identity = parseChatIdentity(event, authConfig)
     const database = await getServerMetaDatabase(event, config.npbSqlitePath)
     const body = updateChatSubscriptionRequestSchema.parse(await readBody(event))
@@ -58,7 +59,7 @@ export default defineEventHandler(async (event) => {
 
     if (currentAccount.plan !== 'pro') {
       return chatAccountSchema.parse(
-        buildChatAccountResponse(currentAccount, billingConfig.billingConfigured, authConfig.googleAuthConfigured),
+        buildChatAccountResponse(currentAccount, billingConfig.billingConfigured, authConfig.googleAuthConfigured, usageConfig.capacity, usageConfig.refillIntervalMinutes),
       )
     }
 

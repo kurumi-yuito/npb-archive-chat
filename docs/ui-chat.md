@@ -38,7 +38,7 @@ NPB公式 scores / BIS 由来のDBを根拠に、ブラウザから自然文で�
 
 | ファイル | 役割 |
 |----------|------|
-| `apps/web/composables/useChat.ts` | `/api/chat` と `/api/chat/usage` の fetch、会話履歴、loading/error、usage、localStorage の user_id / plan |
+| `apps/web/composables/useChat.ts` | `/api/chat` と `/api/chat/usage` の fetch、ページ内だけの会話状態、loading/error、トークン残量 |
 | `apps/web/pages/chat.vue` | 画面レイアウト、表示項目、送信操作、質問例 |
 | `apps/web/server/api/chat.post.ts` | public chat endpoint。usage check 後に chat service を呼ぶ |
 | `apps/web/server/api/chat/usage.get.ts` | usage snapshot endpoint |
@@ -77,10 +77,10 @@ CSS は `apps/web/pages/chat.vue` の `<style scoped>` に集約している。
 
 Done:
 
-- dev では localStorage 由来の `X-NPB-User-Id` を UI から送る
+- ゲストIDはproductionでは署名付きHttpOnly Cookieで管理する
 - アカウント profile 保存 UI
 - Free / Pro のsubscription更新 UI
-- Free の月間 usage 表示
-- 429 usage limit のエラー表示
+- Free/Guestのトークン残量、次回回復、満タンまでの表示
+- 429時の残り回数・次回利用可能時間の表示
 
-課金は `billing_provider=internal` としてDBに永続化する。外部決済プロバイダ連携はこのフェーズの前提にしない。
+会話本文はブラウザのメモリ内だけに保持し、localStorageやサーバーDBには保存しない。リロード後やGoogleログイン後へ会話履歴は引き継がれない。課金状態はStripe subscriptionとしてDBに永続化する。

@@ -139,6 +139,9 @@ Stripe は live mode の値だけを入れる。test mode の値は Cloudflare W
 | `NPB_DAILY_UPDATE_GITHUB_WORKFLOW` | Cloudflare Workers secrets | `wrangler secret put NPB_DAILY_UPDATE_GITHUB_WORKFLOW` |
 | `NPB_DAILY_UPDATE_GITHUB_REF` | Cloudflare Workers secrets | `wrangler secret put NPB_DAILY_UPDATE_GITHUB_REF` |
 | `NPB_DAILY_UPDATE_GITHUB_TOKEN` | Cloudflare Workers secrets | `wrangler secret put NPB_DAILY_UPDATE_GITHUB_TOKEN` |
+| `NPB_FREE_TOKEN_CAPACITY` | Cloudflare Workers vars | Free/Guestの最大保持数。既定値 `10` |
+| `NPB_FREE_TOKEN_REFILL_MINUTES` | Cloudflare Workers vars | 1回復までの分数。既定値 `120` |
+| `NPB_GUEST_GUARD_ENABLED` | Cloudflare Workers vars | Cookie再発行への軽量抑止。既定値 `true` |
 
 ## GitHub Actions repository secrets
 

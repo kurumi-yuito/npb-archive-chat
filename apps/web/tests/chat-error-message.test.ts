@@ -17,12 +17,15 @@ describe('chat UI error messages', () => {
     expect(
       userFacingChatError(429, {
         plan: 'free',
-        month: '2026-05',
-        used: 9,
-        limit: 9,
+        timezone: 'Asia/Tokyo',
+        asOf: '2026-08-08T12:00:00+09:00',
+        limit: 10,
         remaining: 0,
+        refillIntervalMinutes: 120,
+        nextTokenAt: '2026-08-08T13:42:00+09:00',
+        fullAt: '2026-08-09T08:00:00+09:00',
       }),
-    ).toBe('今月のチャットは上限（9回）に達しました（2026-05）。')
+    ).toBe('質問回数を使い切りました。残り0回。次の質問まで1時間42分です。')
   })
 
   it('does not expose thrown internal Error messages without an explicit safe status', () => {

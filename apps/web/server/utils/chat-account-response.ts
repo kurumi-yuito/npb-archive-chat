@@ -17,11 +17,15 @@ export async function getEffectiveChatAccount(
   seedPlan: ChatPlan,
   billingConfigured: boolean,
   googleAuthConfigured = false,
+  usageCapacity = 10,
+  usageRefillIntervalMinutes = 120,
 ): Promise<ChatAccount> {
   return buildChatAccountResponse(
     await getOrCreateChatAccount(database, userId, seedPlan),
     billingConfigured,
     googleAuthConfigured,
+    usageCapacity,
+    usageRefillIntervalMinutes,
   )
 }
 
@@ -29,6 +33,8 @@ export function buildChatAccountResponse(
   row: ChatAccountRow,
   billingConfigured: boolean,
   googleAuthConfigured = false,
+  usageCapacity = 10,
+  usageRefillIntervalMinutes = 120,
 ): ChatAccount {
   return {
     userId: row.userId,
@@ -41,7 +47,7 @@ export function buildChatAccountResponse(
     billingProvider: row.billingProvider,
     billingConfigured,
     googleAuthConfigured,
-    billingPlan: getBillingPlanDetails(row.plan),
+    billingPlan: getBillingPlanDetails(row.plan, usageCapacity, usageRefillIntervalMinutes),
     stripeCustomerId: row.stripeCustomerId,
     stripeSubscriptionId: row.stripeSubscriptionId,
     createdAt: row.createdAt,

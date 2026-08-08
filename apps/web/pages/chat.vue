@@ -1,13 +1,15 @@
 <script setup lang="ts">
 import type { ChatPlan, ChatResponse, ChatStructuredQuery } from '@npb/schemas'
-import { computed, nextTick, ref, watch } from 'vue'
-import { useChat } from '~/composables/useChat'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { formatRemainingDuration, useChat } from '~/composables/useChat'
 
 defineOptions({ name: 'ChatPage' })
 
 const input = ref('')
 const conversationRef = ref<HTMLElement | null>(null)
 const sidebarOpen = ref(false)
+const clock = ref(new Date().toISOString())
+let clockTimer: ReturnType<typeof setInterval> | undefined
 const {
   turns,
   loading,
@@ -50,6 +52,23 @@ const usageMeterStyle = computed(() => {
   if (!usage || usage.limit === null) return { width: '100%' }
   const ratio = usage.limit === 0 ? 0 : Math.max(0, Math.min(1, (usage.remaining ?? 0) / usage.limit))
   return { width: `${ratio * 100}%` }
+})
+
+const nextTokenLabel = computed(() => {
+  const usage = usageInfo.value
+  return usage?.nextTokenAt ? formatRemainingDuration(usage.nextTokenAt, clock.value) : null
+})
+
+const fullTokenLabel = computed(() => {
+  const usage = usageInfo.value
+  return usage?.fullAt ? formatRemainingDuration(usage.fullAt, clock.value) : null
+})
+
+onMounted(() => {
+  clockTimer = setInterval(() => { clock.value = new Date().toISOString() }, 30_000)
+})
+onBeforeUnmount(() => {
+  if (clockTimer) clearInterval(clockTimer)
 })
 
 function structuredQueryLabel(q: ChatStructuredQuery): string {
@@ -271,15 +290,20 @@ function toggleSidebar() {
           <div class="billing-meta__row">
             <span>上限</span>
             <strong>
-              {{ accountInfo.billingPlan.monthlyUsageLimit === null ? '無制限' : `${accountInfo.billingPlan.monthlyUsageLimit}回 / 月` }}
+              {{ accountInfo.billingPlan.usageTokenCapacity === null ? '無制限' : `最大${usageInfo?.limit ?? accountInfo.billingPlan.usageTokenCapacity}回` }}
             </strong>
           </div>
         </div>
         <div class="usage-card">
           <div class="usage-card__top">
-            <span>{{ usageInfo?.month ?? '---- --' }}</span>
+            <span>残り質問数</span>
             <strong>{{ usageLabel }}</strong>
           </div>
+          <dl v-if="usageInfo?.plan === 'free'" class="usage-recovery">
+            <div v-if="nextTokenLabel"><dt>次の1回まで</dt><dd>{{ nextTokenLabel }}</dd></div>
+            <div v-if="fullTokenLabel"><dt>満タンまで</dt><dd>{{ fullTokenLabel }}</dd></div>
+            <div><dt>回復</dt><dd>{{ usageInfo.refillIntervalMinutes }}分ごとに1回</dd></div>
+          </dl>
           <div class="usage-meter" aria-hidden="true">
             <span :style="usageMeterStyle" />
           </div>
@@ -810,6 +834,25 @@ function toggleSidebar() {
   border-radius: inherit;
   background: var(--c-accent);
   transition: width 0.4s ease;
+}
+
+.usage-recovery {
+  display: grid;
+  gap: 0.25rem;
+  margin: 0.55rem 0 0;
+  font-size: 0.72rem;
+  color: #cbd5e1;
+}
+
+.usage-recovery div {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.usage-recovery dt,
+.usage-recovery dd {
+  margin: 0;
 }
 
 /* Last query */

@@ -1,114 +1,62 @@
 import { describe, expect, it } from 'vitest'
 import {
-  FREE_CHAT_MONTHLY_LIMIT,
-  consumeChatUsageForFreeUser,
-  currentUsageMonthKey,
-  getChatUsageCount,
-  incrementChatUsageForFreeUser,
-  refundChatUsageForFreeUser,
+  consumeChatUsageToken,
+  getChatUsageBucket,
   migrateDatabase,
   openDatabase,
+  refundChatUsageToken,
   sqliteDatabaseToQuery,
 } from './index.js'
 
-describe('chat_usage_monthly', () => {
-  it('counts increments per user and month', async () => {
-    const database = openDatabase()
+const config = { capacity: 10, refillIntervalSeconds: 2 * 60 * 60 }
+const start = Math.floor(new Date('2026-08-08T00:00:00+09:00').getTime() / 1000)
 
+describe('chat usage token bucket', () => {
+  it('starts full, consumes to zero, and rejects the next request', async () => {
+    const database = openDatabase()
     try {
       migrateDatabase(database)
-      const q = sqliteDatabaseToQuery(database)
-      const month = currentUsageMonthKey(new Date('2025-06-15T12:00:00.000Z'))
-      expect(month).toBe('2025-06')
-
-      const uid = 'test-user-1'
-      expect(await getChatUsageCount(q, uid, month)).toBe(0)
-
-      await incrementChatUsageForFreeUser(q, uid, month)
-      expect(await getChatUsageCount(q, uid, month)).toBe(1)
-
-      for (let i = 0; i < FREE_CHAT_MONTHLY_LIMIT - 1; i++) {
-        await incrementChatUsageForFreeUser(q, uid, month)
+      const query = sqliteDatabaseToQuery(database)
+      for (let remaining = 9; remaining >= 0; remaining -= 1) {
+        expect((await consumeChatUsageToken(query, 'account:free', config, start))?.tokens).toBe(remaining)
       }
-      expect(await getChatUsageCount(q, uid, month)).toBe(FREE_CHAT_MONTHLY_LIMIT)
-    } finally {
-      database.close()
-    }
+      expect(await consumeChatUsageToken(query, 'account:free', config, start)).toBeNull()
+    } finally { database.close() }
   })
 
-  it('consumeChatUsageForFreeUser returns false when limit is reached and does not over-count', async () => {
+  it('recovers one token every two hours up to capacity across JST midnight', async () => {
     const database = openDatabase()
     try {
       migrateDatabase(database)
-      const q = sqliteDatabaseToQuery(database)
-      const uid = 'test-consume-1'
-      const month = '2025-06'
-      const limit = 3
-
-      expect(await consumeChatUsageForFreeUser(q, uid, month, limit)).toBe(true)
-      expect(await consumeChatUsageForFreeUser(q, uid, month, limit)).toBe(true)
-      expect(await consumeChatUsageForFreeUser(q, uid, month, limit)).toBe(true)
-      expect(await consumeChatUsageForFreeUser(q, uid, month, limit)).toBe(false)
-      expect(await getChatUsageCount(q, uid, month)).toBe(limit)
-    } finally {
-      database.close()
-    }
+      const query = sqliteDatabaseToQuery(database)
+      for (let i = 0; i < 10; i += 1) await consumeChatUsageToken(query, 'account:jst', config, start)
+      expect((await getChatUsageBucket(query, 'account:jst', config, start + 2 * 60 * 60 - 1)).tokens).toBe(0)
+      expect((await getChatUsageBucket(query, 'account:jst', config, start + 2 * 60 * 60)).tokens).toBe(1)
+      expect((await getChatUsageBucket(query, 'account:jst', config, start + 30 * 60 * 60)).tokens).toBe(10)
+    } finally { database.close() }
   })
 
-  it('refundChatUsageForFreeUser decrements count after consume', async () => {
+  it('refunds a failed request without exceeding capacity', async () => {
     const database = openDatabase()
     try {
       migrateDatabase(database)
-      const q = sqliteDatabaseToQuery(database)
-      const uid = 'test-refund-1'
-      const month = '2025-06'
-
-      await consumeChatUsageForFreeUser(q, uid, month)
-      await consumeChatUsageForFreeUser(q, uid, month)
-      expect(await getChatUsageCount(q, uid, month)).toBe(2)
-
-      await refundChatUsageForFreeUser(q, uid, month)
-      expect(await getChatUsageCount(q, uid, month)).toBe(1)
-    } finally {
-      database.close()
-    }
+      const query = sqliteDatabaseToQuery(database)
+      await consumeChatUsageToken(query, 'account:refund', config, start)
+      await refundChatUsageToken(query, 'account:refund', config, start)
+      await refundChatUsageToken(query, 'account:refund', config, start)
+      expect((await getChatUsageBucket(query, 'account:refund', config, start)).tokens).toBe(10)
+    } finally { database.close() }
   })
 
-  it('refundChatUsageForFreeUser on count=0 is safe and does not go negative', async () => {
+  it('isolates account and guest guard buckets', async () => {
     const database = openDatabase()
     try {
       migrateDatabase(database)
-      const q = sqliteDatabaseToQuery(database)
-      const uid = 'test-refund-2'
-      const month = '2025-06'
-
-      await consumeChatUsageForFreeUser(q, uid, month)
-      await refundChatUsageForFreeUser(q, uid, month)
-      expect(await getChatUsageCount(q, uid, month)).toBe(0)
-
-      // Second refund on count=0 must not throw and must not go negative
-      await expect(refundChatUsageForFreeUser(q, uid, month)).resolves.toBeUndefined()
-      expect(await getChatUsageCount(q, uid, month)).toBe(0)
-    } finally {
-      database.close()
-    }
-  })
-
-  it('isolates users and months', async () => {
-    const database = openDatabase()
-
-    try {
-      migrateDatabase(database)
-      const q = sqliteDatabaseToQuery(database)
-      await incrementChatUsageForFreeUser(q, 'a', '2025-01')
-      await incrementChatUsageForFreeUser(q, 'b', '2025-01')
-      await incrementChatUsageForFreeUser(q, 'a', '2025-02')
-
-      expect(await getChatUsageCount(q, 'a', '2025-01')).toBe(1)
-      expect(await getChatUsageCount(q, 'b', '2025-01')).toBe(1)
-      expect(await getChatUsageCount(q, 'a', '2025-02')).toBe(1)
-    } finally {
-      database.close()
-    }
+      const query = sqliteDatabaseToQuery(database)
+      await consumeChatUsageToken(query, 'account:guest-cookie-a', config, start)
+      await consumeChatUsageToken(query, 'guest-guard:fingerprint', config, start)
+      expect((await getChatUsageBucket(query, 'account:guest-cookie-b', config, start)).tokens).toBe(10)
+      expect((await getChatUsageBucket(query, 'guest-guard:fingerprint', config, start)).tokens).toBe(9)
+    } finally { database.close() }
   })
 })

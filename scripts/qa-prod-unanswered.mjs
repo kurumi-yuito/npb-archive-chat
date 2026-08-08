@@ -171,6 +171,9 @@ for (const [index, testCase] of cases.entries()) {
   const requestHeaders = {
     'content-type': 'application/json',
     'x-npb-user-id': userId,
+    // Production ignores x-npb-user-id without internal auth. Isolate each QA case's
+    // guest guard bucket so the full regression suite represents independent users.
+    'user-agent': `npb-production-qa/${testCase.id}`,
     ...(fixtureMode ? {
       'x-npb-qa-mode': 'fixture',
       'x-npb-qa-token': fixtureToken,

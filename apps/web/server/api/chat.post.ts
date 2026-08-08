@@ -1,10 +1,9 @@
 import { getHeader, readBody } from 'h3'
 import { ZodError } from 'zod'
 import {
-  consumeChatUsageForFreeUser,
-  currentUsageMonthKey,
-  getChatUsageCount,
-  refundChatUsageForFreeUser,
+  consumeChatUsageToken,
+  getChatUsageBucket,
+  refundChatUsageToken,
 } from '@npb/db'
 import { chatResponseSchema } from '@npb/schemas'
 import { createChatService } from '../services/chat-service'
@@ -18,15 +17,16 @@ import {
 } from '../services/chat-query-parser'
 import {
   buildFreeUsageInfo,
-  buildFreeUsageSnapshot,
   buildProUsageInfo,
 } from '../utils/build-chat-usage'
 import {
   parseBoolean,
   resolveChatRuntimeAuthConfig,
+  resolveChatRuntimeUsageConfig,
   resolveChatRuntimeStripeBillingConfig,
 } from '../utils/chat-runtime-config'
 import { getEffectiveChatAccount, isEffectivePro } from '../utils/chat-account-response'
+import { guestUsageGuardBucketKey } from '../utils/guest-usage-guard'
 import { parseChatIdentity } from '../utils/parse-chat-identity'
 import { parseChatRequestBody } from '../utils/parse-chat-request'
 import { createPublicApiError } from '../utils/public-api-error'
@@ -69,6 +69,7 @@ export default defineEventHandler(async (event) => {
     }
 
     const authConfig = resolveChatRuntimeAuthConfig(config, event)
+    const usageConfig = resolveChatRuntimeUsageConfig(config, event)
     const billingConfig = resolveChatRuntimeStripeBillingConfig(config, event)
     const identity = parseChatIdentity(event, authConfig)
     const metaDatabase = await getServerMetaDatabase(event, config.npbSqlitePath)
@@ -78,19 +79,39 @@ export default defineEventHandler(async (event) => {
       authConfig.defaultPlan ?? 'free',
       billingConfig.billingConfigured,
       authConfig.googleAuthConfigured,
+      usageConfig.capacity,
+      usageConfig.refillIntervalMinutes,
     )
-    const month = currentUsageMonthKey()
-
-    let freeUserCreditConsumed = false
+    const now = new Date()
+    const nowSeconds = Math.floor(now.getTime() / 1000)
+    const accountBucketKey = `account:${identity.userId}`
+    const consumedBucketKeys: string[] = []
+    let effectiveBucket: { tokens: number; lastRefillAt: number } | null = null
     if (!isEffectivePro(account)) {
-      const consumed = await consumeChatUsageForFreeUser(metaDatabase, identity.userId, month)
-      if (!consumed) {
-        const used = await getChatUsageCount(metaDatabase, identity.userId, month)
-        throw createPublicApiError(429, 'usage_limit_exceeded', 'Monthly chat limit reached for free plan', {
-          usage: buildFreeUsageSnapshot(month, used),
+      const accountBucket = await consumeChatUsageToken(metaDatabase, accountBucketKey, usageConfig, nowSeconds)
+      if (!accountBucket) {
+        const snapshot = await getChatUsageBucket(metaDatabase, accountBucketKey, usageConfig, nowSeconds)
+        throw createPublicApiError(429, 'usage_limit_exceeded', 'No chat tokens are currently available', {
+          usage: buildFreeUsageInfo(snapshot, usageConfig, now),
         })
       }
-      freeUserCreditConsumed = true
+      consumedBucketKeys.push(accountBucketKey)
+      effectiveBucket = accountBucket
+
+      if (identity.guestGuardEligible && usageConfig.guestGuardEnabled) {
+        const guardKey = guestUsageGuardBucketKey(event, authConfig.authSharedSecret)
+        const guardBucket = await consumeChatUsageToken(metaDatabase, guardKey, usageConfig, nowSeconds)
+        if (!guardBucket) {
+          await refundChatUsageToken(metaDatabase, accountBucketKey, usageConfig, nowSeconds)
+          consumedBucketKeys.length = 0
+          const snapshot = await getChatUsageBucket(metaDatabase, guardKey, usageConfig, nowSeconds)
+          throw createPublicApiError(429, 'usage_limit_exceeded', 'Guest usage guard has no tokens available', {
+            usage: buildFreeUsageInfo(snapshot, usageConfig, now),
+          })
+        }
+        consumedBucketKeys.push(guardKey)
+        if (guardBucket.tokens < effectiveBucket.tokens) effectiveBucket = guardBucket
+      }
     }
 
     try {
@@ -168,19 +189,14 @@ export default defineEventHandler(async (event) => {
         history: body.history,
       })
 
-      const usage = !isEffectivePro(account)
-        ? await (async () => {
-            // Usage was already incremented atomically before the LLM call.
-            const after = await getChatUsageCount(metaDatabase, identity.userId, month)
-            return buildFreeUsageInfo(month, after)
-          })()
-        : buildProUsageInfo(month)
+      const usage = !isEffectivePro(account) && effectiveBucket
+        ? buildFreeUsageInfo(effectiveBucket, usageConfig, now)
+        : buildProUsageInfo(now)
 
       return chatResponseSchema.parse({ ...core, usage })
     } catch (innerError) {
-      if (freeUserCreditConsumed) {
-        await refundChatUsageForFreeUser(metaDatabase, identity.userId, month).catch(() => {})
-      }
+      await Promise.all(consumedBucketKeys.map((bucketKey) =>
+        refundChatUsageToken(metaDatabase, bucketKey, usageConfig, nowSeconds).catch(() => {})))
       throw innerError
     }
   } catch (error) {

@@ -70,10 +70,9 @@ export {
   type UpdateChatAccountInput,
 } from './chat-account-repository'
 export {
-  FREE_CHAT_MONTHLY_LIMIT,
-  consumeChatUsageForFreeUser,
-  currentUsageMonthKey,
-  getChatUsageCount,
-  incrementChatUsageForFreeUser,
-  refundChatUsageForFreeUser,
+  consumeChatUsageToken,
+  getChatUsageBucket,
+  refundChatUsageToken,
+  type ChatTokenBucketConfig,
+  type ChatUsageBucket,
 } from './chat-usage-repository'

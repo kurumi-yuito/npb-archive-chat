@@ -1,118 +1,59 @@
-# チャット利用制限・アカウント・課金
+# チャット利用制限・ゲスト利用ポリシー
 
-## 方針
+## 利用制限
 
-account / billing に関係する secret の設定先は [env-reference.md](./env-reference.md) を見る。
-Google ログインの設定手順は [google-auth-runbook.md](./google-auth-runbook.md) を見る。
+- 制限対象は `POST /api/chat` のみ。`GET /api/search/*` は対象外。
+- Guest と Free はトークンバケット方式。初期値・最大保持数は10回、2時間ごとに1回回復する。
+- 未使用分は最大保持数まで蓄積する。固定の日次・月次リセットは行わない。
+- 時刻はAPIで `Asia/Tokyo` と明示し、次回回復・満タン時刻をJSTで返す。
+- Proは無制限。`plan=pro` かつ課金状態が `active` または `trialing` の場合だけProとして扱う。
+- 回答生成に失敗した場合は、消費したトークンを返却する。
 
-- 制限対象は `POST /api/chat` のみ。`GET /api/search/*` には回数制限をかけない。
-- user_id は dev では `X-NPB-User-Id`、production では署名付き cookie `npb_chat_user` を使う。
-- プランは **DB の `chat_accounts.plan` だけ**を正とする。`X-NPB-Plan` は使わない。
-- `free` は UTC 暦月あたり 9 回。`pro` は無制限。
-- 課金状態は `chat_accounts.billing_provider='stripe'` として永続化する。
-- `pro` は月額 980円、支払い方法は Stripe subscription として扱う。
+## Runtime Config
 
-## 実装状況
+| 変数 | 既定値 | 用途 |
+|---|---:|---|
+| `NPB_FREE_TOKEN_CAPACITY` | `10` | Free/Guestの最大保持数（1〜100） |
+| `NPB_FREE_TOKEN_REFILL_MINUTES` | `120` | 1トークンの回復間隔（分） |
+| `NPB_GUEST_GUARD_ENABLED` | `true` | ゲスト用の軽量な再発行抑止 |
 
-Done:
-
-- `chat_accounts` table
-- `chat_usage_monthly` table
-- `GET /api/account`
-- `PATCH /api/account`
-- `PUT /api/billing/subscription`
-- `GET /api/billing/plans`
-- `POST /api/billing/webhook`
-- `POST /api/chat` の free 月次回数チェック
-- `GET /api/chat/usage` の usage snapshot
-- Free / Pro plan schema
-- billing plan metadata
-- dev 用 `X-NPB-User-Id` fallback
-- production 用 signed-cookie identity
-- UI からの profile 保存、subscription plan 更新、usage 表示
+Cloudflare WorkerのRuntime Configとして解決するため、運用中はコード変更なしで値を変更できる。無効値は安全な既定値へフォールバックする。
 
 ## 識別方法
 
-| mode | user_id |
-|------|---------|
-| dev | `NPB_AUTH_HEADER_FALLBACK=true` のとき `X-NPB-User-Id` を読む。UI は localStorage の UUID を送る |
-| production guest | `NPB_AUTH_HEADER_FALLBACK=false` のとき署名付き cookie `npb_chat_user` を使う。cookie がなければ server が発行する |
-| production logged-in | Google OAuth 後は署名付き cookie `npb_auth_user` を使う。課金はこの Google 紐づけ済み account に対して行う |
-| internal | `Authorization: Bearer <NPB_AUTH_SHARED_SECRET>` が一致する request は `X-NPB-User-Id` を指定できる |
+| mode | 制御単位 |
+|---|---|
+| development/internal | `X-NPB-User-Id` のアカウントバケット |
+| production guest | 署名付きCookie `npb_chat_user` のアカウントバケットと、ゲストガードバケットの両方 |
+| production logged-in | Google連携済み `user_id` のアカウントバケットのみ |
 
-検索 API ではこれらのヘッダは読まない。
+ゲストガードは、Cloudflareの接続元ネットワーク情報とUser-Agent、言語、platform/mobile hintからHMAC識別子を作る。生のIP・User-AgentはDBへ保存しない。Cookieを削除しても同じ環境ではガード側の残量が維持される。一方、Googleログインユーザーには適用しない。
+
+これは完全な不正防止ではない。共有回線での誤制限を抑えるためブラウザ特性も組み合わせ、ネットワーク変更等による回避は許容する「軽い抑止」とする。
 
 ## DB
 
-`0005_chat_accounts.sql`:
+`0010_chat_usage_token_buckets.sql` の `chat_usage_token_buckets` を利用する。
 
-- `chat_accounts.user_id`
-- `email`
-- `display_name`
-- `plan`: `free` / `pro`
-- `billing_status`: `active` / `trialing` / `past_due` / `canceled` / `incomplete` / `incomplete_expired` / `unpaid` / `paused`
-- `billing_provider`: `stripe`
-- `stripe_customer_id`
-- `stripe_subscription_id`
-- `stripe_price_id`
-- `stripe_checkout_session_id`
+- `bucket_key`: `account:<user_id>` またはHMAC済み `guest-guard:<digest>`
+- `tokens`: 現在の整数トークン数
+- `last_refill_at`: 回復計算の基準Unix秒
+- `updated_at`: 最終更新Unix秒
 
-`0002_chat_usage.sql`:
+既存の `chat_usage_monthly` は過去データとして残すが、新しい制限判定には使用しない。新方式への初回アクセス時は満タンから開始する。
 
-- `chat_usage_monthly.user_id`
-- `month` (`YYYY-MM`)
-- `chat_count`
+## API/UI
 
-## API
+`GET /api/chat/usage` と `POST /api/chat` の `usage` は、残り回数、最大数、回復間隔、次回回復時刻、満タン時刻、`Asia/Tokyo` を返す。残量0では `POST /api/chat` がHTTP 429と同じusage snapshotを返す。
 
-| endpoint | method | 役割 |
-|----------|--------|------|
-| `/api/account` | GET | account/profile/subscription 状態を返す。なければ作成 |
-| `/api/account` | PATCH | `email` / `displayName` を保存 |
-| `/api/billing/subscription` | PUT | Stripe Checkout / Portal の redirect URL を返す |
-| `/api/billing/plans` | GET | Free / Pro の価格、上限、支払い方法を返す |
-| `/api/billing/webhook` | POST | Stripe webhook で account/billing 状態を同期 |
-| `/api/chat/usage` | GET | DB の account plan に基づく usage snapshot |
-| `/api/chat` | POST | DB の account plan に基づいて usage check 後、回答生成 |
+UIは「残り質問数」「次の1回まで」「満タンまで」「回復間隔」を表示する。429時も残り回数と次回利用可能までを利用者向け文言にする。
 
-## 分岐箇所
+## 主な実装
 
-1. `apps/web/server/utils/parse-chat-identity.ts`
-   - user_id だけを解決する。
-   - plan は解決しない。
-
-2. `apps/web/server/utils/chat-account-response.ts`
-   - user_id に対応する `chat_accounts` を作成/取得する。
-
-3. `apps/web/server/api/chat.post.ts`
-   - `chat_accounts.plan === 'free'` の場合だけ月次 usage を確認・加算する。
-
-4. `apps/web/server/api/chat/usage.get.ts`
-   - `chat_accounts.plan` に基づいて usage を返す。
-
-5. `apps/web/composables/useChat.ts`
-   - `/api/account` / `/api/billing/subscription` / `/api/chat/usage` / `/api/chat` を呼ぶ。
-   - `X-NPB-Plan` は送らない。
-
-## HTTP ステータス
-
-| code | 状況 |
-|------|------|
-| 400 | user_id 欠如、request body 不正 |
-| 429 | free の月次チャット上限到達 |
-| 503 | SQLite/D1 未設定、production の `NPB_AUTH_SHARED_SECRET` 未設定 |
-
-## 関連ファイル
-
-- `packages/db/migrations/0005_chat_accounts.sql`
-- `packages/db/migrations/0007_google_auth_accounts.sql`
-- `packages/db/migrations/0002_chat_usage.sql`
-- `packages/db/src/repository/chat-account-repository.ts`
 - `packages/db/src/repository/chat-usage-repository.ts`
-- `apps/web/server/api/account.get.ts`
-- `apps/web/server/api/account.patch.ts`
-- `apps/web/server/api/billing/subscription.put.ts`
-- `apps/web/server/api/billing/webhook.post.ts`
+- `packages/db/migrations/0010_chat_usage_token_buckets.sql`
+- `apps/web/server/utils/chat-runtime-config.ts`
+- `apps/web/server/utils/guest-usage-guard.ts`
 - `apps/web/server/api/chat.post.ts`
 - `apps/web/server/api/chat/usage.get.ts`
 - `apps/web/composables/useChat.ts`

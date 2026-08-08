@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { resolveChatRuntimeAuthConfig, resolveChatRuntimeStripeBillingConfig } from '../server/utils/chat-runtime-config'
+import { resolveChatRuntimeAuthConfig, resolveChatRuntimeStripeBillingConfig, resolveChatRuntimeUsageConfig } from '../server/utils/chat-runtime-config'
 
 describe('chat-runtime-config', () => {
   it('prefers Cloudflare env values over runtime config defaults', () => {
@@ -71,5 +71,21 @@ describe('chat-runtime-config', () => {
       cancelUrl: 'https://example.com/cancel',
       portalReturnUrl: 'https://example.com/account',
     })
+  })
+
+  it('allows token capacity and refill interval to change through Cloudflare runtime vars', () => {
+    expect(resolveChatRuntimeUsageConfig(
+      { npbFreeTokenCapacity: '10', npbFreeTokenRefillMinutes: '120' },
+      { context: { cloudflare: { env: {
+        NPB_FREE_TOKEN_CAPACITY: '6',
+        NPB_FREE_TOKEN_REFILL_MINUTES: '30',
+        NPB_GUEST_GUARD_ENABLED: 'false',
+      } } } } as never,
+    )).toEqual({ capacity: 6, refillIntervalMinutes: 30, refillIntervalSeconds: 1800, guestGuardEnabled: false })
+  })
+
+  it('uses safe defaults for invalid usage config', () => {
+    expect(resolveChatRuntimeUsageConfig({ npbFreeTokenCapacity: '0', npbFreeTokenRefillMinutes: 'invalid' }))
+      .toEqual({ capacity: 10, refillIntervalMinutes: 120, refillIntervalSeconds: 7200, guestGuardEnabled: true })
   })
 })

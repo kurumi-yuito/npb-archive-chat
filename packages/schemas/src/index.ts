@@ -313,7 +313,8 @@ export const billingPlanSchema = z.object({
   monthlyPriceYen: z.number().int().nonnegative(),
   currency: z.literal('JPY'),
   billingMethod: billingMethodSchema,
-  monthlyUsageLimit: z.number().int().positive().nullable(),
+  usageTokenCapacity: z.number().int().positive().nullable(),
+  usageRefillIntervalMinutes: z.number().int().positive().nullable(),
 })
 
 export const billingStatusSchema = z.enum([
@@ -335,10 +336,13 @@ export const billingActionResponseSchema = z.object({
 /** /api/chat のレスポンスおよび GET /api/chat/usage の利用状況 */
 export const chatUsageInfoSchema = z.object({
   plan: chatPlanSchema,
-  month: z.string().regex(/^\d{4}-\d{2}$/),
-  used: z.number().int().nonnegative(),
+  timezone: z.literal('Asia/Tokyo'),
+  asOf: z.string().datetime({ offset: true }),
   limit: z.number().int().positive().nullable(),
   remaining: z.number().int().nonnegative().nullable(),
+  refillIntervalMinutes: z.number().int().positive().nullable(),
+  nextTokenAt: z.string().datetime({ offset: true }).nullable(),
+  fullAt: z.string().datetime({ offset: true }).nullable(),
 })
 
 export const chatAccountSchema = z.object({

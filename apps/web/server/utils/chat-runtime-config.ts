@@ -21,10 +21,20 @@ export type ChatRuntimeStripeBillingConfig = {
   portalReturnUrl: string
 }
 
+export type ChatRuntimeUsageConfig = {
+  capacity: number
+  refillIntervalMinutes: number
+  refillIntervalSeconds: number
+  guestGuardEnabled: boolean
+}
+
 type ChatRuntimeConfigSource = {
   npbAuthHeaderFallback?: unknown
   npbAuthSharedSecret?: unknown
   npbDefaultPlan?: unknown
+  npbFreeTokenCapacity?: unknown
+  npbFreeTokenRefillMinutes?: unknown
+  npbGuestGuardEnabled?: unknown
   npbGoogleClientId?: unknown
   npbGoogleClientSecret?: unknown
   npbGoogleRedirectUrl?: unknown
@@ -40,6 +50,9 @@ type CloudflareRuntimeEnv = {
   NPB_AUTH_HEADER_FALLBACK?: unknown
   NPB_AUTH_SHARED_SECRET?: unknown
   NPB_DEFAULT_PLAN?: unknown
+  NPB_FREE_TOKEN_CAPACITY?: unknown
+  NPB_FREE_TOKEN_REFILL_MINUTES?: unknown
+  NPB_GUEST_GUARD_ENABLED?: unknown
   NPB_GOOGLE_CLIENT_ID?: unknown
   NPB_GOOGLE_CLIENT_SECRET?: unknown
   NPB_GOOGLE_REDIRECT_URL?: unknown
@@ -55,6 +68,25 @@ type CloudflareRuntimeEnv = {
   CHAT_ANSWER_LLM_BASE_URL?: unknown
   CHAT_ANSWER_LLM_API_KEY?: unknown
   CHAT_ANSWER_LLM_MODEL?: unknown
+}
+
+export function resolveChatRuntimeUsageConfig(
+  config: ChatRuntimeConfigSource,
+  event?: ChatRuntimeConfigEvent,
+): ChatRuntimeUsageConfig {
+  const env = event?.context.cloudflare?.env
+  const capacity = positiveInteger(env?.NPB_FREE_TOKEN_CAPACITY ?? config.npbFreeTokenCapacity, 10, 100)
+  const refillIntervalMinutes = positiveInteger(
+    env?.NPB_FREE_TOKEN_REFILL_MINUTES ?? config.npbFreeTokenRefillMinutes,
+    120,
+    43_200,
+  )
+  return {
+    capacity,
+    refillIntervalMinutes,
+    refillIntervalSeconds: refillIntervalMinutes * 60,
+    guestGuardEnabled: parseBoolean(env?.NPB_GUEST_GUARD_ENABLED ?? config.npbGuestGuardEnabled ?? 'true'),
+  }
 }
 
 type ChatRuntimeConfigEvent = H3Event & {
@@ -150,4 +182,9 @@ export function parseBoolean(value: unknown): boolean {
 
 function stringValue(value: unknown): string {
   return typeof value === 'string' ? value.trim() : ''
+}
+
+function positiveInteger(value: unknown, fallback: number, maximum: number): number {
+  const parsed = typeof value === 'number' ? value : Number(String(value ?? ''))
+  return Number.isInteger(parsed) && parsed > 0 && parsed <= maximum ? parsed : fallback
 }

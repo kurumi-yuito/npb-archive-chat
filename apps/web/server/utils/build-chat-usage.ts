@@ -1,35 +1,47 @@
 import type { ChatUsageInfo } from '@npb/schemas'
-import { FREE_CHAT_MONTHLY_LIMIT } from '@npb/db'
+import type { ChatRuntimeUsageConfig } from './chat-runtime-config'
 
-export function buildProUsageInfo(month: string): ChatUsageInfo {
+type BucketSnapshot = { tokens: number; lastRefillAt: number }
+
+export function buildProUsageInfo(now = new Date()): ChatUsageInfo {
   return {
     plan: 'pro',
-    month,
-    used: 0,
+    timezone: 'Asia/Tokyo',
+    asOf: toJstIso(now),
     limit: null,
     remaining: null,
+    refillIntervalMinutes: null,
+    nextTokenAt: null,
+    fullAt: null,
   }
 }
 
-export function buildFreeUsageInfo(month: string, usedAfterIncrement: number): ChatUsageInfo {
-  return {
-    plan: 'free',
-    month,
-    used: usedAfterIncrement,
-    limit: FREE_CHAT_MONTHLY_LIMIT,
-    remaining: Math.max(0, FREE_CHAT_MONTHLY_LIMIT - usedAfterIncrement),
-  }
-}
-
-export function buildFreeUsageSnapshot(
-  month: string,
-  used: number,
+export function buildFreeUsageInfo(
+  bucket: BucketSnapshot,
+  config: ChatRuntimeUsageConfig,
+  now = new Date(),
 ): ChatUsageInfo {
+  const nowSeconds = Math.floor(now.getTime() / 1000)
+  const missing = Math.max(0, config.capacity - bucket.tokens)
+  const nextSeconds = bucket.tokens < config.capacity
+    ? Math.max(nowSeconds, bucket.lastRefillAt + config.refillIntervalSeconds)
+    : null
+  const fullSeconds = missing > 0
+    ? bucket.lastRefillAt + missing * config.refillIntervalSeconds
+    : null
   return {
     plan: 'free',
-    month,
-    used,
-    limit: FREE_CHAT_MONTHLY_LIMIT,
-    remaining: Math.max(0, FREE_CHAT_MONTHLY_LIMIT - used),
+    timezone: 'Asia/Tokyo',
+    asOf: toJstIso(now),
+    limit: config.capacity,
+    remaining: bucket.tokens,
+    refillIntervalMinutes: config.refillIntervalMinutes,
+    nextTokenAt: nextSeconds === null ? null : toJstIso(new Date(nextSeconds * 1000)),
+    fullAt: fullSeconds === null ? null : toJstIso(new Date(fullSeconds * 1000)),
   }
+}
+
+export function toJstIso(date: Date): string {
+  const shifted = new Date(date.getTime() + 9 * 60 * 60 * 1000)
+  return `${shifted.toISOString().slice(0, -1)}+09:00`
 }

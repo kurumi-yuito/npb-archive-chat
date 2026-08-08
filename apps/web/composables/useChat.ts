@@ -29,7 +29,7 @@ async function parseErrorJson(res: Response): Promise<{
 export function userFacingChatError(status: number, usage?: ChatUsageInfo): string {
   if (status === 429 && usage) {
     return usage.plan === 'free' && usage.limit !== null
-      ? `今月のチャットは上限（${usage.limit}回）に達しました（${usage.month}）。`
+      ? `質問回数を使い切りました。残り${usage.remaining ?? 0}回。次の質問まで${formatRemainingDuration(usage.nextTokenAt, usage.asOf)}です。`
       : '利用上限に達しました。'
   }
   if (status === 401 || status === 403) {
@@ -42,6 +42,17 @@ export function userFacingChatError(status: number, usage?: ChatUsageInfo): stri
     return '回答の生成中に問題が発生しました。時間をおいて再度お試しください。'
   }
   return '質問を処理できませんでした。入力を変えて再度お試しください。'
+}
+
+export function formatRemainingDuration(target: string | null, from = new Date().toISOString()): string {
+  if (!target) return '0分'
+  const milliseconds = Math.max(0, Date.parse(target) - Date.parse(from))
+  const totalMinutes = Math.max(1, Math.ceil(milliseconds / 60_000))
+  const hours = Math.floor(totalMinutes / 60)
+  const minutes = totalMinutes % 60
+  if (hours === 0) return `${minutes}分`
+  if (minutes === 0) return `${hours}時間`
+  return `${hours}時間${minutes}分`
 }
 
 export function userFacingAccountError(status?: number): string {
