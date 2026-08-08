@@ -3573,6 +3573,23 @@ describe('chat-service', () => {
          VALUES ('f20260522db-d-05', '横浜DeNAベイスターズ', 1, '藤浪', NULL, 88, 20,
                  '5', 3, 0, 2, 0, 8, 0, 0, 1, 1, '{}')`,
       ).run()
+      database.prepare(
+        `INSERT INTO games
+          (schema_version, game_id, year, mmdd, date, date_label, venue, canonical_url, matchup_text,
+           away_team_name, home_team_name, linescore_json, result_pitchers_json,
+           batteries_json, home_runs_json, latest_order_json, fetched_at, loaded_at)
+         VALUES (1, 'r20221013s-t-02', 2022, '1013', '2022-10-13', '2022年10月13日',
+                 '甲子園', 'https://npb.jp/bis/2022/games/s2022101301842.html',
+                 '阪神 vs DeNA', '横浜DeNA', '阪神', '{}', '{}', '{}', '{}', '{}', datetime('now'), datetime('now'))`,
+      ).run()
+      database.prepare(
+        `INSERT INTO pitching_lines
+          (game_id, team, row_index, pitcher_name, pitcher_url, pitch_count, batters_faced,
+           innings_pitched, hits, home_runs, walks, hit_batters, strikeouts, wild_pitches,
+           balks, runs, earned_runs, headers_json)
+         VALUES ('r20221013s-t-02', '阪神タイガース', 0, '藤浪', NULL, 91, 24,
+                 '6', 4, 0, 2, 0, 7, 0, 0, 2, 2, '{}')`,
+      ).run()
 
       const service = createChatService(sqliteDatabaseToQuery(database), {
         parseStructuredQueryFromMessage: async () => ({

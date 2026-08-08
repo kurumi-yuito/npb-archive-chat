@@ -87,10 +87,13 @@ export async function resolveStructuredQueryPlayer(
     limit: 50,
   }
   const rawCandidates = await queryService.searchPlayerCandidates(candidateFilters)
+  const periodScopedCandidates = isUnqualifiedShortName
+    ? scopeShortNameCandidatesToRequestedPeriod(rawCandidates, structuredQuery)
+    : rawCandidates
   let candidates = selectCandidatesForInput(
     input,
     collapseSameEntityFallbacks(
-      filterCandidates(rawCandidates, teamQualifier(structuredQuery)),
+      filterCandidates(periodScopedCandidates, teamQualifier(structuredQuery)),
     ),
   )
   if (candidates.length === 0 && hasExplicitYearFilter(structuredQuery)) {
@@ -154,6 +157,21 @@ export async function resolveStructuredQueryPlayer(
       ...(yearShift ? { yearShiftNote: yearShift.note } : {}),
     },
   }
+}
+
+function scopeShortNameCandidatesToRequestedPeriod(
+  candidates: PlayerCandidate[],
+  structuredQuery: ChatStructuredQuery,
+): PlayerCandidate[] {
+  const filters = structuredQuery.filters as Record<string, unknown>
+  const explicitYear = typeof filters.year === 'number' ? filters.year : null
+  const latestYear = filters.recent === true
+    ? Math.max(...candidates.flatMap((candidate) => candidate.years))
+    : null
+  const targetYear = explicitYear ?? (Number.isFinite(latestYear) ? latestYear : null)
+  if (targetYear === null) return candidates
+  const scoped = candidates.filter((candidate) => candidate.years.includes(targetYear))
+  return scoped.length > 0 ? scoped : candidates
 }
 
 function detectYearShift(
