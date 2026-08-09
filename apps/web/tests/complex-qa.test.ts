@@ -94,7 +94,7 @@ describeComplex('カテゴリ2: 複合条件ランキング', () => {
     const r = await ask('今年のソフトバンクって強すぎない？何勝してるの')
     console.log('C2-4:', r.answer.summary?.slice(0, 200))
     // WIN_LOSS_PATTERN + team抽出で aggregate_games にrewireされるか
-    expect(r.structured_query.intent).toBe('aggregate_games')
+    expect(r.structured_query!.intent).toBe('aggregate_games')
     expect(r.answer.summary).toBeTruthy()
   })
 
@@ -102,7 +102,7 @@ describeComplex('カテゴリ2: 複合条件ランキング', () => {
     const r = await ask('ソフトバンクの今シーズンの勝敗を教えてください')
     console.log('C2-5:', r.answer.summary?.slice(0, 200))
     // 勝敗 keyword + チーム名で aggregate_games rewrite
-    expect(r.structured_query.intent).toBe('aggregate_games')
+    expect(r.structured_query!.intent).toBe('aggregate_games')
     expect(r.answer.summary).toBeTruthy()
   })
 })
@@ -146,7 +146,7 @@ describeComplex('カテゴリ4: 俗語・口語・曖昧表現', () => {
     const r = await ask('阪神って今シーズン強いの？勝ち越してる？')
     console.log('C4-2:', r.answer.summary?.slice(0, 200))
     // 勝ち越し keyword + チーム名で aggregate_games rewrite
-    expect(r.structured_query.intent).toBe('aggregate_games')
+    expect(r.structured_query!.intent).toBe('aggregate_games')
     expect(r.answer.summary).toBeTruthy()
   })
 
@@ -219,7 +219,7 @@ describeComplex('カテゴリ7: 時間範囲・期間指定', () => {
     const r = await ask('2026年の阪神の主な打者成績を教えてください')
     console.log('C7-1:', r.answer.summary?.slice(0, 200))
     expect(r.answer.summary).toBeTruthy()
-    expect(r.structured_query.filters).toMatchObject({ year: 2026 })
+    expect(r.structured_query!.filters).toMatchObject({ year: 2026 })
   })
 
   it('C7-2: 特定月の成績', async () => {
@@ -232,7 +232,7 @@ describeComplex('カテゴリ7: 時間範囲・期間指定', () => {
     const r = await ask('昨シーズン（2025年）の村上宗隆の成績を教えてください')
     console.log('C7-3:', r.answer.summary?.slice(0, 300))
     // year=2025 は正確に抽出される
-    expect(r.structured_query.filters).toMatchObject({ year: 2025 })
+    expect(r.structured_query!.filters).toMatchObject({ year: 2025 })
     // ローカルDBにplayer_profilesがないため選手名は正確に解決されない場合があるが
     // 少なくともanswerが返ること（result_count条件は設けない）
     expect(r.answer.summary).toBeTruthy()

@@ -681,3 +681,32 @@ A: [未実行] 回復時刻は経過秒だけから計算され、JST/UTCの日�
 
 Q-176: Cloudflare配信環境の利用状況
 A: [未実行] 本番Cloudflare配信の`/api/chat/usage`が`no-store`系ヘッダーと最新の残数・次回回復時刻を返し、キャッシュHITした古い残数を返さない。
+
+---
+
+## カテゴリ33: Phase 17 Follow-up確認契約
+
+期待契約: 履歴ありではPlannerが直前の対象を通常のRepository intentへ再解釈し、最終応答は対象データの回答、HTTP 200とする。
+
+Q-177: 調べなおして（直前の履歴に「2026年の藤浪の登板を教えて」とその回答あり）
+A: [未実行]
+
+期待契約: Plannerのresponse policyは `clarify / missing_history`、query intentとcapability routeは生成せず、最終応答は対象の選手名または質問内容を求める確認応答、HTTP 200とする。
+
+Q-178: 調べなおして（履歴なし）
+A: [未実行]
+
+期待契約: Plannerのresponse policyは `clarify / history_target_unavailable`、query intentとcapability routeは生成せず、最終応答は参照された以前の内容が履歴にない旨と再入力を求める確認応答、HTTP 200とする。
+
+Q-179: 違う、その前のやつ（参照先より前の履歴が保持範囲外）
+A: [未実行]
+
+期待契約: PlannerはNPB intentを維持してEntity Resolutionを実行し、同姓候補を一人へ決めず候補確認を返す。`off_topic` とclarification response policyには変換せず、HTTP 200とする。
+
+Q-180: 田中どう？
+A: [未実行]
+
+期待契約: Plannerのresponse policyは `clarify / insufficient_context`、query intentとcapability routeは生成せず、最終応答は対象となる選手・試合・質問内容を求める確認応答、HTTP 200とする。
+
+Q-181: それ詳しく（履歴なし）
+A: [未実行]

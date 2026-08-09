@@ -53,6 +53,7 @@ import {
   classifyChatCapability,
   type ChatCapabilityClassification,
 } from './chat-capability'
+import { buildClarificationResponse } from './chat-follow-up-clarification'
 import { appendOpinionComment } from './chat-opinion-generator'
 
 type ChatServiceDependencies = {
@@ -99,10 +100,17 @@ export function createChatService(
       const initialPlan = await planner(message, {
         history: options.history,
       })
+      const initialValidation = validateChatPlannerOutput(initialPlan)
+      if (initialPlan.responsePolicy) {
+        return chatResponseCoreSchema.parse(buildClarificationResponse(message, initialPlan, initialValidation))
+      }
+      if (!initialPlan.structuredQuery) {
+        throw new Error('Planner returned neither a structured query nor a response policy')
+      }
       const rawParsedQuery: ChatStructuredQuery = initialPlan.structuredQuery
       let parsedQuery: ChatStructuredQuery = rawParsedQuery
       let effectivePlan = initialPlan
-      let plannerValidation = validateChatPlannerOutput(effectivePlan)
+      let plannerValidation = initialValidation
       if (
         parsedQuery.intent === 'off_topic' &&
         options.history?.length &&
@@ -111,6 +119,7 @@ export function createChatService(
         const previousUserMessage = latestUserMessage(options.history)
         if (previousUserMessage) {
           const replanned = await planner(previousUserMessage, { history: [] })
+          if (!replanned.structuredQuery) throw new Error('Replanned query is unavailable')
           parsedQuery = replanned.structuredQuery
           effectivePlan = {
             ...withCapability(buildPlannerOutput(parsedQuery, true, {
@@ -254,6 +263,7 @@ export function createChatService(
         const previousUserMessage = latestUserMessage(options.history)
         if (previousUserMessage) {
           const replan = await planner(previousUserMessage, { history: [] })
+          if (!replan.structuredQuery) throw new Error('Correction replan query is unavailable')
           parsedQuery = replan.structuredQuery
           effectivePlan = {
             ...withCapability(buildPlannerOutput(parsedQuery, true, {
@@ -2919,6 +2929,9 @@ function shouldUseFinalAnswerLlm(
   core: ChatResponseCore,
   resolution: PlayerResolution | null,
 ): boolean {
+  if (!core.structured_query) {
+    return false
+  }
   if (resolution?.status === 'ambiguous') {
     return false
   }

@@ -137,7 +137,7 @@ export function buildCapabilityFailureResponse(
         capability_route: capability.route,
         capability_requires_analysis: capability.requiresAnalysis,
         capability_uses_repository: false,
-        external_source_url: SPORTS_NAVI_NPB_URL,
+        external_source_url: capability.externalSourceUrl,
       },
     },
     results: emptyResults(),

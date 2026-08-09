@@ -391,7 +391,7 @@ describe('chat-service', () => {
     const response = await service.answerQuestion('尾形の成績を教えて')
 
     expect(battingCalled).toBe(true)
-    expect(response.structured_query.intent).toBe('search_pitching')
+    expect(response.structured_query!.intent).toBe('search_pitching')
     expect(pitchingFilters).toMatchObject({
       pitcher_name: '尾形 崇斗',
       pitcher_player_id: '01705156',
@@ -443,7 +443,7 @@ describe('chat-service', () => {
 
     const response = await service.answerQuestion('村上の成績を教えて')
 
-    expect(response.structured_query.intent).toBe('search_batting')
+    expect(response.structured_query!.intent).toBe('search_batting')
     expect(pitchingCalled).toBe(false)
     expect(response.answer.summary).toContain('打撃成績')
     expect(response.answer.summary).not.toContain('投手成績')
@@ -747,7 +747,7 @@ describe('chat-service', () => {
       ],
     })
 
-    expect(response.structured_query.filters).toMatchObject({
+    expect(response.structured_query!.filters).toMatchObject({
       pitcher_name: '藤浪 晋太郎',
       pitcher_player_id: '41045137',
       team: '横浜DeNAベイスターズ',
@@ -998,8 +998,8 @@ describe('chat-service', () => {
         game_id: 'r20250401db-s-01',
       },
     })
-    expect(response.structured_query.filters).not.toHaveProperty('result_text_contains')
-    expect(response.structured_query.filters).toMatchObject({ limit: 5 })
+    expect(response.structured_query!.filters).not.toHaveProperty('result_text_contains')
+    expect(response.structured_query!.filters).toMatchObject({ limit: 5 })
     expect(eventFilters).toMatchObject({
       year: 2025,
       pitcher_player_id: '41045137',
@@ -1039,12 +1039,12 @@ describe('chat-service', () => {
       ],
     })
 
-    expect(response.structured_query.filters).toMatchObject({
+    expect(response.structured_query!.filters).toMatchObject({
       player_name: '村上',
       team: 'ヤクルト',
       year: 2025,
     })
-    expect(response.structured_query.intent).toBe('aggregate_batting')
+    expect(response.structured_query!.intent).toBe('aggregate_batting')
     expect(response.answer.execution_metadata?.correction_guard).toMatchObject({
       inheritanceBlockedReason: 'explicit_season_override',
       hasExplicitSeasonOverride: true,
@@ -1072,13 +1072,13 @@ describe('chat-service', () => {
       ],
     })
 
-    expect(response.structured_query.filters).toMatchObject({
+    expect(response.structured_query!.filters).toMatchObject({
       player_name: '村上',
       team: 'ヤクルト',
       year: 2025,
     })
-    expect(response.structured_query.intent).toBe('aggregate_batting')
-    expect(response.structured_query.filters).not.toMatchObject({
+    expect(response.structured_query!.intent).toBe('aggregate_batting')
+    expect(response.structured_query!.filters).not.toMatchObject({
       player_name: '藤浪 晋太郎',
     })
     expect(response.answer.execution_metadata?.correction_guard).toMatchObject({
@@ -1428,7 +1428,7 @@ describe('chat-service', () => {
       ],
     })
 
-    expect(response.structured_query.intent).toBe('search_pitching')
+    expect(response.structured_query!.intent).toBe('search_pitching')
     expect(response.answer.execution_metadata?.follow_up_type).toBe('correction_request')
     expect(response.answer.summary).not.toContain('このサービスはNPB')
     expect(response.answer.summary).toContain('石田 裕太郎')
@@ -1504,8 +1504,8 @@ describe('chat-service', () => {
       ],
     })
 
-    expect(response.structured_query.intent).toBe('search_pitching')
-    expect(response.structured_query.filters).toMatchObject({
+    expect(response.structured_query!.intent).toBe('search_pitching')
+    expect(response.structured_query!.filters).toMatchObject({
       pitcher_names: ['石田裕太郎', '東克樹'],
       recent: true,
       limit: 3,
@@ -1658,7 +1658,7 @@ describe('chat-service', () => {
       ],
     })
 
-    expect(response.structured_query.filters).not.toMatchObject({
+    expect(response.structured_query!.filters).not.toMatchObject({
       player_name: '藤浪 晋太郎',
       team: '横浜DeNAベイスターズ',
       year: 2026,
@@ -1698,7 +1698,7 @@ describe('chat-service', () => {
       ],
     })
 
-    expect(response.structured_query.filters).not.toMatchObject({
+    expect(response.structured_query!.filters).not.toMatchObject({
       pitcher_name: '藤浪 晋太郎',
       team: '阪神タイガース',
       year: 2018,
@@ -1954,7 +1954,7 @@ describe('chat-service', () => {
 
     const response = await service.answerQuestion('昨シーズン（2025年）の新人王は誰ですか？')
 
-    expect(response.structured_query.intent).toBe('award_winners')
+    expect(response.structured_query!.intent).toBe('award_winners')
     expect(response.answer.summary).toBe(
       '2025年度の最優秀新人賞（新人王）は、セ・リーグが荘司宏太（東京ヤクルト）、パ・リーグが西川史礁（千葉ロッテ）です。',
     )
@@ -2426,7 +2426,7 @@ describe('chat-service', () => {
 
     const response = await service.answerQuestion('岡本和真の2016年以降の通算本塁打数を教えてください')
 
-    expect(response.structured_query.filters).toMatchObject({
+    expect(response.structured_query!.filters).toMatchObject({
       year_from: 2016,
       player_name: '岡本和',
       team: '読売ジャイアンツ',
@@ -2538,7 +2538,7 @@ describe('chat-service', () => {
     const response = await service.answerQuestion('2025年の大谷翔平の成績を教えてください')
 
     expect(candidateSearchCalled).toBe(true)
-    expect(response.structured_query.filters).toMatchObject({ year: 2017, player_id: 'otani-2017' })
+    expect(response.structured_query!.filters).toMatchObject({ year: 2017, player_id: 'otani-2017' })
     expect(response.answer.summary).toContain('大谷')
   })
 
@@ -2903,7 +2903,7 @@ describe('chat-service', () => {
         limit: 10,
       },
     })
-    expect(response.structured_query.filters).not.toHaveProperty('pitcher_name')
+    expect(response.structured_query!.filters).not.toHaveProperty('pitcher_name')
   })
 
   it.skip('routes Norimoto career comparison questions through aggregate_pitching without player resolution', async () => {
@@ -3282,7 +3282,7 @@ describe('chat-service', () => {
       primary_team: 'ヤクルト',
       status: 'resolved',
     })
-    expect(response.structured_query.filters).toMatchObject({
+    expect(response.structured_query!.filters).toMatchObject({
       team: 'ヤクルト',
       batter_name: '山田',
       batter_player_id: '91895133',
@@ -3340,7 +3340,7 @@ describe('chat-service', () => {
       status: 'resolved',
     })
     // year shifts 2026→2025 because candidate.years=[2025] does not include 2026
-    expect(response.structured_query.filters).toMatchObject({
+    expect(response.structured_query!.filters).toMatchObject({
       year: 2025,
       team: 'ヤクルト',
       player_name: '村上',
@@ -3391,7 +3391,7 @@ describe('chat-service', () => {
 
     const response = await service.answerQuestion('今シーズン（2026年）の村上宗隆の成績')
 
-    expect(response.structured_query.intent).toBe('aggregate_batting')
+    expect(response.structured_query!.intent).toBe('aggregate_batting')
     expect(response.results.aggregates).toHaveLength(0)
     expect(response.results.batting).toHaveLength(0)
     expect(response.answer.summary).toContain('条件に一致する打撃成績は見つかりませんでした')
@@ -3489,7 +3489,7 @@ describe('chat-service', () => {
 
     const response = await service.answerQuestion('坂倉将吾の最近の打席内容を教えてください')
 
-    expect(response.structured_query.intent).toBe('search_batting')
+    expect(response.structured_query!.intent).toBe('search_batting')
     expect(response.answer.summary).toContain('打撃内容')
     expect(response.answer.summary).toContain('坂倉')
   })
@@ -3535,7 +3535,7 @@ describe('chat-service', () => {
 
     const response = await service.answerQuestion('藤浪の直近試合の内容は')
 
-    expect(response.structured_query.filters).toMatchObject({ recent: true, limit: 1 })
+    expect(response.structured_query!.filters).toMatchObject({ recent: true, limit: 1 })
     expect(pitchingFilters).toContainEqual(expect.objectContaining({ recent: true, limit: 1 }))
     expect(response.results.pitching).toHaveLength(1)
     expect(response.answer.result_count).toBe(1)
@@ -3825,7 +3825,7 @@ describe('chat-service', () => {
 
     const response = await service.answerQuestion('昨日の巨人戦のハイライトは')
 
-    expect(response.structured_query.intent).toBe('game_detail')
+    expect(response.structured_query!.intent).toBe('game_detail')
     expect(response.answer.result_count).toBe(1)
     expect(response.results.gameDetails).toHaveLength(1)
     expect(response.results.events).toHaveLength(1)
@@ -4156,7 +4156,7 @@ describe('chat-service', () => {
     const response = await service.answerQuestion('佐藤輝明と牧秀悟のそれぞれ直近3試合の打撃成績を比較して')
 
     expect(searchedPlayers).toEqual(expect.arrayContaining(['sato', 'maki']))
-    expect(response.structured_query.intent).toBe('search_batting')
+    expect(response.structured_query!.intent).toBe('search_batting')
     expect(response.results.batting.map((row) => row.playerName)).toEqual(
       expect.arrayContaining(['佐藤輝明', '牧秀悟']),
     )

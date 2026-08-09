@@ -1,4 +1,4 @@
-import { z, type ChatRequest, type ChatStructuredQuery } from '@npb/schemas'
+import { clarificationReasonSchema, z, type ChatRequest, type ChatStructuredQuery } from '@npb/schemas'
 import type { IdentityResolutionMetadata, IdentityResolutionScope } from './player-identity'
 import type { PlayerResolution } from './player-resolution'
 import type { ChatCapabilityIntent, ChatCapabilityRoute } from './chat-capability'
@@ -173,8 +173,16 @@ export const chatExecutionRepositorySchema = z.enum([
 
 export type ChatExecutionRepository = z.infer<typeof chatExecutionRepositorySchema>
 
+export const chatClarificationPolicySchema = z.object({
+  action: z.literal('clarify'),
+  reason: clarificationReasonSchema,
+})
+
+export type ChatClarificationPolicy = z.infer<typeof chatClarificationPolicySchema>
+
 export const chatPlannerOutputSchema = z.object({
-  structuredQuery: z.custom<ChatStructuredQuery>(),
+  structuredQuery: z.custom<ChatStructuredQuery>().nullable(),
+  responsePolicy: chatClarificationPolicySchema.nullable(),
   entities: z.record(z.unknown()),
   followUpType: chatFollowUpTypeSchema,
   referencedContext: chatReferencedContextSchema,
@@ -247,6 +255,9 @@ export const chatPlannerValidationIssueSchema = z.enum([
   'off_topic_with_inherited_context',
   'off_topic_with_data_requirements',
   'off_topic_with_repository_route',
+  'clarification_with_structured_query',
+  'clarification_with_data_requirements',
+  'clarification_with_capability',
 ])
 
 export const chatPlannerValidationResultSchema = z.object({

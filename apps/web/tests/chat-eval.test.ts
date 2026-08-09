@@ -130,7 +130,7 @@ describe('chat eval: db-backed query plan, result, formatter regression', () => 
     })
     expect(calls).toContainEqual({
       method: 'searchEvents',
-      filters: response.structured_query.filters,
+      filters: response.structured_query!.filters,
     })
     expect(response.answer.result_count).toBeGreaterThan(12)
   })

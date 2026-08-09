@@ -4,6 +4,7 @@ import type {
   ChatStructuredQuery,
   PlayerCandidate,
 } from '@npb/schemas'
+import type { ChatClarificationPolicy } from './chat-query-plan'
 import type {
   AggregateRow,
   BattingLineRow,
@@ -28,6 +29,18 @@ type FormatChatAnswerInput = {
 
 type EventSummaryRow = ChatResponse['results']['events'][number]
 type GameSummaryRowWithLinescore = GameSummaryRow & { linescoreJson?: string | null }
+
+export function formatClarificationAnswer(
+  policy: ChatClarificationPolicy,
+): string {
+  if (policy.reason === 'history_target_unavailable') {
+    return '参照された以前の内容を会話履歴から確認できませんでした。対象となる選手名や質問内容をもう一度教えてください。'
+  }
+  if (policy.reason === 'insufficient_context') {
+    return 'どの内容についてのご質問ですか？対象となる選手名、試合、または質問内容を教えてください。'
+  }
+  return 'どの内容について調べ直しますか？直前の質問が確認できないため、対象となる選手名や質問内容をもう一度教えてください。'
+}
 
 export function formatChatAnswer({
   question,

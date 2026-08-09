@@ -15,6 +15,17 @@ export function validateChatPlannerOutput(output: unknown): ChatPlannerValidatio
 
   const plan: ChatPlannerOutput = parsed.data
   const issues: PlannerValidationIssue[] = []
+  if (plan.responsePolicy) {
+    if (plan.structuredQuery !== null) issues.push('clarification_with_structured_query')
+    if (plan.dataRequirements.length > 0) issues.push('clarification_with_data_requirements')
+    if (plan.capability) issues.push('clarification_with_capability')
+    return issues.length > 0
+      ? { status: 'planner_output_inconsistent', issues }
+      : { status: 'valid', issues: [] }
+  }
+  if (!plan.structuredQuery) {
+    return { status: 'planner_output_inconsistent', issues: ['intent_mismatch'] }
+  }
   const intent = plan.structuredQuery.intent
 
   if (

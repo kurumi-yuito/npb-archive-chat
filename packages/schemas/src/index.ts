@@ -278,6 +278,12 @@ export const awardWinnersFiltersSchema = z.object({
   award_type: z.enum(['rookie_of_the_year']).optional(),
 })
 
+export const clarificationReasonSchema = z.enum([
+  'missing_history',
+  'history_target_unavailable',
+  'insufficient_context',
+])
+
 export const chatIntentSchema = z.enum([
   'search_events',
   'search_games',
@@ -439,7 +445,7 @@ export const chatSourceSchema = z.object({
 
 export const chatResponseSchema = z.object({
   message: z.string().min(1),
-  structured_query: chatStructuredQuerySchema,
+  structured_query: chatStructuredQuerySchema.nullable(),
   answer: z.object({
     summary: z.string().min(1),
     result_count: z.number().int().nonnegative(),
@@ -523,6 +529,10 @@ export const chatResponseSchema = z.object({
         status: z.enum(['valid', 'planner_output_invalid', 'planner_output_inconsistent']),
         issues: z.array(z.string().min(1)),
       }).optional(),
+      response_policy: z.object({
+        action: z.literal('clarify'),
+        reason: clarificationReasonSchema,
+      }).nullable().optional(),
       question_intent: z.enum([
         'historical_record',
         'analytical',

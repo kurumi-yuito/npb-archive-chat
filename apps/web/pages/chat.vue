@@ -87,11 +87,11 @@ function structuredQueryLabel(q: ChatStructuredQuery): string {
 }
 
 function shouldShowResultCount(response: ChatResponse): boolean {
-  return response.structured_query.intent !== 'game_detail'
+  return response.structured_query?.intent !== 'game_detail'
 }
 
 function gameDetailCardTitle(response: ChatResponse): string | null {
-  if (response.structured_query.intent !== 'game_detail') return null
+  if (response.structured_query?.intent !== 'game_detail') return null
   const row = response.results.gameDetails[0]
   if (!row) return null
   const score = scoreLineFromLinescore(row.linescoreJson)
@@ -315,7 +315,7 @@ function toggleSidebar() {
         <p v-if="!lastAssistant" class="muted">まだありません</p>
         <template v-else>
           <div class="last-query">
-            <span>{{ structuredQueryLabel(lastAssistant.structured_query) }}</span>
+            <span>{{ lastAssistant.structured_query ? structuredQueryLabel(lastAssistant.structured_query) : '確認' }}</span>
             <strong>{{ gameDetailCardTitle(lastAssistant) ?? `${lastAssistant.answer.result_count}件` }}</strong>
           </div>
         </template>
@@ -380,7 +380,7 @@ function toggleSidebar() {
             <div class="avatar avatar--assistant" aria-hidden="true">⚾</div>
             <div class="answer">
               <div class="answer__meta">
-                <span class="intent-chip">{{ structuredQueryLabel(turn.assistant.structured_query) }}</span>
+                <span class="intent-chip">{{ turn.assistant.structured_query ? structuredQueryLabel(turn.assistant.structured_query) : '確認' }}</span>
                 <span
                   v-if="gameDetailCardTitle(turn.assistant)"
                   class="answer__detail-title"

@@ -15,6 +15,7 @@ import {
 } from './chat-query-plan'
 import { inferIdentityResolutionScope } from './chat-identity-scope'
 import { classifyChatCapability } from './chat-capability'
+import { clarificationForUnresolvedFollowUp } from './chat-follow-up-clarification'
 
 export type ChatPlanner = (
   message: string,
@@ -31,6 +32,8 @@ export function createChatPlanner({
   normalizeStructuredQuery,
 }: CreateChatPlannerOptions): ChatPlanner {
   return async (message, context = {}) => {
+    const unresolvedFollowUp = clarificationForUnresolvedFollowUp(message, context.history)
+    if (unresolvedFollowUp) return buildClarificationPlannerOutput(unresolvedFollowUp)
     const structuredQuery = normalizeStructuredQuery(
       await parseStructuredQueryFromMessage(message, {
         history: context.history,
@@ -124,6 +127,7 @@ export function buildPlannerOutput(
   })
   return chatPlannerOutputSchema.parse({
     structuredQuery,
+    responsePolicy: null,
     entities: extractPlannerEntities(structuredQuery),
     followUpType: classification.followUpType,
     referencedContext: classification.referencedContext,
@@ -141,5 +145,33 @@ export function buildPlannerOutput(
     confidence: legacyStabilizationApplied ? 0.72 : 0.86,
     domain: structuredQuery.intent === 'off_topic' ? 'non_npb' : 'npb',
     legacyStabilizationApplied,
+  })
+}
+
+function buildClarificationPlannerOutput(
+  responsePolicy: NonNullable<ChatPlannerOutput['responsePolicy']>,
+): ChatPlannerOutput {
+  return chatPlannerOutputSchema.parse({
+    structuredQuery: null,
+    responsePolicy,
+    entities: {},
+    followUpType: 'context_reference',
+    referencedContext: null,
+    targetEntity: { kind: 'unknown', label: null, players: [], teams: [] },
+    followUpContext: {
+      contextKind: 'unknown', inheritedPlayerId: null, inheritedPlayerName: null,
+      inheritedTeam: null, inheritedSeason: null, inheritedScope: 'unspecified',
+      inheritanceSource: 'none', inheritanceConfidence: 0, shouldApplyInheritance: false,
+    },
+    correctionGuard: {
+      inheritanceBlockedReason: 'none', hasAmbiguousCorrection: false,
+      hasPlayerReplacement: false, hasExplicitSeasonOverride: false,
+      hasExplicitScopeOverride: false, shouldBlockInheritance: false,
+    },
+    correction: { isCorrection: false, target: 'unknown', value: { kind: 'unknown' }, confidence: 0 },
+    identityIntent: { scope: 'unspecified', explicitSeasonOverride: false, explicitScopeOverride: false },
+    targetGameId: null, targetPlayerId: null, timeRange: null, dataRequirements: [],
+    answerMode: 'clarification_request', identityResolutionScope: 'unspecified', confidence: 1,
+    domain: 'npb', legacyStabilizationApplied: false,
   })
 }
