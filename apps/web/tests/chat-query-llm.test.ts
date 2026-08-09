@@ -1,5 +1,9 @@
 import { describe, expect, it, vi } from 'vitest'
-import { createChatQueryLlm, normalizeStructuredQueryFromLlmMessage } from '../server/services/chat-query-llm'
+import {
+  ChatQueryLlmContractError,
+  createChatQueryLlm,
+  normalizeStructuredQueryFromLlmMessage,
+} from '../server/services/chat-query-llm'
 
 describe('chat-query-llm', () => {
   it('parses a valid OpenAI-compatible chat completions response', async () => {
@@ -46,6 +50,19 @@ describe('chat-query-llm', () => {
     })
 
     expect(fetchMock).toHaveBeenCalledTimes(1)
+    const request = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body))
+    expect(request.response_format).toMatchObject({
+      type: 'json_schema',
+      json_schema: {
+        schema: {
+          properties: {
+            intent: {
+              enum: expect.arrayContaining(['search_events', 'off_topic']),
+            },
+          },
+        },
+      },
+    })
   })
 
   it('rejects invalid structured query JSON so the caller can fall back', async () => {
@@ -77,6 +94,47 @@ describe('chat-query-llm', () => {
     await expect(
       llm.generateStructuredQuery('8回裏のイベントを教えて'),
     ).rejects.toThrow()
+  })
+
+  it('records the raw planner intent and OpenAI request id on contract violations', async () => {
+    const logger = { error: vi.fn() }
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          choices: [{
+            message: {
+              content: JSON.stringify({ intent: 'recheck_request', filters: {} }),
+            },
+          }],
+        }),
+        {
+          status: 200,
+          headers: {
+            'content-type': 'application/json',
+            'x-request-id': 'req_planner_contract',
+          },
+        },
+      ),
+    )
+    const llm = createChatQueryLlm(
+      { baseUrl: 'https://example.test/v1', apiKey: 'secret', model: 'test-model' },
+      { fetch: fetchMock, logger },
+    )
+
+    const error = await llm.generateStructuredQuery('調べなおして').catch((value: unknown) => value)
+    expect(error).toBeInstanceOf(ChatQueryLlmContractError)
+    expect(error).toMatchObject({
+      plannerIntent: 'recheck_request',
+      rawResponse: '{"intent":"recheck_request","filters":{}}',
+      openAiRequestId: 'req_planner_contract',
+    })
+    expect(logger.error).toHaveBeenCalledWith(
+      '[chat-query-llm] planner contract violation',
+      expect.objectContaining({
+        plannerIntent: 'recheck_request',
+        openAiRequestId: 'req_planner_contract',
+      }),
+    )
   })
 
   it('normalizes pitchCount ranking outputs into search_pitching', async () => {

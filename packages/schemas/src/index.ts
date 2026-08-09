@@ -291,6 +291,7 @@ export const chatIntentSchema = z.enum([
   'aggregate_events',
   'aggregate_games',
   'award_winners',
+  'off_topic',
 ])
 
 export const chatHistoryMessageSchema = z.object({

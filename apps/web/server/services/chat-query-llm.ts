@@ -24,6 +24,39 @@ const openAiCompatibleChatCompletionSchema = z.object({
   ).min(1),
 })
 
+const plannerIntentValues = [
+  'search_events',
+  'search_games',
+  'search_batting',
+  'search_pitching',
+  'search_roster',
+  'player_affiliation',
+  'game_detail',
+  'aggregate_batting',
+  'aggregate_pitching',
+  'aggregate_events',
+  'aggregate_games',
+  'award_winners',
+  'off_topic',
+] as const
+
+const plannerResponseFormat = {
+  type: 'json_schema',
+  json_schema: {
+    name: 'npb_chat_structured_query',
+    strict: false,
+    schema: {
+      type: 'object',
+      properties: {
+        intent: { type: 'string', enum: plannerIntentValues },
+        filters: { type: 'object' },
+      },
+      required: ['intent', 'filters'],
+      additionalProperties: false,
+    },
+  },
+} as const
+
 export type ChatQueryLlmConfig = {
   baseUrl: string
   apiKey: string
@@ -42,6 +75,20 @@ export class ChatQueryLlmHttpError extends Error {
 
 type ChatQueryLlmDependencies = {
   fetch?: typeof fetch
+  logger?: Pick<Console, 'error'>
+}
+
+export class ChatQueryLlmContractError extends Error {
+  constructor(
+    message: string,
+    public readonly plannerIntent: unknown,
+    public readonly rawResponse: string,
+    public readonly openAiRequestId: string | null,
+    options?: ErrorOptions,
+  ) {
+    super(message, options)
+    this.name = 'ChatQueryLlmContractError'
+  }
 }
 
 export function hasChatQueryLlmConfig(config: Partial<ChatQueryLlmConfig>): config is ChatQueryLlmConfig {
@@ -53,6 +100,7 @@ export function createChatQueryLlm(
   dependencies: ChatQueryLlmDependencies = {},
 ) {
   const fetchFn = dependencies.fetch ?? globalThis.fetch
+  const logger = dependencies.logger ?? console
 
   return {
     async generateStructuredQuery(
@@ -62,7 +110,7 @@ export function createChatQueryLlm(
       const body = JSON.stringify({
         model: config.model,
         temperature: 0,
-        response_format: { type: 'json_object' },
+        response_format: plannerResponseFormat,
         messages: [
           { role: 'system', content: chatQueryParserSystemPrompt },
           { role: 'user', content: buildChatQueryParserUserPrompt(message, context) },
@@ -90,6 +138,7 @@ export function createChatQueryLlm(
         )
       }
 
+      const openAiRequestId = response!.headers.get('x-request-id') ?? response!.headers.get('openai-request-id')
       const payload = openAiCompatibleChatCompletionSchema.parse(await response!.json())
       const rawContent = payload.choices[0]?.message.content
       const text = Array.isArray(rawContent)
@@ -97,7 +146,28 @@ export function createChatQueryLlm(
         : rawContent.trim()
 
       const parsed = JSON.parse(extractJsonObject(text))
-      return chatStructuredQuerySchema.parse(normalizeStructuredQueryFromLlmMessage(message, parsed))
+      const normalized = normalizeStructuredQueryFromLlmMessage(message, parsed)
+      const validated = chatStructuredQuerySchema.safeParse(normalized)
+      if (!validated.success) {
+        const plannerIntent = parsed && typeof parsed === 'object'
+          ? (parsed as { intent?: unknown }).intent
+          : undefined
+        const evidence = {
+          plannerIntent,
+          openAiRequestId,
+          rawResponse: text,
+          validation: validated.error.issues,
+        }
+        logger.error('[chat-query-llm] planner contract violation', evidence)
+        throw new ChatQueryLlmContractError(
+          `Planner contract violation: intent=${JSON.stringify(plannerIntent)}; openai_request_id=${openAiRequestId ?? 'unavailable'}; validation=${validated.error.message}`,
+          plannerIntent,
+          text,
+          openAiRequestId,
+          { cause: validated.error },
+        )
+      }
+      return validated.data
     },
   }
 }
