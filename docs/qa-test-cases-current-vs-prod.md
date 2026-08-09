@@ -1,5 +1,39 @@
 # QAテストケース一覧 - 現行本番との差分
 
+## Phase 17 Planner Contract修正後の本番QA（中断）
+
+- 対象デプロイVersion ID: `60b49f3d-7c89-411f-9d83-1afe88084700`
+- 修正コミット: `bcab62e77 fix: enforce planner intent contract`
+- 実行ログ: [data/logs/qa-prod-run/qa-prod-1786288155295](../data/logs/qa-prod-run/qa-prod-1786288155295)
+- Q-01〜Q-22: HTTP 200、summary非null
+- Q-23: OpenAI上流がHTTP 429 `insufficient_quota` / `credit_balance_exhausted`を4回連続で返し、Worker公開応答はHTTP 503、summary null
+- Q-24以降: 同じ上流quota障害の継続を確認したため未実行
+- 判定: **Release Blocked**。全176件完走、HTTP 500/503 0件、summary null 0件の条件を満たしていない。
+
+### Phase 17 Planner Contract違反の本番証拠
+
+- 観測Version ID: `ca5610e2-53cb-477b-b303-e7c71a09a0ac`
+- Q-96 `調べなおして`: Planner生JSONは `{"intent":"correction_request","filters":{}}`
+- Q-108 `違う、その前のやつ`: Planner生JSONは `{"intent":"correction_request","filters":{}}`
+- Schema validation: `invalid_union_discriminator`、対象pathは `intent`
+- 原因: Promptがfollow-up分類名をplanning layerで出力するよう誘導する一方、structured query Schemaとrepository routingはquery intentだけを許可していた。
+- 修正: follow-up分類をapplication metadataへ分離し、Prompt・Schema intent定義・OpenAI JSON Schema enumを整合させた。Planner生JSON、OpenAI request ID、validation issuesをWorkerログへ残すようにした。
+
+### Phase 17旧VersionのHTTP 500分類
+
+Version `71d40637-de01-4cc7-92e9-f0d2051da554` の全176件run
+[data/logs/qa-prod-1786245739484.json](../data/logs/qa-prod-1786245739484.json) でHTTP 500となった27件は、
+観測Versionで全件を再実行し、27/27がHTTP 200かつsummary非null、Worker例外ログ0だった。
+旧runではresponse headerとWorker tailを保存していなかったため例外種別は断定せず、分類は
+`その他（旧runの詳細ログ欠落）`、再現性は`断続再現`とする。
+
+`Q-01`, `Q-02`, `Q-04`, `Q-05`, `Q-06`, `Q-08`, `Q-09`, `Q-11`,
+`Q-12`, `Q-13`, `Q-15`, `Q-16`, `Q-17`, `Q-19`, `Q-20`, `Q-47`,
+`Q-52`, `Q-53`, `Q-60`, `Q-63`, `Q-66`, `Q-69`, `Q-76`, `Q-81`,
+`Q-82`, `Q-83`, `Q-114`
+
+Q-96とQ-108は`Validation例外`かつ`恒常再現`（旧Version・観測Versionで各4回連続再現）とする。
+
 - 現行ケース数: 176
 - 対象デプロイVersion ID: `5968cd0a-bffa-4a39-987d-8e8519611676`
 - QA実行モード: 通常本番API（LLM parser 実行）
