@@ -1,5 +1,44 @@
 # QAテストケース一覧 - 現行本番との差分
 
+## Phase 17.2 Clarification Response Policy本番反映
+
+- 対象デプロイVersion ID: `480d9fb8-5604-466a-b772-16a6423de783`
+- 対象コミット: `b2deff5cc06f4d420fd5ac18c80fe7b59310f704`
+- 本番URL: `https://npb-chat.dom9th-works.com`
+- 統合ログ: `data/logs/phase17-2-prod-480d9fb8-5604-466a-b772-16a6423de783.json`
+- 範囲ログ: `qa-prod-1786327074149`（Q-01〜45）、`qa-prod-1786327075645`（Q-46〜90）、`qa-prod-1786327070202`（Q-91〜135）、`qa-prod-1786327072527`（Q-136〜181）
+- Phase 17再実行ログ: `qa-prod-1786340223352`（Q-177〜181、注釈を除いた実messageと指定historyで再実行）
+- 実行対象: 181/181
+- QA正と整合: 15件
+- 許容外差分または実行失敗: 166件
+- 公開HTTP 500: 0件
+- 公開HTTP 503: 160件。加えてQ-165/Q-170/Q-173のcapability check内部chat requestがHTTP 503となり、HTTP 503影響ケースは合計163件
+- summary null: 163件
+- Planner Validation失敗: 0件（成功応答で観測）。HTTP 503の160件はPlanner結果を取得できないため未評価
+- Planner Contract違反: 0件（clarification成功3件で確認）。HTTP 503ケースは未評価
+- Entity Resolution: Q-180がHTTP 503でResolverへ到達せず、Entity ambiguity契約は本番未確認。誤解決の観測は0件
+- 判定: **Release Blocked**
+
+### Clarification経路の本番証拠
+
+Q-178、Q-179、Q-181はすべてHTTP 200、summary非null、`structured_query: null`、`data_requirements: []`、`repositories: []`、`player_id_required: false`、`planner_validation.status: valid`だった。`execution_metadata.response_policy`はそれぞれ`missing_history`、`history_target_unavailable`、`insufficient_context`である。`capability_route`、`question_intent`、`resolved_player`は生成されておらず、`capability_uses_repository: false`だった。このため、Planner → Validation → Service → Formatter → HTTP Responseの確認応答経路で、Capability Routing、Entity Resolution、Repositoryへ進んでいないことを本番実行ログで確認した。Repository誤実行は0/3、clarification機能失敗は0/3である。
+
+成功payloadはエラー応答ではないが、成功schemaは`error: false`を返さず`error` field自体を持たない。Phase 17.2の期待をliteralな`error=false` property必須と解釈する場合は3/3が公開API Contract差分となる。
+
+### Follow-up・Entity確認
+
+- Q-177（履歴あり`調べなおして`）: 指定history付きで送信したが、通常PlannerのOpenAI呼び出しが上流HTTP 429 `insufficient_quota` / `credit_balance_exhausted`となり、公開HTTP 503。Repository実行・通常回答を確認できなかった。
+- Q-178（履歴なし`調べなおして`）: HTTP 200、`clarify / missing_history`、Repository未実行。
+- Q-179（履歴切れ`違う、その前のやつ`）: HTTP 200、`clarify / history_target_unavailable`、Repository未実行。
+- Q-181（文脈不足`それ詳しく`）: HTTP 200、`clarify / insufficient_context`、Repository未実行。
+- Q-180（`田中どう？`）: OpenAI上流quota障害により公開HTTP 503。Entity ambiguityへ到達せず、clarificationへ誤変換された事実も確認できない。
+
+### current-vs-prod差分とRelease判定
+
+通常Plannerを必要とするケースはOpenAI上流のquota障害により広範にHTTP 503となり、QA正との文意比較を完了できない。Q-91/Q-96/Q-108は参照元回答がHTTP 503で履歴を構築できず、no-history clarificationとなったためQA正と不一致である。既存機能の新規回帰有無は、通常query 160件とEntity ambiguityを実行できないため判定不能である。
+
+Release Blockedの理由は、全181件を実行したものの、HTTP 503影響163件、summary null 163件、履歴ありFollow-up未確認、Entity ambiguity未確認が残り、運用ルールのRelease完了条件を満たさないためである。OpenAI quota復旧後、同じVersionに対して全181件を再実行し、HTTP 200・summary非null・許容外差分0を確認する必要がある。
+
 ## Phase 17 Planner Contract修正後の本番QA（中断）
 
 - 対象デプロイVersion ID: `60b49f3d-7c89-411f-9d83-1afe88084700`

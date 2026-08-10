@@ -7,7 +7,9 @@ const args = process.argv.slice(3)
 const delayMs = Number(process.env.QA_DELAY_MS ?? 7000)
 const fetchTimeoutMs = Number(process.env.QA_FETCH_TIMEOUT_MS ?? 60000)
 const fetchRetryDelaysMs = [2000, 5000, 10000]
-const httpRetryDelaysMs = [5000, 15000, 30000, 60000]
+const httpRetryDelaysMs = process.env.QA_DISABLE_HTTP_RETRIES === '1'
+  ? []
+  : [5000, 15000, 30000, 60000]
 
 let startId = null
 let endId = null
@@ -453,6 +455,15 @@ await saveState({
 })
 
 function buildHistoryForCase(testCase, completedAnswers) {
+  if (testCase.id === 'Q-177') {
+    return [
+      { role: 'user', content: '2026年の藤浪の登板を教えて' },
+      { role: 'assistant', content: '藤浪晋太郎の2026年の登板結果です。' },
+    ]
+  }
+  if (testCase.id === 'Q-179') {
+    return [{ role: 'user', content: 'それ' }]
+  }
   const match = testCase.question.match(/直前に(Q-\d+)の回答がある状態/u)
   if (!match) {
     return []
@@ -468,7 +479,10 @@ function buildHistoryForCase(testCase, completedAnswers) {
 }
 
 function normalizeQuestionForHistoryCase(question) {
-  return question.replace(/^（直前にQ-\d+の回答がある状態で）/u, '').trim()
+  return question
+    .replace(/^（直前にQ-\d+の回答がある状態で）/u, '')
+    .replace(/（(?:直前の履歴に.+あり|履歴なし|参照先より前の履歴が保持範囲外)）$/u, '')
+    .trim()
 }
 
 async function runCapabilityCheck(testCase, userId) {
