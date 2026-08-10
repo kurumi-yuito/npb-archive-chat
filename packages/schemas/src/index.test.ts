@@ -293,6 +293,7 @@ describe('@npb/schemas', () => {
   it('parses chat response payloads', () => {
     expect(
       chatResponseSchema.parse({
+        error: false,
         message: '山村の代打イベントを教えて',
         structured_query: {
           intent: 'search_events',
@@ -399,6 +400,14 @@ describe('@npb/schemas', () => {
         result_count: 1,
       },
     })
+  })
+
+  it('requires error: false for successful chat response payloads', () => {
+    const successDiscriminantSchema = chatResponseSchema.pick({ error: true })
+
+    expect(successDiscriminantSchema.parse({ error: false })).toEqual({ error: false })
+    expect(() => successDiscriminantSchema.parse({})).toThrow()
+    expect(() => successDiscriminantSchema.parse({ error: true })).toThrow()
   })
 
   it('parses rich game payloads', () => {

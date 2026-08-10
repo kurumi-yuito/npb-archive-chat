@@ -710,3 +710,12 @@ A: [未実行]
 
 Q-181: それ詳しく（履歴なし）
 A: どの内容についてのご質問ですか？対象となる選手名、試合、または質問内容を教えてください。
+
+---
+
+## カテゴリ34: 成功API Contract
+
+期待契約: `POST /api/chat`のHTTP 2xx成功レスポンスは必須fieldとして`error: false`を返す。非2xxエラーの`error: true`とliteral discriminantで区別でき、field省略は許可しない。
+
+Q-182: 成功レスポンスのerror discriminant
+A: [未実行]

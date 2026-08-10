@@ -55,8 +55,26 @@ Done:
 
 ### Response
 
-レスポンスは次を返す。
+HTTP 2xxの成功レスポンスは必須fieldとして`"error": false`を返す。field省略は許可しない。HTTP 4xx/5xxの公開エラーは`"error": true`を返すため、利用者は`error`をliteral discriminantとして安全に分岐できる。ServiceとFormatterが扱う内部`ChatResponseCore`にはHTTP成否を持たせず、Route境界で`error: false`を付与する。
 
+```json
+{
+  "error": false,
+  "message": "2025-08-15の山村の代打イベントを教えて",
+  "structured_query": {
+    "intent": "search_events",
+    "filters": {}
+  },
+  "answer": {},
+  "usage": {},
+  "results": {},
+  "sources": []
+}
+```
+
+成功レスポンスは次を返す。
+
+- `error`: 常に`false`。必須
 - `message`: 入力原文
 - `structured_query`: schema validate 済みの検索意図
 - `answer.summary`: 回答文のドラフト
@@ -66,6 +84,8 @@ Done:
 - `answer.resolved_player`: player resolution の結果。`ambiguous` / `not_found` のときも候補または停止理由を含む
 - `results`: DB検索結果
 - `sources`: `source_snapshots` 由来の `game_id` / `source_key` / `source_url`
+
+正式なSchemaとTypeScript型は`packages/schemas/src/index.ts`の`chatResponseSchema` / `ChatResponse`を正とする。成功・失敗のunionは`chatApiResponseSchema` / `ChatApiResponse`で表現する。
 
 
 ## Structured Query

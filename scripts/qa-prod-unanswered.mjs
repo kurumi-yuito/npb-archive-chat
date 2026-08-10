@@ -66,6 +66,7 @@ const usageCapabilityCases = new Set([
   'Q-165', 'Q-166', 'Q-167', 'Q-169', 'Q-170', 'Q-171',
   'Q-172', 'Q-173', 'Q-174', 'Q-175', 'Q-176',
 ])
+const apiContractCases = new Set(['Q-182'])
 
 const text = await readFile(docPath, 'utf8')
 const cases = []
@@ -486,12 +487,33 @@ function normalizeQuestionForHistoryCase(question) {
 }
 
 async function runCapabilityCheck(testCase, userId) {
-  if (!uiCapabilityCases.has(testCase.id) && !usageCapabilityCases.has(testCase.id)) {
+  if (!uiCapabilityCases.has(testCase.id) && !usageCapabilityCases.has(testCase.id) && !apiContractCases.has(testCase.id)) {
     return null
   }
   const evidence = {}
   const checkedUrls = []
   try {
+    if (apiContractCases.has(testCase.id)) {
+      const url = `${baseUrl}/api/chat`
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'user-agent': `npb-production-qa/${testCase.id}-${userId}`,
+        },
+        body: JSON.stringify({ message: 'それ詳しく' }),
+      })
+      const payload = await response.json()
+      checkedUrls.push(url)
+      evidence.apiContract = {
+        status: response.status,
+        error: payload.error,
+        structuredQuery: payload.structured_query,
+        responsePolicy: payload.answer?.execution_metadata?.response_policy ?? null,
+      }
+      assert(response.ok, `chat API returned HTTP ${response.status}`)
+      assert(payload.error === false, 'successful chat response must include error: false')
+    }
     if (uiCapabilityCases.has(testCase.id)) {
       const url = `${baseUrl}/chat`
       const response = await fetch(url, { headers: { 'user-agent': `npb-production-qa/${testCase.id}` } })

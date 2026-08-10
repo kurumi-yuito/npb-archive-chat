@@ -444,6 +444,7 @@ export const chatSourceSchema = z.object({
 })
 
 export const chatResponseSchema = z.object({
+  error: z.literal(false),
   message: z.string().min(1),
   structured_query: chatStructuredQuerySchema.nullable(),
   answer: z.object({
@@ -694,7 +695,21 @@ export const chatResponseSchema = z.object({
   sources: z.array(chatSourceSchema),
 })
 
-export const chatResponseCoreSchema = chatResponseSchema.omit({ usage: true })
+export const chatResponseCoreSchema = chatResponseSchema.omit({ error: true, usage: true })
+
+export const publicApiErrorResponseSchema = z.object({
+  error: z.literal(true),
+  url: z.string().optional(),
+  statusCode: z.number().int().min(400).max(599),
+  statusMessage: z.string().optional(),
+  message: z.string().min(1),
+  data: z.record(z.unknown()).optional(),
+})
+
+export const chatApiResponseSchema = z.discriminatedUnion('error', [
+  chatResponseSchema,
+  publicApiErrorResponseSchema,
+])
 
 const lineScoreTeamSchema = z.object({
   team: z.string().min(1),
@@ -979,4 +994,6 @@ export type ChatStructuredQuery = z.infer<typeof chatStructuredQuerySchema>
 export type ChatSource = z.infer<typeof chatSourceSchema>
 export type ChatResponse = z.infer<typeof chatResponseSchema>
 export type ChatResponseCore = z.infer<typeof chatResponseCoreSchema>
+export type PublicApiErrorResponse = z.infer<typeof publicApiErrorResponseSchema>
+export type ChatApiResponse = z.infer<typeof chatApiResponseSchema>
 export type RichGame = z.infer<typeof richGameSchema>

@@ -193,7 +193,7 @@ export default defineEventHandler(async (event) => {
         ? buildFreeUsageInfo(effectiveBucket, usageConfig, now)
         : buildProUsageInfo(now)
 
-      return chatResponseSchema.parse({ ...core, usage })
+      return chatResponseSchema.parse({ error: false, ...core, usage })
     } catch (innerError) {
       await Promise.all(consumedBucketKeys.map((bucketKey) =>
         refundChatUsageToken(metaDatabase, bucketKey, usageConfig, nowSeconds).catch(() => {})))

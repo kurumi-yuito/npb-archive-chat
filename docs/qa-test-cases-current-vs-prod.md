@@ -23,7 +23,7 @@
 
 Q-178、Q-179、Q-181はすべてHTTP 200、summary非null、`structured_query: null`、`data_requirements: []`、`repositories: []`、`player_id_required: false`、`planner_validation.status: valid`だった。`execution_metadata.response_policy`はそれぞれ`missing_history`、`history_target_unavailable`、`insufficient_context`である。`capability_route`、`question_intent`、`resolved_player`は生成されておらず、`capability_uses_repository: false`だった。このため、Planner → Validation → Service → Formatter → HTTP Responseの確認応答経路で、Capability Routing、Entity Resolution、Repositoryへ進んでいないことを本番実行ログで確認した。Repository誤実行は0/3、clarification機能失敗は0/3である。
 
-成功payloadはエラー応答ではないが、成功schemaは`error: false`を返さず`error` field自体を持たない。Phase 17.2の期待をliteralな`error=false` property必須と解釈する場合は3/3が公開API Contract差分となる。
+成功payloadはエラー応答ではないが、このVersionの成功schemaは`error: false`を返さず`error` field自体を持たないため3/3が公開API Contract差分だった。Phase 17.3では`error: false`必須を正式Contractとして採用し、未デプロイのため本節のPhase 17.2本番観測結果は変更しない。
 
 ### Follow-up・Entity確認
 
