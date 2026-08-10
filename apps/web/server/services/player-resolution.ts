@@ -24,6 +24,11 @@ type ResolutionTarget = {
   value: string
 }
 
+const verifiedRegisteredNameAliases: Record<string, { registeredName: string; teams: string[] }> = {
+  村上宗隆: { registeredName: '村上', teams: ['東京ヤクルトスワローズ'] },
+  大谷翔平: { registeredName: '大谷', teams: ['北海道日本ハムファイターズ'] },
+}
+
 const teamAliasEntries = [
   ['ヤクルト', ['ヤクルト', '東京ヤクルトスワローズ']],
   ['東京ヤクルト', ['ヤクルト', '東京ヤクルトスワローズ']],
@@ -396,6 +401,15 @@ function selectCandidatesForInput(
     })
     const collapsedProfiles = collapseSameEntityFallbacks(profileMatches)
     if (collapsedProfiles.length === 1) return collapsedProfiles
+    const verifiedAlias = verifiedRegisteredNameAliases[inputKey]
+    if (verifiedAlias) {
+      const aliasCandidates = candidates.filter((candidate) =>
+        normalizeCandidateName(candidate.name) === normalizeCandidateName(verifiedAlias.registeredName) &&
+        candidate.teams.some((team) => verifiedAlias.teams.some((knownTeam) => sameTeamAlias(team, knownTeam))),
+      )
+      const collapsedAliases = collapseSameEntityFallbacks(aliasCandidates)
+      if (collapsedAliases.length === 1) return collapsedAliases
+    }
     const registeredNamePrefixes = candidates.filter((candidate) => {
       const nameKey = normalizeCandidateName(candidate.name)
       return nameKey.length >= 3 && inputKey.startsWith(nameKey)

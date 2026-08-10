@@ -250,6 +250,8 @@ Entity Resolutionは3文字以上の完全名入力を2文字以下の姓だけ�
 
 Repositoryがprofile / alias一致をfact rowへ関連付ける場合、候補名はfact rowの省略名ではなく一致したprofileのcanonical full nameへ投影する。Resolverは`match_kind=profile`だけを信用せず、そのcanonical nameが入力完全名と一致するか、3文字以上の登録名prefixであることも検証する。
 
+本番profileに完全名が存在せずfact rowが姓だけを保持する既知の歴史選手は、コードレビューされたidentity alias（完全名・登録名・既知球団）でのみ補完する。姓の一致だけでは解決せず、候補の球団履歴がaliasの既知球団と一致し、同一entityへcollapseできる場合に限ってResolverが採用する。
+
 過去試合のスタメン検索では`roster_entries`を第一取得元とし、同期済みrosterがない場合は同じ試合条件のbox-score打撃行（打順・守備位置）をRepository fallbackとして使う。これはPlanner intentを変更せず、同一のhistorical roster evidenceを別の正規化済み表現から取得する処理である。
 
 履歴内の試合を指すdetail / reason / summary系follow-upは、Plannerが確定した`referencedContext.anchor`の日付・球団から`game_detail`を構成する。ServiceやFormatterは元発話を再解釈しない。参照先を特定できない場合は`responsePolicy: clarify`で停止する。

@@ -144,6 +144,38 @@ describe('player-identity facade', () => {
     })
   })
 
+  it('resolves a verified full-name alias only through its known historical team', async () => {
+    const queryService = createQueryService([
+      {
+        player_id: 'murakami-munetaka',
+        name: '村上',
+        primary_team: '東京ヤクルトスワローズ',
+        roles: ['batter'],
+        teams: ['東京ヤクルトスワローズ'],
+        years: [2019, 2020, 2021, 2022, 2023, 2024, 2025],
+      },
+      {
+        player_id: 'different-murakami',
+        name: '村上',
+        primary_team: '阪神タイガース',
+        roles: ['batter'],
+        teams: ['阪神タイガース'],
+        years: [2026],
+      },
+    ])
+
+    const result = await resolveHistoricalPlayer(queryService, {
+      intent: 'aggregate_batting',
+      filters: { player_name: '村上宗隆', year_from: 2019, year_to: 2025 },
+    })
+
+    expect(result.resolution).toMatchObject({
+      input: '村上宗隆',
+      player_id: 'murakami-munetaka',
+      status: 'resolved',
+    })
+  })
+
   it('merges exact historical surname rows into one canonical profile across transfers', async () => {
     const queryService = createQueryService([
       {
