@@ -248,6 +248,8 @@ Serviceはstandalone質問のEntity Resolution直前に、最初にValidationを
 
 Entity Resolutionは3文字以上の完全名入力を2文字以下の姓だけの候補で充足しない。年・球団filterによって姓だけの候補が1件に絞られても、同姓の別人である可能性を排除できないため`not_found`とする。完全名の解決には正規化後の完全一致profile / alias、または3文字以上で一意な最長登録名prefixを必要とする。
 
+Repositoryがprofile / alias一致をfact rowへ関連付ける場合、候補名はfact rowの省略名ではなく一致したprofileのcanonical full nameへ投影する。Resolverは`match_kind=profile`だけを信用せず、そのcanonical nameが入力完全名と一致するか、3文字以上の登録名prefixであることも検証する。
+
 過去試合のスタメン検索では`roster_entries`を第一取得元とし、同期済みrosterがない場合は同じ試合条件のbox-score打撃行（打順・守備位置）をRepository fallbackとして使う。これはPlanner intentを変更せず、同一のhistorical roster evidenceを別の正規化済み表現から取得する処理である。
 
 履歴内の試合を指すdetail / reason / summary系follow-upは、Plannerが確定した`referencedContext.anchor`の日付・球団から`game_detail`を構成する。ServiceやFormatterは元発話を再解釈しない。参照先を特定できない場合は`responsePolicy: clarify`で停止する。

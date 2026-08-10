@@ -328,7 +328,7 @@ describe('chat eval: db-backed query plan, result, formatter regression', () => 
       intent: 'player_affiliation',
       filters: {
         team: 'ヤクルト',
-        player_name: '山田',
+        player_name: '山田 哲人',
         player_id: '91895133',
       },
     })
@@ -348,7 +348,7 @@ describe('chat eval: db-backed query plan, result, formatter regression', () => 
     expect(response.structured_query).toMatchObject({
       intent: 'player_affiliation',
       filters: {
-        player_name: '山田',
+        player_name: '山田 哲人',
         player_id: '91895133',
       },
     })

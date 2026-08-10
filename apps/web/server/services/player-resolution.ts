@@ -389,9 +389,11 @@ function selectCandidatesForInput(
   // linked to the unique profile/alias match remains valid even if its fact row
   // stores only the surname.
   if (inputKey.length > 2) {
-    const profileMatches = candidates.filter(
-      (candidate) => (candidate as InternalPlayerCandidate).match_kind === 'profile',
-    )
+    const profileMatches = candidates.filter((candidate) => {
+      if ((candidate as InternalPlayerCandidate).match_kind !== 'profile') return false
+      const nameKey = normalizeCandidateName(candidate.name)
+      return nameKey === inputKey || (nameKey.length >= 3 && inputKey.startsWith(nameKey))
+    })
     const collapsedProfiles = collapseSameEntityFallbacks(profileMatches)
     if (collapsedProfiles.length === 1) return collapsedProfiles
     const registeredNamePrefixes = candidates.filter((candidate) => {

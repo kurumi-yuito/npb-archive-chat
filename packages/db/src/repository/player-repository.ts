@@ -346,7 +346,11 @@ export async function searchPlayerCandidates(
     // only keep candidates that are that player.
     const idFiltered = candidates
       .filter((c) => c.player_id && profilePlayerIds.includes(c.player_id))
-      .map((c) => ({ ...c, match_kind: 'profile' }))
+      .map((c) => ({
+        ...c,
+        name: profileMatches.find((profile) => profile.player_id === c.player_id)?.fullName ?? c.name,
+        match_kind: 'profile',
+      }))
     if (idFiltered.length > 0) {
       candidates = idFiltered
     } else if (profilePlayerIds.length === 1) {
