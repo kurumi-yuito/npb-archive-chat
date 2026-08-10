@@ -123,6 +123,27 @@ describe('player-identity facade', () => {
     })
   })
 
+  it('does not satisfy a full name with a unique surname-only candidate', async () => {
+    const queryService = createQueryService([{
+      player_id: 'different-murakami',
+      name: '村上',
+      primary_team: '阪神',
+      roles: ['batter'],
+      teams: ['阪神'],
+      years: [2026],
+    }])
+
+    const result = await resolvePlayer(queryService, {
+      intent: 'aggregate_batting',
+      filters: { player_name: '村上宗隆', year: 2026 },
+    })
+
+    expect(result.resolution).toMatchObject({
+      input: '村上宗隆',
+      status: 'not_found',
+    })
+  })
+
   it('merges exact historical surname rows into one canonical profile across transfers', async () => {
     const queryService = createQueryService([
       {

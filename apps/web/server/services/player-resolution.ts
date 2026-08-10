@@ -383,6 +383,32 @@ function selectCandidatesForInput(
     return collapseSameEntityFallbacks(exact)
   }
 
+  // A full-name input must never be satisfied by a surname-only row. Those rows
+  // can belong to a different player even when the current filters leave only
+  // one candidate (for example 村上宗隆 vs 阪神の村上). A candidate explicitly
+  // linked to the unique profile/alias match remains valid even if its fact row
+  // stores only the surname.
+  if (inputKey.length > 2) {
+    const profileMatches = candidates.filter(
+      (candidate) => (candidate as InternalPlayerCandidate).match_kind === 'profile',
+    )
+    const collapsedProfiles = collapseSameEntityFallbacks(profileMatches)
+    if (collapsedProfiles.length === 1) return collapsedProfiles
+    const registeredNamePrefixes = candidates.filter((candidate) => {
+      const nameKey = normalizeCandidateName(candidate.name)
+      return nameKey.length >= 3 && inputKey.startsWith(nameKey)
+    })
+    if (registeredNamePrefixes.length === 0) return []
+    const maxLength = Math.max(...registeredNamePrefixes.map(
+      (candidate) => normalizeCandidateName(candidate.name).length,
+    ))
+    const longestPrefixes = registeredNamePrefixes.filter(
+      (candidate) => normalizeCandidateName(candidate.name).length === maxLength,
+    )
+    const collapsedPrefixes = collapseSameEntityFallbacks(longestPrefixes)
+    return collapsedPrefixes.length === 1 ? collapsedPrefixes : []
+  }
+
   const surnameMatches = candidates.filter((candidate) => {
     const nameKey = normalizeCandidateName(candidate.name)
     return nameKey.length >= 1 && inputKey.startsWith(nameKey)
