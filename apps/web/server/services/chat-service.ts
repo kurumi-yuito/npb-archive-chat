@@ -351,7 +351,7 @@ export function createChatService(
         return multiPlayerComparisonResponse
       }
 
-      const identityContractQuery = enforcePlannerIdentityContract(message, parsedQuery, effectivePlan)
+      const identityContractQuery = enforcePlannerIdentityContract(message, parsedQuery, initialPlan)
       if (identityContractQuery !== parsedQuery) {
         parsedQuery = identityContractQuery
         effectivePlan = withCapability(buildPlannerOutput(parsedQuery, true, {
