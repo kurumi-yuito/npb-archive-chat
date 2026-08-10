@@ -12,7 +12,8 @@ import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { loadRichGame } from '../../../packages/db/src/loader'
 import { formatChatAnswer } from '../server/services/chat-answer-formatter'
-import { createChatService } from '../server/services/chat-service'
+import { createChatService, enforcePlannerIdentityContract } from '../server/services/chat-service'
+import { buildPlannerOutput } from '../server/services/chat-planner'
 import { ChatFinalAnswerLlmHttpError } from '../server/services/chat-final-answer-llm'
 
 const REPOSITORY_ROOT = fileURLToPath(new URL('../../..', import.meta.url))
@@ -4118,6 +4119,29 @@ describe('chat-service', () => {
     expect(aggregateCalled).toBe(false)
     expect(response.answer.summary).toContain('選手候補')
     expect(response.answer.execution_metadata?.player_id_satisfied).toBe(false)
+  })
+
+  it('restores the Planner target before Entity Resolution when a standalone rewrite changes identity', () => {
+    const message = '村上宗隆の今シーズンの成績を教えてください'
+    const plannerOutput = buildPlannerOutput({
+      intent: 'aggregate_batting',
+      filters: { year: 2026, player_name: '村上宗隆' },
+    }, true, { message, history: [] })
+
+    const result = enforcePlannerIdentityContract(message, {
+      intent: 'aggregate_batting',
+      filters: {
+        year: 2026,
+        player_name: '村上',
+        player_id: 'wrong-id',
+        team: '阪神タイガース',
+      },
+    }, plannerOutput)
+
+    expect(result).toEqual({
+      intent: 'aggregate_batting',
+      filters: { year: 2026, player_name: '村上宗隆' },
+    })
   })
 
   it('does not fall back to name-only recent pitching for unresolved multi-player comparisons', async () => {

@@ -351,6 +351,15 @@ export function createChatService(
         return multiPlayerComparisonResponse
       }
 
+      const identityContractQuery = enforcePlannerIdentityContract(message, parsedQuery, effectivePlan)
+      if (identityContractQuery !== parsedQuery) {
+        parsedQuery = identityContractQuery
+        effectivePlan = withCapability(buildPlannerOutput(parsedQuery, true, {
+          message,
+          history: options.history,
+        }), message, parsedQuery)
+      }
+
       const structuredFilters = parsedQuery.filters as Record<string, unknown>
       const useYearlyBattingFastPath =
         parsedQuery.intent === 'aggregate_batting' &&
@@ -962,6 +971,33 @@ export function createChatService(
       return core
     },
   }
+}
+
+export function enforcePlannerIdentityContract(
+  message: string,
+  structuredQuery: ChatStructuredQuery,
+  plannerOutput: ChatPlannerOutput,
+): ChatStructuredQuery {
+  if (plannerOutput.followUpType !== 'standalone') return structuredQuery
+  if (plannerOutput.targetEntity?.players.length !== 1) return structuredQuery
+  const targetPlayer = plannerOutput.targetEntity.players[0]
+  if (!targetPlayer) return structuredQuery
+  const filters = { ...(structuredQuery.filters as Record<string, unknown>) }
+  const nameField = ['player_name', 'pitcher_name', 'batter_name', 'runner_name']
+    .find((field) => typeof filters[field] === 'string')
+  if (!nameField) return structuredQuery
+  if (filters[nameField] === targetPlayer) return structuredQuery
+  const playerIdFields = ['player_id', 'pitcher_player_id', 'batter_player_id', 'runner_player_id']
+  filters[nameField] = targetPlayer
+  for (const field of playerIdFields) {
+    if (field in filters) {
+      delete filters[field]
+    }
+  }
+  if (typeof filters.team === 'string' && !messageMentionsTeam(message, filters.team)) {
+    delete filters.team
+  }
+  return { ...structuredQuery, filters } as ChatStructuredQuery
 }
 
 async function searchRosterEntriesForChat(
