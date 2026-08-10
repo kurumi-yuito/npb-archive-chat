@@ -63,8 +63,32 @@ export async function resolveStructuredQueryPlayer(
   }
 
   const input = target.value
-  const aliases = buildAliases(input)
   const inputKey = normalizeLookupKey(input)
+  const verifiedAlias = verifiedRegisteredNameAliases[inputKey]
+  if (verifiedAlias) {
+    const explicitTeams = teamQualifier(structuredQuery)
+    const hasCompatibleTeam = explicitTeams.length === 0 || explicitTeams.some((team) =>
+      verifiedAlias.teams.some((knownTeam) => sameTeamAlias(team, knownTeam)),
+    )
+    if (hasCompatibleTeam) {
+      const aliasQuery = {
+        ...structuredQuery,
+        filters: {
+          ...structuredQuery.filters,
+          [target.field]: verifiedAlias.registeredName,
+          ...(explicitTeams.length === 0 ? { team: verifiedAlias.teams[0] } : {}),
+        },
+      } as ChatStructuredQuery
+      const aliasResolved = await resolveStructuredQueryPlayer(queryService, aliasQuery)
+      return {
+        structuredQuery: aliasResolved.structuredQuery,
+        resolution: aliasResolved.resolution
+          ? { ...aliasResolved.resolution, input }
+          : null,
+      }
+    }
+  }
+  const aliases = buildAliases(input)
   const hasTeamQualifier = teamQualifier(structuredQuery).length > 0
   const isUnqualifiedShortName = inputKey.length <= 2 && !hasTeamQualifier
   const searchDomain: SearchPlayerCandidatesFilters['searchDomain'] =
@@ -401,15 +425,6 @@ function selectCandidatesForInput(
     })
     const collapsedProfiles = collapseSameEntityFallbacks(profileMatches)
     if (collapsedProfiles.length === 1) return collapsedProfiles
-    const verifiedAlias = verifiedRegisteredNameAliases[inputKey]
-    if (verifiedAlias) {
-      const aliasCandidates = candidates.filter((candidate) =>
-        normalizeCandidateName(candidate.name) === normalizeCandidateName(verifiedAlias.registeredName) &&
-        candidate.teams.some((team) => verifiedAlias.teams.some((knownTeam) => sameTeamAlias(team, knownTeam))),
-      )
-      const collapsedAliases = collapseSameEntityFallbacks(aliasCandidates)
-      if (collapsedAliases.length === 1) return collapsedAliases
-    }
     const registeredNamePrefixes = candidates.filter((candidate) => {
       const nameKey = normalizeCandidateName(candidate.name)
       return nameKey.length >= 3 && inputKey.startsWith(nameKey)

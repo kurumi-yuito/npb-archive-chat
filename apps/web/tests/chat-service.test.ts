@@ -2531,7 +2531,7 @@ describe('chat-service', () => {
     const service = createChatService(createFakeQueryService({
       playerCandidatesForFilters: (filters) => {
         candidateSearchCalled = true
-        if (filters.name !== '大谷翔平') {
+        if (filters.name !== '大谷') {
           return []
         }
         return [{
