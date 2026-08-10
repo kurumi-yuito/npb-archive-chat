@@ -213,7 +213,7 @@ for (const [index, testCase] of cases.entries()) {
     : buildHistoryForCase(testCase, completedAnswers)
   const message = fixtureMode
     ? fixture.message
-    : normalizeQuestionForHistoryCase(testCase.question)
+    : normalizeQuestionForHistoryCase(testCase)
   const requestPayload = {
     message,
     ...(history.length > 0 ? { history } : {}),
@@ -465,6 +465,12 @@ function buildHistoryForCase(testCase, completedAnswers) {
   if (testCase.id === 'Q-179') {
     return [{ role: 'user', content: 'それ' }]
   }
+  if (testCase.id === 'Q-164') {
+    return [
+      { role: 'user', content: '2021年4月16日の阪神対ヤクルトの試合結果を教えて' },
+      { role: 'assistant', content: '2021年4月16日の阪神対ヤクルト戦は、阪神が2-0で勝利しました。' },
+    ]
+  }
   const match = testCase.question.match(/直前に(Q-\d+)の回答がある状態/u)
   if (!match) {
     return []
@@ -479,7 +485,14 @@ function buildHistoryForCase(testCase, completedAnswers) {
   ]
 }
 
-function normalizeQuestionForHistoryCase(question) {
+function normalizeQuestionForHistoryCase(testCase) {
+  if (testCase.id === 'Q-141') {
+    return '阪神の村上の投手成績を教えて'
+  }
+  if (testCase.id === 'Q-164') {
+    return 'それどうだった？'
+  }
+  const { question } = testCase
   return question
     .replace(/^（直前にQ-\d+の回答がある状態で）/u, '')
     .replace(/（(?:直前の履歴に.+あり|履歴なし|参照先より前の履歴が保持範囲外)）$/u, '')

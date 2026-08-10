@@ -201,7 +201,7 @@ describe('chat-query-parser', () => {
     expect(
       parseStructuredQueryFromMessageStub('オリックスの山本由伸の2026年の一軍での投球成績、登板数と防御率を教えてください'),
     ).toEqual({
-      intent: 'search_pitching',
+      intent: 'aggregate_pitching',
       filters: {
         year: 2026,
         pitcher_name: '山本由伸',
@@ -214,7 +214,7 @@ describe('chat-query-parser', () => {
     expect(
       parseStructuredQueryFromMessageStub('藤浪は2026年のここまでの二軍での成績はどうですか？防御率や登板数など詳しく教えてください'),
     ).toEqual({
-      intent: 'search_pitching',
+      intent: 'aggregate_pitching',
       filters: {
         year: 2026,
         pitcher_name: '藤浪',

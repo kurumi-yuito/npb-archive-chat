@@ -34,15 +34,23 @@ export function createChatPlanner({
   return async (message, context = {}) => {
     const unresolvedFollowUp = clarificationForUnresolvedFollowUp(message, context.history)
     if (unresolvedFollowUp) return buildClarificationPlannerOutput(unresolvedFollowUp)
-    const structuredQuery = normalizeStructuredQuery(
+    let structuredQuery = normalizeStructuredQuery(
       await parseStructuredQueryFromMessage(message, {
         history: context.history,
       }),
     )
-    const plannerOutput = buildPlannerOutput(structuredQuery, false, {
+    let plannerOutput = buildPlannerOutput(structuredQuery, false, {
       message,
       history: context.history,
     })
+    const referencedGameQuery = buildReferencedGameFollowUpQuery(plannerOutput)
+    if (referencedGameQuery) {
+      structuredQuery = normalizeStructuredQuery(referencedGameQuery)
+      plannerOutput = buildPlannerOutput(structuredQuery, false, {
+        message,
+        history: context.history,
+      })
+    }
     if (structuredQuery.intent === 'off_topic') return plannerOutput
     const capability = classifyChatCapability(message, structuredQuery, plannerOutput)
     return chatPlannerOutputSchema.parse({
@@ -55,6 +63,38 @@ export function createChatPlanner({
         externalSourceUrl: capability.externalSourceUrl,
       },
     })
+  }
+}
+
+function buildReferencedGameFollowUpQuery(
+  plannerOutput: ChatPlannerOutput,
+): ChatStructuredQuery | null {
+  if (![
+    'detail_request',
+    'reason_request',
+    'summary_request',
+    'explanation_request',
+    'casual_followup',
+    'context_reference',
+  ].includes(plannerOutput.followUpType)) {
+    return null
+  }
+  const anchor = plannerOutput.referencedContext?.anchor
+  if (!anchor) return null
+  const dateMatch = anchor.match(/((?:19|20)\d{2})年(\d{1,2})月(\d{1,2})日/u)
+  if (!dateMatch?.[1] || !dateMatch[2] || !dateMatch[3]) return null
+  const gameDate = [
+    dateMatch[1],
+    dateMatch[2].padStart(2, '0'),
+    dateMatch[3].padStart(2, '0'),
+  ].join('-')
+  const team = plannerOutput.targetEntity?.teams[0] ?? undefined
+  return {
+    intent: 'game_detail',
+    filters: {
+      game_date: gameDate,
+      ...(team ? { team } : {}),
+    },
   }
 }
 

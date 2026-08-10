@@ -240,6 +240,10 @@ Planner が出す分類フィールド:
 
 「最近」「調子」「どう」「今シーズン」「通算」などの意味解釈は、productionでは LLM Planner 側で行う。
 
+LLMが明示入力を欠落・短縮した場合に限り、Planner内のdeterministic normalizationで元質問との機械的整合を回復する。対象は、質問本文に存在する完全な選手名、明示された年度範囲、成績種別、年別group、スタメン・守備位置などである。新しい意味や選手固有知識を付与せず、固有名やplayer_idをコードへ列挙しない。補正後のqueryは通常のPlanner schemaとValidationを通す。
+
+履歴内の試合を指すdetail / reason / summary系follow-upは、Plannerが確定した`referencedContext.anchor`の日付・球団から`game_detail`を構成する。ServiceやFormatterは元発話を再解釈しない。参照先を特定できない場合は`responsePolicy: clarify`で停止する。
+
 ## production stub 方針
 
 `chat-query-parser-stub.ts` は dev/test fixture として残す。

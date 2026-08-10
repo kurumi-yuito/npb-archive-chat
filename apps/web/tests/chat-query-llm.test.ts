@@ -240,6 +240,36 @@ describe('chat-query-llm', () => {
   })
 
   it.each([
+    [
+      '村上宗隆は今シーズン打率どのくらい？本塁打は何本出てる？',
+      { intent: 'search_batting', filters: { year: 2026, player_name: '村上', limit: 20 } },
+      { intent: 'aggregate_batting', filters: { year: 2026, player_name: '村上宗隆', limit: 20 } },
+    ],
+    [
+      '2025年の大谷翔平の成績を教えてください',
+      { intent: 'aggregate_batting', filters: { year: 2025, player_name: '大谷' } },
+      { intent: 'aggregate_batting', filters: { year: 2025, player_name: '大谷翔平' } },
+    ],
+    [
+      'ジャイアンツの今シーズン投手成績を教えてください',
+      { intent: 'aggregate_batting', filters: { year: 2026, team: '巨人' } },
+      { intent: 'aggregate_pitching', filters: { year: 2026, team: '巨人' } },
+    ],
+    [
+      '村上宗隆の2019年から2025年の年別本塁打数を教えてください',
+      { intent: 'aggregate_batting', filters: { year: 2022, player_name: '村上', group_by: 'year', limit: 10 } },
+      { intent: 'aggregate_batting', filters: { player_name: '村上宗隆', year_from: 2019, year_to: 2025, group_by: 'year', limit: 100 } },
+    ],
+    [
+      '2026年5月10日の広島のスタメンを教えてください',
+      { intent: 'search_batting', filters: { game_date: '2026-05-10', team: '広島' } },
+      { intent: 'search_roster', filters: { game_date: '2026-05-10', team: '広島', starter: true, limit: 100 } },
+    ],
+  ])('normalizes explicit planner contract for %s', (message, parsed, expected) => {
+    expect(normalizeStructuredQueryFromLlmMessage(message, parsed)).toEqual(expected)
+  })
+
+  it.each([
     ['藤浪の直近試合の内容は', 1],
     ['藤浪の直近の試合はどうだった', 1],
     ['藤浪の最新登板を教えて', 1],

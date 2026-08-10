@@ -225,6 +225,11 @@ export function normalizeStructuredQueryFromLlmMessage(message: string, value: u
     filters?: unknown
   }
 
+  const contractNormalized = normalizeExplicitPlannerContract(message, query)
+  if (contractNormalized !== value) {
+    return normalizeStructuredQueryFromLlmMessage(message, contractNormalized)
+  }
+
   const ellipticalRecentTarget = extractEllipticalRecentTarget(message)
   if (query.intent === 'off_topic' && ellipticalRecentTarget) {
     return {
@@ -340,6 +345,120 @@ export function normalizeStructuredQueryFromLlmMessage(message: string, value: u
           ? 1
           : 10,
     },
+  }
+}
+
+function normalizeExplicitPlannerContract(
+  message: string,
+  query: { intent?: unknown; filters?: unknown },
+): unknown {
+  if (!query.filters || typeof query.filters !== 'object') {
+    return query
+  }
+
+  const originalFilters = query.filters as Record<string, unknown>
+  const filters: Record<string, unknown> = { ...originalFilters }
+  let intent = query.intent
+  let changed = false
+
+  for (const field of ['player_name', 'pitcher_name', 'batter_name', 'runner_name'] as const) {
+    const parsedName = filters[field]
+    if (typeof parsedName !== 'string') continue
+    const restoredName = restoreExplicitPersonName(message, parsedName)
+    if (restoredName && restoredName !== parsedName) {
+      filters[field] = restoredName
+      changed = true
+    }
+  }
+
+  const yearRange = extractExplicitYearRange(message)
+  if (yearRange) {
+    if (filters.year_from !== yearRange.yearFrom || filters.year_to !== yearRange.yearTo || 'year' in filters) {
+      delete filters.year
+      filters.year_from = yearRange.yearFrom
+      filters.year_to = yearRange.yearTo
+      changed = true
+    }
+  }
+
+  const isTeamPitchingStats =
+    /投手成績/u.test(message) &&
+    !/(?:と|・|、).*(?:比較|比べ)/u.test(message) &&
+    !['player_name', 'pitcher_name', 'batter_name', 'runner_name'].some((field) => typeof filters[field] === 'string')
+  if (isTeamPitchingStats && intent !== 'aggregate_pitching') {
+    intent = 'aggregate_pitching'
+    delete filters.player_name
+    delete filters.player_id
+    changed = true
+  }
+
+  const isSeasonPitchingAggregate =
+    /(?:防御率|登板数|投球回|奪三振|勝敗).*(?:教えて|詳しく|成績)|(?:成績).*(?:防御率|登板数|投球回|奪三振|勝敗)/u.test(message) &&
+    !/(?:最近|直近|最新|最後|どんな投球)/u.test(message)
+  if (isSeasonPitchingAggregate && intent === 'search_pitching') {
+    intent = 'aggregate_pitching'
+    changed = true
+  }
+
+  const isSeasonBattingAggregate =
+    /(?:打率|本塁打|ホームラン|打点).*(?:教えて|どのくらい|何本|成績)|(?:成績).*(?:打率|本塁打|ホームラン|打点)/u.test(message) &&
+    !/(?:最近|直近|最新|最後|打席内容)/u.test(message)
+  if (isSeasonBattingAggregate && intent === 'search_batting') {
+    intent = 'aggregate_batting'
+    changed = true
+  }
+
+  if (/年別/u.test(message) && /本塁打|ホームラン/u.test(message)) {
+    if (intent !== 'aggregate_batting' || filters.group_by !== 'year' || typeof filters.limit !== 'number' || filters.limit < 100) {
+      intent = 'aggregate_batting'
+      filters.group_by = 'year'
+      filters.limit = Math.max(typeof filters.limit === 'number' ? filters.limit : 0, 100)
+      changed = true
+    }
+  }
+
+  if (/スタメン(?:を|は|一覧|教えて)/u.test(message)) {
+    if (intent !== 'search_roster' || filters.starter !== true) {
+      intent = 'search_roster'
+      filters.starter = true
+      filters.limit = Math.max(typeof filters.limit === 'number' ? filters.limit : 0, 100)
+      changed = true
+    }
+  }
+
+  if (/(?:ショート|遊撃)/u.test(message) && /[1-9１-９]番/u.test(message)) {
+    if (intent !== 'search_roster' || filters.position !== '遊' || filters.starter !== true) {
+      intent = 'search_roster'
+      filters.position = '遊'
+      filters.starter = true
+      filters.limit = Math.max(typeof filters.limit === 'number' ? filters.limit : 0, 100)
+      changed = true
+    }
+  }
+
+  return changed ? { intent, filters } : query
+}
+
+function restoreExplicitPersonName(message: string, parsedName: string): string | null {
+  const normalizedMessage = message.normalize('NFKC')
+  const compactParsedName = parsedName.normalize('NFKC').replace(/\s/gu, '')
+  if (compactParsedName.length === 0) return null
+  const compactMessage = normalizedMessage.replace(/\s/gu, '')
+  const index = compactMessage.indexOf(compactParsedName)
+  if (index < 0) return null
+  const tail = compactMessage.slice(index)
+  const candidate = tail.split(/(?:について|登板|出場|試合|って|から|まで|時代|選手|投手|打者|は|が|の|を|で|と|対|・|、|,|。|！|？|\?|\(|（)/u, 1)[0]
+  if (!candidate || !candidate.startsWith(compactParsedName)) return null
+  if (!/^[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}ー]+$/u.test(candidate)) return null
+  return candidate.length > compactParsedName.length ? candidate : null
+}
+
+function extractExplicitYearRange(message: string): { yearFrom: number; yearTo: number } | null {
+  const match = message.normalize('NFKC').match(/((?:19|20)\d{2})年?(?:から|[-–—])((?:19|20)\d{2})年?(?:まで)?/u)
+  if (!match?.[1] || !match[2]) return null
+  return {
+    yearFrom: Number.parseInt(match[1], 10),
+    yearTo: Number.parseInt(match[2], 10),
   }
 }
 

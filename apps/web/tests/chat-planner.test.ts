@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { ChatStructuredQuery } from '@npb/schemas'
-import { buildPlannerOutput } from '../server/services/chat-planner'
+import { buildPlannerOutput, createChatPlanner } from '../server/services/chat-planner'
+import { normalizeChatStructuredQuery } from '../server/services/chat-query-normalizer'
 import { validateChatPlannerOutput } from '../server/services/chat-planner-validator'
 import { inferCorrectionGuardMetadata } from '../server/services/chat-query-plan'
 
@@ -386,6 +387,35 @@ describe('chat-planner follow-up classification', () => {
     })
     expect(planner.structuredQuery).toEqual(query)
   })
+})
+
+describe('chat-planner referenced game routing', () => {
+  it.each(['それ詳しく', 'なんで？', 'つまり？', 'これやばくない？', 'さっきの二つ目'])(
+    'routes %s to the referenced game date instead of repeating the event search',
+    async (message) => {
+      const planner = createChatPlanner({
+        parseStructuredQueryFromMessage: async () => ({
+          intent: 'search_events',
+          filters: { batter_name: '藤浪', result_text_contains: 'ホームラン' },
+        }),
+        normalizeStructuredQuery: normalizeChatStructuredQuery,
+      })
+      const output = await planner(message, {
+        history: [{
+          role: 'assistant',
+          content: [
+            '1. 2018年9月16日 3回表 阪神 藤浪: レフト満塁ホームラン（打点4）',
+            '2. 2021年4月16日 5回裏 阪神 藤浪: レフト2ランホームラン（打点2）',
+          ].join('\n'),
+        }],
+      })
+
+      expect(output.structuredQuery).toEqual({
+        intent: 'game_detail',
+        filters: { game_date: '2021-04-16', team: '阪神' },
+      })
+    },
+  )
 })
 
 describe('chat-planner output validation', () => {

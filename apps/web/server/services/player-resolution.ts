@@ -322,15 +322,49 @@ function selectCandidatesForInput(
   candidates: PlayerCandidate[],
 ): PlayerCandidate[] {
   const inputKey = normalizeLookupKey(normalizeFreeText(input) ?? input)
+  const exact = candidates.filter((candidate) => normalizeCandidateName(candidate.name) === inputKey)
   if (inputKey.length <= 2) {
     const surnameCandidates = candidates.filter((candidate) =>
       normalizeCandidateName(candidate.name).startsWith(inputKey),
     )
+    if (exact.length > 0) {
+      const prefixProfiles = surnameCandidates.filter((candidate) => candidate.player_id)
+      const prefixProfileIds = [...new Set(prefixProfiles.map((candidate) => candidate.player_id).filter(Boolean))]
+      if (
+        prefixProfileIds.length === 1 &&
+        prefixProfiles.every((candidate) => normalizeCandidateName(candidate.name) !== inputKey)
+      ) {
+        const profile = prefixProfiles.find((candidate) => candidate.player_id === prefixProfileIds[0])!
+        return [{
+          ...profile,
+          roles: [...new Set([...profile.roles, ...exact.flatMap((candidate) => candidate.roles)])],
+          teams: [...new Set([...profile.teams, ...exact.flatMap((candidate) => candidate.teams)])],
+          years: [...new Set([...profile.years, ...exact.flatMap((candidate) => candidate.years)])].sort((a, b) => a - b),
+        }]
+      }
+      const exactTeamKeys = new Set(exact.flatMap((candidate) => candidate.teams.map(teamAliasKey)))
+      const compatibleProfiles = surnameCandidates.filter((candidate) =>
+        candidate.player_id &&
+        candidate.teams.some((team) => exactTeamKeys.has(teamAliasKey(team))),
+      )
+      const compatibleIds = [...new Set(compatibleProfiles.map((candidate) => candidate.player_id).filter(Boolean))]
+      if (compatibleIds.length === 1 && exactTeamKeys.size === 1) {
+        const compatibleCandidates = surnameCandidates.filter((candidate) =>
+          candidate.player_id === compatibleIds[0] ||
+          candidate.teams.some((team) => compatibleProfiles.some((profile) =>
+            profile.teams.some((profileTeam) => sameTeamAlias(team, profileTeam)),
+          )),
+        )
+        const collapsed = collapseSameEntityFallbacks(compatibleCandidates, inputKey)
+        if (collapsed.length === 1) return collapsed
+      }
+      const collapsedExact = collapseSameEntityFallbacks(exact, inputKey)
+      if (collapsedExact.length > 0) return collapsedExact
+    }
     if (surnameCandidates.length > 0) {
       return collapseSameEntityFallbacks(surnameCandidates, inputKey)
     }
   }
-  const exact = candidates.filter((candidate) => normalizeCandidateName(candidate.name) === inputKey)
   if (exact.length > 0) {
     return collapseSameEntityFallbacks(exact)
   }

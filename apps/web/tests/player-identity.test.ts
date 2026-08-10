@@ -83,6 +83,98 @@ describe('player-identity facade', () => {
     })
   })
 
+  it('uses an exact surname row and team overlap to exclude longer different surnames', async () => {
+    const queryService = createQueryService([
+      {
+        player_id: 'maki-shugo',
+        name: '牧 秀悟',
+        primary_team: 'DeNA',
+        roles: ['profile', 'batter'],
+        teams: ['DeNA'],
+        years: [2026],
+      },
+      {
+        player_id: 'makihara',
+        name: '牧原大',
+        primary_team: 'ソフトバンク',
+        roles: ['batter'],
+        teams: ['ソフトバンク'],
+        years: [2026],
+      },
+      {
+        player_id: 'makino',
+        name: '牧野',
+        primary_team: '中日',
+        roles: ['batter'],
+        teams: ['中日'],
+        years: [2026],
+      },
+      {
+        player_id: null,
+        name: '牧',
+        primary_team: 'DeNA',
+        roles: ['batter'],
+        teams: ['DeNA'],
+        years: [2026],
+      },
+    ])
+
+    const result = await resolvePlayer(queryService, {
+      intent: 'aggregate_batting',
+      filters: { player_name: '牧', year: 2026 },
+    })
+
+    expect(result.resolution).toMatchObject({
+      status: 'resolved',
+      player_id: 'maki-shugo',
+      name: '牧 秀悟',
+    })
+  })
+
+  it('merges exact historical surname rows into one canonical profile across transfers', async () => {
+    const queryService = createQueryService([
+      {
+        player_id: 'fujinami',
+        name: '藤浪 晋太郎',
+        primary_team: 'DeNA',
+        roles: ['profile', 'pitcher'],
+        teams: ['DeNA'],
+        years: [2025, 2026],
+      },
+      {
+        player_id: null,
+        name: '藤浪',
+        primary_team: '阪神',
+        roles: ['pitcher'],
+        teams: ['阪神'],
+        years: [2016, 2017, 2018, 2019, 2020, 2021, 2022],
+      },
+      {
+        player_id: null,
+        name: '藤浪',
+        primary_team: 'DeNA',
+        roles: ['pitcher'],
+        teams: ['DeNA'],
+        years: [2025],
+      },
+    ])
+
+    const result = await resolvePlayer(queryService, {
+      intent: 'aggregate_pitching',
+      filters: { pitcher_name: '藤浪' },
+    })
+
+    expect(result.resolution).toMatchObject({
+      status: 'resolved',
+      player_id: 'fujinami',
+      name: '藤浪 晋太郎',
+      candidates: [expect.objectContaining({
+        player_id: 'fujinami',
+        teams: ['DeNA', '阪神'],
+      })],
+    })
+  })
+
   it('resolves multiple players through the facade', async () => {
     const queryService = createQueryService([
       {
