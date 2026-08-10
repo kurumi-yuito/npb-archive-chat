@@ -296,6 +296,15 @@ export function normalizeTeamName(value: string | undefined): string | undefined
   return teamAliasMap.get(normalizeLookupKey(normalized)) ?? normalized
 }
 
+export function messageMentionsTeam(message: string, team: string): boolean {
+  const canonicalTeam = normalizeTeamName(team)
+  if (!canonicalTeam) return false
+  const messageKey = normalizeLookupKey(message)
+  return teamAliasEntries.some(([alias, canonical]) =>
+    canonical === canonicalTeam && messageKey.includes(normalizeLookupKey(alias)),
+  )
+}
+
 export function normalizePlayerName(value: string | undefined): string | undefined {
   const normalized = normalizeFreeText(value)
   if (!normalized) {

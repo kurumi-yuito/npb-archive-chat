@@ -6,6 +6,7 @@ import {
   chatQueryParserSystemPrompt,
 } from './chat-query-parser-prompt'
 import { inferRecentAppearanceLimit } from './chat-recent-scope'
+import { messageMentionsTeam } from './chat-query-normalizer'
 
 const openAiCompatibleChatCompletionSchema = z.object({
   choices: z.array(
@@ -364,13 +365,18 @@ function normalizeExplicitPlannerContract(
   for (const field of ['player_name', 'pitcher_name', 'batter_name', 'runner_name'] as const) {
     const parsedName = filters[field]
     if (typeof parsedName !== 'string') continue
+    const playerIdField = playerIdFieldForNameField(field)
+    if (playerIdField in filters) {
+      delete filters[playerIdField]
+      changed = true
+    }
+    if (typeof filters.team === 'string' && !messageMentionsTeam(message, filters.team)) {
+      delete filters.team
+      changed = true
+    }
     const restoredName = restoreExplicitPersonName(message, parsedName)
     if (restoredName && restoredName !== parsedName) {
       filters[field] = restoredName
-      delete filters[playerIdFieldForNameField(field)]
-      if (typeof filters.team === 'string' && !message.normalize('NFKC').includes(filters.team.normalize('NFKC'))) {
-        delete filters.team
-      }
       changed = true
     }
   }

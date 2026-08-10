@@ -241,6 +241,11 @@ describe('chat-query-llm', () => {
 
   it.each([
     [
+      '村上宗隆は今シーズン打率どのくらい？',
+      { intent: 'aggregate_batting', filters: { year: 2026, player_name: '村上宗隆', player_id: 'wrong-id', team: '阪神' } },
+      { intent: 'aggregate_batting', filters: { year: 2026, player_name: '村上宗隆' } },
+    ],
+    [
       '村上宗隆は今シーズン打率どのくらい？本塁打は何本出てる？',
       { intent: 'search_batting', filters: { year: 2026, player_name: '村上', player_id: 'wrong-id', team: '阪神', limit: 20 } },
       { intent: 'aggregate_batting', filters: { year: 2026, player_name: '村上宗隆', limit: 20 } },
