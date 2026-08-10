@@ -367,6 +367,10 @@ function normalizeExplicitPlannerContract(
     const restoredName = restoreExplicitPersonName(message, parsedName)
     if (restoredName && restoredName !== parsedName) {
       filters[field] = restoredName
+      delete filters[playerIdFieldForNameField(field)]
+      if (typeof filters.team === 'string' && !message.normalize('NFKC').includes(filters.team.normalize('NFKC'))) {
+        delete filters.team
+      }
       changed = true
     }
   }
@@ -437,6 +441,15 @@ function normalizeExplicitPlannerContract(
   }
 
   return changed ? { intent, filters } : query
+}
+
+function playerIdFieldForNameField(
+  field: 'player_name' | 'pitcher_name' | 'batter_name' | 'runner_name',
+): 'player_id' | 'pitcher_player_id' | 'batter_player_id' | 'runner_player_id' {
+  if (field === 'pitcher_name') return 'pitcher_player_id'
+  if (field === 'batter_name') return 'batter_player_id'
+  if (field === 'runner_name') return 'runner_player_id'
+  return 'player_id'
 }
 
 function restoreExplicitPersonName(message: string, parsedName: string): string | null {

@@ -242,12 +242,12 @@ describe('chat-query-llm', () => {
   it.each([
     [
       '村上宗隆は今シーズン打率どのくらい？本塁打は何本出てる？',
-      { intent: 'search_batting', filters: { year: 2026, player_name: '村上', limit: 20 } },
+      { intent: 'search_batting', filters: { year: 2026, player_name: '村上', player_id: 'wrong-id', team: '阪神', limit: 20 } },
       { intent: 'aggregate_batting', filters: { year: 2026, player_name: '村上宗隆', limit: 20 } },
     ],
     [
       '2025年の大谷翔平の成績を教えてください',
-      { intent: 'aggregate_batting', filters: { year: 2025, player_name: '大谷' } },
+      { intent: 'aggregate_batting', filters: { year: 2025, player_name: '大谷', player_id: 'wrong-id', team: 'ロッテ' } },
       { intent: 'aggregate_batting', filters: { year: 2025, player_name: '大谷翔平' } },
     ],
     [

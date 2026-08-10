@@ -242,6 +242,10 @@ Planner が出す分類フィールド:
 
 LLMが明示入力を欠落・短縮した場合に限り、Planner内のdeterministic normalizationで元質問との機械的整合を回復する。対象は、質問本文に存在する完全な選手名、明示された年度範囲、成績種別、年別group、スタメン・守備位置などである。新しい意味や選手固有知識を付与せず、固有名やplayer_idをコードへ列挙しない。補正後のqueryは通常のPlanner schemaとValidationを通す。
 
+選手名を短縮形から明示完全名へ復元した場合、短縮形を前提にLLMが付与したplayer_idは破棄する。teamも質問本文に明示されていなければ破棄し、Entity Resolutionが完全名から再解決する。年別集計でも候補配列の先頭を採用せず、入力名と完全一致するcanonical profileだけをfast pathへ使う。
+
+過去試合のスタメン検索では`roster_entries`を第一取得元とし、同期済みrosterがない場合は同じ試合条件のbox-score打撃行（打順・守備位置）をRepository fallbackとして使う。これはPlanner intentを変更せず、同一のhistorical roster evidenceを別の正規化済み表現から取得する処理である。
+
 履歴内の試合を指すdetail / reason / summary系follow-upは、Plannerが確定した`referencedContext.anchor`の日付・球団から`game_detail`を構成する。ServiceやFormatterは元発話を再解釈しない。参照先を特定できない場合は`responsePolicy: clarify`で停止する。
 
 ## production stub 方針

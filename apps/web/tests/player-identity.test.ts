@@ -83,7 +83,7 @@ describe('player-identity facade', () => {
     })
   })
 
-  it('uses an exact surname row and team overlap to exclude longer different surnames', async () => {
+  it('uses an explicit surname boundary in a profile to exclude longer different surnames', async () => {
     const queryService = createQueryService([
       {
         player_id: 'maki-shugo',
@@ -107,14 +107,6 @@ describe('player-identity facade', () => {
         primary_team: '中日',
         roles: ['batter'],
         teams: ['中日'],
-        years: [2026],
-      },
-      {
-        player_id: null,
-        name: '牧',
-        primary_team: 'DeNA',
-        roles: ['batter'],
-        teams: ['DeNA'],
         years: [2026],
       },
     ])

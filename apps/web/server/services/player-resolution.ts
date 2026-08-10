@@ -327,6 +327,20 @@ function selectCandidatesForInput(
     const surnameCandidates = candidates.filter((candidate) =>
       normalizeCandidateName(candidate.name).startsWith(inputKey),
     )
+    const explicitSurnameProfiles = surnameCandidates.filter((candidate) => {
+      if (!candidate.player_id) return false
+      const normalizedName = candidate.name.normalize('NFKC').replace(/^[*+\s]+/u, '')
+      return normalizedName.startsWith(`${input.normalize('NFKC')} `)
+    })
+    const explicitSurnameProfileIds = [
+      ...new Set(explicitSurnameProfiles.map((candidate) => candidate.player_id).filter(Boolean)),
+    ]
+    if (inputKey.length === 1 && exact.length === 0 && explicitSurnameProfileIds.length === 1) {
+      return collapseSameEntityFallbacks(
+        surnameCandidates.filter((candidate) => candidate.player_id === explicitSurnameProfileIds[0]),
+        inputKey,
+      )
+    }
     if (exact.length > 0) {
       const prefixProfiles = surnameCandidates.filter((candidate) => candidate.player_id)
       const prefixProfileIds = [...new Set(prefixProfiles.map((candidate) => candidate.player_id).filter(Boolean))]

@@ -19,6 +19,7 @@ import {
   type GameDetailRow,
   type PitchingLineRow,
   type QueryDatabase,
+  type RosterEntryRow,
 } from '@npb/db'
 import { formatChatAnswer } from './chat-answer-formatter'
 import { generateAnswerFromEvidence } from './chat-answer-generator'
@@ -26,7 +27,7 @@ import {
   parseStructuredQueryFromMessage,
   type ChatQueryParser,
 } from './chat-query-parser'
-import { normalizeChatStructuredQuery, normalizeTeamName } from './chat-query-normalizer'
+import { normalizeChatStructuredQuery, normalizeFreeText, normalizeTeamName } from './chat-query-normalizer'
 import {
   queryHasPlayerId,
   queryHasPlayerName,
@@ -387,7 +388,11 @@ export function createChatService(
           searchDomain: 'batting',
           limit: 5,
         })
-        const playerCandidate = candidateRows.find((candidate) => candidate.player_id)
+        const requestedPlayerKey = normalizeFreeText(playerName)?.replace(/\s/gu, '') ?? playerName.replace(/\s/gu, '')
+        const playerCandidate = candidateRows.find((candidate) =>
+          candidate.player_id &&
+          (normalizeFreeText(candidate.name)?.replace(/\s/gu, '') ?? candidate.name.replace(/\s/gu, '')) === requestedPlayerKey,
+        )
         if (!playerCandidate?.player_id) {
           const value = await resolvePlayerForIdentityScope(
             queryService,
@@ -615,7 +620,8 @@ export function createChatService(
                   results = { ...emptyResults, pitching }
                 }
               } else if (structuredQuery.intent === 'search_roster') {
-                results = { ...emptyResults, roster: await queryService.searchRosterEntries(structuredQuery.filters) }
+                const roster = await searchRosterEntriesForChat(queryService, structuredQuery.filters)
+                results = { ...emptyResults, roster }
               } else if (structuredQuery.intent === 'player_affiliation') {
                 results = {
                   ...emptyResults,
@@ -956,6 +962,39 @@ export function createChatService(
       return core
     },
   }
+}
+
+async function searchRosterEntriesForChat(
+  queryService: ChatQueryService,
+  filters: Parameters<ChatQueryService['searchRosterEntries']>[0],
+): Promise<RosterEntryRow[]> {
+  const roster = await queryService.searchRosterEntries(filters)
+  if (roster.length > 0) return roster
+
+  const batting = await queryService.searchBattingLines({
+    ...(filters.game_id ? { game_id: filters.game_id } : {}),
+    ...(filters.game_date ? { game_date: filters.game_date } : {}),
+    ...(filters.year ? { year: filters.year } : {}),
+    ...(filters.year_from ? { year_from: filters.year_from } : {}),
+    ...(filters.year_to ? { year_to: filters.year_to } : {}),
+    ...(filters.team ? { team: filters.team } : {}),
+    ...(filters.player_name ? { player_name: filters.player_name } : {}),
+    ...(filters.player_id ? { player_id: filters.player_id } : {}),
+    ...(filters.batting_order !== undefined ? { batting_order: filters.batting_order } : {}),
+    ...(filters.position ? { position: filters.position } : {}),
+    limit: filters.limit ?? 100,
+  })
+  return batting.map((row) => ({
+    gameId: row.gameId,
+    gameDate: row.gameDate,
+    team: row.team,
+    groupLabel: 'スタメン',
+    playerName: row.playerName,
+    uniformNumber: null,
+    position: row.position,
+    starter: row.battingOrder !== null,
+    battingOrder: row.battingOrder,
+  }))
 }
 
 export type ChatService = ReturnType<typeof createChatService>

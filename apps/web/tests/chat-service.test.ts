@@ -493,6 +493,46 @@ describe('chat-service', () => {
     })
   })
 
+  it('falls back to box-score batting rows when roster entries are unavailable', async () => {
+    const queryService = createFakeQueryService()
+    const searchRosterEntries = vi.fn(async () => [])
+    const searchBattingLines = vi.fn(async () => [{
+      gameId: 'r20260510c-t-01',
+      gameDate: '2026-05-10',
+      team: '広島',
+      playerName: '秋山',
+      battingOrder: 1,
+      position: '左',
+      atBats: 4,
+      runs: 1,
+      hits: 2,
+      runsBattedIn: 0,
+      stolenBases: 0,
+      strikeouts: 1,
+      walks: 0,
+      rawText: null,
+    }])
+    queryService.searchRosterEntries = searchRosterEntries
+    queryService.searchBattingLines = searchBattingLines
+    const service = createChatService(queryService, {
+      parseStructuredQueryFromMessage: async () => ({
+        intent: 'search_roster',
+        filters: { game_date: '2026-05-10', team: '広島', starter: true },
+      }),
+    })
+
+    const response = await service.answerQuestion('2026年5月10日の広島のスタメンを教えてください')
+
+    expect(searchRosterEntries).toHaveBeenCalledOnce()
+    expect(searchBattingLines).toHaveBeenCalledWith(expect.objectContaining({
+      game_date: '2026-05-10',
+      team: '広島',
+    }))
+    expect(response.results.roster).toEqual([
+      expect.objectContaining({ playerName: '秋山', starter: true, battingOrder: 1 }),
+    ])
+  })
+
   it('routes news and injury questions to Sports Navi without using stored stats as a guess', async () => {
     const searchPitchingLines = vi.fn(async () => [{
       gameId: 'r20260711db-g-01',
