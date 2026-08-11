@@ -24,6 +24,12 @@ describe('chat-query-normalizer', () => {
     expect(normalizePlayerName('山崎伊織')).toBe('山﨑伊織')
   })
 
+  it('removes narrow conversational predicates retained in player entity spans', () => {
+    expect(normalizePlayerName('藤浪どう')).toBe('藤浪')
+    expect(normalizePlayerName('田中どう')).toBe('田中')
+    expect(normalizePlayerName('藤浪近ごろ見ない気')).toBe('藤浪')
+  })
+
   it('normalizes both sides of an explicit matchup without dropping the venue', () => {
     expect(normalizeChatStructuredQuery({
       intent: 'game_detail',

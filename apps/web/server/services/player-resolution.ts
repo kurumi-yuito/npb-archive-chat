@@ -27,6 +27,15 @@ type ResolutionTarget = {
 const verifiedRegisteredNameAliases: Record<string, { registeredName: string; teams: string[] }> = {
   村上宗隆: { registeredName: '村上', teams: ['東京ヤクルトスワローズ'] },
   大谷翔平: { registeredName: '大谷', teams: ['北海道日本ハムファイターズ'] },
+  則本昂大: { registeredName: '則本', teams: ['読売ジャイアンツ', '東北楽天ゴールデンイーグルス'] },
+  山川穂高: { registeredName: '山川', teams: ['福岡ソフトバンクホークス', '埼玉西武ライオンズ'] },
+  近本光司: { registeredName: '近本', teams: ['阪神タイガース'] },
+  坂倉将吾: { registeredName: '坂倉', teams: ['広島東洋カープ'] },
+  山本由伸: { registeredName: '山本', teams: ['オリックス・バファローズ'] },
+  西川龍馬: { registeredName: '西川', teams: ['オリックス・バファローズ', '広島東洋カープ'] },
+  田中将大: { registeredName: '田中', teams: ['読売ジャイアンツ', '東北楽天ゴールデンイーグルス'] },
+  丸佳浩: { registeredName: '丸', teams: ['読売ジャイアンツ', '広島東洋カープ'] },
+  近藤健介: { registeredName: '近藤', teams: ['福岡ソフトバンクホークス', '北海道日本ハムファイターズ'] },
 }
 
 const teamAliasEntries = [

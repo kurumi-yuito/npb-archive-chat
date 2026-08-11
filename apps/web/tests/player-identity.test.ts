@@ -176,6 +176,38 @@ describe('player-identity facade', () => {
     })
   })
 
+  it.each([
+    ['則本昂大', '則本', '読売ジャイアンツ'],
+    ['山川穂高', '山川', '福岡ソフトバンクホークス'],
+    ['近本光司', '近本', '阪神タイガース'],
+    ['坂倉将吾', '坂倉', '広島東洋カープ'],
+    ['山本由伸', '山本', 'オリックス・バファローズ'],
+    ['西川龍馬', '西川', 'オリックス・バファローズ'],
+    ['田中将大', '田中', '読売ジャイアンツ'],
+    ['丸佳浩', '丸', '読売ジャイアンツ'],
+    ['近藤健介', '近藤', '福岡ソフトバンクホークス'],
+  ])('resolves the verified registered-name alias %s', async (fullName, registeredName, team) => {
+    const queryService = createQueryService([{
+      player_id: `player-${registeredName}`,
+      name: registeredName,
+      primary_team: team,
+      roles: ['batter'],
+      teams: [team],
+      years: [2026],
+    }])
+
+    const result = await resolvePlayer(queryService, {
+      intent: 'aggregate_batting',
+      filters: { player_name: fullName, year: 2026 },
+    })
+
+    expect(result.resolution).toMatchObject({
+      input: fullName,
+      player_id: `player-${registeredName}`,
+      status: 'resolved',
+    })
+  })
+
   it('merges exact historical surname rows into one canonical profile across transfers', async () => {
     const queryService = createQueryService([
       {

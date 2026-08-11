@@ -48,6 +48,8 @@ Plannerは自然言語と会話履歴を解釈する唯一のレイヤーであ�
 
 Entity ambiguityはquery intentと名前entityが確定した後、Resolverが候補を一意にできない状態である。Resolverが候補を返し、clarification response policyへ変換しない。Follow-upは会話参照の分類・継承処理そのものであり、履歴から対象を確定できれば通常queryを実行する。clarificationはFollow-up解決が成立しなかった場合の停止方針だけを表す。
 
+Plannerがフルネームを返しても、収録済みの試合factが登録姓だけを保持する場合がある。この表記差はEntity Resolutionが、検証済みの「フルネーム・登録姓・在籍球団」対応だけを使って吸収する。単に先頭の姓が一致しただけではフルネームを解決せず、既知球団と矛盾する明示teamがある場合も対応を適用しない。これにより、通常のフルネーム検索を維持しながら、同姓選手を誤って確定することを防ぐ。
+
 確認時にRepositoryを実行しないのは、対象や条件が未確定な検索が誤選手・誤試合の回答を生むためである。確認応答はシステム障害ではなく正常な対話継続なのでHTTP 200を返す。公開応答では`structured_query: null`と`execution_metadata.response_policy`を返し、実行queryが存在しないことを明示する。
 
 ### Planner Validation

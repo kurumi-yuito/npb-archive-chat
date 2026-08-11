@@ -311,7 +311,16 @@ export function normalizePlayerName(value: string | undefined): string | undefin
     return undefined
   }
 
-  return playerAliasMap.get(normalizeLookupKey(normalized)) ?? normalized
+  // Planner output occasionally retains a conversational predicate as part of
+  // the entity span. Keep this deliberately narrow: these are predicates, not
+  // valid registered-name suffixes, and stripping them restores the entity
+  // without weakening ambiguity handling for the remaining surname.
+  const entityOnly = normalized
+    .replace(/近ごろ見ない気$/u, '')
+    .replace(/どう$/u, '')
+    .trim()
+
+  return playerAliasMap.get(normalizeLookupKey(entityOnly)) ?? entityOnly
 }
 
 function normalizePlayerNames(value: string[] | undefined): string[] | undefined {
