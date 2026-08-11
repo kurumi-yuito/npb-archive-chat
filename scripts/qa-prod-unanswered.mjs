@@ -1,5 +1,6 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { setTimeout as delay } from 'node:timers/promises'
+import { shouldRetryHttp } from './qa-runner-retry.mjs'
 
 const baseUrl = process.env.QA_BASE_URL ?? 'https://npb-chat.dom9th-works.com'
 const docPath = process.argv[2] ?? 'docs/qa-test-cases.md'
@@ -224,6 +225,7 @@ for (const [index, testCase] of cases.entries()) {
   let body = null
   let json = null
   let status = null
+  let responseHeaders = null
   let outcome = 'success'
   let error = null
   const retryErrors = []
@@ -246,21 +248,25 @@ for (const [index, testCase] of cases.entries()) {
         })
         body = await response.text()
         status = response.status
+        responseHeaders = Object.fromEntries(response.headers.entries())
         try {
           json = JSON.parse(body)
         } catch {
           // Keep the raw body for diagnostics.
         }
-        const canRetryHttp =
-          attempt < httpRetryDelaysMs.length &&
-          (response.status === 429 ||
-            response.status === 503 ||
-            json?.data?.code === 'chat_llm_unavailable')
+        const canRetryHttp = shouldRetryHttp({
+          attempt,
+          fetchRetryCount: fetchRetryDelaysMs.length,
+          httpRetryCount: httpRetryDelaysMs.length,
+          status: response.status,
+          code: json?.data?.code,
+        })
         if (canRetryHttp) {
           retryErrors.push({
             attempt: attemptNo,
             name: 'HttpRetry',
             message: `HTTP ${response.status}: ${json?.message ?? response.statusText}`,
+            response_headers: responseHeaders,
             stack: null,
             cause: null,
           })
@@ -317,6 +323,7 @@ for (const [index, testCase] of cases.entries()) {
       headers: requestHeadersForLog,
       body: requestBody,
     },
+    response_headers: responseHeaders,
     fixture: fixtureMode ? {
       case_id: fixture.case_id,
       source_log: fixture.source_log,
