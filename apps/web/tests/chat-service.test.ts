@@ -711,14 +711,14 @@ describe('chat-service', () => {
     })
   })
 
-  it('allows an elliptical recent player question through topic detection and planner normalization', async () => {
+  it('treats an elliptical recent-content question as a five-appearance form summary', async () => {
     let parserCalled = false
     const service = createChatService(createFakeQueryService(), {
       parseStructuredQueryFromMessage: async () => {
         parserCalled = true
         return {
           intent: 'search_pitching',
-          filters: { pitcher_name: '藤浪', recent: true, limit: 1 },
+          filters: { pitcher_name: '藤浪', recent: true, limit: 5 },
         }
       },
     })
@@ -728,7 +728,7 @@ describe('chat-service', () => {
     expect(parserCalled).toBe(true)
     expect(response.structured_query).toMatchObject({
       intent: 'search_pitching',
-      filters: { pitcher_name: '藤浪', recent: true, limit: 1 },
+      filters: { pitcher_name: '藤浪', recent: true, limit: 5 },
     })
   })
 

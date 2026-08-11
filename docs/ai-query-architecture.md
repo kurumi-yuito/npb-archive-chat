@@ -321,6 +321,8 @@ QA正は `docs/qa-test-cases.md` とする。
 
 本番との差分は `docs/qa-test-cases-current-vs-prod.md` に記録する。
 
+Phase 18の本番QAで、同姓identityを年度で暗黙選択する経路、verified full-nameのhistorical no-id行、career matchupへの現所属注入、season成績の行一覧化、recent-form件数の縮退を再点検した。Planner adapterは明示されたseason・ranking・recent表現をstructured queryへ保持し、Entity Resolutionは年度をfact条件としてのみ扱う。検証済み登録名fallbackはexact候補が`player_id`を持たない場合にも適用するが、career matchupへ現在所属teamを追加しない。これらはPlanner/Entity/Repositoryの責務境界を変えず、各層の既存Contractを満たすための正規化である。
+
 QA判定要件は以下を原文どおり維持する。
 
 ## Phase 3 implementation target

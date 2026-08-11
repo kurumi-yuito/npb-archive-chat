@@ -50,6 +50,14 @@ Entity ambiguityはquery intentと名前entityが確定した後、Resolverが�
 
 Plannerがフルネームを返しても、収録済みの試合factが登録姓だけを保持する場合がある。この表記差はEntity Resolutionが、検証済みの「フルネーム・登録姓・在籍球団」対応だけを使って吸収する。単に先頭の姓が一致しただけではフルネームを解決せず、既知球団と矛盾する明示teamがある場合も対応を適用しない。これにより、通常のフルネーム検索を維持しながら、同姓選手を誤って確定することを防ぐ。
 
+Phase 18ではこの境界を次のように補強した。
+
+- 年度・recent条件はfact検索の条件であり、短い登録名のidentity候補を一意化する条件には使わない。同姓候補が複数ならEntity Resolutionで停止する。
+- フルネームのexact候補がhistorical row由来で`player_id`を持たない場合に限り、検証済み登録名で再解決する。複数選手比較でも同じ規則を使う。
+- 打者対投手のcareer matchupでは、現在所属をRepository filterへ自動注入しない。現在所属で絞ると移籍前の直接対決を失うためである。
+- season成績、年別、ランキング件数、単一登板とrecent formの区別はPlanner adapterで明示的意味を保存する。Serviceが質問文から別intentへ再分類しない。
+- scope follow-upはPlannerが履歴中の「一軍」「二軍」「一軍・二軍」を読んでquery scopeを決める。Formatterは取得済み結果とPlanner metadataを説明するだけである。
+
 確認時にRepositoryを実行しないのは、対象や条件が未確定な検索が誤選手・誤試合の回答を生むためである。確認応答はシステム障害ではなく正常な対話継続なのでHTTP 200を返す。公開応答では`structured_query: null`と`execution_metadata.response_policy`を返し、実行queryが存在しないことを明示する。
 
 ### Planner Validation

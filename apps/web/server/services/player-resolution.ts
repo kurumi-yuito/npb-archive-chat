@@ -41,7 +41,9 @@ const verifiedRegisteredNameAliases: Record<string, { registeredName: string; te
   石田裕太郎: { registeredName: '石田裕', teams: ['横浜DeNAベイスターズ'] },
   東克樹: { registeredName: '東', teams: ['横浜DeNAベイスターズ'] },
   山﨑伊織: { registeredName: '山﨑', teams: ['読売ジャイアンツ'] },
+  山崎伊織: { registeredName: '山﨑', teams: ['読売ジャイアンツ'] },
   佐藤輝明: { registeredName: '佐藤', teams: ['阪神タイガース'] },
+  牧秀悟: { registeredName: '牧', teams: ['横浜DeNAベイスターズ'] },
 }
 
 const teamAliasEntries = [
@@ -109,7 +111,7 @@ export async function resolveStructuredQueryPlayer(
   }
   const rawCandidates = await queryService.searchPlayerCandidates(candidateFilters)
   const periodScopedCandidates = isUnqualifiedShortName
-    ? scopeShortNameCandidatesToRequestedPeriod(rawCandidates, structuredQuery)
+    ? preserveShortNameCandidates(rawCandidates)
     : rawCandidates
   let candidates = selectCandidatesForInput(
     input,
@@ -164,7 +166,11 @@ export async function resolveStructuredQueryPlayer(
           filters: {
             ...structuredQuery.filters,
             [target.field]: verifiedAlias.registeredName,
-            ...(explicitTeams.length === 0 ? { team: verifiedAlias.teams[0] } : {}),
+            ...(explicitTeams.length === 0 &&
+              structuredQuery.intent !== 'search_events' &&
+              structuredQuery.intent !== 'aggregate_events'
+              ? { team: verifiedAlias.teams[0] }
+              : {}),
           },
         } as ChatStructuredQuery
         const aliasResolved = await resolveStructuredQueryPlayer(queryService, aliasQuery, false)
@@ -190,6 +196,31 @@ export async function resolveStructuredQueryPlayer(
   }
 
   const candidate = candidates[0]!
+  const verifiedAlias = allowVerifiedAliasFallback
+    ? verifiedRegisteredNameAliases[inputKey]
+    : undefined
+  if (!candidate.player_id && verifiedAlias && verifiedAlias.registeredName !== candidate.name) {
+    const explicitTeams = teamQualifier(structuredQuery)
+    const aliasQuery = {
+      ...structuredQuery,
+      filters: {
+        ...structuredQuery.filters,
+        [target.field]: verifiedAlias.registeredName,
+        ...(explicitTeams.length === 0 &&
+          structuredQuery.intent !== 'search_events' &&
+          structuredQuery.intent !== 'aggregate_events'
+          ? { team: verifiedAlias.teams[0] }
+          : {}),
+      },
+    } as ChatStructuredQuery
+    const aliasResolved = await resolveStructuredQueryPlayer(queryService, aliasQuery, false)
+    if (aliasResolved.resolution?.status === 'resolved' && aliasResolved.resolution.player_id) {
+      return {
+        structuredQuery: aliasResolved.structuredQuery,
+        resolution: { ...aliasResolved.resolution, input },
+      }
+    }
+  }
   const resolvedQuery = replacePlayerFilter(structuredQuery, target.field, candidate)
   const yearShift = detectYearShift(structuredQuery, candidate)
   return {
@@ -206,19 +237,10 @@ export async function resolveStructuredQueryPlayer(
   }
 }
 
-function scopeShortNameCandidatesToRequestedPeriod(
-  candidates: PlayerCandidate[],
-  structuredQuery: ChatStructuredQuery,
-): PlayerCandidate[] {
-  const filters = structuredQuery.filters as Record<string, unknown>
-  const explicitYear = typeof filters.year === 'number' ? filters.year : null
-  const latestYear = filters.recent === true
-    ? Math.max(...candidates.flatMap((candidate) => candidate.years))
-    : null
-  const targetYear = explicitYear ?? (Number.isFinite(latestYear) ? latestYear : null)
-  if (targetYear === null) return candidates
-  const scoped = candidates.filter((candidate) => candidate.years.includes(targetYear))
-  return scoped.length > 0 ? scoped : candidates
+function preserveShortNameCandidates(candidates: PlayerCandidate[]): PlayerCandidate[] {
+  // A season constrains facts, not identity. Keep every exact short-name entity
+  // visible so a current-year row cannot silently select one namesake.
+  return candidates
 }
 
 function detectYearShift(

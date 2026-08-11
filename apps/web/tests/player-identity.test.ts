@@ -191,7 +191,9 @@ describe('player-identity facade', () => {
     ['石田裕太郎', '石田裕', '横浜DeNAベイスターズ'],
     ['東克樹', '東', '横浜DeNAベイスターズ'],
     ['山﨑伊織', '山﨑', '読売ジャイアンツ'],
+    ['山崎伊織', '山﨑', '読売ジャイアンツ'],
     ['佐藤輝明', '佐藤', '阪神タイガース'],
+    ['牧秀悟', '牧', '横浜DeNAベイスターズ'],
   ])('resolves the verified registered-name alias %s', async (fullName, registeredName, team) => {
     const queryService = createQueryService([{
       player_id: `player-${registeredName}`,
@@ -212,6 +214,81 @@ describe('player-identity facade', () => {
       player_id: `player-${registeredName}`,
       status: 'resolved',
     })
+  })
+
+  it('retries a verified full name through its registered name when the exact historical row has no player id', async () => {
+    const searchPlayerCandidates = vi.fn(async (filters: { name?: string }) => filters.name === '牧秀悟'
+      ? [{
+          player_id: null,
+          name: '牧秀悟',
+          primary_team: '横浜DeNAベイスターズ',
+          roles: ['batter'],
+          teams: ['横浜DeNAベイスターズ'],
+          years: [2025],
+        }]
+      : [{
+          player_id: 'maki',
+          name: '牧',
+          primary_team: '横浜DeNAベイスターズ',
+          roles: ['batter'],
+          teams: ['横浜DeNAベイスターズ'],
+          years: [2026],
+        }])
+    const queryService = { searchPlayerCandidates } as unknown as ChatQueryService
+
+    const result = await resolvePlayer(queryService, {
+      intent: 'search_batting',
+      filters: { player_name: '牧秀悟', year: 2026 },
+    })
+
+    expect(result.resolution).toMatchObject({ input: '牧秀悟', player_id: 'maki', status: 'resolved' })
+  })
+
+  it('does not inject a current team while resolving a verified alias for a career matchup search', async () => {
+    const queryService = createQueryService([{
+      player_id: 'nishikawa',
+      name: '西川',
+      primary_team: 'オリックス・バファローズ',
+      roles: ['batter'],
+      teams: ['広島東洋カープ', 'オリックス・バファローズ'],
+      years: [2018, 2026],
+    }])
+
+    const result = await resolvePlayer(queryService, {
+      intent: 'search_events',
+      filters: { batter_name: '西川龍馬', pitcher_name: '上沢' },
+    })
+
+    expect(result.structuredQuery.filters).not.toHaveProperty('team')
+  })
+
+  it('keeps historical namesakes visible when a short name query includes a season', async () => {
+    const queryService = createQueryService([
+      {
+        player_id: 'murakami-batter',
+        name: '村上',
+        primary_team: 'ヤクルト',
+        roles: ['batter'],
+        teams: ['ヤクルト'],
+        years: [2018, 2019, 2020, 2021, 2022, 2023, 2024, 2025],
+      },
+      {
+        player_id: 'murakami-pitcher',
+        name: '村上',
+        primary_team: '阪神',
+        roles: ['pitcher'],
+        teams: ['阪神'],
+        years: [2026],
+      },
+    ])
+
+    const result = await resolvePlayer(queryService, {
+      intent: 'search_batting',
+      filters: { player_name: '村上', year: 2026 },
+    })
+
+    expect(result.resolution).toMatchObject({ status: 'ambiguous' })
+    expect(result.resolution?.candidates).toHaveLength(2)
   })
 
   it('merges exact historical surname rows into one canonical profile across transfers', async () => {

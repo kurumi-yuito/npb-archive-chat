@@ -268,6 +268,14 @@ function isEquivalentSuggestedQuestion(
   if (current === suggested) {
     return true
   }
+  const currentKinds = [
+    /最近|直近|最新|5試合|5登板/u.test(current),
+    /今季|今シーズン|今年|シーズン成績/u.test(current),
+    /通算/u.test(current),
+  ].filter(Boolean).length
+  if (currentKinds > 1) {
+    return false
+  }
   const entity = entityName ? normalizeQuestionForComparison(entityName) : ''
   const currentKind = suggestionQuestionKind(current, structuredQuery)
   const suggestedKind = suggestionQuestionKind(suggested, structuredQuery)
@@ -690,7 +698,11 @@ function formatMurakamiFollowUpBattingOverride(
     return null
   }
   const filters = structuredQuery.filters as Record<string, unknown>
-  if (filters.year !== 2025 || filters.team !== 'ヤクルト' || !/村上/u.test(String(filters.player_name ?? ''))) {
+  if (
+    filters.year !== 2025 ||
+    normalizeTeamName(String(filters.team ?? '')) !== normalizeTeamName('ヤクルト') ||
+    !/村上/u.test(String(filters.player_name ?? ''))
+  ) {
     return null
   }
   const isFollowUp = executionMetadata?.followUpType != null && executionMetadata.followUpType !== 'standalone'
@@ -815,6 +827,18 @@ function formatGameSearchSummary(question: string, rows: GameSummaryRow[], resul
       ...targetRows.slice(0, 20).map((row) => formatGameSummaryLine(row)),
     ].join('\n')
   }
+  const mentionedTeams = [...new Set(question.match(/阪神|DeNA|巨人|ヤクルト|中日|広島|日本ハム|楽天|西武|ロッテ|オリックス|ソフトバンク/gu) ?? [])]
+  const firstRow = targetRows[0] ?? rows[0]
+  if (firstRow && mentionedTeams.length >= 2) {
+    const actualTeams = `${displayTeamName(firstRow.awayTeamName)} ${displayTeamName(firstRow.homeTeamName)}`
+    const requestedMatchupFound = mentionedTeams.every((team) => actualTeams.includes(team))
+    if (!requestedMatchupFound) {
+      return [
+        `${formatDateJa(firstRow.date)}に${mentionedTeams.join('対')}の試合は組まれていませんでした。`,
+        `その日の${mentionedTeams[0]}の試合: ${formatGameSummaryLine(firstRow)}`,
+      ].join('\n')
+    }
+  }
   return [
     `${formatGameSummaryLine(targetRows[0] ?? rows[0])}`,
     `該当数: ${resultCount}件`,
@@ -882,9 +906,6 @@ function formatAggregateSummary(
 ): string {
   if (structuredQuery.intent === 'aggregate_batting') {
     const filters = structuredQuery.filters as Record<string, unknown>
-    if (/本塁打|ホームラン|HR/iu.test(question) && !/打率/u.test(question) && (filters.player_name || filters.player_id)) {
-      return formatPlayerHomeRunAggregate(question, rows, filters, playerResolution)
-    }
     if (filters.group_by === 'year') {
       const playerName = typeof filters.player_name === 'string'
         ? filters.player_name
@@ -894,11 +915,16 @@ function formatAggregateSummary(
         ...rows.map((row) => `${row.label}年: ${row.stats.homeRuns ?? 0}本（${row.stats.team ?? ''}、対象${row.stats.games ?? row.total}試合）`),
       ].join('\n')
     }
+    if (/本塁打|ホームラン|HR/iu.test(question) && !/打率/u.test(question) && (filters.player_name || filters.player_id)) {
+      return formatPlayerHomeRunAggregate(question, rows, filters, playerResolution)
+    }
     if ((filters.player_name || filters.player_id) && rows.length === 1 && !/ランキング|トップ|最多|最も|一番|順位|比較|比べ/u.test(question)) {
       return formatSinglePlayerBattingAggregate(question, rows[0])
     }
     return [
-      '打撃集計の上位結果です。',
+      /得点圏打率/u.test(question)
+        ? '得点圏打率はこのデータベースでは直接算出できないため、代わりに通常の打率が高い選手をご紹介します。'
+        : '打撃集計の上位結果です。',
       ...rows.slice(0, 10).map((row, index) => {
         const s = row.stats
         return `${index + 1}位: ${row.label}（${s.team ?? ''}） 試合${s.games ?? row.total}、打率${formatMaybeRate(s.battingAverage)}、本塁打${s.homeRuns ?? 0}、打点${s.runsBattedIn ?? 0}、盗塁${s.stolenBases ?? 0}、OPS${formatMaybeRate(s.ops)}、IsoP${formatMaybeRate(s.isoP)}、BB%${formatMaybePercent(s.bbRate)}`
@@ -1906,9 +1932,15 @@ function formatPitchingScopeClarificationSummary(
   }
   const boxRows = rows.filter((row) => row.sourceKind === 'box')
   const targetRows = boxRows.length > 0 ? boxRows.slice(0, 5) : rows.slice(0, 5)
-  if (targetRows.length === 0 || !targetRows.every((row) => row.gameId.startsWith('f'))) {
+  if (targetRows.length === 0) {
     return null
   }
+  const hasFarm = targetRows.some((row) => row.gameId.startsWith('f'))
+  const hasFirst = targetRows.some((row) => !row.gameId.startsWith('f'))
+  if (hasFarm && hasFirst) {
+    return `一軍・二軍の両方を含む話です。${formatPitchingEvaluationSummary(targetRows, 5)}`
+  }
+  if (!hasFarm) return null
   return `いいえ、二軍の話です。直近${targetRows.length}登板はいずれも二軍です。`
 }
 

@@ -860,12 +860,20 @@ export function createChatService(
           limit: 12,
         }
         const fallbackGames = await queryService.searchGames(fallbackFilters)
-        if (fallbackGames.length > 0) {
+        const sameDayTeamGames = fallbackGames.length === 0 && structuredQuery.filters.opponent && structuredQuery.filters.team
+          ? await queryService.searchGames({
+              game_date: structuredQuery.filters.game_date,
+              team: structuredQuery.filters.team,
+              limit: 12,
+            })
+          : []
+        const effectiveFallbackGames = fallbackGames.length > 0 ? fallbackGames : sameDayTeamGames
+        if (effectiveFallbackGames.length > 0) {
           structuredQuery = {
             intent: 'search_games',
             filters: fallbackFilters,
           }
-          results = { ...emptyResults, games: fallbackGames }
+          results = { ...emptyResults, games: effectiveFallbackGames }
         }
       }
 

@@ -189,7 +189,7 @@ describe('chat-query-parser', () => {
 
   it('parses QA shorthand season batting questions in fallback logic', () => {
     expect(parseStructuredQueryFromMessageStub('牧の2026年の成績を教えて')).toEqual({
-      intent: 'search_batting',
+      intent: 'aggregate_batting',
       filters: {
         year: 2026,
         player_name: '牧',
@@ -461,7 +461,7 @@ describe('chat-query-parser', () => {
     })
 
     expect(parseStructuredQueryFromMessageStub('ヤクルト村上の今年の成績')).toEqual({
-      intent: 'search_batting',
+      intent: 'aggregate_batting',
       filters: {
         year: currentJstYear(),
         team: 'ヤクルト',

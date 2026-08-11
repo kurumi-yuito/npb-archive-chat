@@ -235,7 +235,7 @@ export function normalizeStructuredQueryFromLlmMessage(message: string, value: u
   if (query.intent === 'off_topic' && ellipticalRecentTarget) {
     return {
       intent: 'search_pitching',
-      filters: { pitcher_name: ellipticalRecentTarget, recent: true, limit: 1 },
+      filters: { pitcher_name: ellipticalRecentTarget, recent: true, limit: 5 },
     }
   }
 
@@ -411,7 +411,8 @@ function normalizeExplicitPlannerContract(
   }
 
   const isSeasonBattingAggregate =
-    /(?:打率|本塁打|ホームラン|打点).*(?:教えて|どのくらい|何本|成績)|(?:成績).*(?:打率|本塁打|ホームラン|打点)/u.test(message) &&
+    (/(?:打率|本塁打|ホームラン|打点).*(?:教えて|どのくらい|何本|成績)|(?:成績).*(?:打率|本塁打|ホームラン|打点)/u.test(message) ||
+      (/(?:19|20)\d{2}年|今シーズン|今季|今期|今年/u.test(message) && /成績/u.test(message))) &&
     !/(?:最近|直近|最新|最後|打席内容)/u.test(message)
   if (isSeasonBattingAggregate && intent === 'search_batting') {
     intent = 'aggregate_batting'
@@ -427,26 +428,68 @@ function normalizeExplicitPlannerContract(
     }
   }
 
+  if (/IsoP|長打率マイナス打率/iu.test(message)) {
+    if (intent !== 'aggregate_batting' || filters.sort_by !== 'isoP' || filters.limit !== 5) {
+      intent = 'aggregate_batting'
+      filters.sort_by = 'isoP'
+      filters.limit = 5
+      changed = true
+    }
+  }
+
+  if (/四球率|BB%/iu.test(message)) {
+    if (intent !== 'aggregate_batting' || filters.sort_by !== 'bbRate' || filters.limit !== 5) {
+      intent = 'aggregate_batting'
+      filters.sort_by = 'bbRate'
+      filters.limit = 5
+      changed = true
+    }
+  }
+
+  if (/(?:捕手|キャッチャー)/u.test(message) && /最も多|最多/u.test(message)) {
+    if (intent !== 'aggregate_batting' || filters.position !== '捕' || filters.sort_by !== 'games' || filters.limit !== 3) {
+      intent = 'aggregate_batting'
+      filters.position = '捕'
+      filters.sort_by = 'games'
+      filters.limit = 3
+      changed = true
+    }
+  }
+
   if (/スタメン(?:を|は|一覧|教えて)/u.test(message)) {
-    if (intent !== 'search_roster' || filters.starter !== true) {
-      intent = 'search_roster'
-      filters.starter = true
+    if (intent !== 'search_batting' || filters.limit !== 100) {
+      intent = 'search_batting'
+      delete filters.starter
       filters.limit = Math.max(typeof filters.limit === 'number' ? filters.limit : 0, 100)
       changed = true
     }
   }
 
   if (/(?:ショート|遊撃)/u.test(message) && /[1-9１-９]番/u.test(message)) {
-    if (intent !== 'search_roster' || filters.position !== '遊' || filters.starter !== true) {
-      intent = 'search_roster'
+    if (intent !== 'search_batting' || filters.position !== '遊') {
+      intent = 'search_batting'
       filters.position = '遊'
-      filters.starter = true
+      delete filters.starter
       filters.limit = Math.max(typeof filters.limit === 'number' ? filters.limit : 0, 100)
+      changed = true
+    }
+    if (/最近|直近|最新/u.test(message)) {
+      filters.year = currentJstYear()
+      filters.recent = true
+      filters.limit = 1
       changed = true
     }
   }
 
   return changed ? { intent, filters } : query
+}
+
+function currentJstYear(): number {
+  const year = new Intl.DateTimeFormat('ja-JP', {
+    timeZone: 'Asia/Tokyo',
+    year: 'numeric',
+  }).formatToParts(new Date()).find((part) => part.type === 'year')?.value
+  return Number(year)
 }
 
 function playerIdFieldForNameField(
