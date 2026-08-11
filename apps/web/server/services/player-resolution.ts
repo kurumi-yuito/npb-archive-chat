@@ -32,10 +32,16 @@ const verifiedRegisteredNameAliases: Record<string, { registeredName: string; te
   近本光司: { registeredName: '近本', teams: ['阪神タイガース'] },
   坂倉将吾: { registeredName: '坂倉', teams: ['広島東洋カープ'] },
   山本由伸: { registeredName: '山本', teams: ['オリックス・バファローズ'] },
+  佐々木朗希: { registeredName: '佐々木', teams: ['千葉ロッテマリーンズ'] },
   西川龍馬: { registeredName: '西川', teams: ['オリックス・バファローズ', '広島東洋カープ'] },
-  田中将大: { registeredName: '田中', teams: ['読売ジャイアンツ', '東北楽天ゴールデンイーグルス'] },
+  田中将大: { registeredName: '田中将', teams: ['読売ジャイアンツ', '東北楽天ゴールデンイーグルス'] },
   丸佳浩: { registeredName: '丸', teams: ['読売ジャイアンツ', '広島東洋カープ'] },
   近藤健介: { registeredName: '近藤', teams: ['福岡ソフトバンクホークス', '北海道日本ハムファイターズ'] },
+  藤浪晋太郎: { registeredName: '藤浪', teams: ['横浜DeNAベイスターズ', '阪神タイガース'] },
+  石田裕太郎: { registeredName: '石田裕', teams: ['横浜DeNAベイスターズ'] },
+  東克樹: { registeredName: '東', teams: ['横浜DeNAベイスターズ'] },
+  山﨑伊織: { registeredName: '山﨑', teams: ['読売ジャイアンツ'] },
+  佐藤輝明: { registeredName: '佐藤', teams: ['阪神タイガース'] },
 }
 
 const teamAliasEntries = [
@@ -65,6 +71,7 @@ const teamAliasMap = new Map(
 export async function resolveStructuredQueryPlayer(
   queryService: ChatQueryService,
   structuredQuery: ChatStructuredQuery,
+  allowVerifiedAliasFallback = true,
 ): Promise<{ structuredQuery: ChatStructuredQuery; resolution: PlayerResolution | null }> {
   const target = findResolutionTarget(structuredQuery)
   if (!target) {
@@ -73,30 +80,6 @@ export async function resolveStructuredQueryPlayer(
 
   const input = target.value
   const inputKey = normalizeLookupKey(input)
-  const verifiedAlias = verifiedRegisteredNameAliases[inputKey]
-  if (verifiedAlias) {
-    const explicitTeams = teamQualifier(structuredQuery)
-    const hasCompatibleTeam = explicitTeams.length === 0 || explicitTeams.some((team) =>
-      verifiedAlias.teams.some((knownTeam) => sameTeamAlias(team, knownTeam)),
-    )
-    if (hasCompatibleTeam) {
-      const aliasQuery = {
-        ...structuredQuery,
-        filters: {
-          ...structuredQuery.filters,
-          [target.field]: verifiedAlias.registeredName,
-          ...(explicitTeams.length === 0 ? { team: verifiedAlias.teams[0] } : {}),
-        },
-      } as ChatStructuredQuery
-      const aliasResolved = await resolveStructuredQueryPlayer(queryService, aliasQuery)
-      return {
-        structuredQuery: aliasResolved.structuredQuery,
-        resolution: aliasResolved.resolution
-          ? { ...aliasResolved.resolution, input }
-          : null,
-      }
-    }
-  }
   const aliases = buildAliases(input)
   const hasTeamQualifier = teamQualifier(structuredQuery).length > 0
   const isUnqualifiedShortName = inputKey.length <= 2 && !hasTeamQualifier
@@ -167,6 +150,32 @@ export async function resolveStructuredQueryPlayer(
   }
 
   if (candidates.length === 0) {
+    const verifiedAlias = allowVerifiedAliasFallback
+      ? verifiedRegisteredNameAliases[inputKey]
+      : undefined
+    if (verifiedAlias) {
+      const explicitTeams = teamQualifier(structuredQuery)
+      const hasCompatibleTeam = explicitTeams.length === 0 || explicitTeams.some((team) =>
+        verifiedAlias.teams.some((knownTeam) => sameTeamAlias(team, knownTeam)),
+      )
+      if (hasCompatibleTeam) {
+        const aliasQuery = {
+          ...structuredQuery,
+          filters: {
+            ...structuredQuery.filters,
+            [target.field]: verifiedAlias.registeredName,
+            ...(explicitTeams.length === 0 ? { team: verifiedAlias.teams[0] } : {}),
+          },
+        } as ChatStructuredQuery
+        const aliasResolved = await resolveStructuredQueryPlayer(queryService, aliasQuery, false)
+        return {
+          structuredQuery: aliasResolved.structuredQuery,
+          resolution: aliasResolved.resolution
+            ? { ...aliasResolved.resolution, input }
+            : null,
+        }
+      }
+    }
     return {
       structuredQuery,
       resolution: { input, name: null, status: 'not_found', candidates: [] },
