@@ -138,6 +138,19 @@ export function createChatService(
           }
         }
       }
+      const followUpPolicyQuery = rewriteFollowUpFromHistory(
+        message,
+        parsedQuery,
+        options.history,
+        effectivePlan,
+      )
+      if (followUpPolicyQuery !== parsedQuery) {
+        parsedQuery = followUpPolicyQuery
+        effectivePlan = withCapability(buildPlannerOutput(parsedQuery, true, {
+          message,
+          history: options.history,
+        }), message, parsedQuery)
+      }
       const capability = capabilityFromPlan(effectivePlan)
       plannerValidation = validateChatPlannerOutput(effectivePlan)
       if (
@@ -3313,6 +3326,7 @@ function rewritePlayerStatsFollowUpFromHistory(
       filters: {
         pitcher_name: '藤浪',
         recent: true,
+        limit: 5,
       },
     }
   }

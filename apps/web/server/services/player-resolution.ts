@@ -161,21 +161,27 @@ export async function resolveStructuredQueryPlayer(
         verifiedAlias.teams.some((knownTeam) => sameTeamAlias(team, knownTeam)),
       )
       if (hasCompatibleTeam) {
+        const injectResolutionTeam = explicitTeams.length === 0
         const aliasQuery = {
           ...structuredQuery,
           filters: {
             ...structuredQuery.filters,
             [target.field]: verifiedAlias.registeredName,
-            ...(explicitTeams.length === 0 &&
-              structuredQuery.intent !== 'search_events' &&
-              structuredQuery.intent !== 'aggregate_events'
-              ? { team: verifiedAlias.teams[0] }
-              : {}),
+            ...(injectResolutionTeam ? { team: verifiedAlias.teams[0] } : {}),
           },
         } as ChatStructuredQuery
         const aliasResolved = await resolveStructuredQueryPlayer(queryService, aliasQuery, false)
+        const resolvedStructuredQuery = injectResolutionTeam &&
+          (structuredQuery.intent === 'search_events' || structuredQuery.intent === 'aggregate_events')
+          ? {
+              ...aliasResolved.structuredQuery,
+              filters: Object.fromEntries(
+                Object.entries(aliasResolved.structuredQuery.filters).filter(([key]) => key !== 'team'),
+              ),
+            } as ChatStructuredQuery
+          : aliasResolved.structuredQuery
         return {
-          structuredQuery: aliasResolved.structuredQuery,
+          structuredQuery: resolvedStructuredQuery,
           resolution: aliasResolved.resolution
             ? { ...aliasResolved.resolution, input }
             : null,
@@ -201,22 +207,28 @@ export async function resolveStructuredQueryPlayer(
     : undefined
   if (!candidate.player_id && verifiedAlias && verifiedAlias.registeredName !== candidate.name) {
     const explicitTeams = teamQualifier(structuredQuery)
+    const injectResolutionTeam = explicitTeams.length === 0
     const aliasQuery = {
       ...structuredQuery,
       filters: {
         ...structuredQuery.filters,
         [target.field]: verifiedAlias.registeredName,
-        ...(explicitTeams.length === 0 &&
-          structuredQuery.intent !== 'search_events' &&
-          structuredQuery.intent !== 'aggregate_events'
-          ? { team: verifiedAlias.teams[0] }
-          : {}),
+        ...(injectResolutionTeam ? { team: verifiedAlias.teams[0] } : {}),
       },
     } as ChatStructuredQuery
     const aliasResolved = await resolveStructuredQueryPlayer(queryService, aliasQuery, false)
     if (aliasResolved.resolution?.status === 'resolved' && aliasResolved.resolution.player_id) {
+      const resolvedStructuredQuery = injectResolutionTeam &&
+        (structuredQuery.intent === 'search_events' || structuredQuery.intent === 'aggregate_events')
+        ? {
+            ...aliasResolved.structuredQuery,
+            filters: Object.fromEntries(
+              Object.entries(aliasResolved.structuredQuery.filters).filter(([key]) => key !== 'team'),
+            ),
+          } as ChatStructuredQuery
+        : aliasResolved.structuredQuery
       return {
-        structuredQuery: aliasResolved.structuredQuery,
+        structuredQuery: resolvedStructuredQuery,
         resolution: { ...aliasResolved.resolution, input },
       }
     }

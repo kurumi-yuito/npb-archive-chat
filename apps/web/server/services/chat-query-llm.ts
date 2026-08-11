@@ -457,7 +457,7 @@ function normalizeExplicitPlannerContract(
   }
 
   if (/スタメン(?:を|は|一覧|教えて)/u.test(message)) {
-    if (intent !== 'search_batting' || filters.limit !== 100) {
+    if (intent !== 'search_batting' || typeof filters.limit !== 'number' || filters.limit < 100 || 'starter' in filters) {
       intent = 'search_batting'
       delete filters.starter
       filters.limit = Math.max(typeof filters.limit === 'number' ? filters.limit : 0, 100)
@@ -474,10 +474,13 @@ function normalizeExplicitPlannerContract(
       changed = true
     }
     if (/最近|直近|最新/u.test(message)) {
-      filters.year = currentJstYear()
-      filters.recent = true
-      filters.limit = 1
-      changed = true
+      const year = currentJstYear()
+      if (filters.year !== year || filters.recent !== true || filters.limit !== 1) {
+        filters.year = year
+        filters.recent = true
+        filters.limit = 1
+        changed = true
+      }
     }
   }
 

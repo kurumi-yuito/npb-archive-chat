@@ -344,4 +344,16 @@ describe('chat-query-llm', () => {
       ),
     ).toEqual(value)
   })
+
+  it('normalizes recent batting-order queries idempotently', () => {
+    expect(
+      normalizeStructuredQueryFromLlmMessage('DeNAで5番ショートは最近いつ？', {
+        intent: 'search_roster',
+        filters: { team: 'DeNA', position: '遊', starter: true, limit: 10 },
+      }),
+    ).toMatchObject({
+      intent: 'search_batting',
+      filters: { team: 'DeNA', position: '遊', recent: true, limit: 1 },
+    })
+  })
 })

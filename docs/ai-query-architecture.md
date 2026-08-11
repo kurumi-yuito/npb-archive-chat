@@ -733,6 +733,7 @@ Phase 2 は、Identity Layer 本体を DB 化する前に、既存 chat-service 
 - Scope-aware current team correction
 - Follow-up context metadata
 - Controlled player stats follow-up inheritance
+- Planner metadataに基づく訂正・再確認・scope follow-upのquery具体化
 
 意図的に実施していない内容:
 

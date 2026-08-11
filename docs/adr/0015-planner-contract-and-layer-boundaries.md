@@ -55,8 +55,9 @@ Phase 18ではこの境界を次のように補強した。
 - 年度・recent条件はfact検索の条件であり、短い登録名のidentity候補を一意化する条件には使わない。同姓候補が複数ならEntity Resolutionで停止する。
 - フルネームのexact候補がhistorical row由来で`player_id`を持たない場合に限り、検証済み登録名で再解決する。複数選手比較でも同じ規則を使う。
 - 打者対投手のcareer matchupでは、現在所属をRepository filterへ自動注入しない。現在所属で絞ると移籍前の直接対決を失うためである。
-- season成績、年別、ランキング件数、単一登板とrecent formの区別はPlanner adapterで明示的意味を保存する。Serviceが質問文から別intentへ再分類しない。
-- scope follow-upはPlannerが履歴中の「一軍」「二軍」「一軍・二軍」を読んでquery scopeを決める。Formatterは取得済み結果とPlanner metadataを説明するだけである。
+- season成績、年別、ランキング件数、単一登板とrecent formの区別はPlanner adapterで明示的意味を保存する。Serviceがstandalone質問を別intentへ再分類しない。
+- follow-upの明示的な訂正・再確認・scope確認については、Plannerの`followUpType`、correction、context metadataと保持履歴が一致する場合に限り、Service Policyが継承queryを具体化できる。これは新しいintent分類ではなく、Plannerが表現した会話操作をRepository queryへ射影する処理である。対象を特定できなければclarificationで停止する。
+- scope follow-upのFormatterは、取得済み結果とPlanner metadataから「一軍」「二軍」「両方」の内訳を説明し、scopeを再判定しない。
 
 確認時にRepositoryを実行しないのは、対象や条件が未確定な検索が誤選手・誤試合の回答を生むためである。確認応答はシステム障害ではなく正常な対話継続なのでHTTP 200を返す。公開応答では`structured_query: null`と`execution_metadata.response_policy`を返し、実行queryが存在しないことを明示する。
 
