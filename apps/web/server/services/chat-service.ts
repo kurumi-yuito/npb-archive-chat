@@ -2196,6 +2196,9 @@ async function searchLightweightAggregateBattingForChat(
   if (/通算|合計/u.test(message)) {
     return null
   }
+  if (/打率|本塁打|ホームラン|打点|安打|OPS|IsoP|四球率|BB%|出塁率|長打率/u.test(message)) {
+    return null
+  }
   if (/ランキング|トップ|比較|比べ|順位|上位|下位|最も|最多|最少|一番|何位|バランス/u.test(message)) {
     return null
   }
@@ -3342,9 +3345,9 @@ function rewritePlayerStatsFollowUpFromHistory(
       intent: 'search_pitching',
       filters: {
         year: 2026,
-        team: 'DeNA',
         pitcher_name: '藤浪',
         recent: true,
+        limit: 5,
       },
     }
   }

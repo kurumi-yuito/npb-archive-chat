@@ -391,6 +391,13 @@ function normalizeExplicitPlannerContract(
     }
   }
 
+  if (/通算/u.test(message) && (typeof filters.year_from === 'number' || typeof filters.year_to === 'number')) {
+    if ('group_by' in filters) {
+      delete filters.group_by
+      changed = true
+    }
+  }
+
   const isTeamPitchingStats =
     /投手成績/u.test(message) &&
     !/(?:と|・|、).*(?:比較|比べ)/u.test(message) &&
