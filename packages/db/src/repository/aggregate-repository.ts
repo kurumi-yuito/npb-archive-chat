@@ -86,13 +86,23 @@ export async function aggregateBattingLines(
         SUM(batting_lines.stolen_bases) AS stolenBases,
         SUM(COALESCE(batting_lines.walks, 0)) AS walks,
         SUM(COALESCE(batting_lines.strikeouts, 0)) AS strikeouts,
-        COALESCE(SUM(hr_stats.hr_count), 0) AS homeRuns
+        COALESCE(SUM(hr_stats.hr_count), 0) AS homeRuns,
+        COALESCE(SUM(hr_stats.extra_bases), 0) AS extraBases
       FROM batting_lines
       INNER JOIN games ON games.game_id = batting_lines.game_id
       LEFT JOIN (
-        SELECT game_id, batter_name, COUNT(*) AS hr_count
+        SELECT game_id, batter_name,
+          SUM(CASE WHEN result_text LIKE '%ホームラン%' THEN 1 ELSE 0 END) AS hr_count,
+          SUM(CASE
+            WHEN result_text LIKE '%ホームラン%' THEN 3
+            WHEN result_text LIKE '%三塁打%' OR result_text LIKE '%スリーベース%' THEN 2
+            WHEN result_text LIKE '%二塁打%' OR result_text LIKE '%ツーベース%' THEN 1
+            ELSE 0
+          END) AS extra_bases
         FROM events
         WHERE result_text LIKE '%ホームラン%'
+           OR result_text LIKE '%三塁打%' OR result_text LIKE '%スリーベース%'
+           OR result_text LIKE '%二塁打%' OR result_text LIKE '%ツーベース%'
         GROUP BY game_id, batter_name
       ) hr_stats ON hr_stats.game_id = batting_lines.game_id AND hr_stats.batter_name = batting_lines.player_name
       ${whereClause}
@@ -107,9 +117,10 @@ export async function aggregateBattingLines(
     const atBats = Number(row.atBats ?? 0)
     const hits = Number(row.hits ?? 0)
     const walks = Number(row.walks ?? 0)
+    const extraBases = Number(row.extraBases ?? 0)
     const battingAverage = atBats > 0 ? hits / atBats : null
     const onBasePercentage = atBats + walks > 0 ? (hits + walks) / (atBats + walks) : null
-    const sluggingPercentage = battingAverage
+    const sluggingPercentage = atBats > 0 ? (hits + extraBases) / atBats : null
     return {
       kind: 'batting',
       label: String(row.label ?? ''),
@@ -130,7 +141,7 @@ export async function aggregateBattingLines(
         onBasePercentage,
         sluggingPercentage,
         ops: onBasePercentage !== null && sluggingPercentage !== null ? onBasePercentage + sluggingPercentage : null,
-        isoP: 0,
+        isoP: battingAverage !== null && sluggingPercentage !== null ? sluggingPercentage - battingAverage : null,
         bbRate: atBats + walks > 0 ? walks / (atBats + walks) : null,
       },
     }
@@ -306,7 +317,8 @@ async function aggregateNormalizedBattingLines(
         SUM(batting_line_facts.stolen_bases) AS stolenBases,
         SUM(COALESCE(batting_line_facts.walks, 0)) AS walks,
         SUM(COALESCE(batting_line_facts.strikeouts, 0)) AS strikeouts,
-        COALESCE(SUM(hr_stats.hr_count), 0) AS homeRuns
+        COALESCE(SUM(hr_stats.hr_count), 0) AS homeRuns,
+        COALESCE(SUM(hr_stats.extra_bases), 0) AS extraBases
       FROM batting_line_facts
       INNER JOIN game_facts ON game_facts.game_id = batting_line_facts.game_id
       INNER JOIN teams ON teams.team_id = batting_line_facts.team_id
@@ -317,11 +329,19 @@ async function aggregateNormalizedBattingLines(
           event_facts.game_id,
           event_facts.batter_player_id,
           batter_name.name AS batter_name,
-          COUNT(*) AS hr_count
+          SUM(CASE WHEN result_codes.result_text LIKE '%ホームラン%' THEN 1 ELSE 0 END) AS hr_count,
+          SUM(CASE
+            WHEN result_codes.result_text LIKE '%ホームラン%' THEN 3
+            WHEN result_codes.result_text LIKE '%三塁打%' OR result_codes.result_text LIKE '%スリーベース%' THEN 2
+            WHEN result_codes.result_text LIKE '%二塁打%' OR result_codes.result_text LIKE '%ツーベース%' THEN 1
+            ELSE 0
+          END) AS extra_bases
         FROM event_facts
         INNER JOIN result_codes ON result_codes.result_code_id = event_facts.result_code_id
         LEFT JOIN person_names AS batter_name ON batter_name.name_id = event_facts.batter_name_id
         WHERE result_codes.result_text LIKE '%ホームラン%'
+           OR result_codes.result_text LIKE '%三塁打%' OR result_codes.result_text LIKE '%スリーベース%'
+           OR result_codes.result_text LIKE '%二塁打%' OR result_codes.result_text LIKE '%ツーベース%'
         GROUP BY event_facts.game_id, event_facts.batter_player_id, batter_name.name
       ) hr_stats
         ON hr_stats.game_id = batting_line_facts.game_id
@@ -341,9 +361,10 @@ async function aggregateNormalizedBattingLines(
     const atBats = Number(row.atBats ?? 0)
     const hits = Number(row.hits ?? 0)
     const walks = Number(row.walks ?? 0)
+    const extraBases = Number(row.extraBases ?? 0)
     const battingAverage = atBats > 0 ? hits / atBats : null
     const onBasePercentage = atBats + walks > 0 ? (hits + walks) / (atBats + walks) : null
-    const sluggingPercentage = battingAverage
+    const sluggingPercentage = atBats > 0 ? (hits + extraBases) / atBats : null
     return {
       kind: 'batting',
       label: String(row.label ?? ''),
@@ -364,7 +385,7 @@ async function aggregateNormalizedBattingLines(
         onBasePercentage,
         sluggingPercentage,
         ops: onBasePercentage !== null && sluggingPercentage !== null ? onBasePercentage + sluggingPercentage : null,
-        isoP: 0,
+        isoP: battingAverage !== null && sluggingPercentage !== null ? sluggingPercentage - battingAverage : null,
         bbRate: atBats + walks > 0 ? walks / (atBats + walks) : null,
       },
     }
@@ -486,7 +507,7 @@ function battingSortClause(sortBy: string | undefined): string {
       return `CASE WHEN (${ab}+${bb}) > 0 AND ${ab} > 0 THEN (CAST(${h}+${bb} AS REAL)/(${ab}+${bb})) + CAST(${h} AS REAL)/${ab} ELSE 0 END DESC`
     }
     case 'isoP':
-      return 'COALESCE(SUM(hr_stats.hr_count), 0) DESC, SUM(batting_lines.hits) DESC'
+      return 'CASE WHEN SUM(batting_lines.at_bats) > 0 THEN CAST(COALESCE(SUM(hr_stats.extra_bases), 0) AS REAL)/SUM(batting_lines.at_bats) ELSE 0 END DESC, SUM(batting_lines.hits) DESC'
     case 'bbRate':
       return 'CASE WHEN (SUM(batting_lines.at_bats)+SUM(COALESCE(batting_lines.walks, 0))) > 0 THEN CAST(SUM(COALESCE(batting_lines.walks, 0)) AS REAL)/(SUM(batting_lines.at_bats)+SUM(COALESCE(batting_lines.walks, 0))) ELSE 0 END DESC'
     case 'atBats': return 'SUM(batting_lines.at_bats) DESC'
@@ -511,7 +532,7 @@ function normalizedBattingSortClause(sortBy: string | undefined): string {
       return `CASE WHEN (${ab}+${bb}) > 0 AND ${ab} > 0 THEN (CAST(${h}+${bb} AS REAL)/(${ab}+${bb})) + CAST(${h} AS REAL)/${ab} ELSE 0 END DESC`
     }
     case 'isoP':
-      return 'COALESCE(SUM(hr_stats.hr_count), 0) DESC, SUM(batting_line_facts.hits) DESC'
+      return 'CASE WHEN SUM(batting_line_facts.at_bats) > 0 THEN CAST(COALESCE(SUM(hr_stats.extra_bases), 0) AS REAL)/SUM(batting_line_facts.at_bats) ELSE 0 END DESC, SUM(batting_line_facts.hits) DESC'
     case 'bbRate':
       return 'CASE WHEN (SUM(batting_line_facts.at_bats)+SUM(COALESCE(batting_line_facts.walks, 0))) > 0 THEN CAST(SUM(COALESCE(batting_line_facts.walks, 0)) AS REAL)/(SUM(batting_line_facts.at_bats)+SUM(COALESCE(batting_line_facts.walks, 0))) ELSE 0 END DESC'
     case 'atBats': return 'SUM(batting_line_facts.at_bats) DESC'
@@ -861,6 +882,17 @@ async function aggregateCurrentBattingStats(
     values.push(`%${compactName(filters.player_name)}%`)
   }
   const whereClause = clauses.length > 0 ? `WHERE ${clauses.join(' AND ')}` : ''
+  const leagueTeams = leagueTeamList(filters.team)
+  if (leagueTeams) {
+    const coverageRows = await database.prepare(
+      `SELECT COUNT(DISTINCT player_batting_stats.team_name) AS teamCount
+       FROM player_batting_stats
+       ${whereClause}`,
+    ).all(...values) as Array<{ teamCount?: number }>
+    if (Number(coverageRows[0]?.teamCount ?? 0) < 6) {
+      return []
+    }
+  }
   const rows = await database.prepare(
     `SELECT
       player_batting_stats.player_name AS label,

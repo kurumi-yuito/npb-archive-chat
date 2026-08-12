@@ -1155,7 +1155,7 @@ async function answerMultiPlayerStatsComparisonIfNeeded({
     (resolution) => resolution.status === 'resolved',
   )
   const unresolvedPlayers = resolvedPlayers.filter(
-    (resolution) => resolution.status !== 'resolved' || !resolution.player_id,
+    (resolution) => resolution.status !== 'resolved',
   )
   if (unresolvedPlayers.length > 0) {
     const finalStructuredQuery = {

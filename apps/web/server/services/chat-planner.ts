@@ -51,7 +51,6 @@ export function createChatPlanner({
         history: context.history,
       })
     }
-    if (structuredQuery.intent === 'off_topic') return plannerOutput
     const capability = classifyChatCapability(message, structuredQuery, plannerOutput)
     return chatPlannerOutputSchema.parse({
       ...plannerOutput,

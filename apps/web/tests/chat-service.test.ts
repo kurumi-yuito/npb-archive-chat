@@ -564,6 +564,19 @@ describe('chat-service', () => {
     expect(response.answer.execution_metadata?.question_intent).toBe('news')
   })
 
+  it('routes an injury question as news even when the LLM planner returns off_topic', async () => {
+    const service = createChatService(createFakeDatabase(), {
+      parseStructuredQueryFromMessage: async () => ({ intent: 'off_topic', filters: {} }),
+    })
+
+    const response = await service.answerQuestion('藤浪ってケガした？')
+
+    expect(response.answer.summary).toContain('スポーツナビ プロ野球')
+    expect(response.answer.execution_metadata?.question_intent).toBe('news')
+    expect(response.answer.execution_metadata?.capability_uses_repository).toBe(false)
+    expect(response.answer.suggested_questions).toBeUndefined()
+  })
+
   it('keeps opinion on the repository path and appends commentary only after analysis evidence', async () => {
     const searchPitchingLines = vi.fn(async () => [{
       gameId: 'r20260711db-g-01',
