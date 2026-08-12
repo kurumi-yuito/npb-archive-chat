@@ -499,12 +499,11 @@ function battingSortClause(sortBy: string | undefined): string {
     case 'battingAverage':
       return 'CASE WHEN SUM(batting_lines.at_bats) > 0 THEN CAST(SUM(batting_lines.hits) AS REAL)/SUM(batting_lines.at_bats) ELSE 0 END DESC'
     case 'ops': {
-      // OPS ≈ OBP + SLG; approximate with available box-score columns (no TB or HBP)
-      // OBP_approx = (H+BB)/(AB+BB), SLG_approx = H/AB
       const h = 'SUM(batting_lines.hits)'
       const ab = 'SUM(batting_lines.at_bats)'
       const bb = 'SUM(COALESCE(batting_lines.walks, 0))'
-      return `CASE WHEN (${ab}+${bb}) > 0 AND ${ab} > 0 THEN (CAST(${h}+${bb} AS REAL)/(${ab}+${bb})) + CAST(${h} AS REAL)/${ab} ELSE 0 END DESC`
+      const xb = 'COALESCE(SUM(hr_stats.extra_bases), 0)'
+      return `CASE WHEN (${ab}+${bb}) > 0 AND ${ab} > 0 THEN (CAST(${h}+${bb} AS REAL)/(${ab}+${bb})) + CAST(${h}+${xb} AS REAL)/${ab} ELSE 0 END DESC`
     }
     case 'isoP':
       return 'CASE WHEN SUM(batting_lines.at_bats) > 0 THEN CAST(COALESCE(SUM(hr_stats.extra_bases), 0) AS REAL)/SUM(batting_lines.at_bats) ELSE 0 END DESC, SUM(batting_lines.hits) DESC'
@@ -529,7 +528,8 @@ function normalizedBattingSortClause(sortBy: string | undefined): string {
       const h = 'SUM(batting_line_facts.hits)'
       const ab = 'SUM(batting_line_facts.at_bats)'
       const bb = 'SUM(COALESCE(batting_line_facts.walks, 0))'
-      return `CASE WHEN (${ab}+${bb}) > 0 AND ${ab} > 0 THEN (CAST(${h}+${bb} AS REAL)/(${ab}+${bb})) + CAST(${h} AS REAL)/${ab} ELSE 0 END DESC`
+      const xb = 'COALESCE(SUM(hr_stats.extra_bases), 0)'
+      return `CASE WHEN (${ab}+${bb}) > 0 AND ${ab} > 0 THEN (CAST(${h}+${bb} AS REAL)/(${ab}+${bb})) + CAST(${h}+${xb} AS REAL)/${ab} ELSE 0 END DESC`
     }
     case 'isoP':
       return 'CASE WHEN SUM(batting_line_facts.at_bats) > 0 THEN CAST(COALESCE(SUM(hr_stats.extra_bases), 0) AS REAL)/SUM(batting_line_facts.at_bats) ELSE 0 END DESC, SUM(batting_line_facts.hits) DESC'

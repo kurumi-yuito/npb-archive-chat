@@ -630,11 +630,20 @@ export function createChatService(
                   : { ...emptyResults, batting: await queryService.searchBattingLines(structuredQuery.filters) }
               } else if (structuredQuery.intent === 'search_pitching') {
                 if (structuredQuery.filters.recent === true) {
+                  const pitching = await searchRecentPitchingLinesForChat(queryService, structuredQuery.filters, playerResolution, {
+                    firstTeamOnly: effectivePlan.followUpType !== 'scope_clarification' && /一軍/u.test(message),
+                  })
+                  const seasonAggregates = /何回登板|登板数/u.test(message)
+                    ? await queryService.aggregatePitchingLines({
+                        ...structuredQuery.filters,
+                        recent: undefined,
+                        limit: 10,
+                      })
+                    : []
                   results = {
                     ...emptyResults,
-                    pitching: await searchRecentPitchingLinesForChat(queryService, structuredQuery.filters, playerResolution, {
-                      firstTeamOnly: /一軍/u.test(message),
-                    }),
+                    pitching,
+                    aggregates: seasonAggregates,
                   }
                 } else {
                   const pitching = await queryService.searchPitchingLines(structuredQuery.filters)
@@ -2731,6 +2740,7 @@ async function aggregatePitchingForResolvedPlayer(
   if (mergedRows.length === 0) {
     return null
   }
+  const canonicalRows = mergedRows.filter((row) => row.label === playerResolution.name)
 
   return {
     structuredQuery,
@@ -2742,7 +2752,7 @@ async function aggregatePitchingForResolvedPlayer(
       roster: [],
       affiliations: [],
       gameDetails: [],
-      aggregates: mergedRows,
+      aggregates: canonicalRows.length > 0 ? canonicalRows : mergedRows,
     },
   }
 }
@@ -3947,6 +3957,10 @@ function sanitizeAggregateBattingRankingFilters(
   }
   if (inferredSortBy) {
     sanitizedFilters.sort_by = inferredSortBy
+  }
+  if (/完封/u.test(message)) {
+    sanitizedFilters.min_innings_per_start = 9
+    sanitizedFilters.max_earned_runs_per_start = 0
   }
   sanitizedFilters.limit = inferredLimit ?? (typeof filters.limit === 'number' ? filters.limit : 10)
 

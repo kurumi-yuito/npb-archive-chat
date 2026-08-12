@@ -527,6 +527,14 @@ function buildSummary(
 
   if (structuredQuery.intent === 'search_pitching') {
     const first = results.pitching[0] as PitchingLineRow
+    const seasonAndRecentSummary = formatPitchingSeasonAndRecentSummary(
+      question,
+      results.pitching as PitchingLineRow[],
+      results.aggregates as AggregateRow[],
+    )
+    if (seasonAndRecentSummary) {
+      return `${yearShiftPrefix}${seasonAndRecentSummary}`
+    }
     const multiPitchingSummary = formatMultiPlayerRecentPitchingSummary(
       structuredQuery,
       results.pitching as PitchingLineRow[],
@@ -627,6 +635,7 @@ function buildSummary(
       results.pitching as PitchingLineRow[],
       resultCount,
       executionMetadata,
+      question,
     )}`
   }
 
@@ -1162,6 +1171,30 @@ function formatDefaultPitchingLineSummary(row: PitchingLineRow, resultCount: num
   ].join('\n')
 }
 
+function formatPitchingSeasonAndRecentSummary(
+  question: string,
+  pitchingRows: PitchingLineRow[],
+  aggregateRows: AggregateRow[],
+): string | null {
+  if (!/何回登板|登板数/u.test(question) || pitchingRows.length === 0 || aggregateRows.length === 0) {
+    return null
+  }
+  const season = aggregateRows[0]
+  const recent = pitchingRows.find((row) => row.sourceKind !== 'bis_pitching' && row.sourceKind !== 'bis_pitching_farm')
+  if (!season || !recent) {
+    return null
+  }
+  const games = Number(season.stats.games ?? season.total)
+  const innings = Number(season.stats.inningsPitched ?? 0)
+  const strikeouts = Number(season.stats.strikeouts ?? 0)
+  const earnedRuns = Number(season.stats.earnedRuns ?? 0)
+  const era = innings > 0 ? (earnedRuns * 9 / innings).toFixed(2) : '0.00'
+  return [
+    `${recent.team} ${recent.pitcherName}は${String((recent.gameDate ?? '').slice(0, 4))}年、二軍で${games}試合に登板しています。シーズン成績は${formatInningsForDisplay(innings)}、${strikeouts}奪三振、防御率${era}です。`,
+    `直近の登板は${formatDateJa(recent.gameDate)}で、${formatInningsForDisplay(recent.inningsPitched)}、${recent.strikeouts}奪三振、失点${recent.runs}、自責点${recent.earnedRuns}でした。`,
+  ].join('\n')
+}
+
 function formatDefaultBattingLineSummary(row: BattingLineRow, resultCount: number): string {
   const league = row.gameId.startsWith('f') ? '二軍' : '一軍'
   const homeRuns = countHomeRunsFromBattingText(row.rawText)
@@ -1203,7 +1236,23 @@ function formatGameDetailSummary(
   pitchingRows: PitchingLineRow[],
   resultCount: number,
   executionMetadata?: ChatExecutionMetadata,
+  question = '',
 ): string {
+  if (executionMetadata?.answerMode === 'reason_explanation' && rows[0]) {
+    const linescore = parseLinescore(rows[0].linescoreJson)
+    if (linescore) {
+      const losingTeam = /阪神/u.test(question) ? '阪神' : displayTeamName(
+        linescore.away.totals.runs < linescore.home.totals.runs ? linescore.away.team : linescore.home.team,
+      )
+      const losingSide = displayTeamName(linescore.away.team) === losingTeam ? linescore.away : linescore.home
+      const winningSide = losingSide === linescore.away ? linescore.home : linescore.away
+      const scoringInnings = winningSide.innings
+        .map((runs, index) => Number(runs) > 0 ? `${index + 1}回${Number(runs)}点` : null)
+        .filter((value): value is string => value !== null)
+        .join('と')
+      return `${displayTeamName(winningSide.team)}が${scoringInnings}を挙げ、${losingTeam}は${losingSide.totals.hits}安打に抑えられたため、攻撃面で差がつきました。`
+    }
+  }
   const lines = rows.slice(0, 5).flatMap((row, index) => {
     const linescore = parseLinescore(row.linescoreJson)
     const gameEvents = events.filter((event) => event.gameId === row.gameId)
