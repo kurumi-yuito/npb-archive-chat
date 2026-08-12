@@ -1,5 +1,22 @@
 # QAテストケース一覧 - 現行本番との差分
 
+## Phase 19 再実行（2026-08-12）
+
+- 全件実行Version ID: `cf5ff1c3-369f-43b0-9c2b-9b16d8eb333a`
+- 全件ログ: `data/logs/qa-prod-1786516004208.json`
+- 実行対象: 182/182（ランナーは最後まで完走）
+- HTTP 200 / 500 / 503: 141 / 0 / 41件
+- Planner Contract違反 / Validation失敗: 0 / 0件（HTTP 200範囲）
+- 503の直接原因: OpenAI HTTP 429 `insufficient_quota` / `credit_balance_exhausted`
+- 新規再現時刻: 2026-08-12 16:22:03 JST
+- Cloudflare Ray ID: `a29dba04ec62483d-SJC`
+- 再現Worker Version ID: `cf5ff1c3-369f-43b0-9c2b-9b16d8eb333a`
+- 最新デプロイVersion ID: `d959f2fe-1227-4d46-a169-8875463f2d23`
+- 最新コミット: `c711621ef`
+- 判定: **Release Blocked**
+
+Q-01/Q-02/Q-22/Q-26/Q-27/Q-31/Q-43/Q-102/Q-104/Q-116/Q-121は、HTTP 200範囲で意図・対象・回答種別の修正反映を確認した。Q-45の完封条件修正はローカル回帰後に最新Versionへデプロイ済みだが、OpenAI quota枯渇が継続しているため最新Versionで全182件を再実行できていない。したがって許容外差分0、current-vs-prod差分0、Release Readyはいずれも未確認であり、完了扱いにしない。
+
 ## Phase 18 Release判定（2026-08-12）
 
 - 対象デプロイVersion ID: `ec152ddd-2b31-4037-9275-fd3b8d609c7d`
