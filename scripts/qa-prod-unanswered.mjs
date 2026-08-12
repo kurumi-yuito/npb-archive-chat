@@ -406,9 +406,10 @@ function extractUpstreamErrorField(payload, field) {
   const text = [payload?.statusMessage, payload?.message]
     .find((value) => typeof value === 'string')
   if (!text) return null
-  const match = text.match(new RegExp(`\\"${field}\\"\\s*:\\s*\\"([^\\"]+)\\"`, 'u'))
+  const match = text.match(new RegExp(`"${field}"\\s*:\\s*"([^"]+)"`, 'u'))
   return match?.[1] ?? null
 }
+
 
 function extractEntities(structuredQuery) {
   const filters = structuredQuery?.filters
