@@ -260,6 +260,8 @@ for (const [index, testCase] of cases.entries()) {
           httpRetryCount: httpRetryDelaysMs.length,
           status: response.status,
           code: json?.data?.code,
+          upstreamType: extractUpstreamErrorField(json, 'type'),
+          upstreamCode: extractUpstreamErrorField(json, 'code'),
         })
         if (canRetryHttp) {
           retryErrors.push({
@@ -398,6 +400,14 @@ function retryDelayMs(response, fallbackMs) {
     return Math.max(fallbackMs, dateMs - Date.now())
   }
   return fallbackMs
+}
+
+function extractUpstreamErrorField(payload, field) {
+  const text = [payload?.statusMessage, payload?.message]
+    .find((value) => typeof value === 'string')
+  if (!text) return null
+  const match = text.match(new RegExp(`\\"${field}\\"\\s*:\\s*\\"([^\\"]+)\\"`, 'u'))
+  return match?.[1] ?? null
 }
 
 function extractEntities(structuredQuery) {
@@ -591,7 +601,10 @@ async function runCapabilityCheck(testCase, userId) {
               'user-agent': userAgent,
               ...(cookie ? { cookie } : {}),
             },
-            body: JSON.stringify({ message: 'test' }),
+            // Usage-flow QA verifies token accounting, not Planner quality. A
+            // context-free clarification follows the real /api/chat path while
+            // intentionally avoiding both Planner and Repository execution.
+            body: JSON.stringify({ message: 'それ詳しく' }),
           })
           cookie = responseCookie(chatResponse) ?? cookie
           const payload = await chatResponse.json()
@@ -607,7 +620,7 @@ async function runCapabilityCheck(testCase, userId) {
           const limitedResponse = await fetch(`${baseUrl}/api/chat`, {
             method: 'POST',
             headers: { 'content-type': 'application/json', 'user-agent': userAgent, cookie },
-            body: JSON.stringify({ message: 'test' }),
+            body: JSON.stringify({ message: 'それ詳しく' }),
           })
           const limitedPayload = await limitedResponse.json()
           evidence.usageFlow.limitResponse = { status: limitedResponse.status, body: limitedPayload }

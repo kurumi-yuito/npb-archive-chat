@@ -7,6 +7,7 @@ import {
 } from './chat-query-parser-prompt'
 import { inferRecentAppearanceLimit } from './chat-recent-scope'
 import { messageMentionsTeam } from './chat-query-normalizer'
+import { isQuotaExhaustedResponse } from './openai-http'
 
 const openAiCompatibleChatCompletionSchema = z.object({
   choices: z.array(
@@ -127,7 +128,7 @@ export function createChatQueryLlm(
       let response: Response | undefined
       for (let attempt = 0; attempt <= delays.length; attempt++) {
         response = await fetchFn(url, { method: 'POST', headers, body })
-        if (response.status !== 429 || attempt === delays.length) break
+        if (response.status !== 429 || attempt === delays.length || await isQuotaExhaustedResponse(response)) break
         await sleep(retryDelayMs(response, delays[attempt]))
       }
 

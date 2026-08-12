@@ -266,7 +266,9 @@ Repositoryがprofile / alias一致をfact rowへ関連付ける場合、候補�
 
 今回の変更で `chat-query-llm.ts` と `chat-final-answer-llm.ts` は HTTP 429 時に `Retry-After` を尊重し、1秒、3秒、7秒、15秒を基本に再試行する。再試行後も失敗した場合は、OpenAI互換APIのエラー本文を500文字まで保持して `ChatQueryLlmHttpError` / `ChatFinalAnswerLlmHttpError` に含める。
 
-`scripts/qa-prod-unanswered.mjs` は本番QA時に HTTP 429 / 503 / `chat_llm_unavailable` を最大3回再試行し、ケース間隔の既定値を7秒にした。最終試行も失敗した場合は必ず `outcome: error` として保存する。レスポンスヘッダーと各HTTP再試行のヘッダーも保存し、Cloudflare Ray IDなど外部障害の相関情報を後から監査できるようにする。これにより一時的なrate limitはQA上で即Failにせず、継続障害は成功として誤集計しない。
+`scripts/qa-prod-unanswered.mjs` は本番QA時に一時的な HTTP 429 / 503 / `chat_llm_unavailable` を最大3回再試行し、ケース間隔の既定値を7秒にする。ただし `insufficient_quota` / `credit_balance_exhausted` は待機で回復しないため再試行せず、そのケースをエラーとして保存する。レスポンスヘッダーと各HTTP再試行のヘッダーも保存し、Cloudflare Ray IDなど外部障害の相関情報を後から監査できるようにする。
+
+利用回数を確認するCapability QAは、通常の自然文質問ではなく、Planner・Entity Resolution・Repositoryを実行しない文脈不足Clarificationを `/api/chat` に送る。これにより実際の利用トークン消費・返却・上限処理を通しつつ、利用回数の検証に不要なOpenAI呼び出しを発生させない。Plannerおよび最終回答LLM自身も、残高枯渇を示す429は再試行しない。一時的rate limitだけを再試行対象とする。
 
 2026-06-19のリファクタ後本番QAでは、OpenAI APIが `insufficient_quota` を返したためQ-01単発でもPlannerが完了しなかった。これはproductionでstub fallbackを無効化した状態の外部LLM quotaエラーだった。2026-08-08にはCloudflare secret更新なしで本番WorkerのHTTP 200復帰を確認しており、現在はOpenAI起因でQAを実行不能な状態ではない。経緯と未確認事項は[障害記録](incidents/2026-08-08-openai-insufficient-quota.md)を参照する。
 

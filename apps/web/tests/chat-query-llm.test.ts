@@ -96,6 +96,23 @@ describe('chat-query-llm', () => {
     ).rejects.toThrow()
   })
 
+  it('does not retry a credit balance exhausted response', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({
+      error: {
+        message: 'You have no credits remaining.',
+        type: 'insufficient_quota',
+        code: 'credit_balance_exhausted',
+      },
+    }), { status: 429, headers: { 'content-type': 'application/json' } }))
+    const llm = createChatQueryLlm(
+      { baseUrl: 'https://example.test/v1', apiKey: 'secret', model: 'test-model' },
+      { fetch: fetchMock },
+    )
+
+    await expect(llm.generateStructuredQuery('牧の成績を教えて')).rejects.toThrow('status 429')
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+  })
+
   it('records the raw planner intent and OpenAI request id on contract violations', async () => {
     const logger = { error: vi.fn() }
     const fetchMock = vi.fn().mockResolvedValue(

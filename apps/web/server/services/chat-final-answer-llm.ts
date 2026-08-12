@@ -1,4 +1,5 @@
 import type { ChatRequest, ChatResponseCore } from '@npb/schemas'
+import { isQuotaExhaustedResponse } from './openai-http'
 
 export type ChatFinalAnswerLlmConfig = {
   baseUrl?: string
@@ -177,7 +178,7 @@ export function createChatFinalAnswerLlm(config: ChatFinalAnswerLlmConfig): Chat
     let response: Response | undefined
     for (let attempt = 0; attempt <= delays.length; attempt++) {
       response = await fetch(url, { method: 'POST', headers, body: reqBody })
-      if (response.status !== 429 || attempt === delays.length) break
+      if (response.status !== 429 || attempt === delays.length || await isQuotaExhaustedResponse(response)) break
       await new Promise((resolve) => setTimeout(resolve, retryDelayMs(response!, delays[attempt])))
     }
 

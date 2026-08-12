@@ -28,4 +28,16 @@ describe('QA runner HTTP retries', () => {
       code: 'chat_llm_unavailable',
     })).toBe(false)
   })
+
+  it('does not retry exhausted quota responses', () => {
+    expect(shouldRetryHttp({
+      attempt: 0,
+      fetchRetryCount: 3,
+      httpRetryCount: 4,
+      status: 503,
+      code: 'chat_llm_unavailable',
+      upstreamType: 'insufficient_quota',
+      upstreamCode: 'credit_balance_exhausted',
+    })).toBe(false)
+  })
 })
