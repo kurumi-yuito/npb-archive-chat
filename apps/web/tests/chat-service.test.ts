@@ -565,7 +565,7 @@ describe('chat-service', () => {
   })
 
   it('routes an injury question as news even when the LLM planner returns off_topic', async () => {
-    const service = createChatService(createFakeDatabase(), {
+    const service = createChatService(createFakeQueryService(), {
       parseStructuredQueryFromMessage: async () => ({ intent: 'off_topic', filters: {} }),
     })
 
