@@ -326,6 +326,7 @@ for (const [index, testCase] of cases.entries()) {
       body: requestBody,
     },
     response_headers: responseHeaders,
+    openai_calls: extractOpenAiCallCounts(responseHeaders),
     fixture: fixtureMode ? {
       case_id: fixture.case_id,
       source_log: fixture.source_log,
@@ -383,6 +384,20 @@ for (const [index, testCase] of cases.entries()) {
   })
   if (index + 1 < cases.length) {
     await delay(delayMs)
+  }
+}
+
+function extractOpenAiCallCounts(headers) {
+  const count = (name) => {
+    const value = Number(headers?.[name])
+    return Number.isFinite(value) ? value : 0
+  }
+  return {
+    planner: count('x-npb-openai-planner-calls'),
+    answer_formatter: count('x-npb-openai-answer-calls'),
+    qa_evaluation: 0,
+    other: count('x-npb-openai-other-calls'),
+    total: count('x-npb-openai-total-calls'),
   }
 }
 

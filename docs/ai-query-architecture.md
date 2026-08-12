@@ -227,6 +227,8 @@ Planner が出す分類フィールド:
 
 `chat-answer-formatter.ts` は `answerMode` を `execution_metadata` に載せ、`chat-final-answer-llm.ts` はその値を見て、単なる数値列挙ではなく、詳細・理由・比較・要約の出し分けを行う。`scripts/qa-prod-unanswered.mjs` は `execution_metadata` の `follow_up_type` / `referenced_context` / `target_entity` / `target_game_id` / `target_player_id` / `answer_mode` を本番QAログへ残す。
 
+Phase 20以降の公開API回答は、Repository結果を`chat-answer-formatter.ts`で決定的に整形する。所属・受賞など既にFormatterだけで確定できる回答をAnswer LLMへ再送しない。Workerは各レスポンスにPlanner・Answer・その他のOpenAI実呼び出し数をヘッダーで返し、本番QAランナーはケース単位の`openai_calls`として保存する。QA期待値比較にもLLMを使用しない。
+
 ## 正規化層の扱い
 
 `chat-query-normalizer.ts` は以下に限定する。

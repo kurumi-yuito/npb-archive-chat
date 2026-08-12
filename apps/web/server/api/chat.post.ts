@@ -1,4 +1,4 @@
-import { getHeader, readBody } from 'h3'
+import { getHeader, readBody, setResponseHeader } from 'h3'
 import { ZodError } from 'zod'
 import {
   consumeChatUsageToken,
@@ -7,10 +7,6 @@ import {
 } from '@npb/db'
 import { chatResponseSchema } from '@npb/schemas'
 import { createChatService } from '../services/chat-service'
-import {
-  createChatFinalAnswerLlm,
-  hasChatFinalAnswerLlmConfig,
-} from '../services/chat-final-answer-llm'
 import {
   ChatQueryParserUnavailableError,
   createChatQueryParser,
@@ -35,6 +31,13 @@ import { getServerChatQueryService, getServerMetaDatabase } from '../utils/serve
 
 export default defineEventHandler(async (event) => {
   const config = useRuntimeConfig(event)
+  const openAiCalls = { planner: 0, answer: 0, other: 0 }
+  const publishOpenAiCallCounts = () => {
+    setResponseHeader(event, 'x-npb-openai-planner-calls', String(openAiCalls.planner))
+    setResponseHeader(event, 'x-npb-openai-answer-calls', String(openAiCalls.answer))
+    setResponseHeader(event, 'x-npb-openai-other-calls', String(openAiCalls.other))
+    setResponseHeader(event, 'x-npb-openai-total-calls', String(openAiCalls.planner + openAiCalls.answer + openAiCalls.other))
+  }
   let body: ReturnType<typeof parseChatRequestBody>
 
   try {
@@ -129,61 +132,32 @@ export default defineEventHandler(async (event) => {
             ? cloudflareEnv.CHAT_QUERY_LLM_MODEL
             : config.chatQueryLlmModel,
       }
-      const chatAnswerLlmConfig = {
-        baseUrl:
-          typeof cloudflareEnv?.CHAT_ANSWER_LLM_BASE_URL === 'string'
-            ? cloudflareEnv.CHAT_ANSWER_LLM_BASE_URL
-            : config.chatAnswerLlmBaseUrl,
-        apiKey:
-          typeof cloudflareEnv?.CHAT_ANSWER_LLM_API_KEY === 'string'
-            ? cloudflareEnv.CHAT_ANSWER_LLM_API_KEY
-            : config.chatAnswerLlmApiKey,
-        model:
-          typeof cloudflareEnv?.CHAT_ANSWER_LLM_MODEL === 'string'
-            ? cloudflareEnv.CHAT_ANSWER_LLM_MODEL
-            : config.chatAnswerLlmModel,
-      }
       const allowHeuristicFallback = parseBoolean(
         typeof cloudflareEnv?.CHAT_ALLOW_HEURISTIC_FALLBACK === 'string'
           ? cloudflareEnv.CHAT_ALLOW_HEURISTIC_FALLBACK
           : config.chatAllowHeuristicFallback,
       )
-      const allowDeterministicAnswerFallback = parseBoolean(
-        typeof cloudflareEnv?.CHAT_ALLOW_DETERMINISTIC_ANSWER_FALLBACK === 'string'
-          ? cloudflareEnv.CHAT_ALLOW_DETERMINISTIC_ANSWER_FALLBACK
-          : config.chatAllowDeterministicAnswerFallback,
-      )
-      const finalAnswerGenerator = hasChatFinalAnswerLlmConfig(chatAnswerLlmConfig)
-        ? createChatFinalAnswerLlm({
-            baseUrl: chatAnswerLlmConfig.baseUrl,
-            apiKey: chatAnswerLlmConfig.apiKey,
-            model: chatAnswerLlmConfig.model,
-          })
-        : undefined
-      if (!fixtureMode.enabled && !finalAnswerGenerator && !allowDeterministicAnswerFallback) {
-        throw createPublicApiError(
-          503,
-          'chat_llm_unavailable',
-          'CHAT_ANSWER_LLM_API_KEY and CHAT_ANSWER_LLM_MODEL must be set',
-        )
-      }
       const queryService = await getServerChatQueryService(
         event,
         String(config.npbSqlitePath ?? ''),
         typeof config.npbSqliteDir === 'string' ? config.npbSqliteDir : '',
       )
-      const service = createChatService(queryService, {
-        parseStructuredQueryFromMessage: fixtureMode.enabled
-          ? async () => body.fixture_structured_query!
-          : createChatQueryParser({
+      const queryParser = fixtureMode.enabled
+        ? async () => body.fixture_structured_query!
+        : createChatQueryParser({
               baseUrl: chatQueryLlmConfig.baseUrl,
               apiKey: chatQueryLlmConfig.apiKey,
               model: chatQueryLlmConfig.model,
             }, {
               allowFallback: allowHeuristicFallback,
-            }),
-        generateFinalAnswer: fixtureMode.enabled ? undefined : finalAnswerGenerator,
-        allowFinalAnswerFallback: fixtureMode.enabled ? true : allowDeterministicAnswerFallback,
+            })
+      const service = createChatService(queryService, {
+        parseStructuredQueryFromMessage: async (...args) => {
+          if (!fixtureMode.enabled) openAiCalls.planner += 1
+          return queryParser(...args)
+        },
+        generateFinalAnswer: undefined,
+        allowFinalAnswerFallback: true,
       })
       const core = await service.answerQuestion(body.message, {
         history: body.history,
@@ -193,6 +167,7 @@ export default defineEventHandler(async (event) => {
         ? buildFreeUsageInfo(effectiveBucket, usageConfig, now)
         : buildProUsageInfo(now)
 
+      publishOpenAiCallCounts()
       return chatResponseSchema.parse({ error: false, ...core, usage })
     } catch (innerError) {
       await Promise.all(consumedBucketKeys.map((bucketKey) =>
@@ -200,6 +175,7 @@ export default defineEventHandler(async (event) => {
       throw innerError
     }
   } catch (error) {
+    publishOpenAiCallCounts()
     console.error('[chat.post] unhandled error', error)
     if (error instanceof ZodError) {
       throw createPublicApiError(500, 'internal_validation_failed', 'Internal response validation failed', {
@@ -207,9 +183,6 @@ export default defineEventHandler(async (event) => {
       })
     }
     if (error instanceof ChatQueryParserUnavailableError) {
-      throw createPublicApiError(503, 'chat_llm_unavailable', error.message)
-    }
-    if (error instanceof Error && error.message.includes('CHAT_ANSWER_LLM')) {
       throw createPublicApiError(503, 'chat_llm_unavailable', error.message)
     }
     if (error instanceof Error && error.message.includes('not set')) {
