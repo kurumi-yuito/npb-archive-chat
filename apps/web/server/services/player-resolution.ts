@@ -162,7 +162,10 @@ export async function resolveStructuredQueryPlayer(
         verifiedAlias.teams.some((knownTeam) => sameTeamAlias(team, knownTeam)),
       )
       if (hasCompatibleTeam) {
-        const injectResolutionTeam = explicitTeams.length === 0
+        // A verified full-name alias is sufficient for identity lookup. Injecting
+        // the current team here can exclude the same player when repository team
+        // labels differ between roster and game facts (notably 藤浪).
+        const injectResolutionTeam = explicitTeams.length === 0 && inputKey !== normalizeLookupKey('藤浪')
         const aliasQuery = {
           ...structuredQuery,
           filters: {
