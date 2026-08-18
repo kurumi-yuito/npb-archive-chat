@@ -238,6 +238,11 @@ async function aggregateNormalizedBattingLines(
   normalized: AggregateBattingFilters,
 ): Promise<AggregateRow[]> {
   const groupByYear = normalized.group_by === 'year'
+  const playerGroup = `CASE
+    WHEN batting_line_facts.player_id IS NOT NULL AND batting_line_facts.player_id <> ''
+      THEN 'id:' || batting_line_facts.player_id
+    ELSE 'name:' || ${compactNameSql('person_names.name')}
+  END`
   const clauses: string[] = []
   const values: Array<string | number> = []
   appendNormalizedGameClauses(clauses, values, normalized)
@@ -306,9 +311,9 @@ async function aggregateNormalizedBattingLines(
   const rows = await database
     .prepare(
       `SELECT
-        ${groupByYear ? 'CAST(game_facts.year AS TEXT)' : 'person_names.name'} AS label,
+        ${groupByYear ? 'CAST(game_facts.year AS TEXT)' : 'MAX(person_names.name)'} AS label,
         MAX(person_names.name) AS playerName,
-        ${groupByYear ? 'MAX(teams.team_name)' : 'teams.team_name'} AS team,
+        MAX(teams.team_name) AS team,
         COUNT(*) AS games,
         SUM(batting_line_facts.at_bats) AS atBats,
         SUM(batting_line_facts.runs) AS runs,
@@ -350,7 +355,7 @@ async function aggregateNormalizedBattingLines(
           OR hr_stats.batter_name = person_names.name
        )
       ${whereClause}
-      GROUP BY ${groupByYear ? 'game_facts.year' : 'person_names.name, teams.team_name'}
+      GROUP BY ${groupByYear ? 'game_facts.year' : playerGroup}
       ${havingClause}
       ORDER BY ${groupByYear ? 'CAST(label AS INTEGER) ASC' : `${normalizedBattingSortClause(normalized.sort_by)}, label ASC`}
       LIMIT ?`,

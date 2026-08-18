@@ -42,7 +42,7 @@ export async function searchBattingLines(
   if (currentRows.length > 0) {
     return currentRows
   }
-  if (normalized.player_id && await isNormalizedFactsSchema(database)) {
+  if (await isNormalizedFactsSchema(database)) {
     const normalizedRows = await searchNormalizedBattingLines(database, normalized, limit)
     if (normalizedRows.length > 0) {
       return normalizedRows
@@ -153,8 +153,15 @@ async function searchNormalizedBattingLines(
   filters: SearchBattingLinesFilters,
   limit: number,
 ): Promise<BattingLineRow[]> {
-  const clauses: string[] = ['batting_line_facts.player_id = ?']
-  const values: Array<string | number> = [filters.player_id!]
+  const clauses: string[] = []
+  const values: Array<string | number> = []
+  if (filters.player_id) {
+    clauses.push('batting_line_facts.player_id = ?')
+    values.push(filters.player_id)
+  } else if (filters.player_name) {
+    clauses.push(prefixMatchesCompactNameSql('?', 'person_names.name', filters.team ? 1 : 2))
+    values.push(filters.player_name)
+  }
   if (filters.game_date) {
     clauses.push('game_facts.game_date = ?')
     values.push(filters.game_date)
@@ -214,7 +221,7 @@ async function searchNormalizedBattingLines(
       INNER JOIN person_names ON person_names.name_id = batting_line_facts.player_name_id
       LEFT JOIN positions ON positions.position_id = batting_line_facts.position_id
       LEFT JOIN source_snapshot_facts ON source_snapshot_facts.source_snapshot_id = batting_line_facts.source_snapshot_id
-      WHERE ${clauses.join(' AND ')}
+      ${clauses.length > 0 ? `WHERE ${clauses.join(' AND ')}` : ''}
       ORDER BY game_facts.game_date ${filters.recent ? 'DESC' : 'ASC'}, batting_line_facts.game_id ASC, batting_line_facts.row_index ASC
       LIMIT ?`,
     )

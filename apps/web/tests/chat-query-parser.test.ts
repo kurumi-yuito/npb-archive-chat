@@ -254,12 +254,12 @@ describe('chat-query-parser', () => {
     expect(
       parseStructuredQueryFromMessageStub('今シーズン広島の先発投手で最も長く投げた登板は？'),
     ).toEqual({
-      intent: 'aggregate_pitching',
+      intent: 'search_pitching',
       filters: {
         year: currentJstYear(),
         team: '広島',
         sort_by: 'inningsPitched',
-        limit: 20,
+        limit: 1,
       },
     })
   })
@@ -281,11 +281,11 @@ describe('chat-query-parser', () => {
     )
 
     expect(await parser('今シーズン広島の先発投手で最も長く投げた登板は？')).toEqual({
-      intent: 'aggregate_pitching',
+      intent: 'search_pitching',
       filters: {
         team: '広島',
         sort_by: 'inningsPitched',
-        limit: 20,
+        limit: 1,
       },
     })
   })

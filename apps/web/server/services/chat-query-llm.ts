@@ -292,6 +292,12 @@ export function normalizeStructuredQueryFromLlmMessage(message: string, value: u
       }
     }
     const sortBy = typeof filters.sort_by === 'string' ? filters.sort_by : undefined
+    if (sortBy === 'inningsPitched' && /最も長く投げた登板|最長登板/u.test(message)) {
+      return {
+        intent: 'search_pitching',
+        filters: { ...filters, sort_by: 'inningsPitched', limit: 1 },
+      }
+    }
     if (sortBy === 'inningsPitched' || isAggregatePitchingSortBy(sortBy)) {
       return {
         intent: 'aggregate_pitching',
@@ -310,7 +316,7 @@ export function normalizeStructuredQueryFromLlmMessage(message: string, value: u
       typeof query.filters === 'object'
     ) {
       const filters = query.filters as Record<string, unknown>
-      if (filters.sort_by === 'inningsPitched') {
+      if (filters.sort_by === 'inningsPitched' && !/最も長く投げた登板|最長登板/u.test(message)) {
         return {
           intent: 'aggregate_pitching',
           filters: {
@@ -325,6 +331,12 @@ export function normalizeStructuredQueryFromLlmMessage(message: string, value: u
 
   const filters = query.filters as Record<string, unknown>
   if (filters.sort_by !== 'pitchCount') {
+    if (filters.sort_by === 'inningsPitched' && /最も長く投げた登板|最長登板/u.test(message)) {
+      return {
+        intent: 'search_pitching',
+        filters: { ...filters, sort_by: 'inningsPitched', limit: 1 },
+      }
+    }
     if (filters.sort_by === 'inningsPitched') {
       return {
         intent: 'aggregate_pitching',

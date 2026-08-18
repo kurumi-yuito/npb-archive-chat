@@ -20,6 +20,9 @@ export type PitchingLineRow = {
   statsJson?: string | null
 }
 
+const PER_GAME_IP_SQL = `CASE WHEN pitching_lines.innings_pitched LIKE '%.%' THEN CAST(SUBSTR(pitching_lines.innings_pitched,1,INSTR(pitching_lines.innings_pitched,'.')-1) AS REAL)+CAST(SUBSTR(pitching_lines.innings_pitched,INSTR(pitching_lines.innings_pitched,'.')+1) AS REAL)/3.0 ELSE CAST(COALESCE(pitching_lines.innings_pitched,'0') AS REAL) END`
+const NORMALIZED_PER_GAME_IP_SQL = `CASE WHEN pitching_line_facts.innings_pitched LIKE '%.%' THEN CAST(SUBSTR(pitching_line_facts.innings_pitched,1,INSTR(pitching_line_facts.innings_pitched,'.')-1) AS REAL)+CAST(SUBSTR(pitching_line_facts.innings_pitched,INSTR(pitching_line_facts.innings_pitched,'.')+1) AS REAL)/3.0 ELSE CAST(COALESCE(pitching_line_facts.innings_pitched,'0') AS REAL) END`
+
 export async function searchPitchingLines(
   database: QueryDatabase,
   filters: SearchPitchingLinesFilters = {},
@@ -27,13 +30,13 @@ export async function searchPitchingLines(
   const normalized = searchPitchingLinesFiltersSchema.parse(filters)
   const limit = normalized.limit ?? 50
 
-  const currentRows = normalized.game_date || normalized.game_id || normalized.recent || normalized.sort_by === 'pitchCount'
+  const currentRows = normalized.game_date || normalized.game_id || normalized.recent || normalized.sort_by === 'pitchCount' || normalized.sort_by === 'inningsPitched'
     ? []
     : await searchCurrentPitchingStats(database, normalized, limit)
   if (currentRows.length > 0) {
     return currentRows
   }
-  if (normalized.pitcher_player_id && await isNormalizedFactsSchema(database)) {
+  if (await isNormalizedFactsSchema(database)) {
     const normalizedRows = await searchNormalizedPitchingLines(database, normalized, limit)
     if (normalizedRows.length > 0) {
       return normalizedRows
@@ -115,6 +118,8 @@ export async function searchPitchingLines(
       ${whereClause}
       ORDER BY ${normalized.sort_by === 'pitchCount'
         ? 'pitching_lines.pitch_count DESC, games.date DESC, pitching_lines.game_id DESC'
+        : normalized.sort_by === 'inningsPitched'
+          ? `${PER_GAME_IP_SQL} DESC, games.date DESC, pitching_lines.game_id DESC`
         : `games.date ${normalized.recent ? 'DESC' : 'ASC'}, pitching_lines.game_id ASC, pitching_lines.row_index ASC`}
       LIMIT ?`,
     )
@@ -136,8 +141,15 @@ async function searchNormalizedPitchingLines(
   filters: SearchPitchingLinesFilters,
   limit: number,
 ): Promise<PitchingLineRow[]> {
-  const clauses: string[] = ['pitching_line_facts.pitcher_id = ?']
-  const values: Array<string | number> = [filters.pitcher_player_id!]
+  const clauses: string[] = []
+  const values: Array<string | number> = []
+  if (filters.pitcher_player_id) {
+    clauses.push('pitching_line_facts.pitcher_id = ?')
+    values.push(filters.pitcher_player_id)
+  } else if (filters.pitcher_name) {
+    clauses.push(prefixMatchesCompactNameSql('?', 'person_names.name', filters.team ? 1 : 2))
+    values.push(filters.pitcher_name)
+  }
   if (filters.game_date) {
     clauses.push('game_facts.game_date = ?')
     values.push(filters.game_date)
@@ -188,9 +200,11 @@ async function searchNormalizedPitchingLines(
       INNER JOIN teams ON teams.team_id = pitching_line_facts.team_id
       INNER JOIN person_names ON person_names.name_id = pitching_line_facts.pitcher_name_id
       LEFT JOIN source_snapshot_facts ON source_snapshot_facts.source_snapshot_id = pitching_line_facts.source_snapshot_id
-      WHERE ${clauses.join(' AND ')}
+      ${clauses.length > 0 ? `WHERE ${clauses.join(' AND ')}` : ''}
       ORDER BY ${filters.sort_by === 'pitchCount'
         ? 'pitching_line_facts.pitch_count DESC, game_facts.game_date DESC, pitching_line_facts.game_id DESC'
+        : filters.sort_by === 'inningsPitched'
+          ? `${NORMALIZED_PER_GAME_IP_SQL} DESC, game_facts.game_date DESC, pitching_line_facts.game_id DESC`
         : `game_facts.game_date ${filters.recent ? 'DESC' : 'ASC'}, pitching_line_facts.game_id ASC, pitching_line_facts.row_index ASC`}
       LIMIT ?`,
     )

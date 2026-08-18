@@ -176,6 +176,18 @@ describe('runNormalizeDatabase', () => {
           },
         ])
 
+        const lineupBattingLines = await searchBattingLines(queryDatabase, {
+          game_date: '2025-03-28',
+          team: '楽天',
+          limit: 100,
+        })
+        expect(lineupBattingLines).toEqual(expect.arrayContaining([
+          expect.objectContaining({
+            gameId: 'r20250328b-e-01',
+            playerName: '浅村',
+          }),
+        ]))
+
         const aggregateRows = await aggregateBattingLines(queryDatabase, {
           year: 2025,
           sort_by: 'homeRuns',
