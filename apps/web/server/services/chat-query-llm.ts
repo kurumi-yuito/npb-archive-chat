@@ -454,6 +454,25 @@ function normalizeExplicitPlannerContract(
     }
   }
 
+  if (/完封/u.test(message) && intent === 'aggregate_pitching') {
+    if (filters.min_innings_per_start !== 9 || filters.max_earned_runs_per_start !== 0) {
+      filters.min_innings_per_start = 9
+      filters.max_earned_runs_per_start = 0
+      changed = true
+    }
+  }
+
+  if (
+    intent === 'search_events' &&
+    /対戦|対決|対したこと|打ったこと/u.test(message) &&
+    typeof filters.batter_name === 'string' &&
+    typeof filters.pitcher_name === 'string' &&
+    (typeof filters.limit !== 'number' || filters.limit < 500)
+  ) {
+    filters.limit = 500
+    changed = true
+  }
+
   if (/(?:捕手|キャッチャー)/u.test(message) && /最も多|最多/u.test(message)) {
     if (intent !== 'aggregate_batting' || filters.position !== '捕' || filters.sort_by !== 'games' || filters.limit !== 3) {
       intent = 'aggregate_batting'

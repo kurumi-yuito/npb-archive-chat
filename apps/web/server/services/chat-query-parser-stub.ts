@@ -448,7 +448,7 @@ function buildEventsFilters(
           ? 'ホームラン'
           : undefined),
     player_name: explicit.player_name ?? playerFromEventSearchPhrase,
-    limit: toInt(explicit.limit),
+    limit: toInt(explicit.limit) ?? (batterPitcherMatchup ? 500 : undefined),
   }
 }
 

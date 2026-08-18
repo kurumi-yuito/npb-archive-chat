@@ -588,6 +588,14 @@ function buildSummary(
   }
 
   if (structuredQuery.intent === 'search_batting') {
+    const lineupSummary = formatStartingLineupSummary(
+      question,
+      results.batting as BattingLineRow[],
+      structuredQuery.filters as Record<string, unknown>,
+    )
+    if (lineupSummary) {
+      return `${yearShiftPrefix}${lineupSummary}`
+    }
     const first = results.batting[0] as BattingLineRow
     const multiBattingSummary = formatMultiPlayerRecentBattingSummary(
       structuredQuery,
@@ -671,6 +679,28 @@ function buildSummary(
   }
 
   return `${yearShiftPrefix}${formatEventListSummary(question, structuredQuery, results.events, resultCount, playerResolution)}`
+}
+
+function formatStartingLineupSummary(
+  question: string,
+  rows: BattingLineRow[],
+  filters: Record<string, unknown>,
+): string | null {
+  if (!/スタメン|先発メンバー/u.test(question) || rows.length === 0) {
+    return null
+  }
+  const starters = rows
+    .filter((row) => typeof row.battingOrder === 'number' && row.battingOrder >= 1 && row.battingOrder <= 9)
+    .sort((a, b) => Number(a.battingOrder) - Number(b.battingOrder))
+  if (starters.length === 0) {
+    return null
+  }
+  const date = typeof filters.game_date === 'string' ? formatDateJa(filters.game_date) : formatDateJa(starters[0]!.gameDate)
+  const team = displayTeamName(starters[0]!.team)
+  return [
+    `${date}の${team}のスタメンです。`,
+    ...starters.map((row) => `${row.battingOrder}番（${row.position ?? '守備位置不明'}）${row.playerName}`),
+  ].join('\n')
 }
 
 function formatZeroResultPitchingScopeClarification(

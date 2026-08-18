@@ -25,6 +25,7 @@ type ResolutionTarget = {
 }
 
 const verifiedRegisteredNameAliases: Record<string, { registeredName: string; teams: string[] }> = {
+  藤浪: { registeredName: '藤浪 晋太郎', teams: ['横浜DeNAベイスターズ', '阪神タイガース'] },
   村上宗隆: { registeredName: '村上', teams: ['東京ヤクルトスワローズ'] },
   大谷翔平: { registeredName: '大谷', teams: ['北海道日本ハムファイターズ'] },
   則本昂大: { registeredName: '則本', teams: ['読売ジャイアンツ', '東北楽天ゴールデンイーグルス'] },

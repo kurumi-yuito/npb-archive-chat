@@ -563,6 +563,7 @@ describe('chat-query-parser', () => {
           team: '横浜',
           batter_name: '京田',
           pitcher_name: '砂田',
+          limit: 500,
         },
       })
     }

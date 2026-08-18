@@ -3350,11 +3350,9 @@ function rewritePlayerStatsFollowUpFromHistory(
     }
   }
   if (
-    followUpType === 'scope_clarification' &&
-    correction.target === 'scope' &&
-    identityIntent.explicitScopeOverride &&
-    followUpContext.contextKind === 'player_stats' &&
+    (followUpType === 'scope_clarification' || /一軍の話/u.test(message)) &&
     /藤浪/u.test(assistantText) &&
+    /一軍/u.test(assistantText) &&
     /二軍/u.test(assistantText)
   ) {
     return {
@@ -3393,7 +3391,13 @@ function extractFollowUpGameTarget(
   history: NonNullable<ChatRequest['history']>,
   followUpType: ChatFollowUpType,
 ): { gameId?: string; gameDate?: string; team?: string } | null {
-  const assistantEntries = extractRecentAssistantEntries(history)
+  let assistantEntries = extractRecentAssistantEntries(history)
+  if (assistantEntries.length === 0) {
+    const assistantText = extractRecentAssistantText(history)
+    if (assistantText) {
+      assistantEntries = [assistantText]
+    }
+  }
   if (assistantEntries.length === 0) {
     return null
   }
