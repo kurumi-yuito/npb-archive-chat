@@ -134,6 +134,61 @@ describe('chat-query-parser', () => {
     })
   })
 
+  it.each([
+    [
+      '阪神の藤浪の最近の成績は？',
+      {
+        intent: 'search_pitching',
+        filters: { pitcher_name: '藤浪', team: '阪神', recent: true },
+      },
+    ],
+    [
+      '佐藤輝明と牧秀悟のそれぞれ直近3試合の打撃成績を比較して',
+      {
+        intent: 'search_batting',
+        filters: { player_names: ['佐藤輝明', '牧秀悟'], recent: true, limit: 3 },
+      },
+    ],
+  ])('preserves the QA route when planner fallback handles %s', async (message, expected) => {
+    const generateStructuredQuery = vi.fn().mockRejectedValue(new DOMException('timed out', 'TimeoutError'))
+    const parser = createChatQueryParser(
+      { baseUrl: 'https://example.test/v1', apiKey: 'secret', model: 'test-model' },
+      {
+        llmGenerator: {
+          generateStructuredQuery,
+        },
+        logger: { warn: vi.fn() },
+      },
+    )
+
+    await expect(parser(message)).resolves.toEqual(expected)
+    expect(generateStructuredQuery).not.toHaveBeenCalled()
+  })
+
+  it.each([
+    ['田中どう？', undefined, 'search_batting'],
+    [
+      'それどうだった？',
+      {
+        history: [
+          { role: 'user' as const, content: '2021年4月16日の阪神対ヤクルトの試合結果を教えて' },
+          { role: 'assistant' as const, content: '阪神が2-0で勝利しました。' },
+        ],
+      },
+      'game_detail',
+    ],
+  ])('uses the deterministic route for unstable planner input %s', async (message, context, intent) => {
+    const generateStructuredQuery = vi.fn()
+    const parser = createChatQueryParser(
+      { baseUrl: 'https://example.test/v1', apiKey: 'secret', model: 'test-model' },
+      { allowFallback: false, llmGenerator: { generateStructuredQuery } },
+    )
+
+    const result = await parser(message, context)
+    expect(result.intent).toBe(intent)
+    expect(generateStructuredQuery).not.toHaveBeenCalled()
+  })
+
   it('does not use the stub parser when fallback is disabled and LLM config is missing', async () => {
     const parser = createChatQueryParser(undefined, { allowFallback: false })
 

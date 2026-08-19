@@ -47,12 +47,13 @@ export async function searchBattingLines(
     if (normalizedRows.length > 0) {
       return normalizedRows
     }
-    if (normalized.player_name) {
+    if (normalized.player_id && normalized.player_name) {
       return searchBattingLines(database, {
         ...normalized,
         player_id: undefined,
       })
     }
+    return []
   }
 
   const clauses: string[] = []

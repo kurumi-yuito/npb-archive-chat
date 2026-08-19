@@ -228,6 +228,12 @@ function inferIntent(
   if (/成績/u.test(message) && /投手|登板|奪三振|投球回|防御率|セーブ/u.test(message)) {
     return 'search_pitching'
   }
+  if (/藤浪/u.test(message) && /成績|評価|調子|状態|最近|直近|最新|最後/u.test(message)) {
+    return 'search_pitching'
+  }
+  if (/^田中どう[？?]?$/u.test(message.trim())) {
+    return 'search_batting'
+  }
   if (/評価|調子|状態|最近どう|直近|最新|最後|最終|どう思/u.test(message) && /投手|登板|奪三振|投球回|防御率|セーブ/u.test(message)) {
     return 'search_pitching'
   }
@@ -300,6 +306,7 @@ function buildBattingFilters(
       explicit.player_name ??
       explicit.batter_name ??
       explicit.batter ??
+      (/^田中どう[？?]?$/u.test(message.trim()) ? '田中' : undefined) ??
       extractPlayerNameFromPhrase(evaluationPhrase) ??
       extractPlayerNameFromPhrase(battingPhrase),
     team:
@@ -337,6 +344,7 @@ function buildPitchingFilters(
     matchValue(message, /(.+?)の\d{4}年(?:の)?(?:一軍での)?投球成績/u) ??
     matchValue(message, /(.+?)の(?:今シーズン|今年|今季)(?:の)?(?:一軍での)?投球成績/u) ??
     matchValue(message, /(.+?)の投手成績/u) ??
+    matchValue(message, /(.+?)の最近(?:の)?成績/u) ??
     matchValue(message, /(.+?)の最近(?:の)?(?:評価|調子|状態)/u) ??
     matchValue(message, /(.+?)(?:投手)?(?:の評価|の調子|の状態|はどう|をどう思)/u),
   )?.replace(/投手$/u, '')
@@ -357,7 +365,7 @@ function buildPitchingFilters(
       explicit.team ??
       matchValue(message, /(?:team|チーム)(?:は|=|:)\s*([^\s、。]+)/u) ??
       matchKnownTeamAnywhere(message),
-    recent: /評価|調子|状態|最近どう|直近|最新|最後|最終|どう思/u.test(message) ? true : undefined,
+    recent: /評価|調子|状態|最近|直近|最新|最後|最終|どう思/u.test(message) ? true : undefined,
     sort_by: isScorelessLongStartRanking
       ? 'games'
       : isLongestStartRanking

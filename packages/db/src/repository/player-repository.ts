@@ -42,6 +42,7 @@ type ProfileMatch = {
 async function resolvePlayerIdsFromProfiles(
   database: QueryDatabase,
   aliases: string[],
+  preferNormalizedFacts: boolean,
 ): Promise<ProfileMatch[]> {
   if (aliases.length === 0) return []
   const values: string[] = []
@@ -58,9 +59,12 @@ async function resolvePlayerIdsFromProfiles(
     const profileRows = await database
       .prepare(`SELECT player_id, full_name, team_name, year_teams_json FROM player_profiles WHERE ${clauses.join(' OR ')} LIMIT 30`)
       .all(...values) as Array<{ player_id: string; full_name: string | null; team_name: string | null; year_teams_json: string | null }>
+    const normalizedRows = profileRows.length === 0 && preferNormalizedFacts
+      ? await resolvePlayerRowsFromNormalizedFacts(database, aliases)
+      : null
     const rows = profileRows.length > 0
       ? profileRows
-      : await resolvePlayerRowsFromIdSources(database, aliases)
+      : normalizedRows ?? await resolvePlayerRowsFromIdSources(database, aliases)
     const ids = [...new Set(rows.map((r) => r.player_id))]
     // Only filter when the profile lookup yields a unique player — multiple matches mean the input
     // is an ambiguous surname and filtering would incorrectly narrow to the first hit.
@@ -89,6 +93,49 @@ async function resolvePlayerIdsFromProfiles(
     }]
   } catch {
     return []
+  }
+}
+
+async function resolvePlayerRowsFromNormalizedFacts(
+  database: QueryDatabase,
+  aliases: string[],
+): Promise<Array<{ player_id: string; full_name: string | null; team_name: string | null; year_teams_json: string | null }> | null> {
+  const values: string[] = []
+  const clauses = aliases.map((alias) => {
+    const compact = alias.replace(/[ \u3000]/gu, '')
+    values.push(compact, `${compact}%`)
+    return `(${compactNameCol('person_names.name')} = ? OR ${compactNameCol('person_names.name')} LIKE ?)`
+  })
+  if (clauses.length === 0) return []
+  try {
+    return await database.prepare(
+      `SELECT player_id, full_name, team_name, NULL AS year_teams_json
+         FROM (
+           SELECT batting_line_facts.player_id AS player_id,
+                  person_names.name AS full_name,
+                  teams.team_name AS team_name,
+                  game_facts.year AS year
+             FROM person_names
+             INNER JOIN batting_line_facts INDEXED BY idx_batting_name_game ON batting_line_facts.player_name_id = person_names.name_id
+             INNER JOIN game_facts ON game_facts.game_id = batting_line_facts.game_id
+             INNER JOIN teams ON teams.team_id = batting_line_facts.team_id
+            WHERE batting_line_facts.player_id IS NOT NULL AND (${clauses.join(' OR ')})
+           UNION ALL
+           SELECT pitching_line_facts.pitcher_id AS player_id,
+                  person_names.name AS full_name,
+                  teams.team_name AS team_name,
+                  game_facts.year AS year
+             FROM person_names
+             INNER JOIN pitching_line_facts INDEXED BY idx_pitching_name_game ON pitching_line_facts.pitcher_name_id = person_names.name_id
+             INNER JOIN game_facts ON game_facts.game_id = pitching_line_facts.game_id
+             INNER JOIN teams ON teams.team_id = pitching_line_facts.team_id
+            WHERE pitching_line_facts.pitcher_id IS NOT NULL AND (${clauses.join(' OR ')})
+         )
+        ORDER BY year DESC
+        LIMIT 30`,
+    ).all(...values, ...values) as Array<{ player_id: string; full_name: string | null; team_name: string | null; year_teams_json: string | null }>
+  } catch {
+    return null
   }
 }
 
@@ -234,7 +281,7 @@ export async function searchPlayerCandidates(
 
   const isShortIdentityInput = normalizeIdentityKey(filters.name).length <= 2
   const profileMatches = mergeProfileMatches(
-    await resolvePlayerIdsFromProfiles(database, [filters.name]),
+    await resolvePlayerIdsFromProfiles(database, [filters.name], filters.includeEvents === false),
     await resolvePlayerIdsFromAliases(database, aliases),
   )
   const profilePlayerIds = profileMatches.map((m) => m.player_id)
@@ -264,7 +311,11 @@ export async function searchPlayerCandidates(
   }
 
   const rows: RawPlayerMention[] = []
-  if (filters.searchDomain === 'all') {
+  const normalizedRows = await queryNormalizedPlayerMentions(database, aliases, filters)
+  if (normalizedRows !== null) {
+    rows.push(...normalizedRows)
+  }
+  if (normalizedRows === null && filters.searchDomain === 'all') {
     rows.push(...await queryRawPlayerMentions(database, aliases, filters, {
       sql: 'SELECT current_team_roster.player_name AS name, current_team_roster.player_id AS player_url, ? AS role, current_team_roster.team_name AS team, current_team_roster.year AS year FROM current_team_roster',
       role: 'bis_roster',
@@ -272,7 +323,7 @@ export async function searchPlayerCandidates(
       yearColumn: 'current_team_roster.year',
     }))
   }
-  if (filters.searchDomain !== 'pitching') {
+  if (normalizedRows === null && filters.searchDomain !== 'pitching') {
     rows.push(...await queryRawPlayerMentions(database, aliases, filters, {
       sql: 'SELECT player_batting_stats.player_name AS name, player_batting_stats.player_id AS player_url, ? AS role, player_batting_stats.team_name AS team, player_batting_stats.year AS year FROM player_batting_stats',
       role: 'bis_batting',
@@ -280,7 +331,7 @@ export async function searchPlayerCandidates(
       yearColumn: 'player_batting_stats.year',
     }))
   }
-  if (filters.searchDomain !== 'batting') {
+  if (normalizedRows === null && filters.searchDomain !== 'batting') {
     const bisRows = await queryRawPlayerMentions(database, aliases, filters, {
       sql: 'SELECT player_pitching_stats.player_name AS name, player_pitching_stats.player_id AS player_url, ? AS role, player_pitching_stats.team_name AS team, player_pitching_stats.year AS year FROM player_pitching_stats',
       role: 'bis_pitching',
@@ -289,7 +340,7 @@ export async function searchPlayerCandidates(
     })
     rows.push(...bisRows)
   }
-  if (filters.includeEvents !== false) {
+  if (normalizedRows === null && filters.includeEvents !== false) {
     if (filters.searchDomain !== 'pitching') {
       rows.push(...await queryRawPlayerMentions(database, aliases, filters, {
         sql: `SELECT events.batter_name AS name, COALESCE(NULLIF(events.batter_url, ''), CASE WHEN json_valid(events.event_attributes_json) THEN json_extract(events.event_attributes_json, '$.batter_links[0].url') ELSE NULL END) AS player_url, ? AS role, events.offense_team AS team, games.year AS year FROM events INNER JOIN games ON games.game_id = events.game_id`,
@@ -313,7 +364,7 @@ export async function searchPlayerCandidates(
       yearColumn: 'games.year',
     }))
   }
-  if (filters.searchDomain !== 'pitching') {
+  if (normalizedRows === null && filters.searchDomain !== 'pitching') {
     rows.push(...await queryRawPlayerMentions(database, aliases, filters, {
       sql: 'SELECT batting_lines.player_name AS name, NULLIF(batting_lines.player_url, \'\') AS player_url, ? AS role, batting_lines.team AS team, games.year AS year FROM batting_lines INNER JOIN games ON games.game_id = batting_lines.game_id',
       role: 'batter',
@@ -321,7 +372,7 @@ export async function searchPlayerCandidates(
       yearColumn: 'games.year',
     }))
   }
-  if (filters.searchDomain !== 'batting') {
+  if (normalizedRows === null && filters.searchDomain !== 'batting') {
     rows.push(...await queryRawPlayerMentions(database, aliases, filters, {
       sql: 'SELECT pitching_lines.pitcher_name AS name, NULLIF(pitching_lines.pitcher_url, \'\') AS player_url, ? AS role, pitching_lines.team AS team, games.year AS year FROM pitching_lines INNER JOIN games ON games.game_id = pitching_lines.game_id',
       role: 'pitcher',
@@ -329,7 +380,7 @@ export async function searchPlayerCandidates(
       yearColumn: 'games.year',
     }))
   }
-  if (filters.searchDomain === 'all') {
+  if (normalizedRows === null && filters.searchDomain === 'all') {
     rows.push(...await queryRawPlayerMentions(database, aliases, filters, {
       sql: 'SELECT roster_entries.player_name AS name, NULLIF(roster_entries.player_url, \'\') AS player_url, ? AS role, roster_entries.team AS team, games.year AS year FROM roster_entries INNER JOIN games ON games.game_id = roster_entries.game_id',
       role: 'roster',
@@ -422,6 +473,101 @@ type RawPlayerMention = {
   role: string
   team: string | null
   year: number
+}
+
+/**
+ * The normalized database stores a name once in person_names and references its
+ * numeric id from each fact table. Resolve the (small) name dimension first so
+ * SQLite/D1 can use the existing *_name_game indexes. Querying the compatibility
+ * views with REPLACE/LIKE applies the expression to every fact row and can exceed
+ * the Worker request deadline on production-sized data.
+ *
+ * null means this is a legacy database without normalized physical tables; an
+ * empty array is a successful normalized lookup with no matches.
+ */
+async function queryNormalizedPlayerMentions(
+  database: QueryDatabase,
+  aliases: string[],
+  filters: SearchPlayerCandidatesFilters,
+): Promise<RawPlayerMention[] | null> {
+  // Event identity resolution also needs batter/pitcher/runner evidence and its
+  // historical same-person collapsing. Keep that established path unchanged.
+  if (filters.includeEvents !== false) return null
+  const nameValues: string[] = []
+  const nameClauses = aliases.map((alias) => {
+    const compact = alias.replace(/[ \u3000]/gu, '')
+    nameValues.push(compact, `%${compact}%`, compact)
+    return `(${compactNameCol('person_names.name')} = ? OR ${compactNameCol('person_names.name')} LIKE ? OR (SUBSTR(?, 1, LENGTH(${compactNameCol('person_names.name')})) = ${compactNameCol('person_names.name')} AND LENGTH(${compactNameCol('person_names.name')}) >= 2))`
+  })
+  if (nameClauses.length === 0) return []
+
+  const yearClauses: string[] = []
+  const yearValues: number[] = []
+  if (filters.year) {
+    yearClauses.push('game_facts.year = ?')
+    yearValues.push(filters.year)
+  }
+  if (filters.year_from) {
+    yearClauses.push('game_facts.year >= ?')
+    yearValues.push(filters.year_from)
+  }
+  if (filters.year_to) {
+    yearClauses.push('game_facts.year <= ?')
+    yearValues.push(filters.year_to)
+  }
+  const whereYear = yearClauses.length > 0 ? ` AND ${yearClauses.join(' AND ')}` : ''
+  const sources: Array<{ sql: string, role: string }> = []
+  if (filters.searchDomain !== 'pitching') {
+    sources.push({
+      role: 'batter',
+      sql: `SELECT person_names.name AS name,
+              CASE WHEN batting_line_facts.player_id IS NOT NULL THEN 'https://npb.jp/bis/players/' || batting_line_facts.player_id || '.html' ELSE NULL END AS player_url,
+              ? AS role, teams.team_name AS team, game_facts.year AS year
+            FROM person_names
+            INNER JOIN batting_line_facts INDEXED BY idx_batting_name_game ON batting_line_facts.player_name_id = person_names.name_id
+            INNER JOIN game_facts ON game_facts.game_id = batting_line_facts.game_id
+            INNER JOIN teams ON teams.team_id = batting_line_facts.team_id
+           WHERE (${nameClauses.join(' OR ')})${whereYear}`,
+    })
+  }
+  if (filters.searchDomain !== 'batting') {
+    sources.push({
+      role: 'pitcher',
+      sql: `SELECT person_names.name AS name,
+              CASE WHEN pitching_line_facts.pitcher_id IS NOT NULL THEN 'https://npb.jp/bis/players/' || pitching_line_facts.pitcher_id || '.html' ELSE NULL END AS player_url,
+              ? AS role, teams.team_name AS team, game_facts.year AS year
+            FROM person_names
+            INNER JOIN pitching_line_facts INDEXED BY idx_pitching_name_game ON pitching_line_facts.pitcher_name_id = person_names.name_id
+            INNER JOIN game_facts ON game_facts.game_id = pitching_line_facts.game_id
+            INNER JOIN teams ON teams.team_id = pitching_line_facts.team_id
+           WHERE (${nameClauses.join(' OR ')})${whereYear}`,
+    })
+  }
+  if (filters.searchDomain === 'all') {
+    sources.push({
+      role: 'roster',
+      sql: `SELECT person_names.name AS name,
+              CASE WHEN roster_entry_facts.player_id IS NOT NULL THEN 'https://npb.jp/bis/players/' || roster_entry_facts.player_id || '.html' ELSE NULL END AS player_url,
+              ? AS role, teams.team_name AS team, game_facts.year AS year
+            FROM person_names
+            INNER JOIN roster_entry_facts INDEXED BY idx_roster_name_game ON roster_entry_facts.player_name_id = person_names.name_id
+            INNER JOIN game_facts ON game_facts.game_id = roster_entry_facts.game_id
+            INNER JOIN teams ON teams.team_id = roster_entry_facts.team_id
+           WHERE (${nameClauses.join(' OR ')})${whereYear}`,
+    })
+  }
+
+  const rows: RawPlayerMention[] = []
+  try {
+    for (const source of sources) {
+      rows.push(...await database
+        .prepare(`${source.sql} LIMIT ?`)
+        .all(source.role, ...nameValues, ...yearValues, Math.max((filters.limit ?? 10) * 50, 200)) as RawPlayerMention[])
+    }
+    return rows
+  } catch {
+    return null
+  }
 }
 
 async function queryRawPlayerMentions(

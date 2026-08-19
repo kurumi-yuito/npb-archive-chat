@@ -6,6 +6,20 @@ import {
 } from '../server/services/chat-query-llm'
 
 describe('chat-query-llm', () => {
+  it('bounds planner fetches so the parser can fall back before the Worker request limit', async () => {
+    const fetchMock = vi.fn((_url: Parameters<typeof fetch>[0], init?: RequestInit) => new Promise<Response>((_resolve, reject) => {
+      init?.signal?.addEventListener('abort', () => reject(init.signal?.reason), { once: true })
+    }))
+    const llm = createChatQueryLlm(
+      { baseUrl: 'https://example.test/v1', apiKey: 'secret', model: 'test-model' },
+      { fetch: fetchMock, requestTimeoutMs: 10 },
+    )
+
+    await expect(llm.generateStructuredQuery('阪神の藤浪の最近の成績は？')).rejects.toThrow()
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(fetchMock.mock.calls[0]?.[1]?.signal).toBeInstanceOf(AbortSignal)
+  })
+
   it('parses a valid OpenAI-compatible chat completions response', async () => {
     const fetchMock = vi.fn().mockResolvedValue(
       new Response(

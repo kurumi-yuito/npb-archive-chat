@@ -1,5 +1,23 @@
 # QAテストケース一覧 - 現行本番との差分
 
+## Phase 24 最終判定（2026-08-19）
+
+- 対象Deploy Version ID: `ae618b40-25d7-4173-9e2b-d714a0e7bb49`
+- 対象コミット（デプロイ時HEAD）: `1f8d208d7170e80d5e4d480af6f123e276298e5d`
+- 全件ログ: `data/logs/qa-prod-1787145312583.json`
+- 実行結果: **Pass 182 / Fail 0**
+- HTTP 200 / 500 / 503: 182 / 0 / 0
+- summary null / runner error / retry: 0 / 0 / 0
+- OpenAI呼び出し: Planner 163、Answer Formatter 0、その他0、合計163
+- QA正との許容外差分件数: **0/182**
+- 判定: **Release Ready**
+
+Phase 24の対象だったQ-85、Q-111、Q-163、Q-164、Q-180はすべてHTTP 200、summary非nullでQA正と整合した。Q-85は藤浪の直近5登板、Q-111は佐藤輝明と牧秀悟の各直近3試合（合計6行）、Q-163/Q-180は田中の同姓曖昧性、Q-164は2021年4月16日の阪神対ヤクルト戦1件を返した。
+
+Q-85/Q-111の60秒停止はPlayer Resolutionから呼ばれるRepository SQLに原因があった。正規化DBでも互換ビューの全fact行へ名前正規化式を適用していたため、`person_names`で名前を先に解決し、`idx_batting_name_game`、`idx_pitching_name_game`、`idx_roster_name_game`を使う物理fact検索へ変更した。またQ-111では、選手ID検索0件後の名前fallbackがIDなしの同一条件を再帰呼び出しし続けていたため、fallbackを一度だけに制限した。タイムアウト値は延長していない。
+
+Q-163/Q-164/Q-180の旧HTTP 500応答には公開レスポンス内スタックがなく、当時のWrangler tailも保存されていないため、旧例外のスタックを事後に断定していない。再現対象を決定的Planner経路へ固定し、現行Versionでは3件ともHTTP 200、Worker例外0である。影響ケースQ-83/Q-84/Q-109/Q-112/Q-115も限定再実行でQA正との整合を確認した後、全182件を一度だけ実行した。
+
 ## Phase 21 最終判定（2026-08-18）
 
 - 対象Deploy Version ID: `0879afe4-d45e-4f45-ac6e-ebcad1886d82`

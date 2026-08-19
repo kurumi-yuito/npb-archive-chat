@@ -78,7 +78,10 @@ export class ChatQueryLlmHttpError extends Error {
 type ChatQueryLlmDependencies = {
   fetch?: typeof fetch
   logger?: Pick<Console, 'error'>
+  requestTimeoutMs?: number
 }
+
+const DEFAULT_PLANNER_REQUEST_TIMEOUT_MS = 15_000
 
 export class ChatQueryLlmContractError extends Error {
   constructor(
@@ -103,6 +106,7 @@ export function createChatQueryLlm(
 ) {
   const fetchFn = dependencies.fetch ?? globalThis.fetch
   const logger = dependencies.logger ?? console
+  const requestTimeoutMs = dependencies.requestTimeoutMs ?? DEFAULT_PLANNER_REQUEST_TIMEOUT_MS
 
   return {
     async generateStructuredQuery(
@@ -123,11 +127,12 @@ export function createChatQueryLlm(
         authorization: `Bearer ${config.apiKey}`,
       }
       const url = buildChatCompletionsUrl(config.baseUrl)
+      const signal = AbortSignal.timeout(requestTimeoutMs)
 
       const delays = [1000, 3000, 7000, 15000]
       let response: Response | undefined
       for (let attempt = 0; attempt <= delays.length; attempt++) {
-        response = await fetchFn(url, { method: 'POST', headers, body })
+        response = await fetchFn(url, { method: 'POST', headers, body, signal })
         if (response.status !== 429 || attempt === delays.length || await isQuotaExhaustedResponse(response)) break
         await sleep(retryDelayMs(response, delays[attempt]))
       }

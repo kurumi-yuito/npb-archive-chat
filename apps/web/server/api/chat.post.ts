@@ -11,6 +11,7 @@ import {
   ChatQueryParserUnavailableError,
   createChatQueryParser,
 } from '../services/chat-query-parser'
+import { parseStructuredQueryFromMessageStub } from '../services/chat-query-parser-stub'
 import {
   buildFreeUsageInfo,
   buildProUsageInfo,
@@ -159,9 +160,31 @@ export default defineEventHandler(async (event) => {
         generateFinalAnswer: undefined,
         allowFinalAnswerFallback: true,
       })
-      const core = await service.answerQuestion(body.message, {
-        history: body.history,
-      })
+      let core: Awaited<ReturnType<typeof service.answerQuestion>>
+      try {
+        core = await service.answerQuestion(body.message, {
+          history: body.history,
+        })
+      } catch (plannerExecutionError) {
+        if (fixtureMode.enabled || !allowHeuristicFallback) throw plannerExecutionError
+        console.error('[chat.post] planner execution failed; retrying with deterministic parser', plannerExecutionError)
+        const fallbackService = createChatService(queryService, {
+          parseStructuredQueryFromMessage: async (message) => parseStructuredQueryFromMessageStub(message),
+          generateFinalAnswer: undefined,
+          allowFinalAnswerFallback: true,
+        })
+        try {
+          core = await fallbackService.answerQuestion(body.message, {
+            history: body.history,
+          })
+        } catch (fallbackError) {
+          console.error('[chat.post] deterministic parser recovery failed', {
+            plannerExecutionError,
+            fallbackError,
+          })
+          throw fallbackError
+        }
+      }
 
       const usage = !isEffectivePro(account) && effectiveBucket
         ? buildFreeUsageInfo(effectiveBucket, usageConfig, now)

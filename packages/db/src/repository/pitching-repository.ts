@@ -41,12 +41,13 @@ export async function searchPitchingLines(
     if (normalizedRows.length > 0) {
       return normalizedRows
     }
-    if (normalized.pitcher_name) {
+    if (normalized.pitcher_player_id && normalized.pitcher_name) {
       return searchPitchingLines(database, {
         ...normalized,
         pitcher_player_id: undefined,
       })
     }
+    return []
   }
 
   const clauses: string[] = []
