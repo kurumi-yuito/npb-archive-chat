@@ -93,6 +93,15 @@ jobs:
               --only-show-errors
           done
 
+      - name: Record R2-restored date integrity
+        if: ${{ env.IS_DRY_RUN != 'true' }}
+        run: |
+          node scripts/phase23-date-integrity-snapshot.mjs \
+            --sqlite data/npb-2026.sqlite \
+            --date 2026-05-10 \
+            --stage r2_restored_year_sqlite \
+            --output data/logs/phase23-r2-restored-date-integrity.json
+
       - name: Run update:daily
         id: update_daily
         shell: bash
@@ -148,6 +157,7 @@ jobs:
             | tee data/logs/enrich-bis-farm-boxes-action.log
 
       - name: Sync updated SQLite data to D1
+        id: sync_normalized
         if: ${{ env.IS_DRY_RUN != 'true' }}
         shell: bash
         env:
@@ -164,7 +174,13 @@ jobs:
           node scripts/phase5-normalized-ops-check.mjs \
             --database "$NPB_D1_DATABASE" \
             --output data/logs/phase5-normalized-ops-check-before-sync.json
-          pnpm --filter @npb/db run sync:normalized-d1 -- --sqlite-dir ./data --d1-database "$NPB_D1_DATABASE" --keep-files --verify | tee data/logs/d1-sync-action.log
+          pnpm --filter @npb/db run sync:normalized-d1 -- \
+            --sqlite-dir ./data \
+            --d1-database "$NPB_D1_DATABASE" \
+            --keep-files \
+            --verify \
+            --verify-date 2026-05-10 \
+            | tee data/logs/d1-sync-action.log
 
       - name: Verify D1 sync summary
         if: ${{ env.IS_DRY_RUN != 'true' }}
@@ -201,7 +217,7 @@ jobs:
             --output data/logs/phase5-normalized-ops-check-after-sync.json
 
       - name: Save SQLite backups to R2
-        if: ${{ always() && env.IS_DRY_RUN != 'true' && steps.update_daily.outcome == 'success' && steps.enrich_farm.outcome == 'success' }}
+        if: ${{ always() && env.IS_DRY_RUN != 'true' && steps.update_daily.outcome == 'success' && steps.enrich_farm.outcome == 'success' && steps.sync_normalized.outcome == 'success' }}
         shell: bash
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.CLOUDFLARE_R2_ACCESS_KEY_ID }}
@@ -277,6 +293,7 @@ jobs:
             data/logs/update-job.log
             data/logs/enrich-scores-calendar.log
             data/logs/enrich-bis-farm-boxes-action.log
+            data/logs/phase23-r2-restored-date-integrity.json
             data/logs/d1-sync-action.log
             data/logs/d1-sync-normalized/summary.json
             data/logs/phase4-backfill-official-pitching-evidence.json

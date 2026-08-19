@@ -79,6 +79,21 @@ export type SyncNormalizedD1Args = {
   dryRun?: boolean
   keepFiles?: boolean
   verify?: boolean
+  verifyDates?: string[]
+}
+
+export type DateDomainCounts = {
+  games: number
+  events: number
+  batting: number
+  pitching: number
+  roster: number
+}
+
+export type DateIntegritySnapshot = {
+  stage: 'year_sqlite' | 'legacy' | 'normalized' | 'd1_pre_import' | 'd1_post_import'
+  date: string
+  counts: DateDomainCounts
 }
 
 export type SyncNormalizedD1Result = {
@@ -93,6 +108,15 @@ export type SyncNormalizedD1Result = {
   totalRows: number
   summaryPath: string
   verification?: SyncNormalizedD1VerificationResult
+  dateIntegrity: {
+    snapshots: DateIntegritySnapshot[]
+    mismatches: Array<{
+      date: string
+      stage: DateIntegritySnapshot['stage']
+      expected: DateDomainCounts
+      actual: DateDomainCounts
+    }>
+  }
 }
 
 export type SyncNormalizedD1VerificationResult = {
@@ -162,6 +186,16 @@ export function parseSyncNormalizedD1Args(argv: string[]): SyncNormalizedD1Args 
       result.verify = false
       continue
     }
+    if (arg === '--verify-date') {
+      const date = args.shift()
+      if (!date) throw new Error('--verify-date requires YYYY-MM-DD')
+      result.verifyDates = [...(result.verifyDates ?? []), date]
+      continue
+    }
+    if (arg?.startsWith('--verify-date=')) {
+      result.verifyDates = [...(result.verifyDates ?? []), arg.slice('--verify-date='.length)]
+      continue
+    }
     throw new Error(`Unknown argument: ${arg}`)
   }
   return result
@@ -190,7 +224,28 @@ export async function runNormalizedD1Sync(
   const legacyPath = path.join(tempDir, 'legacy.sqlite')
   const normalizedPath = path.join(tempDir, 'normalized.sqlite')
   try {
+    const verifyDates = [...new Set(options.verifyDates ?? [])]
+    const dateSnapshots: DateIntegritySnapshot[] = verifyDates.map((date) => ({
+      stage: 'year_sqlite',
+      date,
+      counts: readYearSqliteDateCounts(yearFiles.map((file) => file.sqlitePath), date),
+    }))
+    for (const snapshot of dateSnapshots) {
+      if (snapshot.counts.games === 0) {
+        throw new Error(`Date integrity source is missing games for ${snapshot.date}: ${JSON.stringify(snapshot.counts)}`)
+      }
+    }
     buildMergedLegacyDatabase(legacyPath, yearFiles.map((file) => file.sqlitePath))
+    const legacy = openDatabase(legacyPath)
+    try {
+      dateSnapshots.push(...verifyDates.map((date) => ({
+        stage: 'legacy' as const,
+        date,
+        counts: readLegacyDateCounts(legacy, date),
+      })))
+    } finally {
+      legacy.close()
+    }
     const conversion = runNormalizeDatabase({
       source: legacyPath,
       target: normalizedPath,
@@ -205,6 +260,13 @@ export async function runNormalizedD1Sync(
     let sqlPaths: string[]
     try {
       rowCounts = readNormalizedRowCounts(normalized)
+      dateSnapshots.push(...verifyDates.flatMap((date) => {
+        const counts = readNormalizedDateCounts(normalized, date)
+        return [
+          { stage: 'normalized' as const, date, counts },
+          { stage: 'd1_pre_import' as const, date, counts },
+        ]
+      }))
       sqlPaths = await buildNormalizedD1ImportFiles(normalized, importDir)
     } finally {
       normalized.close()
@@ -227,6 +289,14 @@ export async function runNormalizedD1Sync(
       !options.dryRun && verify
         ? await verifyNormalizedD1Import(d1Database, rowCounts, workspaceRoot)
         : undefined
+    if (!options.dryRun && verify) {
+      dateSnapshots.push(...verifyDates.map((date) => ({
+        stage: 'd1_post_import' as const,
+        date,
+        counts: executeD1DateCounts(d1Database, date, workspaceRoot),
+      })))
+    }
+    const dateMismatches = compareDateIntegritySnapshots(dateSnapshots)
 
     const totalRows = Object.values(rowCounts).reduce((sum, count) => sum + count, 0)
     const summaryPath = path.join(importDir, 'summary.json')
@@ -242,10 +312,17 @@ export async function runNormalizedD1Sync(
       totalRows,
       summaryPath,
       verification,
+      dateIntegrity: {
+        snapshots: dateSnapshots,
+        mismatches: dateMismatches,
+      },
     }
     await writeFile(summaryPath, `${JSON.stringify(summary, null, 2)}\n`, 'utf8')
     if (verification && verification.mismatches.length > 0) {
       throw new Error(formatVerificationFailure(verification.mismatches))
+    }
+    if (dateMismatches.length > 0) {
+      throw new Error(`Date integrity verification failed: ${JSON.stringify(dateMismatches)}`)
     }
     return summary
   } finally {
@@ -379,6 +456,81 @@ function countRows(database: SqliteDatabase, table: string): number {
   return row.count
 }
 
+function readYearSqliteDateCounts(sqlitePaths: string[], date: string): DateDomainCounts {
+  return sqlitePaths.reduce<DateDomainCounts>((total, sqlitePath) => {
+    const database = openDatabase(sqlitePath)
+    try {
+      const counts = readLegacyDateCounts(database, date)
+      return addDateCounts(total, counts)
+    } finally {
+      database.close()
+    }
+  }, emptyDateCounts())
+}
+
+function readLegacyDateCounts(database: SqliteDatabase, date: string): DateDomainCounts {
+  return {
+    games: countByDate(database, 'SELECT COUNT(*) AS count FROM games WHERE date = ?', date),
+    events: countByDate(database, 'SELECT COUNT(*) AS count FROM events INNER JOIN games ON games.game_id = events.game_id WHERE games.date = ?', date),
+    batting: countByDate(database, 'SELECT COUNT(*) AS count FROM batting_lines INNER JOIN games ON games.game_id = batting_lines.game_id WHERE games.date = ?', date),
+    pitching: countByDate(database, 'SELECT COUNT(*) AS count FROM pitching_lines INNER JOIN games ON games.game_id = pitching_lines.game_id WHERE games.date = ?', date),
+    roster: countByDate(database, 'SELECT COUNT(*) AS count FROM roster_entries INNER JOIN games ON games.game_id = roster_entries.game_id WHERE games.date = ?', date),
+  }
+}
+
+function readNormalizedDateCounts(database: SqliteDatabase, date: string): DateDomainCounts {
+  return {
+    games: countByDate(database, 'SELECT COUNT(*) AS count FROM game_facts WHERE game_date = ?', date),
+    events: countByDate(database, 'SELECT COUNT(*) AS count FROM event_facts INNER JOIN game_facts ON game_facts.game_id = event_facts.game_id WHERE game_facts.game_date = ?', date),
+    batting: countByDate(database, 'SELECT COUNT(*) AS count FROM batting_line_facts INNER JOIN game_facts ON game_facts.game_id = batting_line_facts.game_id WHERE game_facts.game_date = ?', date),
+    pitching: countByDate(database, 'SELECT COUNT(*) AS count FROM pitching_line_facts INNER JOIN game_facts ON game_facts.game_id = pitching_line_facts.game_id WHERE game_facts.game_date = ?', date),
+    roster: countByDate(database, 'SELECT COUNT(*) AS count FROM roster_entry_facts INNER JOIN game_facts ON game_facts.game_id = roster_entry_facts.game_id WHERE game_facts.game_date = ?', date),
+  }
+}
+
+function countByDate(database: SqliteDatabase, sql: string, date: string): number {
+  return Number((database.prepare(sql).get(date) as { count: number }).count)
+}
+
+function emptyDateCounts(): DateDomainCounts {
+  return { games: 0, events: 0, batting: 0, pitching: 0, roster: 0 }
+}
+
+function addDateCounts(left: DateDomainCounts, right: DateDomainCounts): DateDomainCounts {
+  return {
+    games: left.games + right.games,
+    events: left.events + right.events,
+    batting: left.batting + right.batting,
+    pitching: left.pitching + right.pitching,
+    roster: left.roster + right.roster,
+  }
+}
+
+function compareDateIntegritySnapshots(snapshots: DateIntegritySnapshot[]) {
+  const mismatches: Array<{
+    date: string
+    stage: DateIntegritySnapshot['stage']
+    expected: DateDomainCounts
+    actual: DateDomainCounts
+  }> = []
+  for (const date of [...new Set(snapshots.map((snapshot) => snapshot.date))]) {
+    const stages = snapshots.filter((snapshot) => snapshot.date === date)
+    const expected = stages.find((snapshot) => snapshot.stage === 'year_sqlite')?.counts
+    if (!expected) continue
+    for (const snapshot of stages) {
+      if (!sameDateCounts(expected, snapshot.counts)) {
+        mismatches.push({ date, stage: snapshot.stage, expected, actual: snapshot.counts })
+      }
+    }
+  }
+  return mismatches
+}
+
+function sameDateCounts(left: DateDomainCounts, right: DateDomainCounts): boolean {
+  return (Object.keys(left) as Array<keyof DateDomainCounts>)
+    .every((key) => left[key] === right[key])
+}
+
 async function verifyNormalizedD1Import(
   databaseName: string,
   expectedTableCounts: Record<NormalizedImportTable, number>,
@@ -453,6 +605,57 @@ function executeD1CountQuery(
     throw new Error(`Unable to parse D1 verification count for table ${table}`)
   }
   return count
+}
+
+function executeD1DateCounts(
+  databaseName: string,
+  date: string,
+  workspaceRoot: string,
+): DateDomainCounts {
+  const quotedDate = sqlLiteral(date)
+  const query = `SELECT
+    (SELECT COUNT(*) FROM game_facts WHERE game_date = ${quotedDate}) AS games,
+    (SELECT COUNT(*) FROM event_facts INNER JOIN game_facts ON game_facts.game_id = event_facts.game_id WHERE game_facts.game_date = ${quotedDate}) AS events,
+    (SELECT COUNT(*) FROM batting_line_facts INNER JOIN game_facts ON game_facts.game_id = batting_line_facts.game_id WHERE game_facts.game_date = ${quotedDate}) AS batting,
+    (SELECT COUNT(*) FROM pitching_line_facts INNER JOIN game_facts ON game_facts.game_id = pitching_line_facts.game_id WHERE game_facts.game_date = ${quotedDate}) AS pitching,
+    (SELECT COUNT(*) FROM roster_entry_facts INNER JOIN game_facts ON game_facts.game_id = roster_entry_facts.game_id WHERE game_facts.game_date = ${quotedDate}) AS roster;`
+  const result = spawnSync(
+    'wrangler',
+    ['d1', 'execute', databaseName, '--remote', '--yes', '--json', '--command', query],
+    {
+      cwd: workspaceRoot,
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'pipe'],
+      env: process.env,
+    },
+  )
+  if ((result.status ?? 1) !== 0) {
+    throw new Error(`D1 date verification query failed for ${date}`)
+  }
+  const counts = extractDateCountsFromJson(JSON.parse(result.stdout.trim()) as unknown)
+  if (!counts) throw new Error(`Unable to parse D1 date verification counts for ${date}`)
+  return counts
+}
+
+function extractDateCountsFromJson(value: unknown): DateDomainCounts | null {
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      const extracted = extractDateCountsFromJson(item)
+      if (extracted) return extracted
+    }
+    return null
+  }
+  if (!value || typeof value !== 'object') return null
+  const record = value as Record<string, unknown>
+  const keys: Array<keyof DateDomainCounts> = ['games', 'events', 'batting', 'pitching', 'roster']
+  if (keys.every((key) => typeof record[key] === 'number')) {
+    return Object.fromEntries(keys.map((key) => [key, Number(record[key])])) as DateDomainCounts
+  }
+  for (const nested of Object.values(record)) {
+    const extracted = extractDateCountsFromJson(nested)
+    if (extracted) return extracted
+  }
+  return null
 }
 
 function extractCountFromJson(value: unknown): number | null {

@@ -71,12 +71,36 @@ describe('runNormalizedD1Sync', () => {
         workspaceRoot: tempRoot,
         dryRun: true,
         d1Database: 'npb-archive-chat-normalized',
+        verifyDates: ['2025-03-28'],
       })
 
       expect(result.dryRun).toBe(true)
       expect(result.rowCounts.game_facts).toBe(1)
       expect(result.rowCounts.event_facts).toBe(1)
       expect(result.sqlPaths.length).toBeGreaterThan(0)
+      expect(result.dateIntegrity.mismatches).toEqual([])
+      expect(result.dateIntegrity.snapshots).toEqual([
+        {
+          stage: 'year_sqlite',
+          date: '2025-03-28',
+          counts: { games: 1, events: 1, batting: 0, pitching: 0, roster: 0 },
+        },
+        {
+          stage: 'legacy',
+          date: '2025-03-28',
+          counts: { games: 1, events: 1, batting: 0, pitching: 0, roster: 0 },
+        },
+        {
+          stage: 'normalized',
+          date: '2025-03-28',
+          counts: { games: 1, events: 1, batting: 0, pitching: 0, roster: 0 },
+        },
+        {
+          stage: 'd1_pre_import',
+          date: '2025-03-28',
+          counts: { games: 1, events: 1, batting: 0, pitching: 0, roster: 0 },
+        },
+      ])
 
       const cleanupSql = await readFile(
         result.sqlPaths.find((sqlPath) => sqlPath.endsWith('_000_cleanup.sql'))!,
@@ -96,6 +120,26 @@ describe('runNormalizedD1Sync', () => {
         'utf8',
       )
       expect(eventSql).toContain('51155118')
+    } finally {
+      await rm(tempRoot, { recursive: true, force: true })
+    }
+  })
+
+  it('fails before import when a required date is absent from restored year SQLite', async () => {
+    const tempRoot = await createTempDir()
+    const sqliteDir = path.join(tempRoot, 'data')
+    const sqlitePath = path.join(sqliteDir, 'npb-2026.sqlite')
+    try {
+      const database = openDatabase(sqlitePath)
+      migrateDatabase(database)
+      database.close()
+
+      await expect(runNormalizedD1Sync({
+        sqliteDir,
+        workspaceRoot: tempRoot,
+        dryRun: true,
+        verifyDates: ['2026-05-10'],
+      })).rejects.toThrow('Date integrity source is missing games for 2026-05-10')
     } finally {
       await rm(tempRoot, { recursive: true, force: true })
     }
