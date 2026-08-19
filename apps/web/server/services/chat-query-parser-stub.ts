@@ -196,7 +196,7 @@ function inferIntent(
     return 'aggregate_pitching'
   }
   if (/先発/u.test(message) && /最も長く投げた|最長登板/u.test(message)) {
-    return 'search_pitching'
+    return 'aggregate_pitching'
   }
   if (/7回以上/u.test(message) && /自責点0/u.test(message) && /登板/u.test(message)) {
     return 'aggregate_pitching'
