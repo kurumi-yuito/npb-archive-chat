@@ -285,7 +285,7 @@ describe('chat-query-llm', () => {
     [
       '2026年5月10日の広島のスタメンを教えてください',
       { intent: 'search_batting', filters: { game_date: '2026-05-10', team: '広島' } },
-      { intent: 'search_batting', filters: { game_date: '2026-05-10', team: '広島', limit: 100 } },
+      { intent: 'search_roster', filters: { game_date: '2026-05-10', team: '広島', starter: true, limit: 100 } },
     ],
   ])('normalizes explicit planner contract for %s', (message, parsed, expected) => {
     expect(normalizeStructuredQueryFromLlmMessage(message, parsed)).toEqual(expected)

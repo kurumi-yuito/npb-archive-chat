@@ -496,9 +496,9 @@ function normalizeExplicitPlannerContract(
   }
 
   if (/スタメン(?:を|は|一覧|教えて)/u.test(message)) {
-    if (intent !== 'search_batting' || typeof filters.limit !== 'number' || filters.limit < 100 || 'starter' in filters) {
-      intent = 'search_batting'
-      delete filters.starter
+    if (intent !== 'search_roster' || typeof filters.limit !== 'number' || filters.limit < 100 || filters.starter !== true) {
+      intent = 'search_roster'
+      filters.starter = true
       filters.limit = Math.max(typeof filters.limit === 'number' ? filters.limit : 0, 100)
       changed = true
     }

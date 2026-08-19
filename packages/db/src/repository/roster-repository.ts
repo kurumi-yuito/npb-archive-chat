@@ -23,12 +23,7 @@ export async function searchRosterEntries(
   filters: SearchRosterEntriesFilters = {},
 ): Promise<RosterEntryRow[]> {
   const normalized = searchRosterEntriesFiltersSchema.parse(filters)
-  if (
-    normalized.player_id &&
-    normalized.batting_order === undefined &&
-    normalized.starter === undefined &&
-    await isNormalizedFactsSchema(database)
-  ) {
+  if (await isNormalizedFactsSchema(database)) {
     const normalizedRows = await searchNormalizedRosterEntries(database, normalized)
     if (normalizedRows.length > 0) {
       return normalizedRows
@@ -120,8 +115,15 @@ async function searchNormalizedRosterEntries(
   database: QueryDatabase,
   filters: SearchRosterEntriesFilters,
 ): Promise<RosterEntryRow[]> {
-  const clauses: string[] = ['roster_entry_facts.player_id = ?', "roster_entry_facts.game_id NOT LIKE 'f%'"]
-  const values: Array<string | number> = [filters.player_id!]
+  const clauses: string[] = ["roster_entry_facts.game_id NOT LIKE 'f%'"]
+  const values: Array<string | number> = []
+  if (filters.player_id) {
+    clauses.push('roster_entry_facts.player_id = ?')
+    values.push(filters.player_id)
+  } else if (filters.player_name) {
+    clauses.push('person_names.name = ?')
+    values.push(filters.player_name)
+  }
   if (filters.game_id) {
     clauses.push('roster_entry_facts.game_id = ?')
     values.push(filters.game_id)
@@ -151,6 +153,15 @@ async function searchNormalizedRosterEntries(
     clauses.push('positions.position LIKE ?')
     values.push(`%${filters.position}%`)
   }
+  if (filters.batting_order !== undefined) {
+    clauses.push('roster_entry_facts.entry_index = ?')
+    values.push(filters.batting_order)
+  }
+  if (filters.starter !== undefined) {
+    clauses.push(filters.starter
+      ? "roster_groups.group_label LIKE '%スタメン%'"
+      : "roster_groups.group_label NOT LIKE '%スタメン%'")
+  }
   const rows = await database
     .prepare(
       `SELECT
@@ -161,8 +172,8 @@ async function searchNormalizedRosterEntries(
         person_names.name AS playerName,
         roster_entry_facts.uniform_number AS uniformNumber,
         positions.position AS position,
-        NULL AS starter,
-        NULL AS battingOrder
+        CASE WHEN roster_groups.group_label LIKE '%スタメン%' THEN 1 ELSE 0 END AS starter,
+        CASE WHEN roster_groups.group_label LIKE '%スタメン%' THEN roster_entry_facts.entry_index ELSE NULL END AS battingOrder
       FROM roster_entry_facts
       INNER JOIN game_facts ON game_facts.game_id = roster_entry_facts.game_id
       INNER JOIN teams ON teams.team_id = roster_entry_facts.team_id
