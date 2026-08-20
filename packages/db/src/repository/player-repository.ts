@@ -26,11 +26,7 @@ async function fetchProfileNamesForIds(
       .prepare(`SELECT player_id, full_name FROM player_profiles WHERE player_id IN (${placeholders})`)
       .all(...playerIds) as Array<{ player_id: string; full_name: string }>
     return new Map(rows.map((r) => [r.player_id, r.full_name]))
-  } catch (error) {
-    console.warn('[player-resolution] player_profiles lookup failed', {
-      aliases,
-      error: error instanceof Error ? error.message : String(error),
-    })
+  } catch {
     return new Map()
   }
 }
@@ -80,11 +76,7 @@ async function resolvePlayerIdsFromProfiles(
   if (rows.length === 0) {
     try {
       rows = await resolvePlayerRowsFromIdSources(database, aliases)
-    } catch (error) {
-      console.warn('[player-resolution] ID source lookup failed', {
-        aliases,
-        error: error instanceof Error ? error.message : String(error),
-      })
+    } catch {
       rows = []
     }
   }
@@ -260,14 +252,9 @@ async function resolvePlayerRowsFromIdSources(
           ORDER BY year DESC
           LIMIT 30`,
       ).all(...values) as typeof rows)
-    } catch (error) {
+    } catch {
       // A compatibility source can be absent during rolling schema upgrades.
       // Keep candidates from the other Repository sources.
-      console.warn('[player-resolution] compatibility ID source lookup failed', {
-        table,
-        aliases,
-        error: error instanceof Error ? error.message : String(error),
-      })
     }
   }
   return rows.sort((left, right) => right.year - left.year).slice(0, 30)
@@ -287,15 +274,6 @@ export async function searchPlayerCandidates(
     await resolvePlayerIdsFromProfiles(database, [filters.name], filters.includeEvents === false),
     await resolvePlayerIdsFromAliases(database, aliases),
   )
-  console.info('[player-resolution] candidate source summary', {
-    input: filters.name,
-    aliases,
-    searchDomain: filters.searchDomain ?? 'all',
-    includeEvents: filters.includeEvents ?? null,
-    latestOnly: filters.latestOnly ?? false,
-    profileMatchCount: profileMatches.length,
-    profilePlayerIds: profileMatches.map((match) => match.player_id),
-  })
   const profilePlayerIds = profileMatches.map((m) => m.player_id)
   if (profileMatches.length > 1 && !filters.latestOnly && !isShortIdentityInput) {
     return profileMatches.map((profile) => ({

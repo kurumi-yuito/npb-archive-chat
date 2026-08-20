@@ -518,7 +518,19 @@ export async function runPlayerProfilesUpdate(options: PlayerProfilesUpdateArgs)
     migrateDatabase(db)
 
     const playerIds = db
-      .prepare('SELECT DISTINCT player_id FROM current_team_roster WHERE player_id IS NOT NULL ORDER BY player_id')
+      .prepare(`
+        SELECT DISTINCT player_id
+        FROM (
+          SELECT player_id FROM current_team_roster WHERE player_id IS NOT NULL
+          UNION
+          SELECT player_id FROM player_batting_stats WHERE player_id IS NOT NULL
+          UNION
+          SELECT player_id FROM player_pitching_stats WHERE player_id IS NOT NULL
+          UNION
+          SELECT player_id FROM player_fielding_stats WHERE player_id IS NOT NULL
+        )
+        ORDER BY player_id
+      `)
       .all()
       .map((row) => String((row as { player_id: string }).player_id))
 
