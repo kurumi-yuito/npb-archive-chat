@@ -234,8 +234,8 @@ async function resolvePlayerRowsFromIdSources(
   const values: string[] = []
   const clauses = aliases.map((alias) => {
     const compact = alias.replace(/[ \u3000]/gu, '')
-    values.push(compact, `${compact}%`)
-    return `(compact_name = ? OR compact_name LIKE ?)`
+    values.push(compact, `${compact}%`, compact)
+    return `(compact_name = ? OR compact_name LIKE ? OR (LENGTH(compact_name) >= 3 AND ? LIKE compact_name || '%'))`
   })
   if (clauses.length === 0) {
     return []
