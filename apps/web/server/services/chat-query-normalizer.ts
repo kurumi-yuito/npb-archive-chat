@@ -4,101 +4,6 @@ import {
   type SearchEventsFilters,
 } from '@npb/schemas'
 
-const teamAliasEntries = [
-  ['読売ジャイアンツ', '巨人'],
-  ['読売', '巨人'],
-  ['巨人', '巨人'],
-  ['ジャイアンツ', '巨人'],
-  ['東京ヤクルトスワローズ', 'ヤクルト'],
-  ['ヤクルトスワローズ', 'ヤクルト'],
-  ['ヤクルト', 'ヤクルト'],
-  ['スワローズ', 'ヤクルト'],
-  ['横浜DeNAベイスターズ', 'DeNA'],
-  ['横浜ＤｅＮＡベイスターズ', 'DeNA'],
-  ['横浜denaベイスターズ', 'DeNA'],
-  ['dena', 'DeNA'],
-  ['ベイスターズ', 'DeNA'],
-  ['横浜', 'DeNA'],
-  ['中日ドラゴンズ', '中日'],
-  ['中日', '中日'],
-  ['ドラゴンズ', '中日'],
-  ['阪神タイガース', '阪神'],
-  ['阪神', '阪神'],
-  ['タイガース', '阪神'],
-  ['広島東洋カープ', '広島'],
-  ['広島カープ', '広島'],
-  ['広島', '広島'],
-  ['カープ', '広島'],
-  ['北海道日本ハムファイターズ', '日本ハム'],
-  ['日本ハムファイターズ', '日本ハム'],
-  ['日本ハム', '日本ハム'],
-  ['日ハム', '日本ハム'],
-  ['ファイターズ', '日本ハム'],
-  ['東北楽天ゴールデンイーグルス', '楽天'],
-  ['楽天ゴールデンイーグルス', '楽天'],
-  ['楽天', '楽天'],
-  ['イーグルス', '楽天'],
-  ['埼玉西武ライオンズ', '西武'],
-  ['西武ライオンズ', '西武'],
-  ['西武', '西武'],
-  ['ライオンズ', '西武'],
-  ['千葉ロッテマリーンズ', 'ロッテ'],
-  ['千葉ロッテ', 'ロッテ'],
-  ['ロッテマリーンズ', 'ロッテ'],
-  ['ロッテ', 'ロッテ'],
-  ['オリックスバファローズ', 'オリックス'],
-  ['オリックスバッファローズ', 'オリックス'],
-  ['オリックス・バファローズ', 'オリックス'],
-  ['オリックス・バッファローズ', 'オリックス'],
-  ['オリックス', 'オリックス'],
-  ['バファローズ', 'オリックス'],
-  ['バッファローズ', 'オリックス'],
-  ['福岡ソフトバンクホークス', 'ソフトバンク'],
-  ['ソフトバンクホークス', 'ソフトバンク'],
-  ['ソフトバンク', 'ソフトバンク'],
-  ['ホークス', 'ソフトバンク'],
-  // hiragana readings
-  ['きょじん', '巨人'],
-  ['やくると', 'ヤクルト'],
-  ['でな', 'DeNA'],
-  ['でーな', 'DeNA'],
-  ['ちゅうにち', '中日'],
-  ['はんしん', '阪神'],
-  ['ひろしま', '広島'],
-  ['にほんはむ', '日本ハム'],
-  ['にっぽんはむ', '日本ハム'],
-  ['らくてん', '楽天'],
-  ['せいぶ', '西武'],
-  ['ろって', 'ロッテ'],
-  ['おりっくす', 'オリックス'],
-  ['そふとばんく', 'ソフトバンク'],
-  // English team names
-  ['yomiuri', '巨人'],
-  ['giants', '巨人'],
-  ['yakult', 'ヤクルト'],
-  ['swallows', 'ヤクルト'],
-  ['baystars', 'DeNA'],
-  ['baystar', 'DeNA'],
-  ['chunichi', '中日'],
-  ['dragons', '中日'],
-  ['hanshin', '阪神'],
-  ['tigers', '阪神'],
-  ['hiroshima', '広島'],
-  ['carp', '広島'],
-  ['nipponham', '日本ハム'],
-  ['fighters', '日本ハム'],
-  ['rakuten', '楽天'],
-  ['eagles', '楽天'],
-  ['seibu', '西武'],
-  ['lions', '西武'],
-  ['lotte', 'ロッテ'],
-  ['marines', 'ロッテ'],
-  ['orix', 'オリックス'],
-  ['buffaloes', 'オリックス'],
-  ['softbank', 'ソフトバンク'],
-  ['hawks', 'ソフトバンク'],
-] as const
-
 const positionAliasEntries = [
   ['ショート', '遊'], ['遊撃', '遊'], ['遊撃手', '遊'], ['ss', '遊'],
   ['セカンド', '二'], ['二塁', '二'], ['二塁手', '二'], ['2b', '二'],
@@ -114,15 +19,6 @@ const positionAliasEntries = [
 
 const positionAliasMap = new Map(
   positionAliasEntries.map(([alias, canonical]) => [normalizeLookupKey(alias), canonical]),
-)
-
-const playerAliasMap = new Map([
-  ['高松', '髙松'],
-  ['山崎伊織', '山﨑伊織'],
-].map(([alias, canonical]) => [normalizeLookupKey(alias), canonical]))
-
-const teamAliasMap = new Map(
-  teamAliasEntries.map(([alias, canonical]) => [normalizeLookupKey(alias), canonical]),
 )
 
 export function normalizeChatStructuredQuery(
@@ -293,16 +189,15 @@ export function normalizeTeamName(value: string | undefined): string | undefined
     return undefined
   }
 
-  return teamAliasMap.get(normalizeLookupKey(normalized)) ?? normalized
+  return normalized
 }
 
 export function messageMentionsTeam(message: string, team: string): boolean {
-  const canonicalTeam = normalizeTeamName(team)
-  if (!canonicalTeam) return false
+  const normalizedTeam = normalizeTeamName(team)
+  if (!normalizedTeam) return false
   const messageKey = normalizeLookupKey(message)
-  return teamAliasEntries.some(([alias, canonical]) =>
-    canonical === canonicalTeam && messageKey.includes(normalizeLookupKey(alias)),
-  )
+  const teamKey = normalizeLookupKey(normalizedTeam)
+  return messageKey.includes(teamKey) || teamKey.includes(messageKey)
 }
 
 export function normalizePlayerName(value: string | undefined): string | undefined {
@@ -320,7 +215,11 @@ export function normalizePlayerName(value: string | undefined): string | undefin
     .replace(/どう$/u, '')
     .trim()
 
-  return playerAliasMap.get(normalizeLookupKey(entityOnly)) ?? entityOnly
+  return normalizeOrthographicVariants(entityOnly)
+}
+
+function normalizeOrthographicVariants(value: string): string {
+  return value.replace(/﨑/gu, '崎').replace(/髙/gu, '高').replace(/濵/gu, '浜')
 }
 
 function normalizePlayerNames(value: string[] | undefined): string[] | undefined {

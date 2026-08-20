@@ -154,7 +154,7 @@ export function parseUpdateBisCurrentArgs(argv: string[]): UpdateBisCurrentArgs 
 export async function runBisCurrentUpdate(options: UpdateBisCurrentArgs): Promise<UpdateBisCurrentResult> {
   const year = options.year ?? new Date().getFullYear()
   const workspaceRoot = path.resolve(options.workspaceRoot ?? (await findWorkspaceRoot(process.cwd())))
-  const sqlitePath = options.sqlitePath ?? path.join(options.sqliteDir ?? DEFAULT_SQLITE_DIR, `npb-${year}.sqlite`)
+  const sqlitePath = resolveBisCurrentSqlitePath(workspaceRoot, year, options)
   const storage = createObjectStorage({
     mode: options.storage,
     workspaceRoot,
@@ -213,6 +213,17 @@ export async function runBisCurrentUpdate(options: UpdateBisCurrentArgs): Promis
     structuredPath,
     dryRun: false,
   }
+}
+
+export function resolveBisCurrentSqlitePath(
+  workspaceRoot: string,
+  year: number,
+  options: Pick<UpdateBisCurrentArgs, 'sqlitePath' | 'sqliteDir'>,
+): string {
+  return path.resolve(
+    workspaceRoot,
+    options.sqlitePath ?? path.join(options.sqliteDir ?? DEFAULT_SQLITE_DIR, `npb-${year}.sqlite`),
+  )
 }
 
 export function loadBisCurrentDataset(database: SqliteDatabase, dataset: BisCurrentDataset): void {

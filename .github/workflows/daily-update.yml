@@ -34,6 +34,10 @@ on:
         required: false
         default: false
         type: boolean
+      identity_year:
+        description: 'Optional season to rebuild BIS player identity data (YYYY)'
+        required: false
+        type: string
 
 concurrency:
   group: normalized-daily-update
@@ -156,6 +160,25 @@ jobs:
             "${args[@]}" \
             | tee data/logs/enrich-bis-farm-boxes-action.log
 
+      - name: Rebuild historical player identity
+        if: ${{ env.IS_DRY_RUN != 'true' && inputs.identity_year != '' }}
+        shell: bash
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.CLOUDFLARE_R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.CLOUDFLARE_R2_SECRET_ACCESS_KEY }}
+        run: |
+          set -euo pipefail
+          identity_year="${{ inputs.identity_year }}"
+          [[ "$identity_year" =~ ^20[0-9]{2}$ ]]
+          pnpm --filter @npb/db run update:bis-current -- \
+            --year "$identity_year" \
+            --sqlite-path "${GITHUB_WORKSPACE}/data/npb-${identity_year}.sqlite" \
+            --workspace-root "$GITHUB_WORKSPACE" \
+            --delay-ms 100 \
+            --storage r2 \
+            --r2-bucket "$NPB_R2_BUCKET" \
+            | tee "data/logs/update-bis-current-${identity_year}.log"
+
       - name: Sync updated SQLite data to D1
         id: sync_normalized
         if: ${{ env.IS_DRY_RUN != 'true' }}
@@ -174,8 +197,11 @@ jobs:
           node scripts/phase5-normalized-ops-check.mjs \
             --database "$NPB_D1_DATABASE" \
             --output data/logs/phase5-normalized-ops-check-before-sync.json
+          sqlite_dir="${GITHUB_WORKSPACE}/data"
+          test -f "${sqlite_dir}/npb-2026.sqlite"
           pnpm --filter @npb/db run sync:normalized-d1 -- \
-            --sqlite-dir ./data \
+            --sqlite-dir "$sqlite_dir" \
+            --workspace-root "$GITHUB_WORKSPACE" \
             --d1-database "$NPB_D1_DATABASE" \
             --keep-files \
             --verify \

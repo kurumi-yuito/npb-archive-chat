@@ -90,15 +90,10 @@ export function createSingleDatabaseQueryService(database: QueryDatabase): ChatQ
     searchBattingLines: (filters) => searchBattingLines(database, filters),
     searchPitchingLines: async (filters) => {
       const gameRows = await searchPitchingLines(database, filters)
-      const needsBis = filters.pitcher_name && !filters.game_date && !filters.game_id && filters.sort_by !== 'pitchCount'
+      const needsBis = (filters.pitcher_player_id || filters.pitcher_name) &&
+        !filters.game_date && !filters.game_id && filters.sort_by !== 'pitchCount'
       if (!needsBis) return gameRows
-      let bisRows = await searchCurrentPitchingStats(database, filters, 15)
-      if (bisRows.length === 0 && filters.pitcher_player_id && filters.pitcher_name) {
-        bisRows = await searchCurrentPitchingStats(database, {
-          ...filters,
-          pitcher_player_id: undefined,
-        }, 15)
-      }
+      const bisRows = await searchCurrentPitchingStats(database, filters, 15)
       const nonBisGameRows = gameRows.filter(
         (r) => r.sourceKind !== 'bis_pitching' && r.sourceKind !== 'bis_pitching_farm',
       )

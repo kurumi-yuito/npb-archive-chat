@@ -24,57 +24,9 @@ type ResolutionTarget = {
   value: string
 }
 
-const verifiedRegisteredNameAliases: Record<string, { registeredName: string; teams: string[] }> = {
-  藤浪: { registeredName: '藤浪 晋太郎', teams: ['横浜DeNAベイスターズ', '阪神タイガース'] },
-  村上宗隆: { registeredName: '村上', teams: ['東京ヤクルトスワローズ'] },
-  大谷翔平: { registeredName: '大谷', teams: ['北海道日本ハムファイターズ'] },
-  則本昂大: { registeredName: '則本', teams: ['読売ジャイアンツ', '東北楽天ゴールデンイーグルス'] },
-  山川穂高: { registeredName: '山川', teams: ['福岡ソフトバンクホークス', '埼玉西武ライオンズ'] },
-  近本光司: { registeredName: '近本', teams: ['阪神タイガース'] },
-  坂倉将吾: { registeredName: '坂倉', teams: ['広島東洋カープ'] },
-  山本由伸: { registeredName: '山本', teams: ['オリックス・バファローズ'] },
-  佐々木朗希: { registeredName: '佐々木', teams: ['千葉ロッテマリーンズ'] },
-  西川龍馬: { registeredName: '西川', teams: ['オリックス・バファローズ', '広島東洋カープ'] },
-  田中将大: { registeredName: '田中将', teams: ['読売ジャイアンツ', '東北楽天ゴールデンイーグルス'] },
-  丸佳浩: { registeredName: '丸', teams: ['読売ジャイアンツ', '広島東洋カープ'] },
-  近藤健介: { registeredName: '近藤', teams: ['福岡ソフトバンクホークス', '北海道日本ハムファイターズ'] },
-  藤浪晋太郎: { registeredName: '藤浪', teams: ['横浜DeNAベイスターズ', '阪神タイガース'] },
-  石田裕太郎: { registeredName: '石田裕', teams: ['横浜DeNAベイスターズ'] },
-  東克樹: { registeredName: '東', teams: ['横浜DeNAベイスターズ'] },
-  山﨑伊織: { registeredName: '山﨑', teams: ['読売ジャイアンツ'] },
-  山崎伊織: { registeredName: '山﨑', teams: ['読売ジャイアンツ'] },
-  佐藤輝明: { registeredName: '佐藤', teams: ['阪神タイガース'] },
-  牧秀悟: { registeredName: '牧', teams: ['横浜DeNAベイスターズ'] },
-}
-
-const teamAliasEntries = [
-  ['ヤクルト', ['ヤクルト', '東京ヤクルトスワローズ']],
-  ['東京ヤクルト', ['ヤクルト', '東京ヤクルトスワローズ']],
-  ['swallows', ['ヤクルト', '東京ヤクルトスワローズ']],
-  ['オリックス', ['オリックス', 'オリックス・バファローズ']],
-  ['西武', ['西武', '埼玉西武ライオンズ']],
-  ['巨人', ['巨人', '読売ジャイアンツ']],
-  ['読売', ['巨人', '読売ジャイアンツ']],
-  ['DeNA', ['DeNA', '横浜DeNAベイスターズ']],
-  ['横浜', ['DeNA', '横浜DeNAベイスターズ']],
-  ['横浜DeNA', ['DeNA', '横浜DeNAベイスターズ']],
-  ['阪神', ['阪神', '阪神タイガース']],
-  ['中日', ['中日', '中日ドラゴンズ']],
-  ['広島', ['広島', '広島東洋カープ']],
-  ['ロッテ', ['ロッテ', '千葉ロッテマリーンズ']],
-  ['ソフトバンク', ['ソフトバンク', '福岡ソフトバンクホークス']],
-  ['日本ハム', ['日本ハム', '北海道日本ハムファイターズ']],
-  ['楽天', ['楽天', '東北楽天ゴールデンイーグルス']],
-] as const
-
-const teamAliasMap = new Map(
-  teamAliasEntries.map(([alias, teams]) => [normalizeLookupKey(alias), teams]),
-)
-
 export async function resolveStructuredQueryPlayer(
   queryService: ChatQueryService,
   structuredQuery: ChatStructuredQuery,
-  allowVerifiedAliasFallback = true,
 ): Promise<{ structuredQuery: ChatStructuredQuery; resolution: PlayerResolution | null }> {
   const target = findResolutionTarget(structuredQuery)
   if (!target) {
@@ -111,15 +63,20 @@ export async function resolveStructuredQueryPlayer(
     limit: 50,
   }
   const rawCandidates = await queryService.searchPlayerCandidates(candidateFilters)
+  const repositoryEntityCandidates = selectRepositoryEntitiesForInput(input, rawCandidates)
+  const hasUniqueRepositoryEntity = repositoryEntityCandidates.length === 1 && Boolean(repositoryEntityCandidates[0]?.player_id)
   const periodScopedCandidates = isUnqualifiedShortName
-    ? preserveShortNameCandidates(rawCandidates)
-    : rawCandidates
+    ? preserveShortNameCandidates(repositoryEntityCandidates)
+    : repositoryEntityCandidates
   let candidates = selectCandidatesForInput(
     input,
     collapseSameEntityFallbacks(
       filterCandidates(periodScopedCandidates, teamQualifier(structuredQuery)),
     ),
   )
+  if (hasUniqueRepositoryEntity) {
+    candidates = selectCandidatesForInput(input, repositoryEntityCandidates)
+  }
   if (candidates.length === 0 && hasExplicitYearFilter(structuredQuery)) {
     const fallbackCandidates = await queryService.searchPlayerCandidates({
       name: candidateFilters.name,
@@ -153,45 +110,6 @@ export async function resolveStructuredQueryPlayer(
   }
 
   if (candidates.length === 0) {
-    const verifiedAlias = allowVerifiedAliasFallback
-      ? verifiedRegisteredNameAliases[inputKey]
-      : undefined
-    if (verifiedAlias) {
-      const explicitTeams = teamQualifier(structuredQuery)
-      const hasCompatibleTeam = explicitTeams.length === 0 || explicitTeams.some((team) =>
-        verifiedAlias.teams.some((knownTeam) => sameTeamAlias(team, knownTeam)),
-      )
-      if (hasCompatibleTeam) {
-        // A verified full-name alias is sufficient for identity lookup. Injecting
-        // the current team here can exclude the same player when repository team
-        // labels differ between roster and game facts (notably 藤浪).
-        const injectResolutionTeam = explicitTeams.length === 0 && inputKey !== normalizeLookupKey('藤浪')
-        const aliasQuery = {
-          ...structuredQuery,
-          filters: {
-            ...structuredQuery.filters,
-            [target.field]: verifiedAlias.registeredName,
-            ...(injectResolutionTeam ? { team: verifiedAlias.teams[0] } : {}),
-          },
-        } as ChatStructuredQuery
-        const aliasResolved = await resolveStructuredQueryPlayer(queryService, aliasQuery, false)
-        const resolvedStructuredQuery = injectResolutionTeam &&
-          (structuredQuery.intent === 'search_events' || structuredQuery.intent === 'aggregate_events')
-          ? {
-              ...aliasResolved.structuredQuery,
-              filters: Object.fromEntries(
-                Object.entries(aliasResolved.structuredQuery.filters).filter(([key]) => key !== 'team'),
-              ),
-            } as ChatStructuredQuery
-          : aliasResolved.structuredQuery
-        return {
-          structuredQuery: resolvedStructuredQuery,
-          resolution: aliasResolved.resolution
-            ? { ...aliasResolved.resolution, input }
-            : null,
-        }
-      }
-    }
     return {
       structuredQuery,
       resolution: { input, name: null, status: 'not_found', candidates: [] },
@@ -206,35 +124,10 @@ export async function resolveStructuredQueryPlayer(
   }
 
   const candidate = candidates[0]!
-  const verifiedAlias = allowVerifiedAliasFallback
-    ? verifiedRegisteredNameAliases[inputKey]
-    : undefined
-  if (!candidate.player_id && verifiedAlias && verifiedAlias.registeredName !== candidate.name) {
-    const explicitTeams = teamQualifier(structuredQuery)
-    const injectResolutionTeam = explicitTeams.length === 0
-    const aliasQuery = {
-      ...structuredQuery,
-      filters: {
-        ...structuredQuery.filters,
-        [target.field]: verifiedAlias.registeredName,
-        ...(injectResolutionTeam ? { team: verifiedAlias.teams[0] } : {}),
-      },
-    } as ChatStructuredQuery
-    const aliasResolved = await resolveStructuredQueryPlayer(queryService, aliasQuery, false)
-    if (aliasResolved.resolution?.status === 'resolved' && aliasResolved.resolution.player_id) {
-      const resolvedStructuredQuery = injectResolutionTeam &&
-        (structuredQuery.intent === 'search_events' || structuredQuery.intent === 'aggregate_events')
-        ? {
-            ...aliasResolved.structuredQuery,
-            filters: Object.fromEntries(
-              Object.entries(aliasResolved.structuredQuery.filters).filter(([key]) => key !== 'team'),
-            ),
-          } as ChatStructuredQuery
-        : aliasResolved.structuredQuery
-      return {
-        structuredQuery: resolvedStructuredQuery,
-        resolution: { ...aliasResolved.resolution, input },
-      }
+  if (!candidate.player_id) {
+    return {
+      structuredQuery,
+      resolution: { input, name: null, status: 'not_found', candidates },
     }
   }
   const resolvedQuery = replacePlayerFilter(structuredQuery, target.field, candidate)
@@ -251,6 +144,18 @@ export async function resolveStructuredQueryPlayer(
       ...(yearShift ? { yearShiftNote: yearShift.note } : {}),
     },
   }
+}
+
+function selectRepositoryEntitiesForInput(input: string, candidates: PlayerCandidate[]): PlayerCandidate[] {
+  const inputKey = normalizeLookupKey(input)
+  const matching = candidates.filter((candidate) => {
+    const candidateKey = normalizeCandidateName(candidate.name)
+    return candidateKey === inputKey || candidateKey.startsWith(inputKey) || inputKey.startsWith(candidateKey)
+  })
+  const entityIds = [...new Set(matching.map((candidate) => candidate.player_id).filter(Boolean))]
+  if (entityIds.length !== 1) return matching
+  const entity = matching.find((candidate) => candidate.player_id === entityIds[0])
+  return entity ? [entity] : matching
 }
 
 function preserveShortNameCandidates(candidates: PlayerCandidate[]): PlayerCandidate[] {
@@ -310,26 +215,12 @@ function replacePlayerFilter(
   candidate: PlayerCandidate,
 ): ChatStructuredQuery {
   const playerIdField = playerIdFilterField(field)
-  const existingTeam = (structuredQuery.filters as Record<string, unknown>).team
-  // Only inject primary_team when the player has appeared for a single canonical team throughout
-  // their career. For multi-team careers (transfers, MLB stints), injecting the historical primary
-  // would exclude records from other teams — the player name alone is the correct search key.
-  const distinctTeamKeys = new Set(candidate.teams.map(teamAliasKey))
-  const injectTeam = structuredQuery.intent !== 'player_affiliation' &&
-    structuredQuery.intent !== 'search_events' &&
-    structuredQuery.intent !== 'aggregate_events' &&
-    candidate.primary_team &&
-    !existingTeam &&
-    distinctTeamKeys.size <= 1
-    ? { team: candidate.primary_team }
-    : {}
   return {
     ...structuredQuery,
     filters: {
-      ...structuredQuery.filters,
-      [field]: candidate.name,
-      ...(candidate.player_id ? { [playerIdField]: candidate.player_id } : {}),
-      ...injectTeam,
+      ...Object.fromEntries(Object.entries(structuredQuery.filters).filter(([key]) => key !== field)),
+      ...(structuredQuery.intent === 'player_affiliation' ? { [field]: candidate.name } : {}),
+      [playerIdField]: candidate.player_id,
     },
   } as ChatStructuredQuery
 }
@@ -378,8 +269,7 @@ function teamQualifier(structuredQuery: ChatStructuredQuery): string[] {
   if (typeof team !== 'string' || !team.trim()) {
     return []
   }
-  const normalized = normalizeLookupKey(team)
-  return [...(teamAliasMap.get(normalized) ?? [team])]
+  return [team]
 }
 
 function filterCandidates(
@@ -559,40 +449,13 @@ function collapseSameEntityFallbacks(candidates: PlayerCandidate[], shortInputKe
 }
 
 function sameTeamAlias(left: string, right: string): boolean {
-  return teamAliasKey(left) === teamAliasKey(right)
+  const leftKey = teamAliasKey(left)
+  const rightKey = teamAliasKey(right)
+  return leftKey === rightKey || leftKey.includes(rightKey) || rightKey.includes(leftKey)
 }
 
 function teamAliasKey(team: string): string {
-  const normalized = normalizeLookupKey(team)
-  const aliases: Record<string, string> = {
-    東京ヤクルトスワローズ: 'ヤクルト',
-    ヤクルト: 'ヤクルト',
-    オリックスバファローズ: 'オリックス',
-    オリックス: 'オリックス',
-    埼玉西武ライオンズ: '西武',
-    西武: '西武',
-    読売ジャイアンツ: '巨人',
-    巨人: '巨人',
-    横浜denaベイスターズ: 'dena',
-    横浜dena: 'dena',
-    dena: 'dena',
-    横浜: 'dena',
-    阪神タイガース: '阪神',
-    阪神: '阪神',
-    中日ドラゴンズ: '中日',
-    中日: '中日',
-    広島東洋カープ: '広島',
-    広島: '広島',
-    千葉ロッテマリーンズ: 'ロッテ',
-    ロッテ: 'ロッテ',
-    福岡ソフトバンクホークス: 'ソフトバンク',
-    ソフトバンク: 'ソフトバンク',
-    北海道日本ハムファイターズ: '日本ハム',
-    日本ハム: '日本ハム',
-    東北楽天ゴールデンイーグルス: '楽天',
-    楽天: '楽天',
-  }
-  return aliases[normalized] ?? normalized
+  return normalizeLookupKey(team)
 }
 
 function normalizeLookupKey(value: string): string {

@@ -26,7 +26,11 @@ async function fetchProfileNamesForIds(
       .prepare(`SELECT player_id, full_name FROM player_profiles WHERE player_id IN (${placeholders})`)
       .all(...playerIds) as Array<{ player_id: string; full_name: string }>
     return new Map(rows.map((r) => [r.player_id, r.full_name]))
-  } catch {
+  } catch (error) {
+    console.warn('[player-resolution] player_profiles lookup failed', {
+      aliases,
+      error: error instanceof Error ? error.message : String(error),
+    })
     return new Map()
   }
 }
@@ -55,16 +59,37 @@ async function resolvePlayerIdsFromProfiles(
       `(REPLACE(REPLACE(player_profiles.full_name,' ',''),char(12288),'') = ? OR player_profiles.full_name LIKE ?)`,
     )
   }
+  let profileRows: Array<{ player_id: string; full_name: string | null; team_name: string | null; year_teams_json: string | null }> = []
   try {
-    const profileRows = await database
+    profileRows = await database
       .prepare(`SELECT player_id, full_name, team_name, year_teams_json FROM player_profiles WHERE ${clauses.join(' OR ')} LIMIT 30`)
       .all(...values) as Array<{ player_id: string; full_name: string | null; team_name: string | null; year_teams_json: string | null }>
-    const normalizedRows = profileRows.length === 0 && preferNormalizedFacts
-      ? await resolvePlayerRowsFromNormalizedFacts(database, aliases)
-      : null
-    const rows = profileRows.length > 0
-      ? profileRows
-      : normalizedRows ?? await resolvePlayerRowsFromIdSources(database, aliases)
+  } catch {
+    // Identity sources are deployed independently. A missing or older profile
+    // projection must not suppress the remaining Repository-backed ID sources.
+  }
+
+  const normalizedRows = profileRows.length === 0 && preferNormalizedFacts
+    ? await resolvePlayerRowsFromNormalizedFacts(database, aliases)
+    : null
+  let rows = profileRows.length > 0
+    ? profileRows
+    : normalizedRows && normalizedRows.length > 0
+      ? normalizedRows
+      : []
+  if (rows.length === 0) {
+    try {
+      rows = await resolvePlayerRowsFromIdSources(database, aliases)
+    } catch (error) {
+      console.warn('[player-resolution] ID source lookup failed', {
+        aliases,
+        error: error instanceof Error ? error.message : String(error),
+      })
+      rows = []
+    }
+  }
+
+  try {
     const ids = [...new Set(rows.map((r) => r.player_id))]
     // Only filter when the profile lookup yields a unique player — multiple matches mean the input
     // is an ambiguous surname and filtering would incorrectly narrow to the first hit.
@@ -102,7 +127,7 @@ async function resolvePlayerRowsFromNormalizedFacts(
 ): Promise<Array<{ player_id: string; full_name: string | null; team_name: string | null; year_teams_json: string | null }> | null> {
   const values: string[] = []
   const clauses = aliases.map((alias) => {
-    const compact = alias.replace(/[ \u3000]/gu, '')
+    const compact = normalizeIdentityKey(alias)
     values.push(compact, `${compact}%`)
     return `(${compactNameCol('person_names.name')} = ? OR ${compactNameCol('person_names.name')} LIKE ?)`
   })
@@ -223,51 +248,29 @@ async function resolvePlayerRowsFromIdSources(
   if (clauses.length === 0) {
     return []
   }
-  return await database
-    .prepare(
-      `SELECT
-        player_id,
-        full_name,
-        team_name,
-        NULL AS year_teams_json
-      FROM (
-        SELECT current_team_roster.player_id AS player_id,
-               current_team_roster.player_name AS full_name,
-               current_team_roster.team_name AS team_name,
-               REPLACE(REPLACE(current_team_roster.player_name,' ',''),char(12288),'') AS compact_name,
-               current_team_roster.year AS year
-          FROM current_team_roster
-         WHERE current_team_roster.player_id IS NOT NULL AND current_team_roster.player_id <> ''
-        UNION ALL
-        SELECT player_batting_stats.player_id AS player_id,
-               player_batting_stats.player_name AS full_name,
-               player_batting_stats.team_name AS team_name,
-               REPLACE(REPLACE(player_batting_stats.player_name,' ',''),char(12288),'') AS compact_name,
-               player_batting_stats.year AS year
-          FROM player_batting_stats
-         WHERE player_batting_stats.player_id IS NOT NULL AND player_batting_stats.player_id <> ''
-        UNION ALL
-        SELECT player_pitching_stats.player_id AS player_id,
-               player_pitching_stats.player_name AS full_name,
-               player_pitching_stats.team_name AS team_name,
-               REPLACE(REPLACE(player_pitching_stats.player_name,' ',''),char(12288),'') AS compact_name,
-               player_pitching_stats.year AS year
-          FROM player_pitching_stats
-         WHERE player_pitching_stats.player_id IS NOT NULL AND player_pitching_stats.player_id <> ''
-        UNION ALL
-        SELECT player_fielding_stats.player_id AS player_id,
-               player_fielding_stats.player_name AS full_name,
-               player_fielding_stats.team_name AS team_name,
-               REPLACE(REPLACE(player_fielding_stats.player_name,' ',''),char(12288),'') AS compact_name,
-               player_fielding_stats.year AS year
-          FROM player_fielding_stats
-         WHERE player_fielding_stats.player_id IS NOT NULL AND player_fielding_stats.player_id <> ''
-      )
-      WHERE ${clauses.join(' OR ')}
-      ORDER BY year DESC
-      LIMIT 30`,
-    )
-    .all(...values) as Array<{ player_id: string; full_name: string | null; team_name: string | null; year_teams_json: string | null }>
+  const rows: Array<{ player_id: string; full_name: string | null; team_name: string | null; year_teams_json: string | null; year: number }> = []
+  for (const table of ['current_team_roster', 'player_batting_stats', 'player_pitching_stats', 'player_fielding_stats']) {
+    try {
+      rows.push(...await database.prepare(
+        `SELECT player_id, player_name AS full_name, team_name,
+                NULL AS year_teams_json, year
+           FROM ${table}
+          WHERE player_id IS NOT NULL AND player_id <> ''
+            AND (${clauses.map((clause) => clause.replaceAll('compact_name', identityNameSql('player_name'))).join(' OR ')})
+          ORDER BY year DESC
+          LIMIT 30`,
+      ).all(...values) as typeof rows)
+    } catch (error) {
+      // A compatibility source can be absent during rolling schema upgrades.
+      // Keep candidates from the other Repository sources.
+      console.warn('[player-resolution] compatibility ID source lookup failed', {
+        table,
+        aliases,
+        error: error instanceof Error ? error.message : String(error),
+      })
+    }
+  }
+  return rows.sort((left, right) => right.year - left.year).slice(0, 30)
 }
 
 export async function searchPlayerCandidates(
@@ -284,6 +287,15 @@ export async function searchPlayerCandidates(
     await resolvePlayerIdsFromProfiles(database, [filters.name], filters.includeEvents === false),
     await resolvePlayerIdsFromAliases(database, aliases),
   )
+  console.info('[player-resolution] candidate source summary', {
+    input: filters.name,
+    aliases,
+    searchDomain: filters.searchDomain ?? 'all',
+    includeEvents: filters.includeEvents ?? null,
+    latestOnly: filters.latestOnly ?? false,
+    profileMatchCount: profileMatches.length,
+    profilePlayerIds: profileMatches.map((match) => match.player_id),
+  })
   const profilePlayerIds = profileMatches.map((m) => m.player_id)
   if (profileMatches.length > 1 && !filters.latestOnly && !isShortIdentityInput) {
     return profileMatches.map((profile) => ({
@@ -693,8 +705,16 @@ function uniqueStrings(values: Array<string | undefined>): string[] {
 function normalizeIdentityKey(value: string): string {
   return value
     .normalize('NFKC')
+    .replace(/﨑/gu, '崎')
+    .replace(/髙/gu, '高')
+    .replace(/濵/gu, '浜')
+    .replace(/^[*＊+＋]+/u, '')
     .replace(/[・･.\-_\s\u3000]/gu, '')
     .toLowerCase()
+}
+
+function identityNameSql(column: string): string {
+  return `LOWER(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(${column}, ' ', ''), char(12288), ''), '*', ''), '＊', ''), '+', ''), '＋', ''), '﨑', '崎'), '髙', '高'), '濵', '浜'))`
 }
 
 function latestTeam(teamYears: Array<{ team: string; year: number }>): string | null {

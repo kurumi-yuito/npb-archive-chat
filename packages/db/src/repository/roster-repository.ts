@@ -28,12 +28,7 @@ export async function searchRosterEntries(
     if (normalizedRows.length > 0) {
       return normalizedRows
     }
-    if (normalized.player_name) {
-      return searchRosterEntries(database, {
-        ...normalized,
-        player_id: undefined,
-      })
-    }
+    return []
   }
   const clauses: string[] = ["roster_entries.game_id NOT LIKE 'f%'"]
   const values: Array<string | number> = []

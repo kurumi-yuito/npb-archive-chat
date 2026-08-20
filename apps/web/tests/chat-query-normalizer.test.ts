@@ -7,10 +7,10 @@ import {
 } from '../server/services/chat-query-normalizer'
 
 describe('chat-query-normalizer', () => {
-  it('normalizes representative team aliases to DB-friendly short names', () => {
-    expect(normalizeTeamName('千葉ロッテマリーンズ')).toBe('ロッテ')
-    expect(normalizeTeamName('オリックス・バッファローズ')).toBe('オリックス')
-    expect(normalizeTeamName('  東京ヤクルトスワローズ  ')).toBe('ヤクルト')
+  it('does not perform semantic team alias resolution during text normalization', () => {
+    expect(normalizeTeamName('千葉ロッテマリーンズ')).toBe('千葉ロッテマリーンズ')
+    expect(normalizeTeamName('オリックス・バッファローズ')).toBe('オリックス・バッファローズ')
+    expect(normalizeTeamName('  東京ヤクルトスワローズ  ')).toBe('東京ヤクルトスワローズ')
   })
 
   it('normalizes player names with basic whitespace and width normalization', () => {
@@ -19,9 +19,10 @@ describe('chat-query-normalizer', () => {
     expect(normalizePlayerName('ｻｻｷ ﾛｳｷ')).toBe('ササキロウキ')
   })
 
-  it('applies dictionary aliases after basic text normalization', () => {
-    expect(normalizePlayerName('高松')).toBe('髙松')
-    expect(normalizePlayerName('山崎伊織')).toBe('山﨑伊織')
+  it('absorbs Unicode glyph variants without resolving a player identity', () => {
+    expect(normalizePlayerName('髙松')).toBe('高松')
+    expect(normalizePlayerName('山﨑伊織')).toBe('山崎伊織')
+    expect(normalizePlayerName('濵口')).toBe('浜口')
   })
 
   it('removes narrow conversational predicates retained in player entity spans', () => {
@@ -43,8 +44,8 @@ describe('chat-query-normalizer', () => {
       intent: 'game_detail',
       filters: {
         game_date: '2026-05-21',
-        team: 'DeNA',
-        opponent: '巨人',
+        team: '横浜DeNAベイスターズ',
+        opponent: '読売ジャイアンツ',
         venue: '東京ドーム',
       },
     })
@@ -71,10 +72,10 @@ describe('chat-query-normalizer', () => {
     ).toEqual({
       intent: 'search_events',
       filters: {
-        team: 'ロッテ',
+        team: '千葉ロッテマリーンズ',
         batter_name: '山村',
         pitcher_name: '益田',
-        runner_name: '髙松',
+        runner_name: '高松',
         event_subtype: 'stolen_base',
       },
     })
