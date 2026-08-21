@@ -485,9 +485,9 @@ async function queryNormalizedPlayerMentions(
   if (filters.includeEvents !== false) return null
   const nameValues: string[] = []
   const nameClauses = aliases.map((alias) => {
-    const compact = alias.replace(/[ \u3000]/gu, '')
+    const compact = normalizeIdentityKey(alias)
     nameValues.push(compact, `%${compact}%`, compact)
-    return `(${compactNameCol('person_names.name')} = ? OR ${compactNameCol('person_names.name')} LIKE ? OR (SUBSTR(?, 1, LENGTH(${compactNameCol('person_names.name')})) = ${compactNameCol('person_names.name')} AND LENGTH(${compactNameCol('person_names.name')}) >= 2))`
+    return `(${identityNameSql('person_names.name')} = ? OR ${identityNameSql('person_names.name')} LIKE ? OR (SUBSTR(?, 1, LENGTH(${identityNameSql('person_names.name')})) = ${identityNameSql('person_names.name')} AND LENGTH(${identityNameSql('person_names.name')}) >= 2))`
   })
   if (nameClauses.length === 0) return []
 
@@ -575,9 +575,9 @@ async function queryRawPlayerMentions(
   const clauses = [`${source.nameColumn} IS NOT NULL`, `${source.nameColumn} <> ''`]
   clauses.push(`(${
     aliases.map((alias) => {
-      const compact = alias.replace(/[ \u3000]/gu, '')
+      const compact = normalizeIdentityKey(alias)
       values.push(compact, `%${compact}%`, compact)
-      return `(${compactNameCol(source.nameColumn)} = ? OR ${compactNameCol(source.nameColumn)} LIKE ? OR (SUBSTR(?, 1, LENGTH(${compactNameCol(source.nameColumn)})) = ${compactNameCol(source.nameColumn)} AND LENGTH(${compactNameCol(source.nameColumn)}) >= 2))`
+      return `(${identityNameSql(source.nameColumn)} = ? OR ${identityNameSql(source.nameColumn)} LIKE ? OR (SUBSTR(?, 1, LENGTH(${identityNameSql(source.nameColumn)})) = ${identityNameSql(source.nameColumn)} AND LENGTH(${identityNameSql(source.nameColumn)}) >= 2))`
     }).join(' OR ')
   })`)
   if (filters.year) {

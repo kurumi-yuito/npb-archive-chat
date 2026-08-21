@@ -517,7 +517,7 @@ export async function runPlayerProfilesUpdate(options: PlayerProfilesUpdateArgs)
   try {
     migrateDatabase(db)
 
-    const playerIds = db
+    const sourcePlayerIds = db
       .prepare(`
         SELECT DISTINCT player_id
         FROM (
@@ -540,6 +540,35 @@ export async function runPlayerProfilesUpdate(options: PlayerProfilesUpdateArgs)
         .all()
         .map((row) => String((row as { player_id: string }).player_id)),
     )
+
+    const existingNames = new Set(
+      db
+        .prepare('SELECT full_name FROM player_profiles WHERE full_name IS NOT NULL AND full_name <> \'\'')
+        .all()
+        .map((row) => normalizeProfileIdentityName(String((row as { full_name: string }).full_name))),
+    )
+    const unresolvedNames = db
+      .prepare(`
+        SELECT DISTINCT player_name
+        FROM (
+          SELECT player_name FROM current_team_roster WHERE player_name IS NOT NULL AND player_name <> ''
+          UNION
+          SELECT player_name FROM player_batting_stats WHERE player_name IS NOT NULL AND player_name <> ''
+          UNION
+          SELECT player_name FROM player_pitching_stats WHERE player_name IS NOT NULL AND player_name <> ''
+          UNION
+          SELECT player_name FROM player_fielding_stats WHERE player_name IS NOT NULL AND player_name <> ''
+        )
+        ORDER BY player_name
+      `)
+      .all()
+      .map((row) => String((row as { player_name: string }).player_name))
+      .filter((name) => !existingNames.has(normalizeProfileIdentityName(name)))
+
+    const discoveredPlayerIds = options.dryRun
+      ? []
+      : await discoverOfficialPlayerIds(unresolvedNames, options.userAgent, options.delayMs)
+    const playerIds = [...new Set([...sourcePlayerIds, ...discoveredPlayerIds])].sort()
 
     const toFetch = playerIds.filter((id) => !existingIds.has(id))
     const limit = options.limit ?? toFetch.length
@@ -620,4 +649,49 @@ export async function runPlayerProfilesUpdate(options: PlayerProfilesUpdateArgs)
   } finally {
     db.close()
   }
+}
+
+export function extractOfficialPlayerIdsFromSearchHtml(html: string): string[] {
+  return [...new Set(
+    [...html.matchAll(/\/bis\/players\/(\d{8})\.html/gu)].map((match) => match[1]!),
+  )]
+}
+
+async function discoverOfficialPlayerIds(
+  names: string[],
+  userAgent?: string,
+  delayMs?: number,
+): Promise<string[]> {
+  const playerIds = new Set<string>()
+  for (const name of names) {
+    const url = `https://npb.jp/bis/players/search/result?search_keyword=${encodeURIComponent(name)}`
+    try {
+      const response = await fetch(url, {
+        headers: { 'user-agent': userAgent ?? DEFAULT_USER_AGENT },
+      })
+      if (!response.ok) {
+        process.stderr.write(`Profile search ${response.status}: ${url}\n`)
+        continue
+      }
+      for (const playerId of extractOfficialPlayerIdsFromSearchHtml(await response.text())) {
+        playerIds.add(playerId)
+      }
+    } catch (error) {
+      process.stderr.write(`Profile search error for ${name}: ${String(error)}\n`)
+    }
+    if (delayMs) {
+      await new Promise((resolve) => setTimeout(resolve, delayMs))
+    }
+  }
+  return [...playerIds]
+}
+
+function normalizeProfileIdentityName(value: string): string {
+  return value
+    .normalize('NFKC')
+    .replace(/﨑/gu, '崎')
+    .replace(/髙/gu, '高')
+    .replace(/濵/gu, '浜')
+    .replace(/[・･.\-_\s\u3000]/gu, '')
+    .toLowerCase()
 }

@@ -1,6 +1,6 @@
 import path from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { BisFetchHttpError, resolveBisCurrentSqlitePath } from './bis-current'
+import { BisFetchHttpError, extractOfficialPlayerIdsFromSearchHtml, resolveBisCurrentSqlitePath } from './bis-current'
 
 describe('BisFetchHttpError', () => {
   it('preserves the HTTP status for expected missing-page handling', () => {
@@ -22,5 +22,17 @@ describe('resolveBisCurrentSqlitePath', () => {
     expect(resolveBisCurrentSqlitePath('/workspace/repo', 2024, {
       sqlitePath: '/tmp/npb-2024.sqlite',
     })).toBe('/tmp/npb-2024.sqlite')
+  })
+})
+
+describe('extractOfficialPlayerIdsFromSearchHtml', () => {
+  it('extracts unique official player ids from search result links', () => {
+    const html = `
+      <a href="/bis/players/31035151.html">佐々木 朗希</a>
+      <a href="/bis/players/31035151.html">佐々木 朗希</a>
+      <a href="/bis/players/03305153.html">山﨑 伊織</a>
+    `
+
+    expect(extractOfficialPlayerIdsFromSearchHtml(html)).toEqual(['31035151', '03305153'])
   })
 })
