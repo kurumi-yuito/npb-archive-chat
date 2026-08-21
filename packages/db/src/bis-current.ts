@@ -560,6 +560,18 @@ export async function runPlayerProfilesUpdate(options: PlayerProfilesUpdateArgs)
           SELECT player_name FROM player_pitching_stats WHERE player_name IS NOT NULL AND player_name <> '' AND (player_id IS NULL OR player_id = '')
           UNION
           SELECT player_name FROM player_fielding_stats WHERE player_name IS NOT NULL AND player_name <> '' AND (player_id IS NULL OR player_id = '')
+          UNION
+          SELECT player_name FROM batting_lines WHERE player_name IS NOT NULL AND player_name <> '' AND (player_url IS NULL OR player_url = '')
+          UNION
+          SELECT pitcher_name AS player_name FROM pitching_lines WHERE pitcher_name IS NOT NULL AND pitcher_name <> '' AND (pitcher_url IS NULL OR pitcher_url = '')
+          UNION
+          SELECT player_name FROM roster_entries WHERE player_name IS NOT NULL AND player_name <> '' AND (player_url IS NULL OR player_url = '')
+          UNION
+          SELECT batter_name AS player_name FROM events WHERE batter_name IS NOT NULL AND batter_name <> '' AND (batter_url IS NULL OR batter_url = '')
+          UNION
+          SELECT pitcher_name AS player_name FROM events WHERE pitcher_name IS NOT NULL AND pitcher_name <> '' AND (pitcher_url IS NULL OR pitcher_url = '')
+          UNION
+          SELECT runner_name AS player_name FROM events WHERE runner_name IS NOT NULL AND runner_name <> '' AND (runner_url IS NULL OR runner_url = '')
         )
         ORDER BY player_name
       `)
@@ -598,6 +610,21 @@ export async function runPlayerProfilesUpdate(options: PlayerProfilesUpdateArgs)
              SET player_id = ?
            WHERE player_name = ? AND (player_id IS NULL OR player_id = '')`,
         ).run(playerId, playerName)
+      }
+      const playerUrl = `https://npb.jp/bis/players/${playerId}.html`
+      for (const source of [
+        { table: 'batting_lines', name: 'player_name', url: 'player_url' },
+        { table: 'pitching_lines', name: 'pitcher_name', url: 'pitcher_url' },
+        { table: 'roster_entries', name: 'player_name', url: 'player_url' },
+        { table: 'events', name: 'batter_name', url: 'batter_url' },
+        { table: 'events', name: 'pitcher_name', url: 'pitcher_url' },
+        { table: 'events', name: 'runner_name', url: 'runner_url' },
+      ]) {
+        db.prepare(
+          `UPDATE ${source.table}
+              SET ${source.url} = ?
+            WHERE ${source.name} = ? AND (${source.url} IS NULL OR ${source.url} = '')`,
+        ).run(playerUrl, playerName)
       }
     }
     const discoveredPlayerIds = [...new Set([...discoveredIdentities.values()].flat())]
