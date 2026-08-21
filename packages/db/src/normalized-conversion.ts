@@ -304,7 +304,7 @@ function insertLinesAndEvents(database: SqliteDatabase): void {
       b.row_index,
       b.batting_order,
       p.position_id,
-      ${playerIdSql('b.player_url')},
+      ${resolvedPlayerIdSql('b.player_url', 'b.player_name')},
       pn.name_id,
       b.at_bats,
       b.runs,
@@ -341,7 +341,7 @@ function insertLinesAndEvents(database: SqliteDatabase): void {
         WHEN 'H' THEN 4
         ELSE NULL
       END,
-      ${playerIdSql('p.pitcher_url')},
+      ${resolvedPlayerIdSql('p.pitcher_url', 'p.pitcher_name')},
       pn.name_id,
       p.pitch_count,
       p.batters_faced,
@@ -371,7 +371,7 @@ function insertLinesAndEvents(database: SqliteDatabase): void {
       rg.roster_group_id,
       r.entry_index,
       COALESCE(NULLIF(r.uniform_number, ''), NULLIF(r.number, '')),
-      ${playerIdSql('r.player_url')},
+      ${resolvedPlayerIdSql('r.player_url', 'r.player_name')},
       pn.name_id,
       pos.position_id,
       ss.source_snapshot_id
@@ -401,11 +401,11 @@ function insertLinesAndEvents(database: SqliteDatabase): void {
       CASE e.outs WHEN 'zero' THEN 0 WHEN 'one' THEN 1 WHEN 'two' THEN 2 WHEN 'none' THEN 0 ELSE NULL END,
       e.bases,
       json_extract(e.event_attributes_json, '$.count'),
-      COALESCE(${playerIdSql('e.batter_url')}, ${playerIdSql("json_extract(e.event_attributes_json, '$.batter_links[0].url')")}),
+      COALESCE(${playerIdSql('e.batter_url')}, ${playerIdSql("json_extract(e.event_attributes_json, '$.batter_links[0].url')")}, ${profilePlayerIdSql('e.batter_name')}),
       batter.name_id,
-      COALESCE(${playerIdSql('e.pitcher_url')}, ${playerIdSql("json_extract(e.event_attributes_json, '$.pitcher_links[0].url')")}),
+      COALESCE(${playerIdSql('e.pitcher_url')}, ${playerIdSql("json_extract(e.event_attributes_json, '$.pitcher_links[0].url')")}, ${profilePlayerIdSql('e.pitcher_name')}),
       pitcher.name_id,
-      ${playerIdSql('e.runner_url')},
+      ${resolvedPlayerIdSql('e.runner_url', 'e.runner_name')},
       runner.name_id,
       rc.result_code_id,
       e.result_runs_batted_in,
@@ -433,6 +433,24 @@ function playerIdSql(expression: string): string {
     THEN substr(${expression}, instr(${expression}, 'players/') + 8, 8)
     ELSE NULL
   END`
+}
+
+function resolvedPlayerIdSql(urlExpression: string, nameExpression: string): string {
+  return `COALESCE(${playerIdSql(urlExpression)}, ${profilePlayerIdSql(nameExpression)})`
+}
+
+function profilePlayerIdSql(nameExpression: string): string {
+  const sourceName = identityNameSql(nameExpression)
+  const profileName = identityNameSql('COALESCE(profile.canonical_name, profile.full_name)')
+  return `(SELECT CASE WHEN COUNT(DISTINCT profile.player_id) = 1 THEN MIN(profile.player_id) ELSE NULL END
+    FROM legacy.player_profiles profile
+    WHERE ${sourceName} <> ''
+      AND (${profileName} = ${sourceName}
+        OR (LENGTH(${sourceName}) >= 3 AND ${profileName} LIKE ${sourceName} || '%')))`
+}
+
+function identityNameSql(expression: string): string {
+  return `LOWER(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(${expression}, ' ', ''), char(12288), ''), '*', ''), '＊', ''), '+', ''), '＋', ''), '﨑', '崎'), '髙', '高'), '濵', '浜'))`
 }
 
 function insertBisCurrentTables(database: SqliteDatabase): void {

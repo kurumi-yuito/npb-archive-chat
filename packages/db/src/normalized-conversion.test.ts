@@ -93,7 +93,22 @@ describe('runNormalizeDatabase', () => {
             '7', 4, 0, 1, 0, 8, 0, 0, 1, 1, '[]', '山本 7回1失点',
             'https://npb.jp/scores/2025/0328/b-e-01/box.html',
             'https://npb.jp/bis/players/53355118.html'
+          ), (
+            'r20250328b-e-01', 'オリックス', 1, NULL, '佐々木朗', 100, 26,
+            '7', 3, 0, 2, 0, 9, 0, 0, 0, 0, '[]', '佐々木朗 7回無失点',
+            'https://npb.jp/scores/2025/0328/b-e-01/box.html',
+            NULL
+          ), (
+            'r20250328b-e-01', 'オリックス', 2, NULL, '山崎伊織', 90, 24,
+            '6', 4, 0, 1, 0, 7, 0, 0, 1, 1, '[]', '山崎伊織 6回1失点',
+            'https://npb.jp/scores/2025/0328/b-e-01/box.html',
+            NULL
           );
+
+          INSERT INTO player_profiles (player_id, full_name, canonical_name, source_url)
+          VALUES
+            ('31035151', '佐々木 朗希', '佐々木 朗希', 'https://npb.jp/bis/players/31035151.html'),
+            ('03305153', '山﨑 伊織', '山﨑 伊織', 'https://npb.jp/bis/players/03305153.html');
 
           INSERT INTO roster_entries (
             game_id, team, group_label, entry_index, number, player_name, raw_handedness,
@@ -126,6 +141,19 @@ describe('runNormalizeDatabase', () => {
         }
         expect(eventFact.batter_player_id).toBe('51155118')
         expect(eventFact.source_snapshot_id).toBeTypeOf('number')
+
+        const profileResolvedPitcher = normalized.prepare(
+          `SELECT pitcher_id FROM pitching_line_facts
+            INNER JOIN person_names ON person_names.name_id = pitching_line_facts.pitcher_name_id
+           WHERE person_names.name = '佐々木朗'`,
+        ).get() as { pitcher_id: string | null }
+        expect(profileResolvedPitcher.pitcher_id).toBe('31035151')
+        const variantResolvedPitcher = normalized.prepare(
+          `SELECT pitcher_id FROM pitching_line_facts
+            INNER JOIN person_names ON person_names.name_id = pitching_line_facts.pitcher_name_id
+           WHERE person_names.name = '山崎伊織'`,
+        ).get() as { pitcher_id: string | null }
+        expect(variantResolvedPitcher.pitcher_id).toBe('03305153')
 
         const compatibilityEvent = normalized.prepare('SELECT batter_name, batter_url, source_url FROM events').get() as {
           batter_name: string
