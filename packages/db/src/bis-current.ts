@@ -541,35 +541,56 @@ export async function runPlayerProfilesUpdate(options: PlayerProfilesUpdateArgs)
         .map((row) => String((row as { player_id: string }).player_id)),
     )
 
-    const existingNames = new Set(
+    const existingProfiles =
       db
-        .prepare('SELECT full_name FROM player_profiles WHERE full_name IS NOT NULL AND full_name <> \'\'')
+        .prepare('SELECT player_id, full_name FROM player_profiles WHERE full_name IS NOT NULL AND full_name <> \'\'')
         .all()
-        .map((row) => normalizeProfileIdentityName(String((row as { full_name: string }).full_name))),
-    )
+        .map((row) => ({
+          playerId: String((row as { player_id: string }).player_id),
+          normalizedName: normalizeProfileIdentityName(String((row as { full_name: string }).full_name)),
+        }))
     const unresolvedNames = db
       .prepare(`
         SELECT DISTINCT player_name
         FROM (
-          SELECT player_name FROM current_team_roster WHERE player_name IS NOT NULL AND player_name <> ''
+          SELECT player_name FROM current_team_roster WHERE player_name IS NOT NULL AND player_name <> '' AND (player_id IS NULL OR player_id = '')
           UNION
-          SELECT player_name FROM player_batting_stats WHERE player_name IS NOT NULL AND player_name <> ''
+          SELECT player_name FROM player_batting_stats WHERE player_name IS NOT NULL AND player_name <> '' AND (player_id IS NULL OR player_id = '')
           UNION
-          SELECT player_name FROM player_pitching_stats WHERE player_name IS NOT NULL AND player_name <> ''
+          SELECT player_name FROM player_pitching_stats WHERE player_name IS NOT NULL AND player_name <> '' AND (player_id IS NULL OR player_id = '')
           UNION
-          SELECT player_name FROM player_fielding_stats WHERE player_name IS NOT NULL AND player_name <> ''
+          SELECT player_name FROM player_fielding_stats WHERE player_name IS NOT NULL AND player_name <> '' AND (player_id IS NULL OR player_id = '')
         )
         ORDER BY player_name
       `)
       .all()
       .map((row) => String((row as { player_name: string }).player_name))
-      .filter((name) => !existingNames.has(normalizeProfileIdentityName(name)))
 
-    const discoveredIdentities = options.dryRun
+    const discoveredIdentities = new Map<string, string[]>()
+    for (const name of unresolvedNames) {
+      const normalizedName = normalizeProfileIdentityName(name)
+      const profileIds = [...new Set(existingProfiles
+        .filter((profile) =>
+          profile.normalizedName === normalizedName ||
+          (normalizedName.length >= 3 && profile.normalizedName.startsWith(normalizedName)),
+        )
+        .map((profile) => profile.playerId))]
+      if (profileIds.length === 1) {
+        discoveredIdentities.set(name, profileIds)
+      }
+    }
+    const searchIdentities = options.dryRun
       ? new Map<string, string[]>()
-      : await discoverOfficialPlayerIdentities(unresolvedNames, options.userAgent, options.delayMs)
+      : await discoverOfficialPlayerIdentities(
+          unresolvedNames.filter((name) => !discoveredIdentities.has(name)),
+          options.userAgent,
+          options.delayMs,
+        )
+    for (const [name, ids] of searchIdentities) {
+      discoveredIdentities.set(name, ids)
+    }
     for (const [playerName, ids] of discoveredIdentities) {
-      if (ids.length !== 1) continue
+      if (options.dryRun || ids.length !== 1) continue
       const playerId = ids[0]!
       for (const table of ['current_team_roster', 'player_batting_stats', 'player_pitching_stats', 'player_fielding_stats']) {
         db.prepare(
