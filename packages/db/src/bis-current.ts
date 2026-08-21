@@ -565,9 +565,21 @@ export async function runPlayerProfilesUpdate(options: PlayerProfilesUpdateArgs)
       .map((row) => String((row as { player_name: string }).player_name))
       .filter((name) => !existingNames.has(normalizeProfileIdentityName(name)))
 
-    const discoveredPlayerIds = options.dryRun
-      ? []
-      : await discoverOfficialPlayerIds(unresolvedNames, options.userAgent, options.delayMs)
+    const discoveredIdentities = options.dryRun
+      ? new Map<string, string[]>()
+      : await discoverOfficialPlayerIdentities(unresolvedNames, options.userAgent, options.delayMs)
+    for (const [playerName, ids] of discoveredIdentities) {
+      if (ids.length !== 1) continue
+      const playerId = ids[0]!
+      for (const table of ['current_team_roster', 'player_batting_stats', 'player_pitching_stats', 'player_fielding_stats']) {
+        db.prepare(
+          `UPDATE ${table}
+             SET player_id = ?
+           WHERE player_name = ? AND (player_id IS NULL OR player_id = '')`,
+        ).run(playerId, playerName)
+      }
+    }
+    const discoveredPlayerIds = [...new Set([...discoveredIdentities.values()].flat())]
     const playerIds = [...new Set([...sourcePlayerIds, ...discoveredPlayerIds])].sort()
 
     const toFetch = playerIds.filter((id) => !existingIds.has(id))
@@ -657,12 +669,12 @@ export function extractOfficialPlayerIdsFromSearchHtml(html: string): string[] {
   )]
 }
 
-async function discoverOfficialPlayerIds(
+async function discoverOfficialPlayerIdentities(
   names: string[],
   userAgent?: string,
   delayMs?: number,
-): Promise<string[]> {
-  const playerIds = new Set<string>()
+): Promise<Map<string, string[]>> {
+  const identities = new Map<string, string[]>()
   for (const name of names) {
     const url = `https://npb.jp/bis/players/search/result?search_keyword=${encodeURIComponent(name)}`
     try {
@@ -673,9 +685,7 @@ async function discoverOfficialPlayerIds(
         process.stderr.write(`Profile search ${response.status}: ${url}\n`)
         continue
       }
-      for (const playerId of extractOfficialPlayerIdsFromSearchHtml(await response.text())) {
-        playerIds.add(playerId)
-      }
+      identities.set(name, extractOfficialPlayerIdsFromSearchHtml(await response.text()))
     } catch (error) {
       process.stderr.write(`Profile search error for ${name}: ${String(error)}\n`)
     }
@@ -683,7 +693,7 @@ async function discoverOfficialPlayerIds(
       await new Promise((resolve) => setTimeout(resolve, delayMs))
     }
   }
-  return [...playerIds]
+  return identities
 }
 
 function normalizeProfileIdentityName(value: string): string {
