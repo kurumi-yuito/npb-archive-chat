@@ -42,17 +42,15 @@ type ProfileMatch = {
 async function resolvePlayerIdsFromProfiles(
   database: QueryDatabase,
   aliases: string[],
-  preferNormalizedFacts: boolean,
 ): Promise<ProfileMatch[]> {
   if (aliases.length === 0) return []
   const values: string[] = []
   const clauses: string[] = []
   for (const alias of aliases) {
-    const compact = alias.replace(/[ \u3000]/gu, '')
-    const normalized = alias.replace(/[\u3000]/gu, ' ').trim()
-    values.push(compact, `${normalized} %`)
+    const compact = normalizeIdentityKey(alias)
+    values.push(compact, `${compact}%`, compact)
     clauses.push(
-      `(REPLACE(REPLACE(player_profiles.full_name,' ',''),char(12288),'') = ? OR player_profiles.full_name LIKE ?)`,
+      `(${identityNameSql('COALESCE(player_profiles.canonical_name, player_profiles.full_name)')} = ? OR ${identityNameSql('COALESCE(player_profiles.canonical_name, player_profiles.full_name)')} LIKE ? OR (LENGTH(${identityNameSql('COALESCE(player_profiles.canonical_name, player_profiles.full_name)')}) >= 3 AND ? LIKE ${identityNameSql('COALESCE(player_profiles.canonical_name, player_profiles.full_name)')} || '%'))`,
     )
   }
   let profileRows: Array<{ player_id: string; full_name: string | null; team_name: string | null; year_teams_json: string | null }> = []
@@ -65,7 +63,7 @@ async function resolvePlayerIdsFromProfiles(
     // projection must not suppress the remaining Repository-backed ID sources.
   }
 
-  const normalizedRows = profileRows.length === 0 && preferNormalizedFacts
+  const normalizedRows = profileRows.length === 0
     ? await resolvePlayerRowsFromNormalizedFacts(database, aliases)
     : null
   let rows = profileRows.length > 0
@@ -271,7 +269,7 @@ export async function searchPlayerCandidates(
 
   const isShortIdentityInput = normalizeIdentityKey(filters.name).length <= 2
   const profileMatches = mergeProfileMatches(
-    await resolvePlayerIdsFromProfiles(database, [filters.name], filters.includeEvents === false),
+    await resolvePlayerIdsFromProfiles(database, [filters.name]),
     await resolvePlayerIdsFromAliases(database, aliases),
   )
   const profilePlayerIds = profileMatches.map((m) => m.player_id)
