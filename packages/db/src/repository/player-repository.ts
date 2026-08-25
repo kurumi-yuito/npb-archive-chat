@@ -210,7 +210,7 @@ async function resolvePlayerRowsFromNormalizedFacts(
              INNER JOIN teams ON teams.team_id = roster_entry_facts.team_id
             WHERE roster_entry_facts.player_id IS NOT NULL AND (${clauses.join(' OR ')})
          )
-        ORDER BY year DESC
+        ORDER BY LENGTH(${identityNameSql('full_name')}) DESC, year DESC
         LIMIT 30`,
     ).all(...values, ...values, ...values) as Array<{ player_id: string; full_name: string | null; team_name: string | null; year_teams_json: string | null }>
   } catch {
