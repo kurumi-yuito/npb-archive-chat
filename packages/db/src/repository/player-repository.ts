@@ -80,7 +80,19 @@ async function resolvePlayerIdsFromProfiles(
   }
 
   try {
-    const ids = [...new Set(rows.map((r) => r.player_id))]
+    let ids = [...new Set(rows.map((r) => r.player_id))]
+    if (ids.length > 1) {
+      const profileNames = await fetchProfileNamesForIds(database, ids)
+      const inputNames = new Set(aliases.map((alias) => normalizeIdentityKey(alias)))
+      const exactProfileIds = ids.filter((id) => {
+        const profileName = profileNames.get(id)
+        return profileName ? inputNames.has(normalizeIdentityKey(profileName)) : false
+      })
+      if (exactProfileIds.length === 1) {
+        ids = exactProfileIds
+        rows = rows.filter((row) => row.player_id === ids[0])
+      }
+    }
     // Only filter when the profile lookup yields a unique player — multiple matches mean the input
     // is an ambiguous surname and filtering would incorrectly narrow to the first hit.
     if (ids.length !== 1) return []
