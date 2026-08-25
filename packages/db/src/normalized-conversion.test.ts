@@ -131,8 +131,8 @@ describe('runNormalizeDatabase', () => {
             '17 佐々木朗', 'https://npb.jp/scores/2025/0328/b-e-01/roster.html',
             NULL
           ), (
-            'r20250328b-e-01', '楽天', '投手', 2, '19', '山﨑 伊織', '', '19', '投手',
-            '19 山﨑 伊織', 'https://npb.jp/scores/2025/0328/b-e-01/roster.html',
+            'r20250328b-e-01', '楽天', '投手', 2, '19', '山﨑 伊', '', '19', '投手',
+            '19 山﨑 伊', 'https://npb.jp/scores/2025/0328/b-e-01/roster.html',
             NULL
           );
         `)
@@ -200,7 +200,7 @@ describe('runNormalizeDatabase', () => {
           searchDomain: 'pitching',
         })
         expect(rosterFactCandidates).toEqual(expect.arrayContaining([
-          expect.objectContaining({ player_id: '03305153', name: '山﨑 伊織' }),
+          expect.objectContaining({ player_id: '03305153', name: '山﨑 伊' }),
         ]))
         const events = await searchEvents(queryDatabase, {
           batter_player_id: '51155118',

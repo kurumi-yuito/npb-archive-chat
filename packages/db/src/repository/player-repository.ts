@@ -92,6 +92,23 @@ async function resolvePlayerIdsFromProfiles(
       }
     }
     if (ids.length > 1) {
+      const inputNames = aliases.map((alias) => normalizeIdentityKey(alias))
+      const registeredPrefixes = rows.filter((row) => {
+        if (!row.full_name) return false
+        const factName = normalizeIdentityKey(row.full_name)
+        return factName.length >= 3 && inputNames.some((inputName) => inputName.startsWith(factName))
+      })
+      if (registeredPrefixes.length > 0) {
+        const longestLength = Math.max(...registeredPrefixes.map((row) => normalizeIdentityKey(row.full_name ?? '').length))
+        const longestRows = registeredPrefixes.filter((row) => normalizeIdentityKey(row.full_name ?? '').length === longestLength)
+        const longestIds = [...new Set(longestRows.map((row) => row.player_id))]
+        if (longestIds.length === 1) {
+          ids = longestIds
+          rows = rows.filter((row) => row.player_id === ids[0])
+        }
+      }
+    }
+    if (ids.length > 1) {
       const profileNames = await fetchProfileNamesForIds(database, ids)
       const inputNames = new Set(aliases.map((alias) => normalizeIdentityKey(alias)))
       const exactProfileIds = ids.filter((id) => {
@@ -114,7 +131,14 @@ async function resolvePlayerIdsFromProfiles(
     const inputNames = new Set(aliases.map((alias) => normalizeIdentityKey(alias)))
     const row = rows.find((r) =>
       r.player_id === ids[0] && r.full_name && inputNames.has(normalizeIdentityKey(r.full_name)),
-    ) ?? rows.find((r) => r.player_id === ids[0])!
+    ) ?? rows
+      .filter((r) => {
+        if (r.player_id !== ids[0] || !r.full_name) return false
+        const factName = normalizeIdentityKey(r.full_name)
+        return factName.length >= 3 && [...inputNames].some((inputName) => inputName.startsWith(factName))
+      })
+      .sort((left, right) => normalizeIdentityKey(right.full_name ?? '').length - normalizeIdentityKey(left.full_name ?? '').length)[0]
+      ?? rows.find((r) => r.player_id === ids[0])!
     let knownTeams: string[] = []
     let years: number[] = []
     try {
