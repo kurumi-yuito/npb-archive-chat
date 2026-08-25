@@ -90,7 +90,12 @@ async function resolvePlayerIdsFromProfiles(
       })
       if (exactProfileIds.length === 1) {
         ids = exactProfileIds
-        rows = rows.filter((row) => row.player_id === ids[0])
+        rows = rows
+          .filter((row) => row.player_id === ids[0])
+          .map((row) => ({
+            ...row,
+            full_name: profileNames.get(row.player_id) ?? row.full_name,
+          }))
       }
     }
     // Only filter when the profile lookup yields a unique player — multiple matches mean the input
