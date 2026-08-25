@@ -77,6 +77,14 @@ async function resolvePlayerIdsFromProfiles(
       ? normalizedRows
       : []
   if (rows.length === 0) {
+    console.warn('Player identity lookup returned no ID candidates', {
+      aliases,
+      profileRows: profileRows.length,
+      registeredFactRows: registeredFactRows?.length ?? null,
+      normalizedRows: normalizedRows?.length ?? null,
+    })
+  }
+  if (rows.length === 0) {
     try {
       rows = await resolvePlayerRowsFromIdSources(database, aliases)
     } catch {
