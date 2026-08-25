@@ -94,12 +94,12 @@ describe('runNormalizeDatabase', () => {
             'https://npb.jp/scores/2025/0328/b-e-01/box.html',
             'https://npb.jp/bis/players/53355118.html'
           ), (
-            'r20250328b-e-01', 'オリックス', 1, NULL, '佐々木朗', 100, 26,
+            'r20250328b-e-01', 'オリックス', 1, NULL, '佐々木', 100, 26,
             '7', 3, 0, 2, 0, 9, 0, 0, 0, 0, '[]', '佐々木朗 7回無失点',
             'https://npb.jp/scores/2025/0328/b-e-01/box.html',
             NULL
           ), (
-            'r20250328b-e-01', 'オリックス', 2, NULL, '山崎伊織', 90, 24,
+            'r20250328b-e-01', 'オリックス', 2, NULL, '山崎', 90, 24,
             '6', 4, 0, 1, 0, 7, 0, 0, 1, 1, '[]', '山崎伊織 6回1失点',
             'https://npb.jp/scores/2025/0328/b-e-01/box.html',
             NULL
@@ -117,6 +117,14 @@ describe('runNormalizeDatabase', () => {
             'r20250328b-e-01', '楽天', '野手', 0, '3', '浅村', '', '3', '内野手',
             '3 浅村', 'https://npb.jp/scores/2025/0328/b-e-01/roster.html',
             'https://npb.jp/bis/players/51155118.html'
+          ), (
+            'r20250328b-e-01', 'オリックス', '投手', 1, '17', '佐々木朗', '', '17', '投手',
+            '17 佐々木朗', 'https://npb.jp/scores/2025/0328/b-e-01/roster.html',
+            'https://npb.jp/bis/players/31035151.html'
+          ), (
+            'r20250328b-e-01', 'オリックス', '投手', 2, '19', '山﨑 伊織', '', '19', '投手',
+            '19 山﨑 伊織', 'https://npb.jp/scores/2025/0328/b-e-01/roster.html',
+            'https://npb.jp/bis/players/03305153.html'
           );
         `)
       } finally {
@@ -145,13 +153,13 @@ describe('runNormalizeDatabase', () => {
         const profileResolvedPitcher = normalized.prepare(
           `SELECT pitcher_id FROM pitching_line_facts
             INNER JOIN person_names ON person_names.name_id = pitching_line_facts.pitcher_name_id
-           WHERE person_names.name = '佐々木朗'`,
+           WHERE person_names.name = '佐々木'`,
         ).get() as { pitcher_id: string | null }
         expect(profileResolvedPitcher.pitcher_id).toBe('31035151')
         const variantResolvedPitcher = normalized.prepare(
           `SELECT pitcher_id FROM pitching_line_facts
             INNER JOIN person_names ON person_names.name_id = pitching_line_facts.pitcher_name_id
-           WHERE person_names.name = '山崎伊織'`,
+           WHERE person_names.name = '山崎'`,
         ).get() as { pitcher_id: string | null }
         expect(variantResolvedPitcher.pitcher_id).toBe('03305153')
 
