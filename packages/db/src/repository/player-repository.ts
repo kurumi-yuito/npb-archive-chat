@@ -211,7 +211,8 @@ async function resolvePlayerRowsFromRegisteredFacts(
         ORDER BY LENGTH(${identityNameSql('full_name')}) DESC, year DESC
         LIMIT 30`,
     ).all(...values, ...values, ...values) as Array<{ player_id: string; full_name: string | null; team_name: string | null; year_teams_json: string | null }>
-  } catch {
+  } catch (error) {
+    console.warn('Registered player fact lookup failed', error)
     return null
   }
 }
@@ -264,7 +265,8 @@ async function resolvePlayerRowsFromNormalizedFacts(
         ORDER BY LENGTH(${identityNameSql('full_name')}) DESC, year DESC
         LIMIT 30`,
     ).all(...values, ...values, ...values) as Array<{ player_id: string; full_name: string | null; team_name: string | null; year_teams_json: string | null }>
-  } catch {
+  } catch (error) {
+    console.warn('Normalized player fact lookup failed', error)
     return null
   }
 }
