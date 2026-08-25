@@ -162,8 +162,10 @@ async function resolvePlayerIdsFromAliases(
   if (normalizedAliases.length === 0) {
     return []
   }
-  const values = normalizedAliases.map((alias) => `%${alias}%`)
-  const clauses = normalizedAliases.map(() => 'player_aliases.normalized_alias LIKE ?')
+  const values = normalizedAliases.flatMap((alias) => [alias, alias])
+  const clauses = normalizedAliases.map(() =>
+    `(${identityNameSql('player_aliases.alias')} = ? OR ${identityNameSql('player_aliases.normalized_alias')} = ?)`,
+  )
   try {
     const rows = await database
       .prepare(
