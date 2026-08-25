@@ -298,13 +298,15 @@ function createGameIdentityIndex(database: SqliteDatabase): void {
     SELECT game_id, team, normalized_name, player_id
     FROM (
       SELECT game_id, team, ${identityNameSql('player_name')} AS normalized_name,
-             ${playerIdSql('player_url')} AS player_id
+             COALESCE(${playerIdSql('player_url')}, ${profilePlayerIdSql('player_name')}) AS player_id
       FROM legacy.batting_lines
       UNION ALL
-      SELECT game_id, team, ${identityNameSql('pitcher_name')}, ${playerIdSql('pitcher_url')}
+      SELECT game_id, team, ${identityNameSql('pitcher_name')},
+             COALESCE(${playerIdSql('pitcher_url')}, ${profilePlayerIdSql('pitcher_name')})
       FROM legacy.pitching_lines
       UNION ALL
-      SELECT game_id, team, ${identityNameSql('player_name')}, ${playerIdSql('player_url')}
+      SELECT game_id, team, ${identityNameSql('player_name')},
+             COALESCE(${playerIdSql('player_url')}, ${profilePlayerIdSql('player_name')})
       FROM legacy.roster_entries
     )
     WHERE normalized_name <> '' AND player_id IS NOT NULL AND player_id <> '';

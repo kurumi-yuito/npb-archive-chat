@@ -120,11 +120,11 @@ describe('runNormalizeDatabase', () => {
           ), (
             'r20250328b-e-01', 'オリックス', '投手', 1, '17', '佐々木朗', '', '17', '投手',
             '17 佐々木朗', 'https://npb.jp/scores/2025/0328/b-e-01/roster.html',
-            'https://npb.jp/bis/players/31035151.html'
+            NULL
           ), (
             'r20250328b-e-01', 'オリックス', '投手', 2, '19', '山﨑 伊織', '', '19', '投手',
             '19 山﨑 伊織', 'https://npb.jp/scores/2025/0328/b-e-01/roster.html',
-            'https://npb.jp/bis/players/03305153.html'
+            NULL
           );
         `)
       } finally {
