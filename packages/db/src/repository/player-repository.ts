@@ -63,11 +63,16 @@ async function resolvePlayerIdsFromProfiles(
     // projection must not suppress the remaining Repository-backed ID sources.
   }
 
-  const normalizedRows = profileRows.length === 0
+  const registeredFactRows = profileRows.length === 0
+    ? await resolvePlayerRowsFromRegisteredFacts(database, aliases)
+    : null
+  const normalizedRows = profileRows.length === 0 && (!registeredFactRows || registeredFactRows.length === 0)
     ? await resolvePlayerRowsFromNormalizedFacts(database, aliases)
     : null
   let rows = profileRows.length > 0
     ? profileRows
+    : registeredFactRows && registeredFactRows.length > 0
+      ? registeredFactRows
     : normalizedRows && normalizedRows.length > 0
       ? normalizedRows
       : []
@@ -162,6 +167,52 @@ async function resolvePlayerIdsFromProfiles(
     }]
   } catch {
     return []
+  }
+}
+
+async function resolvePlayerRowsFromRegisteredFacts(
+  database: QueryDatabase,
+  aliases: string[],
+): Promise<Array<{ player_id: string; full_name: string | null; team_name: string | null; year_teams_json: string | null }> | null> {
+  const values: string[] = []
+  const clauses = aliases.map((alias) => {
+    values.push(normalizeIdentityKey(alias))
+    return `(LENGTH(${identityNameSql('person_names.name')}) >= 3 AND ? LIKE ${identityNameSql('person_names.name')} || '%')`
+  })
+  if (clauses.length === 0) return []
+  try {
+    return await database.prepare(
+      `SELECT player_id, full_name, team_name, NULL AS year_teams_json
+         FROM (
+           SELECT batting_line_facts.player_id, person_names.name AS full_name,
+                  teams.team_name, game_facts.year
+             FROM person_names
+             INNER JOIN batting_line_facts INDEXED BY idx_batting_name_game ON batting_line_facts.player_name_id = person_names.name_id
+             INNER JOIN game_facts ON game_facts.game_id = batting_line_facts.game_id
+             INNER JOIN teams ON teams.team_id = batting_line_facts.team_id
+            WHERE batting_line_facts.player_id IS NOT NULL AND (${clauses.join(' OR ')})
+           UNION ALL
+           SELECT pitching_line_facts.pitcher_id, person_names.name,
+                  teams.team_name, game_facts.year
+             FROM person_names
+             INNER JOIN pitching_line_facts INDEXED BY idx_pitching_name_game ON pitching_line_facts.pitcher_name_id = person_names.name_id
+             INNER JOIN game_facts ON game_facts.game_id = pitching_line_facts.game_id
+             INNER JOIN teams ON teams.team_id = pitching_line_facts.team_id
+            WHERE pitching_line_facts.pitcher_id IS NOT NULL AND (${clauses.join(' OR ')})
+           UNION ALL
+           SELECT roster_entry_facts.player_id, person_names.name,
+                  teams.team_name, game_facts.year
+             FROM person_names
+             INNER JOIN roster_entry_facts INDEXED BY idx_roster_name_game ON roster_entry_facts.player_name_id = person_names.name_id
+             INNER JOIN game_facts ON game_facts.game_id = roster_entry_facts.game_id
+             INNER JOIN teams ON teams.team_id = roster_entry_facts.team_id
+            WHERE roster_entry_facts.player_id IS NOT NULL AND (${clauses.join(' OR ')})
+         )
+        ORDER BY LENGTH(${identityNameSql('full_name')}) DESC, year DESC
+        LIMIT 30`,
+    ).all(...values, ...values, ...values) as Array<{ player_id: string; full_name: string | null; team_name: string | null; year_teams_json: string | null }>
+  } catch {
+    return null
   }
 }
 
