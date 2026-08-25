@@ -82,6 +82,16 @@ async function resolvePlayerIdsFromProfiles(
   try {
     let ids = [...new Set(rows.map((r) => r.player_id))]
     if (ids.length > 1) {
+      const inputNames = new Set(aliases.map((alias) => normalizeIdentityKey(alias)))
+      const exactFactIds = [...new Set(rows
+        .filter((row) => row.full_name && inputNames.has(normalizeIdentityKey(row.full_name)))
+        .map((row) => row.player_id))]
+      if (exactFactIds.length === 1) {
+        ids = exactFactIds
+        rows = rows.filter((row) => row.player_id === ids[0])
+      }
+    }
+    if (ids.length > 1) {
       const profileNames = await fetchProfileNamesForIds(database, ids)
       const inputNames = new Set(aliases.map((alias) => normalizeIdentityKey(alias)))
       const exactProfileIds = ids.filter((id) => {
@@ -101,7 +111,10 @@ async function resolvePlayerIdsFromProfiles(
     // Only filter when the profile lookup yields a unique player — multiple matches mean the input
     // is an ambiguous surname and filtering would incorrectly narrow to the first hit.
     if (ids.length !== 1) return []
-    const row = rows.find((r) => r.player_id === ids[0])!
+    const inputNames = new Set(aliases.map((alias) => normalizeIdentityKey(alias)))
+    const row = rows.find((r) =>
+      r.player_id === ids[0] && r.full_name && inputNames.has(normalizeIdentityKey(r.full_name)),
+    ) ?? rows.find((r) => r.player_id === ids[0])!
     let knownTeams: string[] = []
     let years: number[] = []
     try {
@@ -162,10 +175,20 @@ async function resolvePlayerRowsFromNormalizedFacts(
              INNER JOIN game_facts ON game_facts.game_id = pitching_line_facts.game_id
              INNER JOIN teams ON teams.team_id = pitching_line_facts.team_id
             WHERE pitching_line_facts.pitcher_id IS NOT NULL AND (${clauses.join(' OR ')})
+           UNION ALL
+           SELECT roster_entry_facts.player_id AS player_id,
+                  person_names.name AS full_name,
+                  teams.team_name AS team_name,
+                  game_facts.year AS year
+             FROM person_names
+             INNER JOIN roster_entry_facts INDEXED BY idx_roster_name_game ON roster_entry_facts.player_name_id = person_names.name_id
+             INNER JOIN game_facts ON game_facts.game_id = roster_entry_facts.game_id
+             INNER JOIN teams ON teams.team_id = roster_entry_facts.team_id
+            WHERE roster_entry_facts.player_id IS NOT NULL AND (${clauses.join(' OR ')})
          )
         ORDER BY year DESC
         LIMIT 30`,
-    ).all(...values, ...values) as Array<{ player_id: string; full_name: string | null; team_name: string | null; year_teams_json: string | null }>
+    ).all(...values, ...values, ...values) as Array<{ player_id: string; full_name: string | null; team_name: string | null; year_teams_json: string | null }>
   } catch {
     return null
   }

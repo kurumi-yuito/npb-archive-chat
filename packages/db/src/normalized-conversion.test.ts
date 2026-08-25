@@ -192,6 +192,16 @@ describe('runNormalizeDatabase', () => {
         expect(variantNameCandidates).toEqual(expect.arrayContaining([
           expect.objectContaining({ player_id: '03305153' }),
         ]))
+        normalized.prepare("DELETE FROM player_aliases WHERE player_id = '03305153'").run()
+        normalized.prepare("DELETE FROM player_profiles WHERE player_id = '03305153'").run()
+        const rosterFactCandidates = await searchPlayerCandidates(queryDatabase, {
+          name: '山崎伊織',
+          includeEvents: false,
+          searchDomain: 'pitching',
+        })
+        expect(rosterFactCandidates).toEqual(expect.arrayContaining([
+          expect.objectContaining({ player_id: '03305153', name: '山﨑 伊織' }),
+        ]))
         const events = await searchEvents(queryDatabase, {
           batter_player_id: '51155118',
           limit: 1,
