@@ -121,6 +121,7 @@ function normalizeDatabase(database: SqliteDatabase): void {
     clearNormalizedTables(database)
     insertDictionaries(database)
     insertIdentityTables(database)
+    createIdentityNameIndex(database)
     insertGames(database)
     insertSourceSnapshots(database)
     insertLinesAndEvents(database)
@@ -221,6 +222,30 @@ function insertIdentityTables(database: SqliteDatabase): void {
     SELECT player_id, source_type, source_url, normalized_source_url, source_key,
       season, team, created_at, updated_at
     FROM legacy.player_sources;
+  `)
+}
+
+function createIdentityNameIndex(database: SqliteDatabase): void {
+  database.exec(`
+    CREATE TEMP TABLE identity_name_player_ids (
+      normalized_name TEXT PRIMARY KEY,
+      player_id TEXT NOT NULL
+    ) WITHOUT ROWID;
+
+    INSERT INTO identity_name_player_ids (normalized_name, player_id)
+    SELECT normalized_alias, MIN(player_id)
+    FROM player_aliases
+    WHERE normalized_alias IS NOT NULL AND normalized_alias <> ''
+    GROUP BY normalized_alias
+    HAVING COUNT(DISTINCT player_id) = 1;
+
+    INSERT OR IGNORE INTO identity_name_player_ids (normalized_name, player_id)
+    SELECT ${identityNameSql('COALESCE(canonical_name, full_name)')}, MIN(player_id)
+    FROM player_profiles
+    WHERE COALESCE(canonical_name, full_name) IS NOT NULL
+      AND COALESCE(canonical_name, full_name) <> ''
+    GROUP BY ${identityNameSql('COALESCE(canonical_name, full_name)')}
+    HAVING COUNT(DISTINCT player_id) = 1;
   `)
 }
 
@@ -440,13 +465,9 @@ function resolvedPlayerIdSql(urlExpression: string, nameExpression: string): str
 }
 
 function profilePlayerIdSql(nameExpression: string): string {
-  const sourceName = identityNameSql(nameExpression)
-  const profileName = identityNameSql('COALESCE(profile.canonical_name, profile.full_name)')
-  return `(SELECT CASE WHEN COUNT(DISTINCT profile.player_id) = 1 THEN MIN(profile.player_id) ELSE NULL END
-    FROM legacy.player_profiles profile
-    WHERE ${sourceName} <> ''
-      AND (${profileName} = ${sourceName}
-        OR (LENGTH(${sourceName}) >= 3 AND ${profileName} LIKE ${sourceName} || '%')))`
+  return `(SELECT identity.player_id
+    FROM identity_name_player_ids identity
+    WHERE identity.normalized_name = ${identityNameSql(nameExpression)})`
 }
 
 function identityNameSql(expression: string): string {
