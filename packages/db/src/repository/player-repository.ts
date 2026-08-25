@@ -118,8 +118,8 @@ async function resolvePlayerRowsFromNormalizedFacts(
   const values: string[] = []
   const clauses = aliases.map((alias) => {
     const compact = normalizeIdentityKey(alias)
-    values.push(compact, `${compact}%`)
-    return `(${compactNameCol('person_names.name')} = ? OR ${compactNameCol('person_names.name')} LIKE ?)`
+    values.push(compact, `${compact}%`, compact)
+    return `(${identityNameSql('person_names.name')} = ? OR ${identityNameSql('person_names.name')} LIKE ? OR (LENGTH(${identityNameSql('person_names.name')}) >= 2 AND ? LIKE ${identityNameSql('person_names.name')} || '%'))`
   })
   if (clauses.length === 0) return []
   try {
@@ -789,10 +789,6 @@ async function inferPlayerRoles(database: QueryDatabase, playerId: string): Prom
     roles.push('pitcher')
   }
   return roles
-}
-
-function compactNameCol(col: string): string {
-  return `REPLACE(REPLACE(${col}, ' ', ''), char(12288), '')`
 }
 
 function samePlayerName(a: string, b: string): boolean {

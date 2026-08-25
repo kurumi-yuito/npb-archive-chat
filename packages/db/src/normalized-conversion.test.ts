@@ -9,6 +9,7 @@ import { sqliteDatabaseToQuery } from './query-driver'
 import { aggregateBattingLines } from './repository/aggregate-repository'
 import { searchBattingLines } from './repository/batting-repository'
 import { searchEvents } from './repository/events-repository'
+import { searchPlayerCandidates } from './repository/player-repository'
 import { searchRosterEntries } from './repository/roster-repository'
 import { openDatabase } from './sqlite'
 
@@ -105,10 +106,10 @@ describe('runNormalizeDatabase', () => {
             NULL
           );
 
-          INSERT INTO player_profiles (player_id, full_name, canonical_name, source_url)
+          INSERT INTO player_profiles (player_id, full_name, canonical_name, team_name, current_team, source_url)
           VALUES
-            ('31035151', '佐々木 朗希', '佐々木 朗希', 'https://npb.jp/bis/players/31035151.html'),
-            ('03305153', '山﨑 伊織', '山﨑 伊織', 'https://npb.jp/bis/players/03305153.html');
+            ('31035151', '佐々木 朗希', '佐々木 朗希', 'オリックス', 'オリックス', 'https://npb.jp/bis/players/31035151.html'),
+            ('03305153', '山﨑 伊織', '山﨑 伊織', 'オリックス', 'オリックス', 'https://npb.jp/bis/players/03305153.html');
 
           INSERT INTO roster_entries (
             game_id, team, group_label, entry_index, number, player_name, raw_handedness,
@@ -175,6 +176,14 @@ describe('runNormalizeDatabase', () => {
         })
 
         const queryDatabase = sqliteDatabaseToQuery(normalized)
+        const variantNameCandidates = await searchPlayerCandidates(queryDatabase, {
+          name: '山崎伊織',
+          includeEvents: false,
+          searchDomain: 'pitching',
+        })
+        expect(variantNameCandidates).toEqual(expect.arrayContaining([
+          expect.objectContaining({ player_id: '03305153' }),
+        ]))
         const events = await searchEvents(queryDatabase, {
           batter_player_id: '51155118',
           limit: 1,

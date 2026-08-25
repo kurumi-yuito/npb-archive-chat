@@ -261,6 +261,33 @@ function createIdentityNameIndex(database: SqliteDatabase): void {
     CREATE INDEX identity_name_candidates_name
       ON identity_name_candidates(normalized_name);
 
+    CREATE TEMP TABLE identity_team_candidates (
+      normalized_name TEXT NOT NULL,
+      team TEXT NOT NULL,
+      player_id TEXT NOT NULL
+    );
+
+    INSERT INTO identity_team_candidates (normalized_name, team, player_id)
+    SELECT ${identityNameSql('COALESCE(canonical_name, full_name)')},
+           COALESCE(NULLIF(current_team, ''), team_name), player_id
+    FROM player_profiles
+    WHERE COALESCE(NULLIF(current_team, ''), team_name) IS NOT NULL
+      AND COALESCE(NULLIF(current_team, ''), team_name) <> '';
+
+    INSERT INTO identity_team_candidates (normalized_name, team, player_id)
+    SELECT normalized_name, team_name, player_id
+    FROM (
+      SELECT ${identityNameSql('player_name')} AS normalized_name, team_name, player_id FROM legacy.current_team_roster
+      UNION ALL SELECT ${identityNameSql('player_name')}, team_name, player_id FROM legacy.player_batting_stats
+      UNION ALL SELECT ${identityNameSql('player_name')}, team_name, player_id FROM legacy.player_pitching_stats
+      UNION ALL SELECT ${identityNameSql('player_name')}, team_name, player_id FROM legacy.player_fielding_stats
+    )
+    WHERE normalized_name <> '' AND team_name IS NOT NULL AND team_name <> ''
+      AND player_id IS NOT NULL AND player_id <> '';
+
+    CREATE INDEX identity_team_candidates_context
+      ON identity_team_candidates(team, normalized_name);
+
     CREATE TEMP TABLE identity_name_player_ids (
       normalized_name TEXT PRIMARY KEY,
       player_id TEXT NOT NULL
@@ -433,7 +460,7 @@ function insertLinesAndEvents(database: SqliteDatabase): void {
         WHEN 'H' THEN 4
         ELSE NULL
       END,
-      COALESCE(${resolvedPlayerIdSql('p.pitcher_url', 'p.pitcher_name')}, ${gamePlayerIdSql('p.game_id', 'p.pitcher_name')}),
+      COALESCE(${resolvedPlayerIdSql('p.pitcher_url', 'p.pitcher_name')}, ${teamPlayerIdSql('p.team', 'p.pitcher_name')}, ${gamePlayerIdSql('p.game_id', 'p.pitcher_name')}),
       pn.name_id,
       p.pitch_count,
       p.batters_faced,
@@ -542,6 +569,17 @@ function gamePlayerIdSql(gameExpression: string, nameExpression: string): string
   return `(SELECT CASE WHEN COUNT(DISTINCT candidate.player_id) = 1 THEN MIN(candidate.player_id) ELSE NULL END
     FROM game_identity_candidates candidate
     WHERE candidate.game_id = ${gameExpression}
+      AND LENGTH(${sourceName}) >= 2
+      AND (candidate.normalized_name = ${sourceName}
+        OR candidate.normalized_name LIKE ${sourceName} || '%'
+        OR ${sourceName} LIKE candidate.normalized_name || '%'))`
+}
+
+function teamPlayerIdSql(teamExpression: string, nameExpression: string): string {
+  const sourceName = identityNameSql(nameExpression)
+  return `(SELECT CASE WHEN COUNT(DISTINCT candidate.player_id) = 1 THEN MIN(candidate.player_id) ELSE NULL END
+    FROM identity_team_candidates candidate
+    WHERE candidate.team = ${teamExpression}
       AND LENGTH(${sourceName}) >= 2
       AND (candidate.normalized_name = ${sourceName}
         OR candidate.normalized_name LIKE ${sourceName} || '%'
