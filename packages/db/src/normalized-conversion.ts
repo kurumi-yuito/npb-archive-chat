@@ -312,7 +312,7 @@ function createGameIdentityIndex(database: SqliteDatabase): void {
     WHERE normalized_name <> '' AND player_id IS NOT NULL AND player_id <> '';
 
     CREATE INDEX game_identity_candidates_context
-      ON game_identity_candidates(game_id, team, normalized_name);
+      ON game_identity_candidates(game_id, normalized_name);
   `)
 }
 
@@ -433,7 +433,7 @@ function insertLinesAndEvents(database: SqliteDatabase): void {
         WHEN 'H' THEN 4
         ELSE NULL
       END,
-      COALESCE(${resolvedPlayerIdSql('p.pitcher_url', 'p.pitcher_name')}, ${gamePlayerIdSql('p.game_id', 'p.team', 'p.pitcher_name')}),
+      COALESCE(${resolvedPlayerIdSql('p.pitcher_url', 'p.pitcher_name')}, ${gamePlayerIdSql('p.game_id', 'p.pitcher_name')}),
       pn.name_id,
       p.pitch_count,
       p.batters_faced,
@@ -537,12 +537,11 @@ function profilePlayerIdSql(nameExpression: string): string {
     WHERE identity.normalized_name = ${identityNameSql(nameExpression)})`
 }
 
-function gamePlayerIdSql(gameExpression: string, teamExpression: string, nameExpression: string): string {
+function gamePlayerIdSql(gameExpression: string, nameExpression: string): string {
   const sourceName = identityNameSql(nameExpression)
   return `(SELECT CASE WHEN COUNT(DISTINCT candidate.player_id) = 1 THEN MIN(candidate.player_id) ELSE NULL END
     FROM game_identity_candidates candidate
     WHERE candidate.game_id = ${gameExpression}
-      AND candidate.team = ${teamExpression}
       AND LENGTH(${sourceName}) >= 2
       AND (candidate.normalized_name = ${sourceName}
         OR candidate.normalized_name LIKE ${sourceName} || '%'
