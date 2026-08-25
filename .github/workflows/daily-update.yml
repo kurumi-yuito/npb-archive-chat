@@ -179,6 +179,13 @@ jobs:
             --r2-bucket "$NPB_R2_BUCKET" \
             | tee "data/logs/update-bis-current-${identity_year}.log"
 
+      - name: Audit player identity coverage
+        if: ${{ env.IS_DRY_RUN != 'true' && inputs.identity_year != '' }}
+        run: |
+          node scripts/audit-player-identity-coverage.mjs \
+            --sqlite "data/npb-${{ inputs.identity_year }}.sqlite" \
+            --output data/logs/player-identity-coverage.json
+
       - name: Sync updated SQLite data to D1
         id: sync_normalized
         if: ${{ env.IS_DRY_RUN != 'true' }}
@@ -325,4 +332,5 @@ jobs:
             data/logs/phase4-backfill-official-pitching-evidence.json
             data/logs/phase5-normalized-ops-check-before-sync.json
             data/logs/phase5-normalized-ops-check-after-sync.json
+            data/logs/player-identity-coverage.json
           if-no-files-found: ignore
