@@ -227,25 +227,60 @@ function insertIdentityTables(database: SqliteDatabase): void {
 
 function createIdentityNameIndex(database: SqliteDatabase): void {
   database.exec(`
+    CREATE TEMP TABLE identity_name_candidates (
+      normalized_name TEXT NOT NULL,
+      player_id TEXT NOT NULL
+    );
+
+    INSERT INTO identity_name_candidates (normalized_name, player_id)
+    SELECT ${identityNameSql('alias')}, player_id
+    FROM player_aliases
+    WHERE alias IS NOT NULL AND alias <> '' AND player_id IS NOT NULL AND player_id <> '';
+
+    INSERT INTO identity_name_candidates (normalized_name, player_id)
+    SELECT ${identityNameSql('COALESCE(canonical_name, full_name)')}, player_id
+    FROM player_profiles
+    WHERE COALESCE(canonical_name, full_name) IS NOT NULL
+      AND COALESCE(canonical_name, full_name) <> ''
+      AND player_id IS NOT NULL AND player_id <> '';
+
+    INSERT INTO identity_name_candidates (normalized_name, player_id)
+    SELECT normalized_name, player_id
+    FROM (
+      SELECT ${identityNameSql('player_name')} AS normalized_name, player_id FROM legacy.current_team_roster
+      UNION ALL
+      SELECT ${identityNameSql('player_name')}, player_id FROM legacy.player_batting_stats
+      UNION ALL
+      SELECT ${identityNameSql('player_name')}, player_id FROM legacy.player_pitching_stats
+      UNION ALL
+      SELECT ${identityNameSql('player_name')}, player_id FROM legacy.player_fielding_stats
+    )
+    WHERE normalized_name <> '' AND player_id IS NOT NULL AND player_id <> '';
+
+    CREATE INDEX identity_name_candidates_name
+      ON identity_name_candidates(normalized_name);
+
     CREATE TEMP TABLE identity_name_player_ids (
       normalized_name TEXT PRIMARY KEY,
       player_id TEXT NOT NULL
     ) WITHOUT ROWID;
 
     INSERT INTO identity_name_player_ids (normalized_name, player_id)
-    SELECT normalized_alias, MIN(player_id)
-    FROM player_aliases
-    WHERE normalized_alias IS NOT NULL AND normalized_alias <> ''
-    GROUP BY normalized_alias
+    SELECT normalized_name, MIN(player_id)
+    FROM identity_name_candidates
+    GROUP BY normalized_name
     HAVING COUNT(DISTINCT player_id) = 1;
 
     INSERT OR IGNORE INTO identity_name_player_ids (normalized_name, player_id)
-    SELECT ${identityNameSql('COALESCE(canonical_name, full_name)')}, MIN(player_id)
-    FROM player_profiles
-    WHERE COALESCE(canonical_name, full_name) IS NOT NULL
-      AND COALESCE(canonical_name, full_name) <> ''
-    GROUP BY ${identityNameSql('COALESCE(canonical_name, full_name)')}
-    HAVING COUNT(DISTINCT player_id) = 1;
+    SELECT ${identityNameSql('person_names.name')}, MIN(identity_name_candidates.player_id)
+    FROM person_names
+    INNER JOIN identity_name_candidates
+      ON identity_name_candidates.normalized_name LIKE ${identityNameSql('person_names.name')} || '%'
+    WHERE LENGTH(${identityNameSql('person_names.name')}) >= 3
+    GROUP BY ${identityNameSql('person_names.name')}
+    HAVING COUNT(DISTINCT identity_name_candidates.player_id) = 1;
+
+    DROP TABLE identity_name_candidates;
   `)
 }
 

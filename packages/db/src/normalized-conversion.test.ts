@@ -110,14 +110,6 @@ describe('runNormalizeDatabase', () => {
             ('31035151', '佐々木 朗希', '佐々木 朗希', 'https://npb.jp/bis/players/31035151.html'),
             ('03305153', '山﨑 伊織', '山﨑 伊織', 'https://npb.jp/bis/players/03305153.html');
 
-          INSERT INTO player_aliases (
-            player_id, alias, normalized_alias, alias_type, source_type, source_key,
-            season_from, season_to, confidence
-          ) VALUES (
-            '31035151', '佐々木朗', '佐々木朗', 'registered_name', 'game', 'r20250328b-e-01',
-            2025, 2025, 1.0
-          );
-
           INSERT INTO roster_entries (
             game_id, team, group_label, entry_index, number, player_name, raw_handedness,
             uniform_number, position, raw_text, source_url, player_url
