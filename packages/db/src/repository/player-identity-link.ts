@@ -11,7 +11,7 @@ export function canonicalPlayerFactMatchSql(
 ): string {
   const factName = normalizedIdentitySql(factNameColumn)
   return `(
-    ${factIdColumn} = ?
+    (${factIdColumn} = ? AND NOT EXISTS (SELECT 1 FROM player_profiles WHERE player_id = ?))
     OR EXISTS (
       SELECT 1
       FROM player_profiles AS identity_profile
