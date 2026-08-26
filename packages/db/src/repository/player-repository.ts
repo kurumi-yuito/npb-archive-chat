@@ -173,13 +173,15 @@ async function resolvePlayerIdsFromProfiles(
       ...rows.filter((r) => r.player_id === ids[0]).map((r) => r.team_name).filter(Boolean) as string[],
     ])]
     const profileNames = row.full_name ? new Map<string, string>() : await fetchProfileNamesForIds(database, [ids[0]!])
-    return [{
+    const resolvedMatch = {
       player_id: ids[0]!,
       fullName: row.full_name ?? profileNames.get(ids[0]!) ?? null,
       knownTeams,
       years: [...new Set(years)].sort((a, b) => a - b),
       currentTeam: row.team_name ?? null,
-    }]
+    }
+    console.warn('Player identity lookup resolved', { aliases, resolvedMatch })
+    return [resolvedMatch]
   } catch (error) {
     console.warn('Resolved player identity projection failed', { aliases, error })
     return []
@@ -422,7 +424,7 @@ export async function searchPlayerCandidates(
   if (profileMatches.length === 1 && !filters.latestOnly && !isShortIdentityInput) {
     const profile = profileMatches[0]!
     const inferredRoles = await inferPlayerRoles(database, profile.player_id)
-    return [{
+    const candidate = {
       player_id: profile.player_id,
       name: profile.fullName ?? filters.name,
       primary_team: profile.currentTeam,
@@ -430,7 +432,9 @@ export async function searchPlayerCandidates(
       teams: [...new Set([...profile.knownTeams, profile.currentTeam].filter(Boolean) as string[])],
       years: profile.years,
       match_kind: 'profile',
-    } as PlayerCandidate & { match_kind: 'profile' }]
+    } as PlayerCandidate & { match_kind: 'profile' }
+    console.warn('Player candidate search resolved profile', { input: filters.name, candidate })
+    return [candidate]
   }
 
   const rows: RawPlayerMention[] = []
