@@ -912,18 +912,23 @@ function unique<T>(values: T[]): T[] {
 }
 
 async function inferPlayerRoles(database: QueryDatabase, playerId: string): Promise<Array<'batter' | 'pitcher'>> {
-  const [battingRows, pitchingRows] = await Promise.all([
-    database.prepare('SELECT COUNT(*) AS count FROM player_batting_stats WHERE player_id = ?').get(playerId) as Promise<{ count?: number } | undefined>,
-    database.prepare('SELECT COUNT(*) AS count FROM player_pitching_stats WHERE player_id = ?').get(playerId) as Promise<{ count?: number } | undefined>,
-  ])
-  const roles: Array<'batter' | 'pitcher'> = []
-  if (Number(battingRows?.count ?? 0) > 0) {
-    roles.push('batter')
+  try {
+    const [battingRows, pitchingRows] = await Promise.all([
+      database.prepare('SELECT COUNT(*) AS count FROM player_batting_stats WHERE player_id = ?').get(playerId) as Promise<{ count?: number } | undefined>,
+      database.prepare('SELECT COUNT(*) AS count FROM player_pitching_stats WHERE player_id = ?').get(playerId) as Promise<{ count?: number } | undefined>,
+    ])
+    const roles: Array<'batter' | 'pitcher'> = []
+    if (Number(battingRows?.count ?? 0) > 0) {
+      roles.push('batter')
+    }
+    if (Number(pitchingRows?.count ?? 0) > 0) {
+      roles.push('pitcher')
+    }
+    return roles
+  } catch (error) {
+    console.warn('Player role inference failed', { playerId, error })
+    return []
   }
-  if (Number(pitchingRows?.count ?? 0) > 0) {
-    roles.push('pitcher')
-  }
-  return roles
 }
 
 function samePlayerName(a: string, b: string): boolean {
