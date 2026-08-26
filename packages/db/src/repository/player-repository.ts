@@ -140,7 +140,14 @@ async function resolvePlayerIdsFromProfiles(
     }
     // Only filter when the profile lookup yields a unique player — multiple matches mean the input
     // is an ambiguous surname and filtering would incorrectly narrow to the first hit.
-    if (ids.length !== 1) return []
+    if (ids.length !== 1) {
+      console.warn('Player identity lookup remained ambiguous', {
+        aliases,
+        ids,
+        factNames: [...new Set(rows.map((row) => row.full_name).filter(Boolean))],
+      })
+      return []
+    }
     const inputNames = new Set(aliases.map((alias) => normalizeIdentityKey(alias)))
     const row = rows.find((r) =>
       r.player_id === ids[0] && r.full_name && inputNames.has(normalizeIdentityKey(r.full_name)),
