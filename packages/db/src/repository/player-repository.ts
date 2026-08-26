@@ -180,7 +180,8 @@ async function resolvePlayerIdsFromProfiles(
       years: [...new Set(years)].sort((a, b) => a - b),
       currentTeam: row.team_name ?? null,
     }]
-  } catch {
+  } catch (error) {
+    console.warn('Resolved player identity projection failed', { aliases, error })
     return []
   }
 }
