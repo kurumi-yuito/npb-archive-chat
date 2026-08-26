@@ -3,6 +3,7 @@ import type { QueryDatabase } from '../query-driver'
 import type { SearchPitchingLinesFilters } from '@npb/schemas'
 import { toJapaneseTeamAliases } from './team-name-utils'
 import { isNormalizedFactsSchema } from './schema-detection'
+import { canonicalPlayerFactMatchSql, canonicalPlayerNameMatchSql } from './player-identity-link'
 
 /** 投手成績の検索向け最小列 */
 export type PitchingLineRow = {
@@ -131,8 +132,8 @@ async function searchNormalizedPitchingLines(
   const clauses: string[] = []
   const values: Array<string | number> = []
   if (filters.pitcher_player_id) {
-    clauses.push('pitching_line_facts.pitcher_id = ?')
-    values.push(filters.pitcher_player_id)
+    clauses.push(canonicalPlayerFactMatchSql('pitching_line_facts.pitcher_id', 'person_names.name', 'game_facts.year'))
+    values.push(filters.pitcher_player_id, filters.pitcher_player_id)
   } else if (filters.pitcher_name) {
     clauses.push(prefixMatchesCompactNameSql('?', 'person_names.name', filters.team ? 1 : 2))
     values.push(filters.pitcher_name)
@@ -230,8 +231,12 @@ export async function searchCurrentPitchingStats(
     values.push(...teams)
   }
   if (filters.pitcher_player_id) {
-    clauses.push('player_pitching_stats.player_id = ?')
-    values.push(filters.pitcher_player_id)
+    clauses.push(`(
+      ${canonicalPlayerFactMatchSql('player_pitching_stats.player_id', 'player_pitching_stats.player_name', 'player_pitching_stats.year')}
+      ${filters.pitcher_name ? `OR ${prefixMatchesCompactNameSql('?', 'player_pitching_stats.player_name', filters.team ? 1 : 2)}` : ''}
+    )`)
+    values.push(filters.pitcher_player_id, filters.pitcher_player_id)
+    if (filters.pitcher_name) values.push(filters.pitcher_name)
   } else if (filters.pitcher_name) {
     clauses.push(`${compactNameSql('player_pitching_stats.player_name')} LIKE ?`)
     values.push(`%${compactName(filters.pitcher_name)}%`)
@@ -286,9 +291,10 @@ function addPitchingLinePlayerIdFilter(
   clauses.push(
     `(
       pitching_lines.pitcher_url LIKE ?
+      OR ${canonicalPlayerNameMatchSql('pitching_lines.pitcher_name', 'games.year')}
     )`,
   )
-  values.push(pattern)
+  values.push(pattern, playerId)
 }
 
 function playerIdPattern(playerId: string): string {

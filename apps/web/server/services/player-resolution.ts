@@ -74,7 +74,7 @@ export async function resolveStructuredQueryPlayer(
       filterCandidates(periodScopedCandidates, teamQualifier(structuredQuery)),
     ),
   )
-  if (hasUniqueRepositoryEntity) {
+  if (hasUniqueRepositoryEntity && !isUnqualifiedShortName && !hasTeamQualifier) {
     candidates = selectCandidatesForInput(input, repositoryEntityCandidates)
   }
   if (candidates.length === 0 && hasExplicitYearFilter(structuredQuery)) {

@@ -5,6 +5,7 @@ import {
 import type { QueryDatabase } from '../query-driver'
 import { toJapaneseTeamAliases } from './team-name-utils'
 import { isNormalizedFactsSchema } from './schema-detection'
+import { canonicalPlayerFactMatchSql, canonicalPlayerNameMatchSql } from './player-identity-link'
 
 export type BattingLineRow = {
   gameId: string
@@ -142,8 +143,8 @@ async function searchNormalizedBattingLines(
   const clauses: string[] = []
   const values: Array<string | number> = []
   if (filters.player_id) {
-    clauses.push('batting_line_facts.player_id = ?')
-    values.push(filters.player_id)
+    clauses.push(canonicalPlayerFactMatchSql('batting_line_facts.player_id', 'person_names.name', 'game_facts.year'))
+    values.push(filters.player_id, filters.player_id)
   } else if (filters.player_name) {
     clauses.push(prefixMatchesCompactNameSql('?', 'person_names.name', filters.team ? 1 : 2))
     values.push(filters.player_name)
@@ -367,9 +368,10 @@ function addBattingLinePlayerIdFilter(
   clauses.push(
     `(
       batting_lines.player_url LIKE ?
+      OR ${canonicalPlayerNameMatchSql('batting_lines.player_name', 'games.year')}
     )`,
   )
-  values.push(pattern)
+  values.push(pattern, playerId)
 }
 
 function teamAliases(team: string): string[] {

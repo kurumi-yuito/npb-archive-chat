@@ -12,6 +12,7 @@ import type { QueryDatabase } from '../query-driver'
 import { isNormalizedFactsSchema } from './schema-detection'
 import { canonicalTeamName, toJapaneseTeamAliases, toEnglishLeagueTeams, toGameTeamAliases } from './team-name-utils'
 import { venueSearchValues } from './venue-aliases'
+import { canonicalPlayerFactMatchSql, canonicalPlayerNameMatchSql } from './player-identity-link'
 
 export type AggregateRow = {
   kind: 'batting' | 'pitching' | 'events' | 'games'
@@ -247,21 +248,8 @@ async function aggregateNormalizedBattingLines(
   const values: Array<string | number> = []
   appendNormalizedGameClauses(clauses, values, normalized)
   if (normalized.player_id) {
-    if (normalized.player_name) {
-      clauses.push(
-        `(
-          batting_line_facts.player_id = ?
-          OR (
-            batting_line_facts.player_id IS NULL
-            AND ${prefixMatchesCompactNameSql('?', 'person_names.name', normalized.team ? 1 : 2)}
-          )
-        )`,
-      )
-      values.push(normalized.player_id, normalized.player_name)
-    } else {
-      clauses.push('batting_line_facts.player_id = ?')
-      values.push(normalized.player_id)
-    }
+    clauses.push(canonicalPlayerFactMatchSql('batting_line_facts.player_id', 'person_names.name', 'game_facts.year'))
+    values.push(normalized.player_id, normalized.player_id)
   } else if (normalized.player_name) {
     clauses.push(prefixMatchesCompactNameSql('?', 'person_names.name', normalized.team ? 1 : 2))
     values.push(normalized.player_name)
@@ -627,9 +615,10 @@ function addBattingLinePlayerIdFilter(
           AND player_id_events.batter_name = batting_lines.player_name
           AND player_id_events.batter_url LIKE ?
       )
+      OR ${canonicalPlayerNameMatchSql('batting_lines.player_name', 'games.year')}
     )`,
   )
-  values.push(pattern, pattern)
+  values.push(pattern, pattern, playerId)
 }
 
 function addPitchingLinePlayerIdFilter(
@@ -648,9 +637,10 @@ function addPitchingLinePlayerIdFilter(
           AND player_id_events.pitcher_name = pitching_lines.pitcher_name
           AND player_id_events.pitcher_url LIKE ?
       )
+      OR ${canonicalPlayerNameMatchSql('pitching_lines.pitcher_name', 'games.year')}
     )`,
   )
-  values.push(pattern, pattern)
+  values.push(pattern, pattern, playerId)
 }
 
 function addEventPlayerIdFilter(
@@ -880,8 +870,8 @@ async function aggregateCurrentBattingStats(
     values.push(...teams)
   }
   if (filters.player_id) {
-    clauses.push('player_batting_stats.player_id = ?')
-    values.push(filters.player_id)
+    clauses.push(canonicalPlayerFactMatchSql('player_batting_stats.player_id', 'player_batting_stats.player_name', 'player_batting_stats.year'))
+    values.push(filters.player_id, filters.player_id)
   } else if (filters.player_name) {
     clauses.push(`${compactNameSql('player_batting_stats.player_name')} LIKE ?`)
     values.push(`%${compactName(filters.player_name)}%`)
