@@ -248,7 +248,7 @@ async function aggregateNormalizedBattingLines(
   const values: Array<string | number> = []
   appendNormalizedGameClauses(clauses, values, normalized)
   if (normalized.player_id) {
-    clauses.push(canonicalPlayerFactMatchSql('batting_line_facts.player_id', 'person_names.name', 'game_facts.year'))
+    clauses.push(canonicalPlayerFactMatchSql('batting_line_facts.player_id', 'person_names.name', 'game_facts.year', 'teams.team_name'))
     values.push(normalized.player_id, normalized.player_id)
   } else if (normalized.player_name) {
     clauses.push(prefixMatchesCompactNameSql('?', 'person_names.name', normalized.team ? 1 : 2))
@@ -615,7 +615,7 @@ function addBattingLinePlayerIdFilter(
           AND player_id_events.batter_name = batting_lines.player_name
           AND player_id_events.batter_url LIKE ?
       )
-      OR ${canonicalPlayerNameMatchSql('batting_lines.player_name', 'games.year')}
+      OR ${canonicalPlayerNameMatchSql('batting_lines.player_name', 'games.year', 'batting_lines.team')}
     )`,
   )
   values.push(pattern, pattern, playerId)
@@ -637,7 +637,7 @@ function addPitchingLinePlayerIdFilter(
           AND player_id_events.pitcher_name = pitching_lines.pitcher_name
           AND player_id_events.pitcher_url LIKE ?
       )
-      OR ${canonicalPlayerNameMatchSql('pitching_lines.pitcher_name', 'games.year')}
+      OR ${canonicalPlayerNameMatchSql('pitching_lines.pitcher_name', 'games.year', 'pitching_lines.team')}
     )`,
   )
   values.push(pattern, pattern, playerId)
@@ -870,7 +870,7 @@ async function aggregateCurrentBattingStats(
     values.push(...teams)
   }
   if (filters.player_id) {
-    clauses.push(canonicalPlayerFactMatchSql('player_batting_stats.player_id', 'player_batting_stats.player_name', 'player_batting_stats.year'))
+    clauses.push(canonicalPlayerFactMatchSql('player_batting_stats.player_id', 'player_batting_stats.player_name', 'player_batting_stats.year', 'player_batting_stats.team_name'))
     values.push(filters.player_id, filters.player_id)
   } else if (filters.player_name) {
     clauses.push(`${compactNameSql('player_batting_stats.player_name')} LIKE ?`)

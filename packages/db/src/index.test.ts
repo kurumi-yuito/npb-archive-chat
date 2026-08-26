@@ -452,4 +452,39 @@ describe('@npb/db', () => {
       service.close()
     }
   })
+
+  it('links a canonical profile id to a surname-only historical fact by season and team', async () => {
+    const db = openDatabase(':memory:')
+    migrateDatabase(db)
+    db.prepare(
+      `INSERT INTO player_profiles
+        (player_id, full_name, canonical_name, team_name, year_teams_json, source_url, fetched_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    ).run('canonical-yamamoto', '山本 由伸', '山本 由伸', 'オリックス・バファローズ', JSON.stringify({ 2023: 'オリックス・バファローズ' }), 'profile', '2026-01-01')
+    db.prepare(
+      `INSERT INTO games
+        (schema_version, game_id, year, mmdd, date, date_label, venue, canonical_url, matchup_text,
+         away_team_name, home_team_name, linescore_json, result_pitchers_json,
+         batteries_json, home_runs_json, latest_order_json, fetched_at, loaded_at)
+       VALUES (1, 'historical-game', 2023, '0101', '2023-01-01', '2023年テスト', '京セラ',
+         'https://example.com', 'A vs B', 'A', 'B', '{}', '{}', '{}', '{}', '{}', datetime('now'), datetime('now'))`,
+    ).run()
+    db.prepare(
+      `INSERT INTO pitching_lines
+        (game_id, team, pitcher_name, innings_pitched, pitch_count, batters_faced,
+         hits, home_runs, walks, hit_batters, strikeouts, wild_pitches, balks,
+         runs, earned_runs, headers_json, row_index)
+       VALUES ('historical-game', 'オリックス', '山本', '7', 100, 25,
+         3, 0, 2, 0, 8, 0, 0, 1, 1, '{}', 1)`,
+    ).run()
+
+    const service = createSingleDatabaseQueryService(sqliteDatabaseToQuery(db))
+    try {
+      const rows = await service.searchPitchingLines({ pitcher_player_id: 'canonical-yamamoto', year: 2023 })
+      expect(rows).toHaveLength(1)
+      expect(rows[0].pitcherName).toBe('山本')
+    } finally {
+      service.close()
+    }
+  })
 })

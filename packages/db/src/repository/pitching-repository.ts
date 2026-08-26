@@ -132,7 +132,7 @@ async function searchNormalizedPitchingLines(
   const clauses: string[] = []
   const values: Array<string | number> = []
   if (filters.pitcher_player_id) {
-    clauses.push(canonicalPlayerFactMatchSql('pitching_line_facts.pitcher_id', 'person_names.name', 'game_facts.year'))
+    clauses.push(canonicalPlayerFactMatchSql('pitching_line_facts.pitcher_id', 'person_names.name', 'game_facts.year', 'teams.team_name'))
     values.push(filters.pitcher_player_id, filters.pitcher_player_id)
   } else if (filters.pitcher_name) {
     clauses.push(prefixMatchesCompactNameSql('?', 'person_names.name', filters.team ? 1 : 2))
@@ -232,7 +232,7 @@ export async function searchCurrentPitchingStats(
   }
   if (filters.pitcher_player_id) {
     clauses.push(`(
-      ${canonicalPlayerFactMatchSql('player_pitching_stats.player_id', 'player_pitching_stats.player_name', 'player_pitching_stats.year')}
+      ${canonicalPlayerFactMatchSql('player_pitching_stats.player_id', 'player_pitching_stats.player_name', 'player_pitching_stats.year', 'player_pitching_stats.team_name')}
       ${filters.pitcher_name ? `OR ${prefixMatchesCompactNameSql('?', 'player_pitching_stats.player_name', filters.team ? 1 : 2)}` : ''}
     )`)
     values.push(filters.pitcher_player_id, filters.pitcher_player_id)
@@ -291,7 +291,7 @@ function addPitchingLinePlayerIdFilter(
   clauses.push(
     `(
       pitching_lines.pitcher_url LIKE ?
-      OR ${canonicalPlayerNameMatchSql('pitching_lines.pitcher_name', 'games.year')}
+      OR ${canonicalPlayerNameMatchSql('pitching_lines.pitcher_name', 'games.year', 'pitching_lines.team')}
     )`,
   )
   values.push(pattern, playerId)

@@ -143,7 +143,7 @@ async function searchNormalizedBattingLines(
   const clauses: string[] = []
   const values: Array<string | number> = []
   if (filters.player_id) {
-    clauses.push(canonicalPlayerFactMatchSql('batting_line_facts.player_id', 'person_names.name', 'game_facts.year'))
+    clauses.push(canonicalPlayerFactMatchSql('batting_line_facts.player_id', 'person_names.name', 'game_facts.year', 'teams.team_name'))
     values.push(filters.player_id, filters.player_id)
   } else if (filters.player_name) {
     clauses.push(prefixMatchesCompactNameSql('?', 'person_names.name', filters.team ? 1 : 2))
@@ -368,7 +368,7 @@ function addBattingLinePlayerIdFilter(
   clauses.push(
     `(
       batting_lines.player_url LIKE ?
-      OR ${canonicalPlayerNameMatchSql('batting_lines.player_name', 'games.year')}
+      OR ${canonicalPlayerNameMatchSql('batting_lines.player_name', 'games.year', 'batting_lines.team')}
     )`,
   )
   values.push(pattern, playerId)

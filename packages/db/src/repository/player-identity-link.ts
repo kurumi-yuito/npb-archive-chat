@@ -7,6 +7,7 @@ export function canonicalPlayerFactMatchSql(
   factIdColumn: string,
   factNameColumn: string,
   factYearColumn: string,
+  factTeamColumn: string,
 ): string {
   const factName = normalizedIdentitySql(factNameColumn)
   return `(
@@ -22,12 +23,13 @@ export function canonicalPlayerFactMatchSql(
         AND (
           ${factName} = ${normalizedIdentitySql('COALESCE(identity_profile.canonical_name, identity_profile.full_name)')}
           OR ${factName} = ${normalizedIdentitySql('identity_alias.alias')}
+          OR ${canonicalSurnameWithSeasonTeamSql(factName, factYearColumn, factTeamColumn)}
         )
     )
   )`
 }
 
-export function canonicalPlayerNameMatchSql(factNameColumn: string, factYearColumn: string): string {
+export function canonicalPlayerNameMatchSql(factNameColumn: string, factYearColumn: string, factTeamColumn: string): string {
   const factName = normalizedIdentitySql(factNameColumn)
   return `EXISTS (
     SELECT 1
@@ -40,7 +42,20 @@ export function canonicalPlayerNameMatchSql(factNameColumn: string, factYearColu
       AND (
         ${factName} = ${normalizedIdentitySql('COALESCE(identity_profile.canonical_name, identity_profile.full_name)')}
         OR ${factName} = ${normalizedIdentitySql('identity_alias.alias')}
+        OR ${canonicalSurnameWithSeasonTeamSql(factName, factYearColumn, factTeamColumn)}
       )
+  )`
+}
+
+function canonicalSurnameWithSeasonTeamSql(factName: string, factYearColumn: string, factTeamColumn: string): string {
+  const canonicalName = normalizedIdentitySql('COALESCE(identity_profile.canonical_name, identity_profile.full_name)')
+  const factTeam = normalizedIdentitySql(factTeamColumn)
+  const profileTeam = normalizedIdentitySql(`COALESCE(json_extract(identity_profile.year_teams_json, '$."' || ${factYearColumn} || '"'), '')`)
+  return `(
+    LENGTH(${factName}) >= 2
+    AND ${canonicalName} LIKE ${factName} || '%'
+    AND ${profileTeam} <> ''
+    AND (${profileTeam} LIKE '%' || ${factTeam} || '%' OR ${factTeam} LIKE '%' || ${profileTeam} || '%')
   )`
 }
 
