@@ -52,7 +52,7 @@ function canonicalSurnameWithSeasonTeamSql(factName: string, factYearColumn: str
   const factTeam = normalizedIdentitySql(factTeamColumn)
   const profileTeam = normalizedIdentitySql(`COALESCE(json_extract(identity_profile.year_teams_json, '$."' || ${factYearColumn} || '"'), '')`)
   return `(
-    LENGTH(${factName}) >= 2
+    LENGTH(${factName}) >= 1
     AND ${canonicalName} LIKE ${factName} || '%'
     AND ${profileTeam} <> ''
     AND (${profileTeam} LIKE '%' || ${factTeam} || '%' OR ${factTeam} LIKE '%' || ${profileTeam} || '%')

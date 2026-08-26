@@ -146,7 +146,32 @@ async function resolvePlayerIdsFromProfiles(
         ids,
         factNames: [...new Set(rows.map((row) => row.full_name).filter(Boolean))],
       })
-      return []
+      const profileNames = await fetchProfileNamesForIds(database, ids)
+      return ids.map((playerId) => {
+        const playerRows = rows.filter((row) => row.player_id === playerId)
+        const first = playerRows[0]!
+        const knownTeams = new Set(playerRows.map((row) => row.team_name).filter(Boolean) as string[])
+        const years = new Set<number>()
+        for (const playerRow of playerRows) {
+          try {
+            const yearTeams = JSON.parse(playerRow.year_teams_json ?? '{}') as Record<string, string>
+            for (const [year, team] of Object.entries(yearTeams)) {
+              if (team) knownTeams.add(team)
+              const parsedYear = Number(year)
+              if (Number.isFinite(parsedYear)) years.add(parsedYear)
+            }
+          } catch {
+            // Ignore malformed projection metadata for this candidate only.
+          }
+        }
+        return {
+          player_id: playerId,
+          fullName: profileNames.get(playerId) ?? first.full_name,
+          knownTeams: [...knownTeams],
+          years: [...years].sort((a, b) => a - b),
+          currentTeam: first.team_name,
+        }
+      })
     }
     const inputNames = new Set(aliases.map((alias) => normalizeIdentityKey(alias)))
     const row = rows.find((r) =>
@@ -584,6 +609,28 @@ export async function searchPlayerCandidates(
         const profileCompact = profileFullName.replace(/[ \u3000]/gu, '')
         return inputCompact.startsWith(profileCompact) || profileCompact.startsWith(inputCompact)
       })
+    }
+  }
+
+  if (isShortIdentityInput && profileMatches.length > 0) {
+    for (const profile of profileMatches) {
+      const existing = candidates.find((candidate) => candidate.player_id === profile.player_id)
+      if (existing) {
+        existing.name = profile.fullName ?? existing.name
+        existing.teams = unique([...existing.teams, ...profile.knownTeams, profile.currentTeam].filter(Boolean) as string[])
+        existing.years = unique([...existing.years, ...profile.years]).sort((a, b) => a - b)
+        existing.primary_team ??= profile.currentTeam
+        continue
+      }
+      candidates.push({
+        player_id: profile.player_id,
+        name: profile.fullName ?? filters.name,
+        primary_team: profile.currentTeam,
+        roles: ['profile'],
+        teams: unique([...profile.knownTeams, profile.currentTeam].filter(Boolean) as string[]),
+        years: profile.years,
+        match_kind: 'profile',
+      } as PlayerCandidate & { match_kind: 'profile' })
     }
   }
 
