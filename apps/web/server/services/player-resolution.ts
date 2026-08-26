@@ -461,6 +461,9 @@ function teamAliasKey(team: string): string {
 function normalizeLookupKey(value: string): string {
   return value
     .normalize('NFKC')
+    .replace(/﨑/gu, '崎')
+    .replace(/髙/gu, '高')
+    .replace(/濵/gu, '浜')
     .replace(/[・･.\-_\s\u3000]/gu, '')
     .toLowerCase()
 }

@@ -18,6 +18,29 @@ function createQueryService(candidates: PlayerCandidate[]): ChatQueryService {
 }
 
 describe('player-identity facade', () => {
+  it('normalizes identity glyph variants on canonical Repository candidates', async () => {
+    const queryService = createQueryService([{
+      player_id: '03305153',
+      name: '山﨑 伊織',
+      primary_team: '読売ジャイアンツ',
+      roles: ['pitcher'],
+      teams: ['読売ジャイアンツ'],
+      years: [2022, 2023, 2024, 2025, 2026],
+    }])
+
+    const result = await resolvePlayer(queryService, {
+      intent: 'search_pitching',
+      filters: { pitcher_name: '山崎伊織', recent: true },
+    })
+
+    expect(result.resolution).toMatchObject({
+      input: '山崎伊織',
+      player_id: '03305153',
+      name: '山﨑 伊織',
+      status: 'resolved',
+    })
+  })
+
   it('resolves alias candidates through the facade without changing ranking behavior', async () => {
     const queryService = createQueryService([
       {
