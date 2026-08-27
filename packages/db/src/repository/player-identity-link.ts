@@ -11,7 +11,19 @@ export function canonicalPlayerFactMatchSql(
 ): string {
   const factName = normalizedIdentitySql(factNameColumn)
   return `(
-    (${factIdColumn} = ? AND NOT EXISTS (SELECT 1 FROM player_profiles WHERE player_id = ?))
+    (
+      ${factIdColumn} = ?
+      AND (
+        NOT EXISTS (SELECT 1 FROM player_profiles WHERE player_id = ${factIdColumn})
+        OR EXISTS (
+          SELECT 1
+          FROM player_profiles AS direct_identity_profile
+          WHERE direct_identity_profile.player_id = ${factIdColumn}
+            AND json_extract(direct_identity_profile.year_teams_json, '$."' || ${factYearColumn} || '"') IS NOT NULL
+            AND ${normalizedIdentitySql('COALESCE(direct_identity_profile.canonical_name, direct_identity_profile.full_name)')} LIKE ${factName} || '%'
+        )
+      )
+    )
     OR EXISTS (
       SELECT 1
       FROM player_profiles AS identity_profile

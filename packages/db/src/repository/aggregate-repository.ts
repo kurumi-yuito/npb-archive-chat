@@ -249,7 +249,7 @@ async function aggregateNormalizedBattingLines(
   appendNormalizedGameClauses(clauses, values, normalized)
   if (normalized.player_id) {
     clauses.push(canonicalPlayerFactMatchSql('batting_line_facts.player_id', 'person_names.name', 'game_facts.year', 'teams.team_name'))
-    values.push(normalized.player_id, normalized.player_id, normalized.player_id)
+    values.push(normalized.player_id, normalized.player_id)
   } else if (normalized.player_name) {
     clauses.push(prefixMatchesCompactNameSql('?', 'person_names.name', normalized.team ? 1 : 2))
     values.push(normalized.player_name)
@@ -871,7 +871,7 @@ async function aggregateCurrentBattingStats(
   }
   if (filters.player_id) {
     clauses.push(canonicalPlayerFactMatchSql('player_batting_stats.player_id', 'player_batting_stats.player_name', 'player_batting_stats.year', 'player_batting_stats.team_name'))
-    values.push(filters.player_id, filters.player_id, filters.player_id)
+    values.push(filters.player_id, filters.player_id)
   } else if (filters.player_name) {
     clauses.push(`${compactNameSql('player_batting_stats.player_name')} LIKE ?`)
     values.push(`%${compactName(filters.player_name)}%`)
