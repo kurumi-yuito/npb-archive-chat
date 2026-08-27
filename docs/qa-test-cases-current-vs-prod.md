@@ -20,6 +20,18 @@ Repository境界では、`player_profiles`をcanonical playerとして、生成�
 
 503レスポンス本文は、PlannerのOpenAI呼び出しがHTTP 429、`type: insufficient_quota`、`code: credit_balance_exhausted`、`You have no credits remaining`で失敗し、アプリが`chat_llm_unavailable`として公開HTTP 503へ変換したことを記録している。Q-55をCloudflare tail付きで再現したところ、Worker execution outcomeは`ok`、Worker例外は0件で、ログ上の`ChatQueryParserUnavailableError`にも同じOpenAI 429本文が記録された。したがって観測した503の発生源はRepositoryやWorker runtime例外ではなく、外部OpenAI APIのcredit枯渇である。QA間隔を空け、日付変更後にもFail 98件だけを再実行したが同じ結果だった。このためQA正との全182件文意比較、許容外差分0、Release Readyの判定は行わない。
 
+### Fail 98件のOpenAI呼び出し設計監査
+
+- ケース別監査表: [docs/qa-openai-call-audit-98.md](qa-openai-call-audit-98.md)
+- 実測 / 設計: Planner 98 / 98、Answer LLM 0 / 0、その他OpenAI 0 / 0、合計98 / 98
+- 1ケース合計の平均 / 最大 / 最小: 1.0 / 1 / 1
+- 設計との差分: 0件（98/98件一致）
+- 同一ケース内のPlanner複数実行、quota応答後のHTTP再試行、補助解析・QA評価のOpenAI呼び出し: すべて0件
+- Q-177は履歴を解釈する通常の自然文Follow-upで、Planner 1回が設計値。追加Planner実行は0回
+- 98件のID集合は初回HTTP 503集合と完全一致し、HTTP 200だった84件の再評価は0件
+
+仕様違反が確認されなかったため、コード変更およびFail 98件の追加再実行は行っていない。
+
 ## Phase 24 最終判定（2026-08-19）
 
 - 対象Deploy Version ID: `ae618b40-25d7-4173-9e2b-d714a0e7bb49`
