@@ -1,5 +1,22 @@
 # QAテストケース一覧 - 現行本番との差分
 
+## Phase 25 最終全件QA（2026-08-27・未完了）
+
+- 対象Deploy Version ID: `8e0d6994-09a0-4831-a047-c598827439a1`
+- 対象コミット（デプロイ時HEAD）: `9693484c6`
+- 全件ログ: `data/logs/qa-prod-1787751605854.json`
+- Failケースのみの継続ログ: `data/logs/qa-prod-1787788816667.json`
+- 全件走査: 182/182件
+- 初回HTTP 200 / 500 / 503: 84 / 0 / 98
+- 初回summary null: 98
+- 継続対象: 初回503の98件のみ（初回Pass 84件は再実行していない）
+- 継続HTTP 200 / 500 / 503: 0 / 0 / 98
+- 判定: **Release Blocked**
+
+Repository境界では、`player_profiles`をcanonical playerとして、生成済み`player_aliases`とseason/teamを使って過年度factへ連結するよう修正した。source player_idが年度をまたいで別選手に再利用される場合は、canonical name・season・teamが整合するfactだけを採用する。同姓入力はplayer_id単位で候補を保持し、候補が複数なら曖昧性回答を維持する。静的エイリアス、個別選手マッピング、player_idのコード内決め打ちは追加していない。
+
+限定QAでは、過年度連結のQ-15/Q-16/Q-18/Q-19/Q-20/Q-51/Q-52/Q-119と、同姓曖昧性のQ-61/Q-62/Q-64/Q-139/Q-140/Q-163/Q-180をHTTP 200で確認した。最終全件走査は一度だけ実行し、初回Pass 84件を除外してFail 98件だけ継続したが、98件すべてHTTP 503・summary nullのままだった。このためQA正との全182件文意比較、許容外差分0、Release Readyの判定は行わない。
+
 ## Phase 24 最終判定（2026-08-19）
 
 - 対象Deploy Version ID: `ae618b40-25d7-4173-9e2b-d714a0e7bb49`
