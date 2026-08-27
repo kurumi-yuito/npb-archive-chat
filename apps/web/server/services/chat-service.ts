@@ -898,10 +898,20 @@ export function createChatService(
         const effectiveFallbackGames = fallbackGames.length > 0 ? fallbackGames : sameDayTeamGames
         if (effectiveFallbackGames.length > 0) {
           structuredQuery = {
-            intent: 'search_games',
-            filters: fallbackFilters,
+            intent: 'game_detail',
+            filters: {
+              ...fallbackFilters,
+              limit: 1,
+            },
           }
-          results = { ...emptyResults, games: effectiveFallbackGames }
+          results = {
+            ...emptyResults,
+            gameDetails: effectiveFallbackGames.slice(0, 1).map((game) => ({
+              ...game,
+              competition: null,
+              linescoreJson: game.linescoreJson ?? '[]',
+            })),
+          }
         }
       }
 
