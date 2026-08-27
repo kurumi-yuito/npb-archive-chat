@@ -6,6 +6,7 @@
 - 対象コミット（デプロイ時HEAD）: `9693484c6`
 - 全件ログ: `data/logs/qa-prod-1787751605854.json`
 - Failケースのみの継続ログ: `data/logs/qa-prod-1787788816667.json`
+- Cloudflare tail照合ログ対象: `data/logs/qa-prod-1787790456011.json`（Q-55）
 - 全件走査: 182/182件
 - 初回HTTP 200 / 500 / 503: 84 / 0 / 98
 - 初回summary null: 98
@@ -15,7 +16,9 @@
 
 Repository境界では、`player_profiles`をcanonical playerとして、生成済み`player_aliases`とseason/teamを使って過年度factへ連結するよう修正した。source player_idが年度をまたいで別選手に再利用される場合は、canonical name・season・teamが整合するfactだけを採用する。同姓入力はplayer_id単位で候補を保持し、候補が複数なら曖昧性回答を維持する。静的エイリアス、個別選手マッピング、player_idのコード内決め打ちは追加していない。
 
-限定QAでは、過年度連結のQ-15/Q-16/Q-18/Q-19/Q-20/Q-51/Q-52/Q-119と、同姓曖昧性のQ-61/Q-62/Q-64/Q-139/Q-140/Q-163/Q-180をHTTP 200で確認した。最終全件走査は一度だけ実行し、初回Pass 84件を除外してFail 98件だけ継続したが、98件すべてHTTP 503・summary nullのままだった。このためQA正との全182件文意比較、許容外差分0、Release Readyの判定は行わない。
+限定QAでは、過年度連結のQ-15/Q-16/Q-18/Q-19/Q-20/Q-51/Q-52/Q-119と、同姓曖昧性のQ-61/Q-62/Q-64/Q-139/Q-140/Q-163/Q-180をHTTP 200で確認した。最終全件走査は一度だけ実行し、初回Pass 84件を除外してFail 98件だけ継続したが、98件すべてHTTP 503・summary nullのままだった。
+
+503レスポンス本文は、PlannerのOpenAI呼び出しがHTTP 429、`type: insufficient_quota`、`code: credit_balance_exhausted`、`You have no credits remaining`で失敗し、アプリが`chat_llm_unavailable`として公開HTTP 503へ変換したことを記録している。Q-55をCloudflare tail付きで再現したところ、Worker execution outcomeは`ok`、Worker例外は0件で、ログ上の`ChatQueryParserUnavailableError`にも同じOpenAI 429本文が記録された。したがって観測した503の発生源はRepositoryやWorker runtime例外ではなく、外部OpenAI APIのcredit枯渇である。QA間隔を空け、日付変更後にもFail 98件だけを再実行したが同じ結果だった。このためQA正との全182件文意比較、許容外差分0、Release Readyの判定は行わない。
 
 ## Phase 24 最終判定（2026-08-19）
 
