@@ -791,7 +791,7 @@ export function createChatService(
         if (requestedYear) {
           const candidateYears = playerResolution.candidates
             .flatMap((candidate: PlayerCandidate) => candidate.years)
-            .filter((y: number) => y < requestedYear)
+            .filter((y: number) => y >= 2016 && y < requestedYear)
           if (candidateYears.length > 0) {
             const latestPriorYear = Math.max(...candidateYears)
             const shiftedFilters = { ...aggFilters, year: latestPriorYear } as AggregateBattingFilters
@@ -856,7 +856,7 @@ export function createChatService(
         if (requestedYear) {
           const candidateYears = playerResolution.candidates
             .flatMap((candidate: PlayerCandidate) => candidate.years)
-            .filter((y: number) => y < requestedYear)
+            .filter((y: number) => y >= 2016 && y < requestedYear)
           if (candidateYears.length > 0) {
             const latestPriorYear = Math.max(...candidateYears)
             const shiftedFilters = { ...aggFilters, year: latestPriorYear } as AggregatePitchingFilters
