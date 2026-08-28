@@ -487,4 +487,32 @@ describe('@npb/db', () => {
       service.close()
     }
   })
+
+  it('links a unique abbreviated full name without resolving a shared surname', async () => {
+    const db = openDatabase(':memory:')
+    migrateDatabase(db)
+    const insertProfile = db.prepare(
+      `INSERT INTO player_profiles
+        (player_id, full_name, canonical_name, team_name, year_teams_json, source_url, fetched_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    )
+    insertProfile.run('canonical-tanaka-m', '田中 将大', '田中 将大', '読売ジャイアンツ', JSON.stringify({ 2026: '読売ジャイアンツ' }), 'profile', '2026-01-01')
+    insertProfile.run('canonical-tanaka-e', '田中 瑯斗', '田中 瑯斗', '読売ジャイアンツ', JSON.stringify({ 2026: '読売ジャイアンツ' }), 'profile', '2026-01-01')
+    db.prepare(
+      `INSERT INTO player_pitching_stats
+        (year, team_id, team_name, player_key, player_id, player_name, values_json, source_url, row_index)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    ).run(2026, 'g', '巨人', 'tanaka-m', 'source-reused-id', '田中将', JSON.stringify({ 登板: '4', 投球回: '25.1', 三振: '16', 自責点: '5' }), 'https://npb.jp/bis/2026/stats/idp1_g.html', 1)
+
+    const service = createSingleDatabaseQueryService(sqliteDatabaseToQuery(db))
+    try {
+      const fullName = await service.searchPitchingLines({ year: 2026, pitcher_player_id: 'canonical-tanaka-m' })
+      const surnameOnly = await service.searchPitchingLines({ year: 2026, pitcher_player_id: 'canonical-tanaka-e' })
+      expect(fullName).toHaveLength(1)
+      expect(fullName[0].pitcherName).toBe('田中将')
+      expect(surnameOnly).toHaveLength(0)
+    } finally {
+      service.close()
+    }
+  })
 })

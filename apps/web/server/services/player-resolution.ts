@@ -176,7 +176,11 @@ function detectYearShift(
   if (candidate.years.includes(requestedYear)) {
     return null
   }
-  const latestYear = Math.max(...candidate.years)
+  const coveredYears = candidate.years.filter((year) => year >= 2016)
+  if (coveredYears.length === 0) {
+    return null
+  }
+  const latestYear = Math.max(...coveredYears)
   const yearGap = requestedYear - latestYear
   // Requested-year data is expected to be complete for the covered period; if the
   // player only appears in older years, treat it as a non-roster year and shift.

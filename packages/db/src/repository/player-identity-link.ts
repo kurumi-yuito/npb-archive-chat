@@ -36,6 +36,7 @@ export function canonicalPlayerFactMatchSql(
           ${factName} = ${normalizedIdentitySql('COALESCE(identity_profile.canonical_name, identity_profile.full_name)')}
           OR ${factName} = ${normalizedIdentitySql('identity_alias.alias')}
           OR ${canonicalSurnameWithSeasonTeamSql(factName, factYearColumn, factTeamColumn)}
+          OR ${canonicalUniqueNamePrefixInSeasonSql(factName, factYearColumn)}
         )
     )
   )`
@@ -55,7 +56,25 @@ export function canonicalPlayerNameMatchSql(factNameColumn: string, factYearColu
         ${factName} = ${normalizedIdentitySql('COALESCE(identity_profile.canonical_name, identity_profile.full_name)')}
         OR ${factName} = ${normalizedIdentitySql('identity_alias.alias')}
         OR ${canonicalSurnameWithSeasonTeamSql(factName, factYearColumn, factTeamColumn)}
+        OR ${canonicalUniqueNamePrefixInSeasonSql(factName, factYearColumn)}
       )
+  )`
+}
+
+function canonicalUniqueNamePrefixInSeasonSql(factName: string, factYearColumn: string): string {
+  const canonicalName = normalizedIdentitySql('COALESCE(identity_profile.canonical_name, identity_profile.full_name)')
+  const otherCanonicalName = normalizedIdentitySql('COALESCE(other_identity_profile.canonical_name, other_identity_profile.full_name)')
+  return `(
+    LENGTH(${factName}) >= 3
+    AND ${canonicalName} LIKE ${factName} || '%'
+    AND json_extract(identity_profile.year_teams_json, '$."' || ${factYearColumn} || '"') IS NOT NULL
+    AND NOT EXISTS (
+      SELECT 1
+      FROM player_profiles AS other_identity_profile
+      WHERE other_identity_profile.player_id <> identity_profile.player_id
+        AND json_extract(other_identity_profile.year_teams_json, '$."' || ${factYearColumn} || '"') IS NOT NULL
+        AND ${otherCanonicalName} LIKE ${factName} || '%'
+    )
   )`
 }
 
