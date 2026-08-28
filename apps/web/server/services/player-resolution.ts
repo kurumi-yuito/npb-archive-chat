@@ -73,9 +73,9 @@ export async function resolveStructuredQueryPlayer(
     collapseSameEntityFallbacks(
       filterCandidates(periodScopedCandidates, teamQualifier(structuredQuery)),
     ),
-  )
+  ).filter(isCoveredCandidate)
   if (hasUniqueRepositoryEntity && !isUnqualifiedShortName && !hasTeamQualifier) {
-    candidates = selectCandidatesForInput(input, repositoryEntityCandidates)
+    candidates = selectCandidatesForInput(input, repositoryEntityCandidates).filter(isCoveredCandidate)
   }
   if (candidates.length === 0 && hasExplicitYearFilter(structuredQuery)) {
     const fallbackCandidates = await queryService.searchPlayerCandidates({
@@ -90,7 +90,7 @@ export async function resolveStructuredQueryPlayer(
       collapseSameEntityFallbacks(
         filterCandidates(fallbackCandidates, teamQualifier(structuredQuery)),
       ),
-    )
+    ).filter(isCoveredCandidate)
   }
 
   if (candidates.length === 0 && candidateFilters.latestOnly && teamQualifier(structuredQuery).length > 0) {
@@ -106,7 +106,7 @@ export async function resolveStructuredQueryPlayer(
       collapseSameEntityFallbacks(
         filterCandidates(fallbackCandidates, teamQualifier(structuredQuery)),
       ),
-    )
+    ).filter(isCoveredCandidate)
   }
 
   if (candidates.length === 0) {
@@ -144,6 +144,10 @@ export async function resolveStructuredQueryPlayer(
       ...(yearShift ? { yearShiftNote: yearShift.note } : {}),
     },
   }
+}
+
+function isCoveredCandidate(candidate: PlayerCandidate): boolean {
+  return candidate.years.length === 0 || candidate.years.some((year) => year >= 2016)
 }
 
 function selectRepositoryEntitiesForInput(input: string, candidates: PlayerCandidate[]): PlayerCandidate[] {
