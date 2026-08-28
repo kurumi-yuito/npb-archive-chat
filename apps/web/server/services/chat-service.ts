@@ -3291,6 +3291,28 @@ function rewritePlayerStatsFollowUpFromHistory(
     followUpContext.contextKind === 'player_stats'
   const inheritedPlayerName = followUpContext.inheritedPlayerName ?? ''
   const inheritedTeam = followUpContext.inheritedTeam ?? ''
+  if (
+    query.intent === 'search_batting' &&
+    /シーズン(?:の|通算)|試合に出場/u.test(assistantText) &&
+    (
+      followUpType === 'timeframe_correction' ||
+      followUpType === 'doubt_request' ||
+      followUpType === 'correction_request' ||
+      /今年じゃなくて去年|ちがうはず|違うはず|おかしくない/u.test(message)
+    )
+  ) {
+    const filters = query.filters as Record<string, unknown>
+    return {
+      intent: 'aggregate_batting',
+      filters: {
+        ...(typeof filters.year === 'number' ? { year: filters.year } : {}),
+        ...(typeof filters.player_name === 'string' ? { player_name: filters.player_name } : {}),
+        ...(typeof filters.player_id === 'string' ? { player_id: filters.player_id } : {}),
+        ...(typeof filters.team === 'string' ? { team: filters.team } : {}),
+        limit: 10,
+      },
+    }
+  }
   const isMurakamiContext =
     inheritedPlayerName.includes('村上') ||
     ((query.intent === 'aggregate_batting' || query.intent === 'search_batting') &&
