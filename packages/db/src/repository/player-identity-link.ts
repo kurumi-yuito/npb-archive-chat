@@ -71,6 +71,7 @@ function canonicalUniqueNamePrefixSql(factName: string): string {
       SELECT 1
       FROM player_profiles AS other_identity_profile
       WHERE other_identity_profile.player_id <> identity_profile.player_id
+        AND ${otherCanonicalName} <> ${canonicalName}
         AND (${otherCanonicalName} LIKE ${factName} || '%' OR ${factName} LIKE ${otherCanonicalName} || '%')
     )
   )`
