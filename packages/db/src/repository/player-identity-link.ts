@@ -66,12 +66,12 @@ function canonicalUniqueNamePrefixSql(factName: string): string {
   const otherCanonicalName = normalizedIdentitySql('COALESCE(other_identity_profile.canonical_name, other_identity_profile.full_name)')
   return `(
     LENGTH(${factName}) >= 3
-    AND ${canonicalName} LIKE ${factName} || '%'
+    AND (${canonicalName} LIKE ${factName} || '%' OR ${factName} LIKE ${canonicalName} || '%')
     AND NOT EXISTS (
       SELECT 1
       FROM player_profiles AS other_identity_profile
       WHERE other_identity_profile.player_id <> identity_profile.player_id
-        AND ${otherCanonicalName} LIKE ${factName} || '%'
+        AND (${otherCanonicalName} LIKE ${factName} || '%' OR ${factName} LIKE ${otherCanonicalName} || '%')
     )
   )`
 }
