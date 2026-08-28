@@ -2213,6 +2213,9 @@ async function searchLightweightAggregateBattingForChat(
   if (structuredQuery.intent !== 'aggregate_batting') {
     return null
   }
+  if (/今年じゃなくて去年|ちがうはず|違うはず|おかしくない/u.test(message)) {
+    return null
+  }
 
   const filters = structuredQuery.filters as Record<string, unknown>
   if (filters.group_by !== undefined || filters.sort_by !== undefined) {
