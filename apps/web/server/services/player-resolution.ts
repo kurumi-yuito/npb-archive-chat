@@ -74,7 +74,7 @@ export async function resolveStructuredQueryPlayer(
       filterCandidates(periodScopedCandidates, teamQualifier(structuredQuery)),
     ),
   ).filter(isCoveredCandidate)
-  if (hasUniqueRepositoryEntity && !isUnqualifiedShortName && !hasTeamQualifier) {
+  if (hasUniqueRepositoryEntity && !isUnqualifiedShortName) {
     candidates = selectCandidatesForInput(input, repositoryEntityCandidates).filter(isCoveredCandidate)
   }
   if (candidates.length === 0 && hasExplicitYearFilter(structuredQuery)) {
@@ -113,6 +113,13 @@ export async function resolveStructuredQueryPlayer(
     return {
       structuredQuery,
       resolution: { input, name: null, status: 'not_found', candidates: [] },
+    }
+  }
+
+  if (isUnqualifiedShortName) {
+    return {
+      structuredQuery,
+      resolution: { input, player_id: null, name: null, primary_team: null, status: 'ambiguous', candidates },
     }
   }
 
