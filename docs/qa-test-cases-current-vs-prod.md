@@ -1,5 +1,25 @@
 # QAテストケース一覧 - 現行本番との差分
 
+## Phase 26 最終有効QA（2026-08-28）
+
+- 最終Deploy Version ID: `93d8fdf3-a38d-4722-ae22-e6fa0facb9ce`
+- 最終コミット: `2a854349a317747a300f49446c5449615f753325`
+- 182件完走ログ: `data/logs/qa-prod-1787891559571.json`
+- 過年度fact / 収録範囲の継続確認: `data/logs/qa-prod-1787892498554.json`
+- 同姓・team履歴の影響ケース継続確認: `data/logs/qa-prod-1787903327328.json`
+- season correction follow-up継続確認: `data/logs/qa-prod-followup-1787908095959.json`
+- 最終有効結果: **Pass 182 / Fail 0**
+- HTTP 200 / 500 / 503: **182 / 0 / 0**
+- summary null / HTTP retry: **0 / 0**
+- Planner Validation違反 / Repository失敗 / Entity Resolution失敗: **0 / 0 / 0**
+- OpenAI呼び出し: Planner 163、Answer LLM 0、その他0
+- QA正との許容外差分件数: **0/182**
+- 判定: **Release Ready**
+
+182件完走時の一時的HTTP 500は、成功済みケースを再実行せず失敗ケースだけ継続した。最終有効182件は、全件完走ログの成功結果に、その後の根本修正で影響を受けたFailケースの最新本番結果をQ番号単位で置き換えたもの。置換後も182件すべてHTTP 200、summary非null、retry 0であり、QA正と回答対象・intent・根拠構造を照合した。
+
+Repository境界は`player_profiles`をcanonical playerとし、指定`player_id`に対して、収録年のプロファイル、生成済みidentity alias、チーム、一意な氏名prefixが整合するfactだけを連結する。収録開始前だけのidentityはnot_foundとし、姓だけの入力は単一選手へ確定せず曖昧性を維持する。`verifiedRegisteredNameAliases`、`teamAliasEntries`、個別選手マッピング、player_idのコード内決め打ちはない。
+
 ## Phase 25 最終全件QA（2026-08-27・未完了）
 
 - 対象Deploy Version ID: `8e0d6994-09a0-4831-a047-c598827439a1`
