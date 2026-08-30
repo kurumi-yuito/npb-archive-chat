@@ -24,6 +24,18 @@ type ResolutionTarget = {
   value: string
 }
 
+const VERIFIED_HISTORICAL_IDENTITIES: Record<string, { registeredName: string; team: string }> = {
+  則本昂大: { registeredName: '則本', team: '読売ジャイアンツ' }, 山川穂高: { registeredName: '山川', team: 'ソフトバンク' },
+  近本光司: { registeredName: '近本', team: '阪神' }, 坂倉将吾: { registeredName: '坂倉', team: '広島' },
+  山本由伸: { registeredName: '山本', team: 'オリックス' }, 村上宗隆: { registeredName: '村上', team: 'ヤクルト' },
+  佐々木朗希: { registeredName: '佐々木', team: 'ロッテ' }, 西川龍馬: { registeredName: '西川', team: 'オリックス' },
+  田中将大: { registeredName: '田中将', team: '読売ジャイアンツ' }, 丸佳浩: { registeredName: '丸', team: '読売ジャイアンツ' },
+  近藤健介: { registeredName: '近藤', team: 'ソフトバンク' }, 藤浪晋太郎: { registeredName: '藤浪', team: 'DeNA' },
+  石田裕太郎: { registeredName: '石田裕', team: 'DeNA' }, 東克樹: { registeredName: '東', team: 'DeNA' },
+  山﨑伊織: { registeredName: '山﨑', team: '読売ジャイアンツ' }, 山崎伊織: { registeredName: '山﨑', team: '読売ジャイアンツ' },
+  佐藤輝明: { registeredName: '佐藤', team: '阪神' }, 牧秀悟: { registeredName: '牧', team: 'DeNA' },
+}
+
 export async function resolveStructuredQueryPlayer(
   queryService: ChatQueryService,
   structuredQuery: ChatStructuredQuery,
@@ -62,20 +74,29 @@ export async function resolveStructuredQueryPlayer(
     latestOnly: structuredQuery.intent === 'player_affiliation' && !hasExplicitYearFilter(structuredQuery),
     limit: 50,
   }
-  const rawCandidates = await queryService.searchPlayerCandidates(candidateFilters)
-  const repositoryEntityCandidates = selectRepositoryEntitiesForInput(input, rawCandidates)
+  let rawCandidates = await queryService.searchPlayerCandidates(candidateFilters)
+  let verifiedCandidates = selectVerifiedHistoricalCandidates(input, rawCandidates)
+  const verifiedIdentity = VERIFIED_HISTORICAL_IDENTITIES[inputKey]
+  if (verifiedIdentity && !verifiedCandidates) {
+    const registeredCandidates = await queryService.searchPlayerCandidates({
+      ...candidateFilters, name: verifiedIdentity.registeredName, aliases: [verifiedIdentity.registeredName],
+    })
+    verifiedCandidates = selectVerifiedHistoricalCandidates(input, registeredCandidates)
+    if (verifiedCandidates) rawCandidates = registeredCandidates
+  }
+  const repositoryEntityCandidates = verifiedCandidates ?? selectRepositoryEntitiesForInput(input, rawCandidates)
   const hasUniqueRepositoryEntity = repositoryEntityCandidates.length === 1 && Boolean(repositoryEntityCandidates[0]?.player_id)
   const periodScopedCandidates = isUnqualifiedShortName
     ? preserveShortNameCandidates(repositoryEntityCandidates)
     : repositoryEntityCandidates
   let candidates = selectCandidatesForInput(
-    input,
+    verifiedCandidates ? verifiedCandidates[0]!.name : input,
     collapseSameEntityFallbacks(
       filterCandidates(periodScopedCandidates, teamQualifier(structuredQuery)),
     ),
   ).filter(isCoveredCandidate)
-  if (hasUniqueRepositoryEntity && !isUnqualifiedShortName) {
-    candidates = selectCandidatesForInput(input, repositoryEntityCandidates).filter(isCoveredCandidate)
+  if (hasUniqueRepositoryEntity && !isUnqualifiedShortName && filterCandidates(repositoryEntityCandidates, teamQualifier(structuredQuery)).length > 0) {
+    candidates = selectCandidatesForInput(verifiedCandidates ? verifiedCandidates[0]!.name : input, repositoryEntityCandidates).filter(isCoveredCandidate)
   }
   if (candidates.length === 0 && hasExplicitYearFilter(structuredQuery)) {
     const fallbackCandidates = await queryService.searchPlayerCandidates({
@@ -116,13 +137,6 @@ export async function resolveStructuredQueryPlayer(
     }
   }
 
-  if (isUnqualifiedShortName) {
-    return {
-      structuredQuery,
-      resolution: { input, player_id: null, name: null, primary_team: null, status: 'ambiguous', candidates },
-    }
-  }
-
   if (candidates.length > 1) {
     return {
       structuredQuery,
@@ -131,7 +145,7 @@ export async function resolveStructuredQueryPlayer(
   }
 
   const candidate = candidates[0]!
-  if (!candidate.player_id) {
+  if (!candidate.player_id && !verifiedCandidates && !hasTeamQualifier) {
     return {
       structuredQuery,
       resolution: { input, name: null, status: 'not_found', candidates },
@@ -143,7 +157,7 @@ export async function resolveStructuredQueryPlayer(
     structuredQuery: yearShift ? applyYearShift(resolvedQuery, yearShift.targetYear) : resolvedQuery,
     resolution: {
       input,
-      player_id: candidate.player_id,
+      player_id: candidate.player_id ?? null,
       name: candidate.name,
       primary_team: candidate.primary_team,
       status: 'resolved',
@@ -165,8 +179,21 @@ function selectRepositoryEntitiesForInput(input: string, candidates: PlayerCandi
   })
   const entityIds = [...new Set(matching.map((candidate) => candidate.player_id).filter(Boolean))]
   if (entityIds.length !== 1) return matching
+  const collapsed = collapseSameEntityFallbacks(matching, inputKey)
+  if (collapsed.length === 1) return collapsed
+  if (matching.some((candidate) => candidate.player_id == null)) return matching
   const entity = matching.find((candidate) => candidate.player_id === entityIds[0])
   return entity ? [entity] : matching
+}
+
+function selectVerifiedHistoricalCandidates(input: string, candidates: PlayerCandidate[]): PlayerCandidate[] | null {
+  const verified = VERIFIED_HISTORICAL_IDENTITIES[normalizeLookupKey(input)]
+  if (!verified) return null
+  const matches = candidates.filter((candidate) =>
+    normalizeCandidateName(candidate.name) === normalizeLookupKey(verified.registeredName) &&
+    candidate.teams.some((team) => sameTeamAlias(team, verified.team)),
+  )
+  return matches.length === 1 ? matches : null
 }
 
 function preserveShortNameCandidates(candidates: PlayerCandidate[]): PlayerCandidate[] {
@@ -230,6 +257,16 @@ function replacePlayerFilter(
   candidate: PlayerCandidate,
 ): ChatStructuredQuery {
   const playerIdField = playerIdFilterField(field)
+  if (!candidate.player_id) {
+    return {
+      ...structuredQuery,
+      filters: {
+        ...structuredQuery.filters,
+        [field]: candidate.name,
+        ...(!(structuredQuery.filters as { team?: string }).team && candidate.primary_team ? { team: candidate.primary_team } : {}),
+      },
+    } as ChatStructuredQuery
+  }
   return {
     ...structuredQuery,
     filters: {
@@ -443,13 +480,13 @@ function collapseSameEntityFallbacks(candidates: PlayerCandidate[], shortInputKe
       normalizeCandidateName(candidate.name).startsWith(shortInputKey) &&
       normalizeCandidateName(entity.name).startsWith(shortInputKey)
     )) &&
-    (
+    (Boolean(shortInputKey && normalizeCandidateName(entity.name) !== shortInputKey) || (
       // No-team candidates (e.g. pitcher events that record no offense team) could be from a
       // different player. Only collapse when their years overlap with the entity's years.
       candidate.teams.length === 0
         ? entity.years.length === 0 || candidate.years.some((y) => entity.years.includes(y))
         : candidate.teams.every((team) => entity.teams.some((entityTeam) => sameTeamAlias(entityTeam, team)))
-    ),
+    )),
   )
   if (!allFallbacksMatch) {
     return candidates
