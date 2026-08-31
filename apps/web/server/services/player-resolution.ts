@@ -131,6 +131,14 @@ export async function resolveStructuredQueryPlayer(
     ).filter(isCoveredCandidate)
   }
 
+  if (candidateFilters.latestOnly && candidates.length > 1) {
+    const latestYear = Math.max(...candidates.flatMap((candidate) => candidate.years))
+    const latestCandidates = candidates.filter((candidate) => candidate.years.includes(latestYear))
+    if (latestCandidates.length === 1) {
+      candidates = latestCandidates
+    }
+  }
+
   if (candidates.length === 0) {
     return {
       structuredQuery,
@@ -267,7 +275,9 @@ function replacePlayerFilter(
     ...structuredQuery,
     filters: {
       ...structuredQuery.filters,
-      [field]: structuredQuery.intent === 'search_pitching'
+      [field]: structuredQuery.intent === 'search_pitching' ||
+        structuredQuery.intent === 'player_affiliation' ||
+        Boolean((structuredQuery.filters as { team?: string }).team)
         ? (structuredQuery.filters as Record<string, unknown>)[field]
         : candidate.name,
       [playerIdField]: candidate.player_id,

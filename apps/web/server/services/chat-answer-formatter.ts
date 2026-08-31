@@ -33,6 +33,9 @@ type GameSummaryRowWithLinescore = GameSummaryRow & { linescoreJson?: string | n
 export function formatClarificationAnswer(
   policy: ChatClarificationPolicy,
 ): string {
+  if (policy.reason === 'missing_year') {
+    return '何年の月間記録についてのご質問ですか？対象の年を指定してください。'
+  }
   if (policy.reason === 'history_target_unavailable') {
     return '参照された以前の内容を会話履歴から確認できませんでした。対象となる選手名や質問内容をもう一度教えてください。'
   }
@@ -2637,9 +2640,9 @@ function describeEventSearch(
     parts.push(filters.team)
   }
 
-  const batterName = playerResolution?.status === 'resolved' && filters.batter_name
-    ? playerResolution.name ?? filters.batter_name
-    : filters.batter_name
+  const batterName = filters.batter_name ?? (
+    playerResolution?.status === 'resolved' ? playerResolution.name : undefined
+  )
   if (batterName && filters.pitcher_name) {
     parts.push(`${batterName}が${filters.pitcher_name}から打った`)
   } else if (batterName) {
