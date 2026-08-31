@@ -172,13 +172,13 @@ export function normalizeChatStructuredQuery(
     intent: 'search_events',
     filters: {
       ...structuredQuery.filters,
-      team: normalizeTeamName(structuredQuery.filters.team),
-      batter_name: normalizePlayerName(structuredQuery.filters.batter_name),
-      pitcher_name: normalizePlayerName(structuredQuery.filters.pitcher_name),
-      runner_name: normalizePlayerName(structuredQuery.filters.runner_name),
-      player_name: normalizePlayerName(structuredQuery.filters.player_name),
-      result_text_contains: normalizeResultTextContains(structuredQuery.filters.result_text_contains),
-      event_type: normalizeHomeRunEventType(structuredQuery.filters),
+      ...(normalizeTeamName(structuredQuery.filters.team) ? { team: normalizeTeamName(structuredQuery.filters.team) } : {}),
+      ...(normalizePlayerName(structuredQuery.filters.batter_name) ? { batter_name: normalizePlayerName(structuredQuery.filters.batter_name) } : {}),
+      ...(normalizePlayerName(structuredQuery.filters.pitcher_name) ? { pitcher_name: normalizePlayerName(structuredQuery.filters.pitcher_name) } : {}),
+      ...(normalizePlayerName(structuredQuery.filters.runner_name) ? { runner_name: normalizePlayerName(structuredQuery.filters.runner_name) } : {}),
+      ...(normalizePlayerName(structuredQuery.filters.player_name) ? { player_name: normalizePlayerName(structuredQuery.filters.player_name) } : {}),
+      ...(normalizeResultTextContains(structuredQuery.filters.result_text_contains) ? { result_text_contains: normalizeResultTextContains(structuredQuery.filters.result_text_contains) } : {}),
+      ...(normalizeHomeRunEventType(structuredQuery.filters) ? { event_type: normalizeHomeRunEventType(structuredQuery.filters) } : {}),
     },
   })
 }
@@ -190,9 +190,6 @@ export function normalizeTeamName(value: string | undefined): string | undefined
   }
 
   return normalized
-    .replace(/^千葉ロッテマリーンズ$/u, 'ロッテ')
-    .replace(/^阪神タイガーズ$/u, '阪神')
-    .replace(/^タイガーズ$/u, '阪神')
 }
 
 export function messageMentionsTeam(message: string, team: string): boolean {

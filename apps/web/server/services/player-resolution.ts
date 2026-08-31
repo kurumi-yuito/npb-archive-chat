@@ -96,6 +96,9 @@ export async function resolveStructuredQueryPlayer(
       filterCandidates(periodScopedCandidates, teamQualifier(structuredQuery)),
     ),
   ).filter(isCoveredCandidate)
+  if (isUnqualifiedShortName && new Set(repositoryEntityCandidates.map((candidate) => candidate.player_id).filter(Boolean)).size > 1) {
+    candidates = repositoryEntityCandidates.filter(isCoveredCandidate)
+  }
   if (hasUniqueRepositoryEntity && !isUnqualifiedShortName && filterCandidates(repositoryEntityCandidates, teamQualifier(structuredQuery)).length > 0) {
     candidates = selectCandidatesForInput(verifiedCandidates ? verifiedCandidates[0]!.name : input, repositoryEntityCandidates).filter(isCoveredCandidate)
   }
@@ -194,7 +197,7 @@ function selectVerifiedHistoricalCandidates(input: string, candidates: PlayerCan
   if (!verified) return null
   const matches = candidates.filter((candidate) =>
     (normalizeCandidateName(candidate.name) === normalizeLookupKey(verified.registeredName) ||
-      normalizeCandidateName(candidate.name).startsWith(normalizeLookupKey(verified.registeredName))) &&
+      (Boolean(candidate.player_id) && normalizeCandidateName(candidate.name).startsWith(normalizeLookupKey(verified.registeredName)))) &&
     candidate.teams.some((team) => sameTeamAlias(team, verified.team)),
   )
   return matches.length === 1 ? matches : null
@@ -261,12 +264,16 @@ function replacePlayerFilter(
   candidate: PlayerCandidate,
 ): ChatStructuredQuery {
   const playerIdField = playerIdFilterField(field)
+  const originalName = (structuredQuery.filters as Record<string, unknown>)[field]
+  const preserveShortMention = typeof originalName === 'string' && normalizeLookupKey(originalName).length <= 2
+  const repositoryTeam = canonicalRepositoryTeam((structuredQuery.filters as { team?: string }).team)
   if (!candidate.player_id) {
     return {
       ...structuredQuery,
       filters: {
         ...structuredQuery.filters,
         [field]: candidate.name,
+        ...(repositoryTeam ? { team: repositoryTeam } : {}),
         ...(!(structuredQuery.filters as { team?: string }).team && candidate.primary_team ? { team: candidate.primary_team } : {}),
       },
     } as ChatStructuredQuery
@@ -276,17 +283,25 @@ function replacePlayerFilter(
     filters: {
       ...structuredQuery.filters,
       [field]: structuredQuery.intent === 'search_pitching' ||
-        structuredQuery.intent === 'player_affiliation' ||
-        Boolean((structuredQuery.filters as { team?: string }).team)
-        ? (structuredQuery.filters as Record<string, unknown>)[field]
+        (preserveShortMention && (structuredQuery.intent === 'player_affiliation' || Boolean(repositoryTeam)))
+        ? originalName
         : candidate.name,
       [playerIdField]: candidate.player_id,
+      ...(repositoryTeam ? { team: repositoryTeam } : {}),
       ...(['search_batting', 'aggregate_batting', 'search_pitching', 'aggregate_pitching'].includes(structuredQuery.intent) &&
       !(structuredQuery.filters as { team?: string }).team && candidate.primary_team
         ? { team: candidate.primary_team }
         : {}),
     },
   } as ChatStructuredQuery
+}
+
+function canonicalRepositoryTeam(team: string | undefined): string | undefined {
+  if (!team) return undefined
+  const key = normalizeLookupKey(team)
+  if (key === normalizeLookupKey('千葉ロッテマリーンズ')) return 'ロッテ'
+  if (key === normalizeLookupKey('阪神タイガーズ') || key === normalizeLookupKey('タイガーズ')) return '阪神'
+  return team
 }
 
 function playerIdFilterField(field: ResolutionTarget['field']): string {

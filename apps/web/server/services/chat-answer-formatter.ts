@@ -2643,9 +2643,9 @@ function describeEventSearch(
   const batterName = filters.batter_name ?? (
     playerResolution?.status === 'resolved' ? playerResolution.name : undefined
   )
-  if (batterName && filters.pitcher_name) {
+  if (batterName && filters.pitcher_name && normalizeDisplayPlayerName(batterName) !== normalizeDisplayPlayerName(filters.pitcher_name)) {
     parts.push(`${batterName}が${filters.pitcher_name}から打った`)
-  } else if (batterName) {
+  } else if (batterName && !filters.pitcher_name) {
     parts.push(`${batterName}が打った`)
   } else if (filters.pitcher_name) {
     parts.push(`${filters.pitcher_name}から打った`)
@@ -2666,6 +2666,10 @@ function describeEventSearch(
   }
 
   return parts.length > 0 ? parts.join('') : '条件に一致するイベント'
+}
+
+function normalizeDisplayPlayerName(value: string): string {
+  return value.normalize('NFKC').replace(/[\s\u3000]/gu, '')
 }
 
 function formatCandidates(candidates: PlayerCandidate[]): string {
