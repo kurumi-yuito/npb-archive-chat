@@ -3,6 +3,7 @@ import path from 'node:path'
 
 const baseUrl = process.env.NPB_ACCEPTANCE_BASE_URL ?? 'http://127.0.0.1:3000'
 const selection = process.argv.find((arg) => arg.startsWith('--cases='))?.slice('--cases='.length) ?? 'all'
+const outputDir = path.resolve(process.env.NPB_ACCEPTANCE_OUTPUT_DIR ?? 'data/logs')
 
 const conversations = [
   single('B01', '昨日の巨人の試合結果を教えて', 'partial'),
@@ -121,8 +122,13 @@ const selected = conversations.filter((conversation) =>
   (selection === 'initial-fail' && conversation.turns.some((turn) => turn.initialVerdict === 'fail')) ||
   conversation.turns.some((turn) => selection.split(',').includes(turn.id)),
 )
+const selectedTurnIds = selected.flatMap((conversation) => conversation.turns)
+  .filter((turn) => selection !== 'initial-fail' || turn.initialVerdict === 'fail')
+  .map((turn) => turn.id)
 const results = []
-for (const conversation of selected) {
+let stopReason = null
+let outputPath = null
+acceptanceRun: for (const conversation of selected) {
   const history = []
   for (const turn of conversation.turns) {
     if (selection === 'initial-fail' && turn.initialVerdict !== 'fail') {
@@ -165,21 +171,60 @@ for (const conversation of selected) {
       (!pattern || pattern.test(result.summary))
       ? 'pass'
       : 'fail'
+    result.failureReason = result.verdict === 'fail'
+      ? getFailureReason(result, pattern)
+      : null
     results.push(result)
     process.stdout.write(`${turn.id}\t${result.verdict.toUpperCase()}\tHTTP ${result.status}\t${result.durationMs}ms\t${result.intent ?? '-'}\t${oneLine(result.summary)}\n`)
     history.push({ role: 'user', content: turn.message })
     history.push({ role: 'assistant', content: result.summary ?? '回答を取得できませんでした。' })
+    if (result.verdict === 'fail') {
+      stopReason = `fail_fast:${result.id}`
+      outputPath = await saveRunLog()
+      break acceptanceRun
+    }
   }
 }
 
-const outputDir = path.resolve('data/logs')
-await mkdir(outputDir, { recursive: true })
-const outputPath = path.join(outputDir, `qa-acceptance-${selection}-${Date.now()}.json`)
-await writeFile(outputPath, `${JSON.stringify({ baseUrl, selection, results }, null, 2)}\n`, 'utf8')
-process.stdout.write(`${outputPath}\n`)
+outputPath ??= await saveRunLog()
 const failed = results.filter((result) => result.verdict === 'fail')
-process.stdout.write(`Acceptance: ${results.length - failed.length}/${results.length} pass, ${failed.length} fail${failed.length ? ` (${failed.map((result) => result.id).join(', ')})` : ''}\n`)
+process.stdout.write(`Acceptance: ${results.length - failed.length}/${selectedTurnIds.length} pass, ${failed.length} fail, ${selectedTurnIds.length - results.length} unexecuted${failed.length ? ` (${failed.map((result) => result.id).join(', ')})` : ''}\n`)
 if (failed.length > 0) process.exitCode = 1
+
+async function saveRunLog() {
+  const executedIds = new Set(results.map((result) => result.id))
+  const remainingCaseIds = selectedTurnIds.filter((id) => !executedIds.has(id))
+  const failed = results.filter((result) => result.verdict === 'fail')
+  const log = {
+    baseUrl,
+    selection,
+    status: failed.length > 0 ? 'stopped' : 'completed',
+    stopReason,
+    lastExecutedCase: results.at(-1)?.id ?? null,
+    passCount: results.length - failed.length,
+    failCount: failed.length,
+    unexecutedCount: remainingCaseIds.length,
+    resume: {
+      nextCaseId: remainingCaseIds[0] ?? null,
+      remainingCaseIds,
+    },
+    results,
+  }
+  await mkdir(outputDir, { recursive: true })
+  const outputPath = path.join(outputDir, `qa-acceptance-${selection}-${Date.now()}.json`)
+  await writeFile(outputPath, `${JSON.stringify(log, null, 2)}\n`, 'utf8')
+  process.stdout.write(`${outputPath}\n`)
+  return outputPath
+}
+
+function getFailureReason(result, pattern) {
+  if (result.error) return result.error
+  if (result.status !== 200) return `HTTP ${result.status}`
+  if (typeof result.summary !== 'string') return 'summary null'
+  if (/^イベントです。?\s*該当数:/u.test(result.summary)) return 'generic event summary'
+  if (pattern && !pattern.test(result.summary)) return 'acceptance pattern mismatch'
+  return 'acceptance assertion failed'
+}
 
 function single(id, message, initialVerdict = 'fail') {
   return multi(id, [message], [initialVerdict])
