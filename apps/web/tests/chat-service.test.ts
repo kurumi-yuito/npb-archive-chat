@@ -338,6 +338,22 @@ function scopedResolution<const Scope extends 'current' | 'historical' | 'unspec
 }
 
 describe('chat-service', () => {
+  it('rejects future schedules before calling an injected planner', async () => {
+    const parseStructuredQueryFromMessage = vi.fn(async () => ({
+      intent: 'search_games' as const,
+      filters: {},
+    }))
+    const service = createChatService(createFakeQueryService(), {
+      parseStructuredQueryFromMessage,
+    })
+
+    const response = await service.answerQuestion('来週セ・リーグの試合予定はありますか')
+
+    expect(parseStructuredQueryFromMessage).not.toHaveBeenCalled()
+    expect(response.answer.summary).toContain('未来の試合日程')
+    expect(response.answer.summary).toContain('確認できません')
+  })
+
   it('does not contain request-time NPB or BIS fetch fallbacks', () => {
     const source = readFileSync(CHAT_SERVICE_SOURCE, 'utf8')
     expect(source).not.toMatch(/fetchOfficial|OfficialStatsFallback|https:\/\/npb\.jp\/bis|https:\/\/npb\.jp\/award/)

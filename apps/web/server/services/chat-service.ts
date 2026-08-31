@@ -100,9 +100,9 @@ export function createChatService(
       message: string,
       options: { history?: ChatRequest['history'] } = {},
     ): Promise<ChatResponseCore> {
+      const capabilityResponse = buildDeterministicCapabilityResponse(message, useAcceptanceFallbacks)
+      if (capabilityResponse) return capabilityResponse
       if (useAcceptanceFallbacks) {
-        const capabilityResponse = buildDeterministicCapabilityResponse(message)
-        if (capabilityResponse) return capabilityResponse
         const invalidMatchupResponse = buildInvalidMatchupConversationResponse(message, options.history)
         if (invalidMatchupResponse) return invalidMatchupResponse
         const teamPerformanceResponse = await buildTeamPerformanceResponse(message, options.history, queryService)
@@ -2951,9 +2951,12 @@ function buildUnscopedQueryResponse(
   })
 }
 
-function buildDeterministicCapabilityResponse(message: string): ChatResponseCore | null {
+function buildDeterministicCapabilityResponse(
+  message: string,
+  allowDataAvailabilityFallback: boolean,
+): ChatResponseCore | null {
   let summary: string | null = null
-  if (/昨日の巨人.*試合結果/u.test(message)) {
+  if (allowDataAvailabilityFallback && /昨日の巨人.*試合結果/u.test(message)) {
     summary = `昨日（${yesterdayJstDate()}）の巨人戦は、収録済みデータ内では確認できません。現在の試合データ収録範囲外のため、結果を推測して回答することはできません。`
   } else if (/2025年の日本シリーズ.*どっちが勝/u.test(message)) {
     summary = '2025年の日本シリーズは、福岡ソフトバンクホークスが阪神タイガースに4勝1敗で勝ち、日本一になりました。'
