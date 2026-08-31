@@ -96,7 +96,14 @@ export async function resolveStructuredQueryPlayer(
       filterCandidates(periodScopedCandidates, teamQualifier(structuredQuery)),
     ),
   ).filter(isCoveredCandidate)
-  if (isUnqualifiedShortName && new Set(repositoryEntityCandidates.map((candidate) => candidate.player_id).filter(Boolean)).size > 1) {
+  const explicitSurnameProfiles = repositoryEntityCandidates.filter((candidate) =>
+    candidate.player_id && candidate.name.normalize('NFKC').replace(/^[*+\s]+/u, '').startsWith(`${input.normalize('NFKC')} `),
+  )
+  if (
+    isUnqualifiedShortName &&
+    explicitSurnameProfiles.length !== 1 &&
+    new Set(repositoryEntityCandidates.map((candidate) => candidate.player_id).filter(Boolean)).size > 1
+  ) {
     candidates = repositoryEntityCandidates.filter(isCoveredCandidate)
   }
   if (hasUniqueRepositoryEntity && !isUnqualifiedShortName && filterCandidates(repositoryEntityCandidates, teamQualifier(structuredQuery)).length > 0) {

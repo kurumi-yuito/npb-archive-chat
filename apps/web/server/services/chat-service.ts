@@ -160,6 +160,34 @@ export function createChatService(
           }
         }
       }
+      if (
+        effectivePlan.followUpType === 'correction_request' &&
+        options.history?.length &&
+        parsedQuery.intent === 'search_events' &&
+        !queryHasPlayerName(parsedQuery) &&
+        !queryHasPlayerId(parsedQuery)
+      ) {
+        const previousUserMessage = latestUserMessage(options.history)
+        if (previousUserMessage) {
+          const replanned = await planner(previousUserMessage, { history: [] })
+          if (!replanned.structuredQuery) throw new Error('Correction replan query is unavailable')
+          parsedQuery = replanned.structuredQuery
+          effectivePlan = {
+            ...withCapability(buildPlannerOutput(parsedQuery, true, {
+              message,
+              history: options.history,
+            }), message, parsedQuery),
+            followUpType: initialPlan.followUpType,
+            answerMode: initialPlan.answerMode,
+            referencedContext: initialPlan.referencedContext,
+            appliedFollowUpContext: {
+              applied: true,
+              fields: [],
+              reason: 'correction_request_replanned_previous_user_message',
+            },
+          }
+        }
+      }
       const followUpPolicyQuery = rewriteFollowUpFromHistory(
         message,
         parsedQuery,
