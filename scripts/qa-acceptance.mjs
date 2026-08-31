@@ -212,7 +212,10 @@ async function saveRunLog() {
     results,
   }
   await mkdir(outputDir, { recursive: true })
-  const outputPath = path.join(outputDir, `qa-acceptance-${selection}-${Date.now()}.json`)
+  const selectionLabel = selection.length <= 80
+    ? selection.replace(/[^a-zA-Z0-9_-]+/gu, '_')
+    : 'selected-cases'
+  const outputPath = path.join(outputDir, `qa-acceptance-${selectionLabel}-${Date.now()}.json`)
   await writeFile(outputPath, `${JSON.stringify(log, null, 2)}\n`, 'utf8')
   process.stdout.write(`${outputPath}\n`)
   return outputPath

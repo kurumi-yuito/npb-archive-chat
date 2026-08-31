@@ -49,7 +49,7 @@ describe('Acceptance runner fail-fast contract', () => {
     try {
       const run = spawn(process.execPath, [
         path.join(root, 'scripts/qa-acceptance.mjs'),
-        '--cases=B01,B02',
+        `--cases=B01,B02,${Array.from({ length: 30 }, (_, index) => `unused-${index}`).join(',')}`,
       ], {
         cwd: root,
         env: {
@@ -69,6 +69,7 @@ describe('Acceptance runner fail-fast contract', () => {
 
       const logFiles = await readdir(outputDirectory)
       expect(logFiles).toHaveLength(1)
+      expect(logFiles[0]).toMatch(/^qa-acceptance-selected-cases-\d+\.json$/u)
       const log = JSON.parse(await readFile(path.join(outputDirectory, logFiles[0]!), 'utf8'))
       expect(log).toMatchObject({
         status: 'stopped',
