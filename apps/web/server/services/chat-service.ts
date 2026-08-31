@@ -3115,7 +3115,9 @@ async function buildTeamPerformanceResponse(
         if (away === home) draws += 1
         else if ((score.away_team?.includes('阪神') && away > home) || (score.home_team?.includes('阪神') && home > away)) wins += 1
         else losses += 1
-      } catch {}
+      } catch {
+        // Ignore malformed historical linescore rows and continue the aggregate.
+      }
     }
     const current = (await queryService.aggregateGameResults({ year, team: '阪神' }))[0]
     if (!current) return null

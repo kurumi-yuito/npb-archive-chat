@@ -1,5 +1,6 @@
 import type { PlayerCandidate } from '@npb/schemas'
 import type { QueryDatabase } from '../query-driver'
+import { hasRepositoryTable } from './schema-detection'
 
 export type { PlayerCandidate }
 
@@ -215,6 +216,7 @@ async function resolvePlayerRowsFromRegisteredFacts(
   database: QueryDatabase,
   aliases: string[],
 ): Promise<Array<{ player_id: string; full_name: string | null; team_name: string | null; year_teams_json: string | null }> | null> {
+  if (!await hasRepositoryTable(database, 'person_names')) return null
   const values: string[] = []
   const clauses = aliases.map((alias) => {
     values.push(normalizeIdentityKey(alias))
@@ -262,6 +264,7 @@ async function resolvePlayerRowsFromNormalizedFacts(
   database: QueryDatabase,
   aliases: string[],
 ): Promise<Array<{ player_id: string; full_name: string | null; team_name: string | null; year_teams_json: string | null }> | null> {
+  if (!await hasRepositoryTable(database, 'person_names')) return null
   const values: string[] = []
   const clauses = aliases.map((alias) => {
     const compact = normalizeIdentityKey(alias)
@@ -663,6 +666,7 @@ async function queryNormalizedPlayerMentions(
   // Event identity resolution also needs batter/pitcher/runner evidence and its
   // historical same-person collapsing. Keep that established path unchanged.
   if (filters.includeEvents !== false) return null
+  if (!await hasRepositoryTable(database, 'person_names')) return null
   const nameValues: string[] = []
   const nameClauses = aliases.map((alias) => {
     const compact = normalizeIdentityKey(alias)

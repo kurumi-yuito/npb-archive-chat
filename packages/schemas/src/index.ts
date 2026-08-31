@@ -282,6 +282,7 @@ export const clarificationReasonSchema = z.enum([
   'missing_history',
   'history_target_unavailable',
   'insufficient_context',
+  'missing_year',
 ])
 
 export const chatIntentSchema = z.enum([

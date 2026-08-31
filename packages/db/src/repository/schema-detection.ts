@@ -1,16 +1,24 @@
 import type { QueryDatabase } from '../query-driver'
 
-const normalizedSchemaCache = new WeakMap<QueryDatabase, Promise<boolean>>()
+const tablePresenceCache = new WeakMap<QueryDatabase, Map<string, Promise<boolean>>>()
+
+export function hasRepositoryTable(database: QueryDatabase, table: string): Promise<boolean> {
+  let databaseCache = tablePresenceCache.get(database)
+  if (!databaseCache) {
+    databaseCache = new Map()
+    tablePresenceCache.set(database, databaseCache)
+  }
+  const cached = databaseCache.get(table)
+  if (cached) return cached
+
+  const promise = database
+    .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = ? LIMIT 1")
+    .get(table)
+    .then((row) => Boolean((row as { name?: string } | undefined)?.name))
+  databaseCache.set(table, promise)
+  return promise
+}
 
 export function isNormalizedFactsSchema(database: QueryDatabase): Promise<boolean> {
-  const cached = normalizedSchemaCache.get(database)
-  if (cached) {
-    return cached
-  }
-  const promise = database
-    .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'event_facts' LIMIT 1")
-    .get()
-    .then((row) => Boolean((row as { name?: string } | undefined)?.name))
-  normalizedSchemaCache.set(database, promise)
-  return promise
+  return hasRepositoryTable(database, 'event_facts')
 }

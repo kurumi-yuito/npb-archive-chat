@@ -1,4 +1,9 @@
-import { chatStructuredQuerySchema, type AggregatePitchingFilters, type ChatStructuredQuery } from '@npb/schemas'
+import {
+  chatStructuredQuerySchema,
+  type AggregateBattingFilters,
+  type AggregatePitchingFilters,
+  type ChatStructuredQuery,
+} from '@npb/schemas'
 import { z } from 'zod'
 import {
   type ChatQueryParserContext,
@@ -471,6 +476,43 @@ function normalizeExplicitPlannerContract(
     }
   }
 
+  const battingRankingSort = inferBattingRankingSort(message)
+  if (battingRankingSort) {
+    const requestedLimit = extractRankingLimit(message)
+    if (
+      intent !== 'aggregate_batting' ||
+      filters.sort_by !== battingRankingSort ||
+      filters.limit !== requestedLimit
+    ) {
+      intent = 'aggregate_batting'
+      filters.sort_by = battingRankingSort
+      filters.limit = requestedLimit
+      changed = true
+    }
+    if (typeof filters.year !== 'number' && typeof filters.year_from !== 'number' && typeof filters.year_to !== 'number') {
+      filters.year = currentJstYear()
+      changed = true
+    }
+    const league = /セ・?リーグ/u.test(message)
+      ? 'セ・リーグ'
+      : /パ・?リーグ/u.test(message)
+        ? 'パ・リーグ'
+        : undefined
+    if (league && filters.team !== league) {
+      filters.team = league
+      changed = true
+    }
+  }
+
+  if (/ってどんな選手/u.test(message)) {
+    if (intent !== 'aggregate_batting' || filters.year !== currentJstYear() || filters.limit !== 1) {
+      intent = 'aggregate_batting'
+      filters.year = currentJstYear()
+      filters.limit = 1
+      changed = true
+    }
+  }
+
   if (/完封/u.test(message) && intent === 'aggregate_pitching') {
     if (filters.min_innings_per_start !== 9 || filters.max_earned_runs_per_start !== 0) {
       filters.min_innings_per_start = 9
@@ -537,6 +579,23 @@ function currentJstYear(): number {
     year: 'numeric',
   }).formatToParts(new Date()).find((part) => part.type === 'year')?.value
   return Number(year)
+}
+
+function inferBattingRankingSort(message: string): AggregateBattingFilters['sort_by'] | undefined {
+  if (!/ランキング|トップ|最多|一番|最も多|上位/u.test(message)) return undefined
+  if (/本塁打|ホームラン|\bHR\b|ＨＲ/iu.test(message)) return 'homeRuns'
+  if (/打点/u.test(message)) return 'runsBattedIn'
+  if (/盗塁/u.test(message)) return 'stolenBases'
+  if (/OPS/iu.test(message)) return 'ops'
+  if (/打率/u.test(message)) return 'battingAverage'
+  if (/安打/u.test(message)) return 'hits'
+  return undefined
+}
+
+function extractRankingLimit(message: string): number {
+  const explicit = message.match(/(?:トップ|上位)\s*(\d{1,2})/u)?.[1]
+  if (explicit) return Math.min(Number(explicit), 100)
+  return /一番|最も多|最多|誰/u.test(message) ? 1 : 10
 }
 
 function playerIdFieldForNameField(

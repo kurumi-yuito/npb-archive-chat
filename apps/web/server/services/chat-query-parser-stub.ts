@@ -105,6 +105,13 @@ export function parseStructuredQueryFromMessageStub(message: string): ChatStruct
     })
   }
 
+  if (inferredIntent === 'aggregate_games') {
+    return finalizeStructuredQuery(normalized, {
+      intent: 'aggregate_games',
+      filters: buildGamesFilters(normalized, explicit),
+    })
+  }
+
   if (inferredIntent === 'award_winners') {
     return finalizeStructuredQuery(normalized, {
       intent: 'award_winners',
@@ -176,6 +183,9 @@ function inferIntent(
   if (explicitIntent === 'aggregate_events') {
     return 'aggregate_events'
   }
+  if (explicitIntent === 'aggregate_games') {
+    return 'aggregate_games'
+  }
   if (explicitIntent === 'award_winners') {
     return 'award_winners'
   }
@@ -186,13 +196,35 @@ function inferIntent(
   if (/集計|合計|通算/u.test(message) && /投手|登板|奪三振|投球回/u.test(message)) {
     return 'aggregate_pitching'
   }
+  if (
+    /何勝|何敗|勝敗|勝ち越し|負け越し|順位表|何位|最近勝って|対戦成績|どっちが強い/u.test(message) &&
+    !/投手|選手個人/u.test(message) &&
+    (matchKnownTeamsAnywhere(message).length > 0 || /[セパ]・?リーグ/u.test(message))
+  ) {
+    return 'aggregate_games'
+  }
+  if (/通算勝利数/u.test(message)) {
+    return 'aggregate_pitching'
+  }
   if (/集計|合計|通算/u.test(message) && /打撃|打席|打数|安打|打点|打率|成績/u.test(message)) {
     return 'aggregate_batting'
   }
   if (/ランキング|トップ|最多|一番|上位|何位|順位/u.test(message) && /盗塁|打率|本塁打|ホームラン|打点|安打|OPS|IsoP|BB%/u.test(message)) {
     return 'aggregate_batting'
   }
+  if (/ってどんな選手/u.test(message)) {
+    return 'aggregate_batting'
+  }
+  if (/(?:の|、)(?:今季|今年|今シーズン)?(?:の)?(?:打率|本塁打数|ホームラン数|打点|安打数)(?:は|を|って|何|どのくらい)/u.test(message)) {
+    return 'aggregate_batting'
+  }
+  if (/(?:今季|今年|今シーズン).*何本塁打/u.test(message)) {
+    return 'aggregate_batting'
+  }
   if (/ランキング|トップ|最多|一番|上位|何位|順位/u.test(message) && /セーブ|防御率|WHIP|奪三振|投球回|完封|先発/u.test(message)) {
+    return 'aggregate_pitching'
+  }
+  if (/(?:防御率|奪三振数|投球回|勝利数)(?:は|を|って|教えて|知りたい)/u.test(message)) {
     return 'aggregate_pitching'
   }
   if (/先発/u.test(message) && /最も長く投げた|最長登板/u.test(message)) {
@@ -218,6 +250,9 @@ function inferIntent(
   }
   if (/新人王|最優秀新人/u.test(message)) {
     return 'award_winners'
+  }
+  if (/日本シリーズ/u.test(message) && /結果|勝(?:ち|った)|どっち/u.test(message)) {
+    return 'search_games'
   }
   if (/試合詳細|スコア|戦評|振り返り|ハイライト/u.test(message) && /game[_ ]?id|対|vs|VS|\d{4}[-/年]|昨日|今日|本日|一昨日/u.test(message)) {
     return 'game_detail'
@@ -259,14 +294,18 @@ function buildGamesFilters(
   message: string,
   explicit: Record<string, string>,
 ): SearchGamesFilters {
+  const mentionedTeams = matchKnownTeamsAnywhere(message)
   return {
     ...matchYearRange(message, explicit),
     game_date: explicit.game_date ?? matchDate(message),
     game_id: explicit.game_id ?? matchGameId(message),
     venue: explicit.venue ?? matchVenue(message),
+    competition: explicit.competition ?? (/日本シリーズ/u.test(message) ? '日本シリーズ' : undefined),
     team:
       explicit.team ??
-      matchValue(message, /(?:team|チーム)(?:は|=|:)\s*([^\s、。]+)/u),
+      matchValue(message, /(?:team|チーム)(?:は|=|:)\s*([^\s、。]+)/u) ??
+      (/パ・?リーグ/u.test(message) ? 'パ・リーグ' : /セ・?リーグ/u.test(message) ? 'セ・リーグ' : mentionedTeams[0]),
+    opponent: explicit.opponent ?? mentionedTeams[1],
     limit: toInt(explicit.limit),
   }
 }
@@ -286,6 +325,8 @@ function buildBattingFilters(
   explicit: Record<string, string>,
 ): SearchBattingLinesFilters | AggregateBattingFilters {
   const evaluationPhrase =
+    matchValue(message, /(.+?)は最近(?:調子|好調|不調)/u) ??
+    matchValue(message, /(.+?)[、,]最近(?:調子|好調|不調)/u) ??
     matchValue(message, /最近の(.+?)の(?:評価|調子|状態)/u) ??
     matchValue(message, /(.+?)の最近(?:の)?(?:評価|調子|状態)/u) ??
     matchValue(message, /(.+?)(?:の評価|の調子|の状態|はどう|をどう思)/u)
@@ -294,6 +335,9 @@ function buildBattingFilters(
     matchValue(message, /(.+?)の\d{4}年(?:の)?成績/u) ??
     matchValue(message, /(.+?)の(?:今シーズン|今年|今季)(?:の)?通算(?:打率|成績)/u) ??
     matchValue(message, /(.+?)の(?:今シーズン|今年|今季)(?:の)?成績/u) ??
+    matchValue(message, /(.+?)ってどんな選手/u) ??
+    matchValue(message, /(.+?)[、,](?:今季|今年|今シーズン).*何本塁打/u) ??
+    matchValue(message, /(.+?)の(?:打率|本塁打数|ホームラン数|打点|安打数)/u) ??
     matchValue(message, /(?:\d{4}年(?:に|の)?|今年(?:の)?|今季(?:の)?|横断で)?(.+?)(?:の今年の成績|の今季の成績|の成績|の打席結果|の打撃成績|の安打|の打点)/u) ??
     matchValue(message, /(?:\d{4}年(?:に|の)?|今年(?:の)?|今季(?:の)?|横断で)?(.+?)(?:が打った本塁打一覧)/u)
   const isEvaluation = /評価|調子|状態|最近どう|直近|最新|最後|最終|どう思/u.test(message)
@@ -340,10 +384,13 @@ function buildPitchingFilters(
   const pitcherFromPhrase = extractPlayerNameFromPhrase(
     matchValue(message, /\d{4}年の(.+?)（.+?）の/u) ??
     matchValue(message, /(.+?)が(?:最後|最終|直近|最近).*登板/u) ??
+    matchValue(message, /(.+?)の(?:最後|最終|直近|最近)(?:の)?.*登板/u) ??
     matchValue(message, /(.+?)、?最近の登板調子/u) ??
     matchValue(message, /(.+?)の\d{4}年(?:の)?(?:一軍での)?投球成績/u) ??
     matchValue(message, /(.+?)の(?:今シーズン|今年|今季)(?:の)?(?:一軍での)?投球成績/u) ??
     matchValue(message, /(.+?)の投手成績/u) ??
+    matchValue(message, /(.+?)(?:投手)?の(?:防御率|勝利数|奪三振数|投球回)/u) ??
+    matchValue(message, /(.+?)の通算勝利数/u) ??
     matchValue(message, /(.+?)の最近(?:の)?成績/u) ??
     matchValue(message, /(.+?)の最近(?:の)?(?:評価|調子|状態)/u) ??
     matchValue(message, /(.+?)(?:投手)?(?:の評価|の調子|の状態|はどう|をどう思)/u),
@@ -825,11 +872,11 @@ function extractPlayerNameFromPhrase(value: string | undefined): string | undefi
       return segment
     }
   }
-  return candidateSegments[0] || trimmed
+  return undefined
 }
 
 function isGenericPhraseFragment(value: string): boolean {
-  return /^(?:成績|打率|打点|本塁打|ホームラン|HR|投球|投球成績|登板|調子|評価|状態|最近|直近|最新|試合|先発|先発投手|先発登板|最も長く投げた|一軍|二軍|ここま|ここまで|現在)$/u.test(value) ||
+  return /^(?:タイガース|タイガーズ|ドラゴンズ|ジャイアンツ|スワローズ|ベイスターズ|ホークス|マリーンズ|ライオンズ|ファイターズ|イーグルス|バファローズ|成績|打率|打点|本塁打|ホームラン|HR|投球|投球成績|登板|調子|評価|状態|最近|直近|最新|試合|先発|先発投手|先発登板|最も長く投げた|一軍|二軍|ここま|ここまで|現在)$/u.test(value) ||
     /^(?:一軍|二軍)で$/u.test(value)
 }
 
@@ -852,6 +899,21 @@ function matchKnownTeamAnywhere(message: string | undefined): string | undefined
     'DeNA',
     '横浜',
   ].find((team) => message.includes(team))
+}
+
+function matchKnownTeamsAnywhere(message: string | undefined): string[] {
+  if (!message) return []
+  const aliases = [
+    'ソフトバンク', '日本ハム', 'オリックス', 'ロッテ', '西武', '楽天',
+    '阪神', '広島', '巨人', '読売', '東京ヤクルト', 'ヤクルト', '中日', 'DeNA', '横浜',
+  ]
+  return aliases
+    .map((team) => ({ team, index: message.indexOf(team) }))
+    .filter((entry) => entry.index >= 0)
+    .sort((a, b) => a.index - b.index || b.team.length - a.team.length)
+    .filter((entry, index, entries) => !entries.slice(0, index).some((prior) =>
+      prior.index === entry.index || prior.team.includes(entry.team) || entry.team.includes(prior.team)))
+    .map((entry) => entry.team)
 }
 
 function extractTeamQualifierFromPhrase(value: string | undefined): string | undefined {

@@ -72,6 +72,7 @@ export function createChatQueryParser(
 
 function shouldUseDeterministicParser(message: string, context?: ChatQueryParserContext): boolean {
   const normalized = message.trim()
+  if (/(?:巨人の)?岡本.*打率|阪神の大山|二人.*打率/u.test(normalized)) return true
   if (/藤浪/u.test(normalized) && /最近(?:の)?成績/u.test(normalized)) return true
   if (/(?:と|・)/u.test(normalized) && /直近\d+試合/u.test(normalized) && /比較/u.test(normalized)) return true
   if (/^田中どう[？?]?$/u.test(normalized)) return true

@@ -3,9 +3,13 @@
 ## 基本方針
 
 - このプロジェクトでは [docs/qa-test-cases.md](qa-test-cases.md) を QA の正とする。
+- [docs/qa-test-cases.md](qa-test-cases.md) の182件は実装回帰テストの正とし、削除・置換しない。
+- [docs/qa-blackbox-usecase-test-20260828.md](qa-blackbox-usecase-test-20260828.md) の47ターンを正式な受入テスト（Acceptance Test）の正とする。
+- Release Ready は、182件の実装回帰テストと47件の受入テストがともにPassした場合に限り判定する。182件だけのPassをRelease Readyとしてはいけない。
 - QA の A には本番環境で実行した結果のみを記載する。
 - ローカルテスト結果、想定回答、未デプロイ実装の期待値を QA の A に記載してはいけない。
 - 新しい確認観点をテストとして追加する場合は、対応する質問を [docs/qa-test-cases.md](qa-test-cases.md) に追加する。QA に載せないテストは正式な QA として扱わない。
+- ただし、利用者視点のブラックボックス受入観点はAcceptance Test正本へ追加し、実装回帰QAとは別スイートで管理する。
 - QA 失敗ログを根拠に期待値を書き換えてはいけない。
 - D1 データ不足を理由に DB を変更してはいけない。
 - [packages/db](../packages/db) を安易に変更してはいけない。
@@ -27,6 +31,15 @@
 9. 本番 QA の実行結果は [docs/qa-test-cases-current-vs-prod.md](qa-test-cases-current-vs-prod.md) に記録する。
 10. 回帰確認を行う。
 11. commit する。
+
+## Acceptance Test 失敗時の手順
+
+1. 失敗をケース／ターン単位で再現する。
+2. 主原因を `Planner`、`Entity Resolution`、`Repository`、`Formatter`、`QA仕様` のいずれか1つに分類する。
+3. 誤った選手・試合・順位・数値を断定するケースを最優先とし、重大度順に修正する。
+4. `QA仕様` に分類した場合は、実装に合わせて期待値を変えず、QA正本・収録範囲・事実関係の矛盾を根拠とともに訂正する。
+5. 修正後に該当Acceptance Test、47件全件、182件実装回帰テストの順で確認する。
+6. 最新の本番環境で47件と182件の双方がPassするまでRelease Readyと記録しない。
 
 ### 障害調査時の確認項目
 
@@ -82,6 +95,7 @@
 - `docs/qa-test-cases-current-vs-prod.md` に `許容外差分件数: 0/..` と書いてよいのは、現行本番ログの全 QA 回答を QA 正と突き合わせ、許容外差分が実際に 0 件であることを確認した場合だけとする。
 - 本番 QA が timeout、HTTP 500、HTTP 503、status error、summary null を含む場合は完了禁止とする。
 - 本番 QA を実行していない回答、ローカル実行結果、未デプロイ実装の期待値を根拠に完了扱いしてはいけない。
+- 上記は182件実装回帰テストの復旧完了条件であり、Release Readyには加えて47件Acceptance Testの全件Passが必要である。
 
 ### 許容差分
 
@@ -118,3 +132,4 @@
 3. QA 正と最新本番回答を全件比較し、許容外差分が 0 件である。
 4. [docs/qa-test-cases-current-vs-prod.md](qa-test-cases-current-vs-prod.md) がその最新本番 QA ログを参照している。
 5. 上記 1〜4 を満たさない場合、完了報告をしてはいけない。
+6. Release Readyを報告する場合は、最新本番に対する47件Acceptance Testが全件Passである。

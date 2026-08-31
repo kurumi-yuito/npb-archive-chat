@@ -242,6 +242,34 @@ describe('chat-query-parser', () => {
     })
   })
 
+  it.each([
+    [
+      '今シーズン一番ホームランを打っている選手は誰ですか',
+      { year: currentJstYear(), sort_by: 'homeRuns', limit: 1 },
+    ],
+    [
+      'セ・リーグの本塁打ランキングトップ5を教えて',
+      { year: currentJstYear(), team: 'セ・リーグ', sort_by: 'homeRuns', limit: 5 },
+    ],
+  ])('preserves batting ranking metric and scope for %s', (message, filters) => {
+    expect(parseStructuredQueryFromMessageStub(message)).toEqual({
+      intent: 'aggregate_batting',
+      filters,
+    })
+  })
+
+  it.each([
+    ['村上宗隆は最近調子いいですか', 'search_batting', 'player_name', '村上宗隆'],
+    ['佐々木朗希の直近の登板結果と、その試合の相手先発投手を教えて', 'search_pitching', 'pitcher_name', '佐々木朗希'],
+    ['山本由伸投手の防御率を教えて', 'aggregate_pitching', 'pitcher_name', '山本由伸'],
+    ['オリックスの山岡、最近好調ですか？', 'search_batting', 'player_name', '山岡'],
+    ['巨人の岡本の打率は？', 'aggregate_batting', 'player_name', '岡本'],
+  ])('does not substitute an unrelated player for %s', (message, intent, field, player) => {
+    const query = parseStructuredQueryFromMessageStub(message)
+    expect(query.intent).toBe(intent)
+    expect((query.filters as Record<string, unknown>)[field]).toBe(player)
+  })
+
   it('parses QA shorthand season batting questions in fallback logic', () => {
     expect(parseStructuredQueryFromMessageStub('牧の2026年の成績を教えて')).toEqual({
       intent: 'aggregate_batting',

@@ -1,4 +1,5 @@
 import type { QueryDatabase } from '../query-driver'
+import { hasRepositoryTable } from './schema-detection'
 
 export type AwardWinnerRow = {
   year: number
@@ -13,6 +14,7 @@ export async function searchAwardWinners(
   database: QueryDatabase,
   filters: { year: number; award_type: string },
 ): Promise<AwardWinnerRow[]> {
+  if (!(await hasRepositoryTable(database, 'award_facts'))) return []
   const rows = await database
     .prepare(
       `SELECT
@@ -33,6 +35,7 @@ export async function searchAwardWinners(
 export async function getNormalizedRuntimeMetadata(
   database: QueryDatabase,
 ): Promise<Record<string, string>> {
+  if (!(await hasRepositoryTable(database, 'normalized_runtime_metadata'))) return {}
   const rows = await database
     .prepare(
       `SELECT metadata_key AS key, metadata_value AS value

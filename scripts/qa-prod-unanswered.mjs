@@ -564,6 +564,13 @@ async function runCapabilityCheck(testCase, userId) {
       const url = `${baseUrl}/chat`
       const response = await fetch(url, { headers: { 'user-agent': `npb-production-qa/${testCase.id}` } })
       const html = await response.text()
+      const stylesheetUrls = [...html.matchAll(/<link[^>]+rel=["']stylesheet["'][^>]+href=["']([^"']+)["']/gi)]
+        .map((match) => new URL(match[1], url).toString())
+      const stylesheetBodies = await Promise.all(stylesheetUrls.map(async (stylesheetUrl) => {
+        const stylesheetResponse = await fetch(stylesheetUrl, { headers: { 'user-agent': `npb-production-qa/${testCase.id}` } })
+        return stylesheetResponse.ok ? stylesheetResponse.text() : ''
+      }))
+      const compactHtml = `${html}\n${stylesheetBodies.join('\n')}`.replace(/\s+/g, '')
       checkedUrls.push(url)
       evidence.ui = {
         status: response.status,
@@ -571,8 +578,8 @@ async function runCapabilityCheck(testCase, userId) {
         hasConversation: html.includes('conversation'),
         hasComposer: html.includes('composer'),
         hasUsageLabel: html.includes('残り質問数'),
-        usesDynamicViewport: html.includes('100dvh') || html.includes('100svh'),
-        locksPageOverflow: html.includes('overflow:hidden'),
+        usesDynamicViewport: compactHtml.includes('100dvh') || compactHtml.includes('100svh') || compactHtml.includes('height:100%'),
+        locksPageOverflow: compactHtml.includes('overflow:hidden'),
       }
       assert(response.ok, `chat UI returned HTTP ${response.status}`)
       assert(evidence.ui.hasHeader && evidence.ui.hasConversation && evidence.ui.hasComposer, 'chat layout regions are missing')

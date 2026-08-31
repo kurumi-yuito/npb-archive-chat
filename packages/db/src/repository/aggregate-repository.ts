@@ -200,6 +200,8 @@ export async function aggregatePitchingLines(
         SUM(pitching_lines.strikeouts) AS strikeouts,
         SUM(pitching_lines.runs) AS runsAllowed,
         SUM(pitching_lines.earned_runs) AS earnedRuns,
+        SUM(CASE WHEN pitching_lines.decision IN ('○', '勝', 'W') OR pitching_lines.win_loss_save_hold IN ('○', '勝', 'W') THEN 1 ELSE 0 END) AS wins,
+        SUM(CASE WHEN pitching_lines.decision IN ('●', '敗', 'L') OR pitching_lines.win_loss_save_hold IN ('●', '敗', 'L') THEN 1 ELSE 0 END) AS losses,
         SUM(CASE WHEN pitching_lines.decision = 'S' OR pitching_lines.win_loss_save_hold = 'S' THEN 1 ELSE 0 END) AS saves,
         ${IP_SQL} AS inningsPitched
       FROM pitching_lines
@@ -228,6 +230,8 @@ export async function aggregatePitchingLines(
       strikeouts: Number(row.strikeouts ?? 0),
       runsAllowed: Number(row.runsAllowed ?? 0),
       earnedRuns: Number(row.earnedRuns ?? 0),
+      wins: Number(row.wins ?? 0),
+      losses: Number(row.losses ?? 0),
       saves: Number(row.saves ?? 0),
       inningsPitched: Number(row.inningsPitched ?? 0),
     },

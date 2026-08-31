@@ -5,21 +5,26 @@ import type { ChatClarificationPolicy, ChatPlannerOutput, ChatPlannerValidationR
 const recheckPattern = /^(?:もう一度)?(?:調べ直して|調べなおして|再確認して|見直して|確認し直して)[。！？!?]*$/u
 const priorReferencePattern = /^(?:違う[、,\s]*)?(?:その|あの)?前の(?:やつ|もの|方)?(?:を)?(?:調べて|教えて|見せて)?[。！？!?]*$/u
 const contextReferencePattern = /^(?:それ|これ|その件|その内容|さっきの(?:やつ|もの)?)(?:について)?(?:詳しく|教えて|どうだった|どういう意味)?[。！？!?]*$/u
+const missingEntityReferencePattern = /^(?:この前のカード|さっき言ってた選手).*/u
 
 export function clarificationForUnresolvedFollowUp(
   message: string,
   history?: ChatRequest['history'],
 ): ChatClarificationPolicy | null {
   const normalized = message.trim().replace(/\s+/gu, '')
+  if (/\d{1,2}月/u.test(normalized) && !/(?:19|20)\d{2}年/u.test(normalized)) {
+    return { action: 'clarify', reason: 'missing_year' }
+  }
   const isRecheck = recheckPattern.test(normalized)
   const isPriorReference = priorReferencePattern.test(normalized)
   const isContextReference = contextReferencePattern.test(normalized)
-  if (!isRecheck && !isPriorReference && !isContextReference) return null
+  const isMissingEntityReference = missingEntityReferencePattern.test(normalized)
+  if (!isRecheck && !isPriorReference && !isContextReference && !isMissingEntityReference) return null
 
   if (!history?.length) {
     return {
       action: 'clarify',
-      reason: isContextReference ? 'insufficient_context' : 'missing_history',
+      reason: isContextReference || isMissingEntityReference ? 'insufficient_context' : 'missing_history',
     }
   }
   if (history.some((entry) => isUsableHistoryAnchor(entry.content))) return null
