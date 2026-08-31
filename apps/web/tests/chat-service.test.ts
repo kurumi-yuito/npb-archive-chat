@@ -342,6 +342,30 @@ function scopedResolution<const Scope extends 'current' | 'historical' | 'unspec
 }
 
 describe('chat-service', () => {
+  it('routes team batting comparisons before calling an injected planner', async () => {
+    const parseStructuredQueryFromMessage = vi.fn(async () => ({
+      intent: 'aggregate_batting' as const,
+      filters: { team: '巨人' },
+    }))
+    const service = createChatService(createFakeQueryService({
+      aggregateBattingLines: async (filters) => [{
+        kind: 'batting',
+        label: String(filters.team),
+        total: 100,
+        stats: { hits: filters.team === '巨人' ? 30 : 25, atBats: 100 },
+      }],
+    }), {
+      parseStructuredQueryFromMessage,
+    })
+
+    const response = await service.answerQuestion('巨人と阪神、今シーズンどっちが打率高いですか')
+
+    expect(parseStructuredQueryFromMessage).not.toHaveBeenCalled()
+    expect(response.answer.summary).toContain('チーム打率')
+    expect(response.answer.summary).toContain('巨人')
+    expect(response.answer.summary).toContain('阪神')
+  })
+
   it('preserves an explicitly resolved full player name in the final summary', () => {
     expect(preserveExplicitPlayerNameInSummary(
       '北海道日本ハムファイターズの大谷選手の2017年シーズンの成績です。',
