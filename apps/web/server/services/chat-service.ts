@@ -1035,7 +1035,10 @@ export function createChatService(
       const core = chatResponseCoreSchema.parse({
         message,
         structured_query: structuredQuery,
-        answer: finalAnswer,
+        answer: {
+          ...finalAnswer,
+          summary: preserveExplicitPlayerNameInSummary(finalAnswer.summary, structuredQuery),
+        },
         results,
         sources,
       })
