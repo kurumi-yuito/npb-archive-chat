@@ -12,7 +12,11 @@ import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { loadRichGame } from '../../../packages/db/src/loader'
 import { formatChatAnswer } from '../server/services/chat-answer-formatter'
-import { createChatService, enforcePlannerIdentityContract } from '../server/services/chat-service'
+import {
+  createChatService,
+  enforcePlannerIdentityContract,
+  preserveExplicitPlayerNameInSummary,
+} from '../server/services/chat-service'
 import { buildPlannerOutput } from '../server/services/chat-planner'
 import { ChatFinalAnswerLlmHttpError } from '../server/services/chat-final-answer-llm'
 
@@ -338,6 +342,13 @@ function scopedResolution<const Scope extends 'current' | 'historical' | 'unspec
 }
 
 describe('chat-service', () => {
+  it('preserves an explicitly resolved full player name in the final summary', () => {
+    expect(preserveExplicitPlayerNameInSummary(
+      '北海道日本ハムファイターズの大谷選手の2017年シーズンの成績です。',
+      { intent: 'aggregate_batting', filters: { year: 2017, player_name: '大谷 翔平' } },
+    )).toContain('大谷翔平選手')
+  })
+
   it('rejects future schedules before calling an injected planner', async () => {
     const parseStructuredQueryFromMessage = vi.fn(async () => ({
       intent: 'search_games' as const,

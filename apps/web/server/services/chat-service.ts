@@ -1050,7 +1050,7 @@ export function createChatService(
             ...core,
             answer: {
               ...core.answer,
-              summary,
+              summary: preserveExplicitPlayerNameInSummary(summary, structuredQuery),
             },
           })
         } catch {
@@ -1064,6 +1064,23 @@ export function createChatService(
       return core
     },
   }
+}
+
+export function preserveExplicitPlayerNameInSummary(
+  summary: string,
+  structuredQuery: ChatStructuredQuery,
+): string {
+  const filters = structuredQuery.filters as Record<string, unknown>
+  const fullName = ['player_name', 'pitcher_name', 'batter_name', 'runner_name']
+    .map((field) => filters[field])
+    .find((value): value is string => typeof value === 'string' && /[\s　]/u.test(value))
+  if (!fullName) return summary
+
+  const compactFullName = fullName.replace(/[\s　]+/gu, '')
+  if (summary.includes(fullName) || summary.includes(compactFullName)) return summary
+  const surname = fullName.trim().split(/[\s　]+/u)[0]
+  if (!surname || !summary.includes(`${surname}選手`)) return summary
+  return summary.replace(`${surname}選手`, `${compactFullName}選手`)
 }
 
 export function enforcePlannerIdentityContract(
