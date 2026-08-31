@@ -342,6 +342,25 @@ function scopedResolution<const Scope extends 'current' | 'historical' | 'unspec
 }
 
 describe('chat-service', () => {
+  it('routes unavailable current player form to the latest recorded season before planning', async () => {
+    const parseStructuredQueryFromMessage = vi.fn(async () => ({
+      intent: 'search_batting' as const,
+      filters: { year: 2026, player_name: '村上宗隆' },
+    }))
+    const service = createChatService(createFakeQueryService({
+      aggregateBattingLines: async () => [{
+        kind: 'batting', label: '村上', total: 100,
+        stats: { games: 100, battingAverage: 0.273, homeRuns: 22 },
+      }],
+    }), { parseStructuredQueryFromMessage })
+
+    const response = await service.answerQuestion('村上宗隆は最近調子いいですか')
+
+    expect(parseStructuredQueryFromMessage).not.toHaveBeenCalled()
+    expect(response.answer.summary).toContain('判定できません')
+    expect(response.answer.summary).toContain('2025年')
+  })
+
   it('routes team batting comparisons before calling an injected planner', async () => {
     const parseStructuredQueryFromMessage = vi.fn(async () => ({
       intent: 'aggregate_batting' as const,

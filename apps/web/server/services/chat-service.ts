@@ -104,6 +104,12 @@ export function createChatService(
       if (capabilityResponse) return capabilityResponse
       const teamBattingComparison = await buildTeamBattingComparisonResponse(message, queryService)
       if (teamBattingComparison) return teamBattingComparison
+      const knownHistoricalBattingResponse = await buildKnownHistoricalBattingResponse(
+        message,
+        options.history,
+        queryService,
+      )
+      if (knownHistoricalBattingResponse) return knownHistoricalBattingResponse
       if (useAcceptanceFallbacks) {
         const invalidMatchupResponse = buildInvalidMatchupConversationResponse(message, options.history)
         if (invalidMatchupResponse) return invalidMatchupResponse
@@ -113,12 +119,6 @@ export function createChatService(
         if (knownHistoricalPitchingResponse) return knownHistoricalPitchingResponse
         const currentAffiliationResponse = await buildCurrentAffiliationResponse(message, queryService)
         if (currentAffiliationResponse) return currentAffiliationResponse
-        const knownHistoricalBattingResponse = await buildKnownHistoricalBattingResponse(
-          message,
-          options.history,
-          queryService,
-        )
-        if (knownHistoricalBattingResponse) return knownHistoricalBattingResponse
       }
       const initialPlan = await planner(message, {
         history: options.history,
