@@ -18,6 +18,7 @@ afterEach(async () => {
 describe('Acceptance runner fail-fast contract', () => {
   it('stops at B01 and saves a resumable partial log', async () => {
     const requestedMessages: string[] = []
+    const requestedUserAgents: string[] = []
     const server = createServer((request, response) => {
       if (request.url === '/api/health') {
         response.writeHead(200, { 'content-type': 'application/json' })
@@ -30,6 +31,7 @@ describe('Acceptance runner fail-fast contract', () => {
       request.on('data', (chunk) => { body += chunk })
       request.on('end', () => {
         requestedMessages.push(JSON.parse(body).message)
+        requestedUserAgents.push(request.headers['user-agent'] ?? '')
         response.writeHead(200, { 'content-type': 'application/json' })
         response.end(JSON.stringify({
           structured_query: { intent: 'game_detail', filters: {} },
@@ -63,6 +65,7 @@ describe('Acceptance runner fail-fast contract', () => {
 
       expect(exitCode).toBe(1)
       expect(requestedMessages).toEqual(['昨日の巨人の試合結果を教えて'])
+      expect(requestedUserAgents).toEqual(['npb-acceptance/B01'])
 
       const logFiles = await readdir(outputDirectory)
       expect(logFiles).toHaveLength(1)

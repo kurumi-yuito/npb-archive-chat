@@ -146,6 +146,7 @@ acceptanceRun: for (const conversation of selected) {
         headers: {
           'content-type': 'application/json',
           'x-npb-user-id': `acceptance-${conversation.id.toLowerCase()}-${turn.id.toLowerCase()}`,
+          'user-agent': `npb-acceptance/${turn.id}`,
         },
         body: JSON.stringify({ message: turn.message, ...(history.length ? { history } : {}) }),
         signal: AbortSignal.timeout(30_000),
