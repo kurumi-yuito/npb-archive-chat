@@ -34,6 +34,7 @@ const VERIFIED_HISTORICAL_IDENTITIES: Record<string, { registeredName: string; t
   石田裕太郎: { registeredName: '石田裕', team: 'DeNA' }, 東克樹: { registeredName: '東', team: 'DeNA' },
   山﨑伊織: { registeredName: '山﨑', team: '読売ジャイアンツ' }, 山崎伊織: { registeredName: '山﨑', team: '読売ジャイアンツ' },
   佐藤輝明: { registeredName: '佐藤', team: '阪神' }, 牧秀悟: { registeredName: '牧', team: 'DeNA' },
+  岡本和真: { registeredName: '岡本和', team: '読売ジャイアンツ' }, 大谷翔平: { registeredName: '大谷', team: '日本ハム' },
 }
 
 export async function resolveStructuredQueryPlayer(
@@ -145,12 +146,6 @@ export async function resolveStructuredQueryPlayer(
   }
 
   const candidate = candidates[0]!
-  if (!candidate.player_id && !verifiedCandidates && !hasTeamQualifier) {
-    return {
-      structuredQuery,
-      resolution: { input, name: null, status: 'not_found', candidates },
-    }
-  }
   const resolvedQuery = replacePlayerFilter(structuredQuery, target.field, candidate)
   const yearShift = detectYearShift(structuredQuery, candidate)
   return {
@@ -190,7 +185,8 @@ function selectVerifiedHistoricalCandidates(input: string, candidates: PlayerCan
   const verified = VERIFIED_HISTORICAL_IDENTITIES[normalizeLookupKey(input)]
   if (!verified) return null
   const matches = candidates.filter((candidate) =>
-    normalizeCandidateName(candidate.name) === normalizeLookupKey(verified.registeredName) &&
+    (normalizeCandidateName(candidate.name) === normalizeLookupKey(verified.registeredName) ||
+      normalizeCandidateName(candidate.name).startsWith(normalizeLookupKey(verified.registeredName))) &&
     candidate.teams.some((team) => sameTeamAlias(team, verified.team)),
   )
   return matches.length === 1 ? matches : null
@@ -270,9 +266,15 @@ function replacePlayerFilter(
   return {
     ...structuredQuery,
     filters: {
-      ...Object.fromEntries(Object.entries(structuredQuery.filters).filter(([key]) => key !== field)),
-      ...(structuredQuery.intent === 'player_affiliation' ? { [field]: candidate.name } : {}),
+      ...structuredQuery.filters,
+      [field]: structuredQuery.intent === 'search_pitching'
+        ? (structuredQuery.filters as Record<string, unknown>)[field]
+        : candidate.name,
       [playerIdField]: candidate.player_id,
+      ...(['search_batting', 'aggregate_batting', 'search_pitching', 'aggregate_pitching'].includes(structuredQuery.intent) &&
+      !(structuredQuery.filters as { team?: string }).team && candidate.primary_team
+        ? { team: candidate.primary_team }
+        : {}),
     },
   } as ChatStructuredQuery
 }

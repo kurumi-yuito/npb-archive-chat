@@ -190,6 +190,9 @@ export function normalizeTeamName(value: string | undefined): string | undefined
   }
 
   return normalized
+    .replace(/^千葉ロッテマリーンズ$/u, 'ロッテ')
+    .replace(/^阪神タイガーズ$/u, '阪神')
+    .replace(/^タイガーズ$/u, '阪神')
 }
 
 export function messageMentionsTeam(message: string, team: string): boolean {
@@ -213,6 +216,8 @@ export function normalizePlayerName(value: string | undefined): string | undefin
   const entityOnly = normalized
     .replace(/近ごろ見ない気$/u, '')
     .replace(/どう$/u, '')
+    .replace(/投手$/u, '')
+    .replace(/^([\p{Script=Han}々ヶ]{2,})選手$/u, '$1')
     .trim()
 
   return normalizeOrthographicVariants(entityOnly)
