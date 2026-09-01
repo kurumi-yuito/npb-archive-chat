@@ -3236,7 +3236,9 @@ async function buildKnownHistoricalPitchingResponse(
       }),
     ))).flat()
     const wins = targetRows.reduce((sum, row) => sum + Number(row.stats.wins ?? 0), 0)
-    const summary = `収録対象のうち、田中将大のNPB復帰後（2021年〜${currentJstYear()}年）は${wins}勝です。2013年以前はこのデータベースの対象外のため、NPB全期間の通算勝利数ではありません。`
+    const summary = wins > 0
+      ? `収録対象のうち、田中将大のNPB復帰後（2021年〜${currentJstYear()}年）は${wins}勝です。2013年以前はこのデータベースの対象外のため、NPB全期間の通算勝利数ではありません。`
+      : `田中将大の勝利数は、本番データの収録範囲では算出できません。2013年以前はこのデータベースの対象外であり、NPB全期間の通算勝利数として0勝と断定することはできません。`
     return simpleRepositoryResponse(message, 'aggregate_pitching', summary, { aggregates: targetRows })
   }
   return null

@@ -364,6 +364,17 @@ describe('chat-service', () => {
     expect(response.answer.summary).toContain('25勝')
   })
 
+  it('does not report zero career wins when production aggregates are unavailable', async () => {
+    const service = createChatService(createFakeQueryService({
+      aggregatePitchingLines: async () => [],
+    }), { parseStructuredQueryFromMessage: vi.fn() })
+
+    const response = await service.answerQuestion('田中将大の通算勝利数を教えてください')
+
+    expect(response.answer.summary).toContain('算出できません')
+    expect(response.answer.summary).not.toContain('0勝です')
+  })
+
   it('routes team strength comparisons before calling an injected planner', async () => {
     const parseStructuredQueryFromMessage = vi.fn(async () => ({
       intent: 'aggregate_games' as const,
