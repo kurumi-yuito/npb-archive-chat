@@ -347,7 +347,13 @@ describe('chat-service', () => {
       kind: 'pitching' as const, label: '田中 将大', total: 25,
       stats: { team: '楽天', wins: 25 },
     }])
-    const service = createChatService(createFakeQueryService({ aggregatePitchingLines }), {
+    const service = createChatService(createFakeQueryService({
+      aggregatePitchingLines,
+      playerCandidates: [{
+        player_id: 'tanaka-masahiro', name: '田中 将大', primary_team: '巨人',
+        roles: ['pitcher'], teams: ['楽天', '巨人'], years: [2021, 2022, 2023, 2024, 2025, 2026],
+      }],
+    }), {
       parseStructuredQueryFromMessage: vi.fn(),
     })
 
@@ -355,6 +361,7 @@ describe('chat-service', () => {
 
     expect(aggregatePitchingLines).toHaveBeenCalledWith(expect.objectContaining({
       pitcher_name: '田中 将大',
+      pitcher_player_id: 'tanaka-masahiro',
       year_from: 2021,
     }))
     expect(response.answer.summary).toContain('25勝')
