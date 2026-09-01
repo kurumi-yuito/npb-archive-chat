@@ -3230,7 +3230,7 @@ async function buildKnownHistoricalPitchingResponse(
   }
   if (/田中将大.*通算勝利/u.test(message)) {
     const rows = await queryService.aggregatePitchingLines({
-      pitcher_name: '田中将', year_from: 2021, year_to: currentJstYear(), limit: 50,
+      pitcher_name: '田中 将大', year_from: 2021, year_to: currentJstYear(), limit: 50,
     })
     const targetRows = rows.filter((row) => /楽天|読売|巨人/u.test(String(row.stats.team ?? '')))
     const wins = targetRows.reduce((sum, row) => sum + Number(row.stats.wins ?? 0), 0)
