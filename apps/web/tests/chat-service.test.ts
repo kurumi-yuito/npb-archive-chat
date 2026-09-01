@@ -342,6 +342,28 @@ function scopedResolution<const Scope extends 'current' | 'historical' | 'unspec
 }
 
 describe('chat-service', () => {
+  it('routes team strength comparisons before calling an injected planner', async () => {
+    const parseStructuredQueryFromMessage = vi.fn(async () => ({
+      intent: 'aggregate_games' as const,
+      filters: { team: 'ロッテ' },
+    }))
+    const service = createChatService(createFakeQueryService({
+      aggregateGameResults: async (filters) => [{
+        kind: 'games', label: String(filters.team), total: 100,
+        stats: filters.team === 'ロッテ'
+          ? { wins: 55, losses: 45, draws: 0 }
+          : { wins: 50, losses: 50, draws: 0 },
+      }],
+    }), { parseStructuredQueryFromMessage })
+
+    const response = await service.answerQuestion('ロッテとオリックスってどっちが強いですか')
+
+    expect(parseStructuredQueryFromMessage).not.toHaveBeenCalled()
+    expect(response.answer.summary).toContain('ロッテ')
+    expect(response.answer.summary).toContain('オリックス')
+    expect(response.answer.summary).toContain('勝率')
+  })
+
   it('routes unavailable current player form to the latest recorded season before planning', async () => {
     const parseStructuredQueryFromMessage = vi.fn(async () => ({
       intent: 'search_batting' as const,
@@ -4337,6 +4359,7 @@ function createFakeQueryService(options: {
   searchGameDetails?: ChatQueryService['searchGameDetails']
   aggregateBattingLines?: ChatQueryService['aggregateBattingLines']
   aggregatePitchingLines?: ChatQueryService['aggregatePitchingLines']
+  aggregateGameResults?: ChatQueryService['aggregateGameResults']
   searchAwardWinners?: ChatQueryService['searchAwardWinners']
 } = {}): ChatQueryService {
   const emptyResults = options.empty === true
@@ -4396,7 +4419,7 @@ function createFakeQueryService(options: {
     aggregateBattingLines: options.aggregateBattingLines ?? (async () => []),
     aggregatePitchingLines: options.aggregatePitchingLines ?? (async () => []),
     aggregateEvents: async () => [],
-    aggregateGameResults: async () => [],
+    aggregateGameResults: options.aggregateGameResults ?? (async () => []),
     searchAwardWinners: options.searchAwardWinners ?? (async () => []),
     getNormalizedRuntimeMetadata: async () => ({ schema_version: 'phase5-normalized-v1' }),
     searchPlayerCandidates: options.searchPlayerCandidates ?? (async (filters) => options.playerCandidatesForFilters?.(filters) ?? options.playerCandidates ?? (

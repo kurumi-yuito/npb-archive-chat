@@ -112,11 +112,11 @@ export function createChatService(
       if (knownHistoricalBattingResponse) return knownHistoricalBattingResponse
       const knownHistoricalPitchingResponse = await buildKnownHistoricalPitchingResponse(message, queryService)
       if (knownHistoricalPitchingResponse) return knownHistoricalPitchingResponse
+      const teamPerformanceResponse = await buildTeamPerformanceResponse(message, options.history, queryService)
+      if (teamPerformanceResponse) return teamPerformanceResponse
       if (useAcceptanceFallbacks) {
         const invalidMatchupResponse = buildInvalidMatchupConversationResponse(message, options.history)
         if (invalidMatchupResponse) return invalidMatchupResponse
-        const teamPerformanceResponse = await buildTeamPerformanceResponse(message, options.history, queryService)
-        if (teamPerformanceResponse) return teamPerformanceResponse
         const currentAffiliationResponse = await buildCurrentAffiliationResponse(message, queryService)
         if (currentAffiliationResponse) return currentAffiliationResponse
       }
