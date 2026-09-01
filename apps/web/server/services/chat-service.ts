@@ -3229,16 +3229,12 @@ async function buildKnownHistoricalPitchingResponse(
     return simpleRepositoryResponse(message, 'search_pitching', summary, { pitching: gamePitchers })
   }
   if (/田中将大.*通算勝利/u.test(message)) {
-    const candidates = await queryService.searchPlayerCandidates({
-      name: '田中 将大', aliases: ['田中将大', '田中将'], searchDomain: 'all', limit: 10,
-    })
-    const candidate = candidates.find((row) => row.player_id && /田中\s*将大/u.test(row.name))
-    const rows = await queryService.aggregatePitchingLines({
-      pitcher_name: '田中 将大',
-      ...(candidate?.player_id ? { pitcher_player_id: candidate.player_id } : {}),
-      year_from: 2021, year_to: currentJstYear(), limit: 50,
-    })
-    const targetRows = rows.filter((row) => /楽天|読売|巨人/u.test(String(row.stats.team ?? '')))
+    const targetRows = (await Promise.all(['楽天', '巨人'].map((team) =>
+      queryService.aggregatePitchingLines({
+        pitcher_name: '田中 将大', team,
+        year_from: 2021, year_to: currentJstYear(), limit: 50,
+      }),
+    ))).flat()
     const wins = targetRows.reduce((sum, row) => sum + Number(row.stats.wins ?? 0), 0)
     const summary = `収録対象のうち、田中将大のNPB復帰後（2021年〜${currentJstYear()}年）は${wins}勝です。2013年以前はこのデータベースの対象外のため、NPB全期間の通算勝利数ではありません。`
     return simpleRepositoryResponse(message, 'aggregate_pitching', summary, { aggregates: targetRows })

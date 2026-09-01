@@ -343,16 +343,12 @@ function scopedResolution<const Scope extends 'current' | 'historical' | 'unspec
 
 describe('chat-service', () => {
   it('uses the canonical full name for Tanaka career win aggregation', async () => {
-    const aggregatePitchingLines = vi.fn(async () => [{
+    const aggregatePitchingLines = vi.fn(async (filters) => [{
       kind: 'pitching' as const, label: '田中 将大', total: 25,
-      stats: { team: '楽天', wins: 25 },
+      stats: { team: filters.team, wins: filters.team === '楽天' ? 24 : 1 },
     }])
     const service = createChatService(createFakeQueryService({
       aggregatePitchingLines,
-      playerCandidates: [{
-        player_id: 'tanaka-masahiro', name: '田中 将大', primary_team: '巨人',
-        roles: ['pitcher'], teams: ['楽天', '巨人'], years: [2021, 2022, 2023, 2024, 2025, 2026],
-      }],
     }), {
       parseStructuredQueryFromMessage: vi.fn(),
     })
@@ -361,9 +357,10 @@ describe('chat-service', () => {
 
     expect(aggregatePitchingLines).toHaveBeenCalledWith(expect.objectContaining({
       pitcher_name: '田中 将大',
-      pitcher_player_id: 'tanaka-masahiro',
+      team: '楽天',
       year_from: 2021,
     }))
+    expect(aggregatePitchingLines).toHaveBeenCalledWith(expect.objectContaining({ team: '巨人' }))
     expect(response.answer.summary).toContain('25勝')
   })
 
