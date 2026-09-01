@@ -92,6 +92,39 @@ describe('Acceptance runner fail-fast contract', () => {
           failureReason: 'acceptance pattern mismatch',
         }),
       ])
+
+      const multiTurnOutputDirectory = await mkdtemp(path.join(tmpdir(), 'qa-acceptance-runner-turn-'))
+      temporaryDirectories.push(multiTurnOutputDirectory)
+      const multiTurnRun = spawn(process.execPath, [
+        path.join(root, 'scripts/qa-acceptance.mjs'),
+        '--cases=MT01-Turn1',
+      ], {
+        cwd: root,
+        env: {
+          ...process.env,
+          NPB_ACCEPTANCE_BASE_URL: `http://127.0.0.1:${address.port}`,
+          NPB_ACCEPTANCE_OUTPUT_DIR: multiTurnOutputDirectory,
+        },
+      })
+      const multiTurnExitCode = await new Promise<number | null>((resolve, reject) => {
+        multiTurnRun.once('error', reject)
+        multiTurnRun.once('exit', resolve)
+      })
+      expect(multiTurnExitCode).toBe(1)
+      expect(requestedMessages).toEqual([
+        '昨日の巨人の試合結果を教えて',
+        '阪神は今シーズン何勝してますか？',
+      ])
+      const multiTurnLogFiles = await readdir(multiTurnOutputDirectory)
+      const multiTurnLog = JSON.parse(await readFile(
+        path.join(multiTurnOutputDirectory, multiTurnLogFiles[0]!),
+        'utf8',
+      ))
+      expect(multiTurnLog).toMatchObject({
+        lastExecutedCase: 'MT01-Turn1',
+        unexecutedCount: 0,
+        resume: { nextCaseId: null, remainingCaseIds: [] },
+      })
     } finally {
       await new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()))
     }

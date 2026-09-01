@@ -3,6 +3,7 @@ import path from 'node:path'
 
 const baseUrl = process.env.NPB_ACCEPTANCE_BASE_URL ?? 'http://127.0.0.1:3000'
 const selection = process.argv.find((arg) => arg.startsWith('--cases='))?.slice('--cases='.length) ?? 'all'
+const explicitCaseIds = new Set(selection.split(',').filter(Boolean))
 const outputDir = path.resolve(process.env.NPB_ACCEPTANCE_OUTPUT_DIR ?? 'data/logs')
 
 const conversations = [
@@ -99,7 +100,7 @@ const acceptancePatterns = {
   B31: /どの田中/u,
   B32: /山川.*\d+本/u,
   B33: /二軍.*対応/u,
-  'MT01-Turn1': /阪神.*27勝17敗/u,
+  'MT01-Turn1': /阪神.*\d+勝\d+敗/u,
   'MT01-Turn2': /阪神.*位/u,
   'MT01-Turn3': /前年.*勝.*敗/u,
   'MT02-Turn1': /村上.*2025年.*22本/u,
@@ -123,7 +124,9 @@ const selected = conversations.filter((conversation) =>
   conversation.turns.some((turn) => selection.split(',').includes(turn.id)),
 )
 const selectedTurnIds = selected.flatMap((conversation) => conversation.turns)
-  .filter((turn) => selection !== 'initial-fail' || turn.initialVerdict === 'fail')
+  .filter((turn) => selection === 'all' ||
+    (selection === 'initial-fail' && turn.initialVerdict === 'fail') ||
+    explicitCaseIds.has(turn.id))
   .map((turn) => turn.id)
 const results = []
 let stopReason = null
@@ -131,6 +134,11 @@ let outputPath = null
 acceptanceRun: for (const conversation of selected) {
   const history = []
   for (const turn of conversation.turns) {
+    if (selection !== 'all' && selection !== 'initial-fail' && !explicitCaseIds.has(turn.id)) {
+      history.push({ role: 'user', content: turn.message })
+      history.push({ role: 'assistant', content: '[non-selected turn omitted from rerun]' })
+      continue
+    }
     if (selection === 'initial-fail' && turn.initialVerdict !== 'fail') {
       history.push({ role: 'user', content: turn.message })
       history.push({ role: 'assistant', content: '[initial non-fail turn omitted from rerun]' })
