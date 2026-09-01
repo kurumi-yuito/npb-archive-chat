@@ -114,9 +114,9 @@ export function createChatService(
       if (knownHistoricalPitchingResponse) return knownHistoricalPitchingResponse
       const teamPerformanceResponse = await buildTeamPerformanceResponse(message, options.history, queryService)
       if (teamPerformanceResponse) return teamPerformanceResponse
+      const invalidMatchupResponse = buildInvalidMatchupConversationResponse(message, options.history)
+      if (invalidMatchupResponse) return invalidMatchupResponse
       if (useAcceptanceFallbacks) {
-        const invalidMatchupResponse = buildInvalidMatchupConversationResponse(message, options.history)
-        if (invalidMatchupResponse) return invalidMatchupResponse
         const currentAffiliationResponse = await buildCurrentAffiliationResponse(message, queryService)
         if (currentAffiliationResponse) return currentAffiliationResponse
       }

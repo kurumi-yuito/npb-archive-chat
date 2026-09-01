@@ -342,6 +342,18 @@ function scopedResolution<const Scope extends 'current' | 'historical' | 'unspec
 }
 
 describe('chat-service', () => {
+  it('rejects a nonexistent matchup before calling an injected planner', async () => {
+    const parseStructuredQueryFromMessage = vi.fn()
+    const service = createChatService(createFakeQueryService(), { parseStructuredQueryFromMessage })
+
+    const response = await service.answerQuestion('2025年6月10日の巨人対阪神の試合結果を教えて')
+
+    expect(parseStructuredQueryFromMessage).not.toHaveBeenCalled()
+    expect(response.answer.summary).toContain('試合はありません')
+    expect(response.answer.summary).toContain('巨人はソフトバンク')
+    expect(response.answer.summary).toContain('阪神は西武')
+  })
+
   it('uses the canonical full name for Tanaka career win aggregation', async () => {
     const aggregatePitchingLines = vi.fn(async (filters) => [{
       kind: 'pitching' as const, label: '田中 将大', total: 25,
