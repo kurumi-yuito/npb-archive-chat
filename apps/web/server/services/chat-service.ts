@@ -102,6 +102,8 @@ export function createChatService(
     ): Promise<ChatResponseCore> {
       const capabilityResponse = buildDeterministicCapabilityResponse(message, useAcceptanceFallbacks)
       if (capabilityResponse) return capabilityResponse
+      const invalidMatchupResponse = buildInvalidMatchupConversationResponse(message, options.history)
+      if (invalidMatchupResponse) return invalidMatchupResponse
       const teamBattingComparison = await buildTeamBattingComparisonResponse(message, queryService)
       if (teamBattingComparison) return teamBattingComparison
       const knownHistoricalBattingResponse = await buildKnownHistoricalBattingResponse(
@@ -114,8 +116,6 @@ export function createChatService(
       if (knownHistoricalPitchingResponse) return knownHistoricalPitchingResponse
       const teamPerformanceResponse = await buildTeamPerformanceResponse(message, options.history, queryService)
       if (teamPerformanceResponse) return teamPerformanceResponse
-      const invalidMatchupResponse = buildInvalidMatchupConversationResponse(message, options.history)
-      if (invalidMatchupResponse) return invalidMatchupResponse
       if (useAcceptanceFallbacks) {
         const currentAffiliationResponse = await buildCurrentAffiliationResponse(message, queryService)
         if (currentAffiliationResponse) return currentAffiliationResponse
