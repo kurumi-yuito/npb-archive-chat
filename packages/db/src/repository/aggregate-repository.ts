@@ -293,6 +293,27 @@ async function aggregateNormalizedBattingLines(
   }
 
   const whereClause = clauses.length > 0 ? `WHERE ${clauses.join(' AND ')}` : ''
+  const homeRunScopeClauses: string[] = []
+  const homeRunScopeValues: Array<string | number> = []
+  if (normalized.game_date) {
+    homeRunScopeClauses.push('hr_games.game_date = ?')
+    homeRunScopeValues.push(normalized.game_date)
+  }
+  if (normalized.year) {
+    homeRunScopeClauses.push('hr_games.year = ?')
+    homeRunScopeValues.push(normalized.year)
+  }
+  if (normalized.year_from) {
+    homeRunScopeClauses.push('hr_games.year >= ?')
+    homeRunScopeValues.push(normalized.year_from)
+  }
+  if (normalized.year_to) {
+    homeRunScopeClauses.push('hr_games.year <= ?')
+    homeRunScopeValues.push(normalized.year_to)
+  }
+  const homeRunScopeSql = homeRunScopeClauses.length > 0
+    ? `AND ${homeRunScopeClauses.join(' AND ')}`
+    : ''
   const isSeasonRanking = !groupByYear && !normalized.player_name && !normalized.game_date &&
     normalized.year && !normalized.year_from && !normalized.year_to
   const havingClause = (normalized.sort_by === 'battingAverage' || normalized.sort_by === 'ops')
@@ -334,11 +355,13 @@ async function aggregateNormalizedBattingLines(
             ELSE 0
           END) AS extra_bases
         FROM event_facts
+        INNER JOIN game_facts AS hr_games ON hr_games.game_id = event_facts.game_id
         INNER JOIN result_codes ON result_codes.result_code_id = event_facts.result_code_id
         LEFT JOIN person_names AS batter_name ON batter_name.name_id = event_facts.batter_name_id
-        WHERE result_codes.result_text LIKE '%ホームラン%'
+        WHERE (result_codes.result_text LIKE '%ホームラン%'
            OR result_codes.result_text LIKE '%三塁打%' OR result_codes.result_text LIKE '%スリーベース%'
-           OR result_codes.result_text LIKE '%二塁打%' OR result_codes.result_text LIKE '%ツーベース%'
+           OR result_codes.result_text LIKE '%二塁打%' OR result_codes.result_text LIKE '%ツーベース%')
+        ${homeRunScopeSql}
         GROUP BY event_facts.game_id, event_facts.batter_player_id, batter_name.name
       ) hr_stats
         ON hr_stats.game_id = batting_line_facts.game_id
@@ -352,7 +375,7 @@ async function aggregateNormalizedBattingLines(
       ORDER BY ${groupByYear ? 'CAST(label AS INTEGER) ASC' : `${normalizedBattingSortClause(normalized.sort_by)}, label ASC`}
       LIMIT ?`,
     )
-    .all(...values, normalized.limit ?? 50)
+    .all(...homeRunScopeValues, ...values, normalized.limit ?? 50)
 
   return (rows as Array<Record<string, string | number | null>>).map((row) => {
     const atBats = Number(row.atBats ?? 0)
