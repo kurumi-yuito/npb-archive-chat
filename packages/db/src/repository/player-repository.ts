@@ -674,6 +674,20 @@ async function queryNormalizedPlayerMentions(
     return `(${identityNameSql('person_names.name')} = ? OR ${identityNameSql('person_names.name')} LIKE ? OR (SUBSTR(?, 1, LENGTH(${identityNameSql('person_names.name')})) = ${identityNameSql('person_names.name')} AND LENGTH(${identityNameSql('person_names.name')}) >= 2))`
   })
   if (nameClauses.length === 0) return []
+  let matchedNames: Array<{ nameId: number, name: string }>
+  try {
+    matchedNames = await database.prepare(
+      `SELECT name_id AS nameId, name
+         FROM person_names
+        WHERE ${nameClauses.join(' OR ')}
+        LIMIT ?`,
+    ).all(...nameValues, Math.max((filters.limit ?? 10) * 5, 50)) as Array<{ nameId: number, name: string }>
+  } catch {
+    return null
+  }
+  if (matchedNames.length === 0) return []
+  const matchedNameIds = matchedNames.map((row) => row.nameId)
+  const matchedNameSql = `person_names.name_id IN (${matchedNameIds.map(() => '?').join(', ')})`
 
   const yearClauses: string[] = []
   const yearValues: number[] = []
@@ -701,7 +715,7 @@ async function queryNormalizedPlayerMentions(
             INNER JOIN batting_line_facts INDEXED BY idx_batting_name_game ON batting_line_facts.player_name_id = person_names.name_id
             INNER JOIN game_facts ON game_facts.game_id = batting_line_facts.game_id
             INNER JOIN teams ON teams.team_id = batting_line_facts.team_id
-           WHERE (${nameClauses.join(' OR ')})${whereYear}`,
+           WHERE ${matchedNameSql}${whereYear}`,
     })
   }
   if (filters.searchDomain !== 'batting') {
@@ -714,7 +728,7 @@ async function queryNormalizedPlayerMentions(
             INNER JOIN pitching_line_facts INDEXED BY idx_pitching_name_game ON pitching_line_facts.pitcher_name_id = person_names.name_id
             INNER JOIN game_facts ON game_facts.game_id = pitching_line_facts.game_id
             INNER JOIN teams ON teams.team_id = pitching_line_facts.team_id
-           WHERE (${nameClauses.join(' OR ')})${whereYear}`,
+           WHERE ${matchedNameSql}${whereYear}`,
     })
   }
   if (filters.searchDomain === 'all') {
@@ -727,7 +741,7 @@ async function queryNormalizedPlayerMentions(
             INNER JOIN roster_entry_facts INDEXED BY idx_roster_name_game ON roster_entry_facts.player_name_id = person_names.name_id
             INNER JOIN game_facts ON game_facts.game_id = roster_entry_facts.game_id
             INNER JOIN teams ON teams.team_id = roster_entry_facts.team_id
-           WHERE (${nameClauses.join(' OR ')})${whereYear}`,
+           WHERE ${matchedNameSql}${whereYear}`,
     })
   }
 
@@ -736,7 +750,7 @@ async function queryNormalizedPlayerMentions(
     for (const source of sources) {
       rows.push(...await database
         .prepare(`${source.sql} LIMIT ?`)
-        .all(source.role, ...nameValues, ...yearValues, Math.max((filters.limit ?? 10) * 50, 200)) as RawPlayerMention[])
+        .all(source.role, ...matchedNameIds, ...yearValues, Math.max((filters.limit ?? 10) * 50, 200)) as RawPlayerMention[])
     }
     return rows
   } catch {
