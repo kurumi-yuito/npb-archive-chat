@@ -166,7 +166,10 @@ export default defineEventHandler(async (event) => {
           history: body.history,
         })
       } catch (plannerExecutionError) {
-        if (fixtureMode.enabled || !allowHeuristicFallback) throw plannerExecutionError
+        const upstreamPlannerUnavailable = plannerExecutionError instanceof ChatQueryParserUnavailableError
+        if (fixtureMode.enabled || (!allowHeuristicFallback && !upstreamPlannerUnavailable)) {
+          throw plannerExecutionError
+        }
         console.error('[chat.post] planner execution failed; retrying with deterministic parser', plannerExecutionError)
         const fallbackService = createChatService(queryService, {
           parseStructuredQueryFromMessage: async (message) => parseStructuredQueryFromMessageStub(message),
