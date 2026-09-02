@@ -342,6 +342,20 @@ function scopedResolution<const Scope extends 'current' | 'historical' | 'unspec
 }
 
 describe('chat-service', () => {
+  it('explains unavailable data when yesterday Giants game results are empty', async () => {
+    const service = createChatService(createFakeQueryService(), {
+      parseStructuredQueryFromMessage: async () => ({
+        intent: 'game_detail',
+        filters: { game_date: '2026-09-01', team: '巨人', limit: 1 },
+      }),
+    })
+
+    const response = await service.answerQuestion('昨日の巨人の試合結果を教えて')
+
+    expect(response.answer.summary).toContain('収録済みデータ内では確認できません')
+    expect(response.answer.summary).toContain('結果を推測して回答することはできません')
+  })
+
   it('rejects a nonexistent matchup before calling an injected planner', async () => {
     const parseStructuredQueryFromMessage = vi.fn()
     const service = createChatService(createFakeQueryService(), { parseStructuredQueryFromMessage })

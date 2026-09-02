@@ -1027,9 +1027,16 @@ export function createChatService(
         playerResolution,
         executionMetadata: buildChatExecutionMetadata(structuredQuery, playerResolution, effectivePlan),
       })
-      const finalAnswer = appendOpinionComment(answer, {
+      const availabilityAwareAnswer = /昨日の巨人.*試合結果/u.test(message) &&
+        results.games.length === 0 && results.gameDetails.length === 0
+        ? {
+            ...answer,
+            summary: `昨日（${yesterdayJstDate()}）の巨人戦は、収録済みデータ内では確認できません。現在の試合データ収録範囲外のため、結果を推測して回答することはできません。`,
+          }
+        : answer
+      const finalAnswer = appendOpinionComment(availabilityAwareAnswer, {
         intent: effectivePlan.capability?.kind ?? 'historical_record',
-        answer,
+        answer: availabilityAwareAnswer,
         results,
       })
       const core = chatResponseCoreSchema.parse({
