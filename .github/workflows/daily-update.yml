@@ -201,9 +201,6 @@ jobs:
           export CLOUDFLARE_API_TOKEN="$(printf '%s' "$CLOUDFLARE_API_TOKEN" | tr -d '\r\n ')"
           test "$NPB_D1_DATABASE" = "npb-archive-chat-normalized"
           test "$NPB_D1_DATABASE_ID" = "eb614de3-eb0c-4816-a7b2-8440e94093a8"
-          node scripts/phase5-normalized-ops-check.mjs \
-            --database "$NPB_D1_DATABASE" \
-            --output data/logs/phase5-normalized-ops-check-before-sync.json
           sqlite_dir="${GITHUB_WORKSPACE}/data"
           test -f "${sqlite_dir}/npb-2026.sqlite"
           pnpm --filter @npb/db run sync:normalized-d1 -- \
@@ -330,7 +327,6 @@ jobs:
             data/logs/d1-sync-action.log
             data/logs/d1-sync-normalized/summary.json
             data/logs/phase4-backfill-official-pitching-evidence.json
-            data/logs/phase5-normalized-ops-check-before-sync.json
             data/logs/phase5-normalized-ops-check-after-sync.json
             data/logs/player-identity-coverage.json
           if-no-files-found: ignore
