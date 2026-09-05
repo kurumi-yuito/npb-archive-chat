@@ -1008,6 +1008,7 @@ function formatAggregateSummary(
         return `${index + 1}位: ${row.label}（${s.team ?? ''}） 登板${s.games ?? row.total}${saveText}、投球回${formatDecimalStat(ip)}、奪三振${s.strikeouts ?? 0}、自責点${s.earnedRuns ?? 0}、防御率${formatMaybeDecimal(era)}、WHIP${formatMaybeDecimal(whip)}、球数${s.pitches ?? 0}`
       }),
       `該当数: ${rows.length}件`,
+      '防御率=自責点÷投球回×9、WHIP=(被安打+与四球)÷投球回で計算しています。',
     ].join('\n')
   }
   return [

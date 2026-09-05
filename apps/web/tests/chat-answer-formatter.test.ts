@@ -5,6 +5,23 @@ import { formatChatAnswer } from '../server/services/chat-answer-formatter'
 import type { ChatExecutionMetadata } from '../server/services/chat-query-plan'
 
 describe('chat-answer-formatter', () => {
+  it('includes the Q-68 ERA and WHIP calculation explanation with pitching results', () => {
+    const results = emptyResults()
+    results.aggregates = [{ kind: 'pitching', label: '井上', total: 16, stats: {
+      team: '読売ジャイアンツ', games: 16, inningsPitched: 101,
+      earnedRuns: 20, hitsAllowed: 77, walks: 24, strikeouts: 95,
+    } }]
+    const input = { question: 'ジャイアンツの今シーズン投手成績を教えてください',
+      structuredQuery: { intent: 'aggregate_pitching', filters: { year: 2026, team: '巨人' } } as ChatStructuredQuery,
+      results, sources: [] }
+    const before = JSON.stringify(input)
+    const answer = formatChatAnswer(input)
+    expect(answer.summary).toContain('防御率1.78、WHIP1.00')
+    expect(answer.summary).toContain('防御率=自責点÷投球回×9、WHIP=(被安打+与四球)÷投球回で計算しています。')
+    expect(answer.result_count).toBe(1)
+    expect(JSON.stringify(input)).toBe(before)
+  })
+
   it('explains Q-67 team batting results without turning them into a ranking', () => {
     const results = emptyResults()
     results.aggregates = [
