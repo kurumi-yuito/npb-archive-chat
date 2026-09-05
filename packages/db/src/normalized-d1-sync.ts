@@ -289,7 +289,10 @@ export async function runNormalizedD1Sync(
       !options.dryRun && verify
         ? await verifyNormalizedD1Import(d1Database, rowCounts, workspaceRoot)
         : undefined
-    if (!options.dryRun && verify) {
+    // Date-scoped verification is cheap and must run after every import. The
+    // full-table row-count verification can be limited by the caller because
+    // repeating it for every daily sync exhausts D1 Free Tier row reads.
+    if (!options.dryRun) {
       dateSnapshots.push(...verifyDates.map((date) => ({
         stage: 'd1_post_import' as const,
         date,
