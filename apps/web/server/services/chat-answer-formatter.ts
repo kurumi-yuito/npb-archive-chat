@@ -963,6 +963,24 @@ function formatAggregateSummary(
     if ((filters.player_name || filters.player_id) && rows.length === 1 && !/ランキング|トップ|最多|最も|一番|順位|比較|比べ/u.test(question)) {
       return formatSinglePlayerBattingAggregate(question, rows[0])
     }
+    if (typeof filters.team === 'string' && typeof filters.year === 'number' &&
+      Object.keys(filters).every((key) => key === 'team' || key === 'year') &&
+      /成績/u.test(question) && !/ランキング|トップ|最多|最も|一番|順位|比較|比べ|一覧/u.test(question) &&
+      rows.length > 0) {
+      const name = (row: AggregateRow) => row.label.replace(/^[*+\s]+/u, '').replace(/\s+/gu, '')
+      const team = String(rows[0].stats.team ?? filters.team)
+      const players = rows.slice(0, 5).map((row) => {
+        const s = row.stats
+        return `${name(row)}選手は${s.games ?? row.total}試合に出場し、${s.atBats ?? '不明'}打数${s.hits ?? '不明'}安打、${s.homeRuns ?? 0}本塁打、${s.runsBattedIn ?? 0}打点、${s.stolenBases ?? 0}盗塁です。`
+      })
+      const leaders = [...rows].filter((row) => Number(row.stats.homeRuns) > 0)
+        .sort((a, b) => Number(b.stats.homeRuns) - Number(a.stats.homeRuns)).slice(0, 2)
+      return [
+        `${filters.year}年シーズンの${team}の主な打者成績をご紹介します。`,
+        ...players,
+        ...(leaders.length ? [`取得した${team}の打者成績では、${leaders.map((row) => `${name(row)}選手（${row.stats.homeRuns}本）`).join('、')}が本塁打数の上位です。`] : []),
+      ].join('\n')
+    }
     return [
       /得点圏打率/u.test(question)
         ? '得点圏打率はこのデータベースでは直接算出できないため、代わりに通常の打率が高い選手をご紹介します。'

@@ -5,6 +5,23 @@ import { formatChatAnswer } from '../server/services/chat-answer-formatter'
 import type { ChatExecutionMetadata } from '../server/services/chat-query-plan'
 
 describe('chat-answer-formatter', () => {
+  it('explains Q-67 team batting results without turning them into a ranking', () => {
+    const results = emptyResults()
+    results.aggregates = [
+      { kind: 'batting', label: '* 佐藤 輝明', total: 54, stats: { team: '阪神タイガース', games: 54, atBats: 199, hits: 73, homeRuns: 15, runsBattedIn: 41, stolenBases: 3 } },
+      { kind: 'batting', label: '森下 翔太', total: 54, stats: { team: '阪神タイガース', games: 54, atBats: 210, hits: 59, homeRuns: 14, runsBattedIn: 32, stolenBases: 2 } },
+    ]
+    const input = { question: 'はんしんの成績を教えてください', structuredQuery: { intent: 'aggregate_batting', filters: { year: 2026, team: '阪神' } } as ChatStructuredQuery, results, sources: [] }
+    const before = JSON.stringify(input)
+    const answer = formatChatAnswer(input)
+    expect(answer.summary).toContain('2026年シーズンの阪神タイガースの主な打者成績')
+    expect(answer.summary).toContain('199打数73安打、15本塁打、41打点')
+    expect(answer.summary).toContain('佐藤輝明選手（15本）、森下翔太選手（14本）')
+    expect(answer.summary).not.toMatch(/1位:|該当数:/u)
+    expect(JSON.stringify(input)).toBe(before)
+    expect(formatChatAnswer({ ...input, question: '阪神の打撃成績ランキング' }).summary).toContain('1位:')
+  })
+
   it('formats all search_events rows up to 20 and reports the remaining count', () => {
     const structuredQuery: ChatStructuredQuery = {
       intent: 'search_events',
