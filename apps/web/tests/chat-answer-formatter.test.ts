@@ -5,6 +5,27 @@ import { formatChatAnswer } from '../server/services/chat-answer-formatter'
 import type { ChatExecutionMetadata } from '../server/services/chat-query-plan'
 
 describe('chat-answer-formatter', () => {
+  it('preserves Q-69 season batting metrics and explains their calculations', () => {
+    const results = emptyResults()
+    results.aggregates = [{ kind: 'batting', label: '* 坂倉 将吾', total: 49, stats: {
+      team: '広島東洋カープ', games: 49, plateAppearances: 196, atBats: 171,
+      hits: 46, totalBases: 77, walks: 23, homeRuns: 6, runsBattedIn: 32, stolenBases: 2,
+      battingAverage: 46 / 171, onBasePercentage: 0.35714285714285715,
+      sluggingPercentage: 77 / 171, ops: 0.8074352548036758,
+      isoP: 31 / 171, bbRate: 23 / 196,
+    } }]
+    const input = { question: 'Carpの今シーズンの成績を教えてください',
+      structuredQuery: { intent: 'aggregate_batting', filters: { year: 2026, team: '広島' } } as ChatStructuredQuery,
+      results, sources: [] }
+    const before = JSON.stringify(input)
+    const answer = formatChatAnswer(input)
+    expect(answer.summary).toContain('1位: * 坂倉 将吾（広島東洋カープ）')
+    expect(answer.summary).toContain('打率.269')
+    expect(answer.summary).toContain('OPS.807、IsoP.181、BB%11.7%')
+    expect(answer.summary).toContain('打率=安打÷打数、OPS=出塁率+長打率、IsoP=長打率-打率、BB%=四球÷打席で計算しています。')
+    expect(JSON.stringify(input)).toBe(before)
+  })
+
   it('includes the Q-68 ERA and WHIP calculation explanation with pitching results', () => {
     const results = emptyResults()
     results.aggregates = [{ kind: 'pitching', label: '井上', total: 16, stats: {

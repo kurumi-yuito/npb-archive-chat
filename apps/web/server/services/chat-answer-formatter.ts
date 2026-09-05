@@ -966,6 +966,7 @@ function formatAggregateSummary(
     if (typeof filters.team === 'string' && typeof filters.year === 'number' &&
       Object.keys(filters).every((key) => key === 'team' || key === 'year') &&
       /成績/u.test(question) && !/ランキング|トップ|最多|最も|一番|順位|比較|比べ|一覧/u.test(question) &&
+      !/今シーズン|今季|今年|昨シーズン|昨季|昨年|去年|\d{4}年/u.test(question) &&
       rows.length > 0) {
       const name = (row: AggregateRow) => row.label.replace(/^[*+\s]+/u, '').replace(/\s+/gu, '')
       const team = String(rows[0].stats.team ?? filters.team)
@@ -990,6 +991,7 @@ function formatAggregateSummary(
         return `${index + 1}位: ${row.label}（${s.team ?? ''}） 試合${s.games ?? row.total}、打率${formatMaybeRate(s.battingAverage)}、本塁打${s.homeRuns ?? 0}、打点${s.runsBattedIn ?? 0}、盗塁${s.stolenBases ?? 0}、OPS${formatMaybeRate(s.ops)}、IsoP${formatMaybeRate(s.isoP)}、BB%${formatMaybePercent(s.bbRate)}`
       }),
       `該当数: ${rows.length}件`,
+      '打率=安打÷打数、OPS=出塁率+長打率、IsoP=長打率-打率、BB%=四球÷打席で計算しています。',
     ].join('\n')
   }
   if (structuredQuery.intent === 'aggregate_pitching') {
