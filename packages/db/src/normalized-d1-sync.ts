@@ -1,19 +1,19 @@
 import { spawnSync } from 'node:child_process'
 import { mkdtempSync } from 'node:fs'
-import { mkdir, readdir, rm, writeFile } from 'node:fs/promises'
+import { copyFile, mkdir, readdir, rm, writeFile } from 'node:fs/promises'
 import os from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { findWorkspaceRoot } from '../../crawler/src/index'
 import { migrateDatabase } from './migrations'
-import { runNormalizeDatabase } from './normalized-conversion'
+import { runNormalizeDatabase, validateNormalizedCandidate } from './normalized-conversion'
 import { openDatabase, type SqliteDatabase } from './sqlite'
+import { buildNormalizedDelta, readSyncGeneration } from './normalized-d1-delta'
 
 const DEFAULT_SQLITE_DIR = 'data'
 const DEFAULT_D1_DATABASE = 'npb-archive-chat-normalized'
 const DEFAULT_SQLITE_FILE_RE = /^npb-(\d{4})\.sqlite$/u
 const D1_OMIT_COLUMNS = new Set(['id'])
-const IMPORT_CHUNK_ROWS = 5000
 const DEFAULT_NORMALIZED_MIGRATIONS_DIR = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
   '..',
@@ -80,6 +80,8 @@ export type SyncNormalizedD1Args = {
   keepFiles?: boolean
   verify?: boolean
   verifyDates?: string[]
+  baseline?: string
+  normalizedCandidate?: string
 }
 
 export type DateDomainCounts = {
@@ -140,6 +142,16 @@ export function parseSyncNormalizedD1Args(argv: string[]): SyncNormalizedD1Args 
     const arg = args.shift()
     if (arg === '--sqlite-dir') {
       result.sqliteDir = args.shift()
+      continue
+    }
+    if (arg === '--baseline') {
+      result.baseline = args.shift()
+      if (!result.baseline) throw new Error('--baseline requires a verified SQLite snapshot')
+      continue
+    }
+    if (arg === '--normalized-candidate') {
+      result.normalizedCandidate = args.shift()
+      if (!result.normalizedCandidate) throw new Error('--normalized-candidate requires a SQLite file')
       continue
     }
     if (arg?.startsWith('--sqlite-dir=')) {
@@ -223,7 +235,29 @@ export async function runNormalizedD1Sync(
   const tempDir = mkdtempSync(path.join(os.tmpdir(), 'npb-normalized-sync-'))
   const legacyPath = path.join(tempDir, 'legacy.sqlite')
   const normalizedPath = path.join(tempDir, 'normalized.sqlite')
+  const baselinePath = path.join(tempDir, 'baseline.sqlite')
   try {
+    console.info('[sync:normalized-d1] Preparing published baseline')
+    if (options.baseline) {
+      await copyFile(path.resolve(workspaceRoot, options.baseline), baselinePath)
+    }
+    let needsExport = !options.baseline
+    if (options.baseline && !options.dryRun) {
+      const baseline = openDatabase(baselinePath)
+      try { needsExport = readSyncGeneration(baseline) !== remoteSyncGeneration(d1Database, workspaceRoot) }
+      finally { baseline.close() }
+    }
+    if (needsExport && !options.dryRun) {
+      // Bootstrap only. Recurring jobs restore the last published snapshot from R2.
+      // Also reconcile a commit followed by a failed R2 snapshot upload.
+      const dumpPath = path.join(tempDir, 'baseline.sql')
+      const refreshedPath = path.join(tempDir, 'refreshed.sqlite')
+      const exported = spawnSync('wrangler', ['d1', 'export', d1Database, '--remote', '--output', dumpPath], { cwd: workspaceRoot, stdio: 'inherit' })
+      if (exported.status !== 0) throw new Error('Cannot export the published baseline; refusing to sync')
+      const loaded = spawnSync('sqlite3', [refreshedPath, '.bail on', 'PRAGMA journal_mode=OFF; PRAGMA synchronous=OFF; BEGIN;', `.read ${dumpPath}`, 'COMMIT;'], { stdio: 'inherit' })
+      if (loaded.status !== 0) throw new Error('Cannot load the published baseline')
+      await copyFile(refreshedPath, baselinePath)
+    }
     const verifyDates = [...new Set(options.verifyDates ?? [])]
     const dateSnapshots: DateIntegritySnapshot[] = verifyDates.map((date) => ({
       stage: 'year_sqlite',
@@ -235,6 +269,7 @@ export async function runNormalizedD1Sync(
         throw new Error(`Date integrity source is missing games for ${snapshot.date}: ${JSON.stringify(snapshot.counts)}`)
       }
     }
+    console.info('[sync:normalized-d1] Building local candidate from year snapshots')
     buildMergedLegacyDatabase(legacyPath, yearFiles.map((file) => file.sqlitePath))
     const legacy = openDatabase(legacyPath)
     try {
@@ -246,13 +281,21 @@ export async function runNormalizedD1Sync(
     } finally {
       legacy.close()
     }
-    const conversion = runNormalizeDatabase({
-      source: legacyPath,
-      target: normalizedPath,
-      migrationsDir: options.migrationsDir ?? DEFAULT_NORMALIZED_MIGRATIONS_DIR,
-    })
+    console.info('[sync:normalized-d1] Normalizing local candidate')
+    if (options.normalizedCandidate) await copyFile(path.resolve(workspaceRoot, options.normalizedCandidate), normalizedPath)
+    const conversion = options.normalizedCandidate
+      ? { parity: validateNormalizedCandidate(legacyPath, normalizedPath) }
+      : runNormalizeDatabase({
+          source: legacyPath,
+          target: normalizedPath,
+          migrationsDir: options.migrationsDir ?? DEFAULT_NORMALIZED_MIGRATIONS_DIR,
+        })
     if (!conversion.parity.ok) {
       throw new Error(`Normalized conversion parity failed: ${JSON.stringify(conversion.parity.checks.filter((check) => !check.ok))}`)
+    }
+    if (!options.dryRun) {
+      const backfill = spawnSync('node', ['scripts/phase4-backfill-official-pitching-evidence.mjs', '--local-target', normalizedPath, '--output', path.join(importDir, 'backfill.json')], { cwd: workspaceRoot, stdio: 'inherit' })
+      if (backfill.status !== 0) throw new Error('Candidate backfill failed; published database unchanged')
     }
 
     const normalized = openDatabase(normalizedPath)
@@ -267,16 +310,59 @@ export async function runNormalizedD1Sync(
           { stage: 'd1_pre_import' as const, date, counts },
         ]
       }))
-      sqlPaths = await buildNormalizedD1ImportFiles(normalized, importDir)
+      const previous = openDatabase(baselinePath)
+      try {
+        if (options.dryRun && !options.baseline) {
+          // Dry-run bootstrap compares with an empty migrated database only.
+          migrateDatabase(previous, options.migrationsDir ?? DEFAULT_NORMALIZED_MIGRATIONS_DIR)
+        }
+        const oldLatest = previous.prepare('SELECT MAX(game_date) AS date FROM game_facts').get() as { date: string | null }
+        const newLatest = normalized.prepare('SELECT MAX(game_date) AS date FROM game_facts').get() as { date: string | null }
+        if (oldLatest.date && (!newLatest.date || newLatest.date < oldLatest.date)) throw new Error('Candidate is older than the published snapshot; refusing to remove newer games')
+        for (const row of previous.prepare('SELECT DISTINCT year FROM game_facts').all() as Array<{ year: number }>) {
+          if (!normalized.prepare('SELECT 1 FROM game_facts WHERE year=? LIMIT 1').get(row.year)) throw new Error(`Candidate is missing published season ${row.year}`)
+        }
+        console.info('[sync:normalized-d1] Generating atomic delta')
+        const delta = buildNormalizedDelta(previous, normalized, NORMALIZED_IMPORT_TABLES)
+        const dateMismatches = compareDateIntegritySnapshots(dateSnapshots)
+        if (dateMismatches.length) throw new Error(`Candidate date integrity failed: ${JSON.stringify(dateMismatches)}`)
+        const sqlPath = path.join(importDir, 'normalized_atomic_delta.sql')
+        await writeFile(sqlPath, delta.sql, 'utf8')
+        await writeFile(path.join(importDir, 'delta.json'), JSON.stringify(delta.changes, null, 2) + '\n', 'utf8')
+        // Rehearse the exact publication file, including optimistic guards, on
+        // an isolated copy. A failure here cannot change the serving database.
+        previous.exec('BEGIN')
+        try {
+          previous.exec(delta.sql)
+          if (previous.prepare('PRAGMA foreign_key_check').all().length) throw new Error('Candidate has invalid foreign keys')
+          previous.exec('COMMIT')
+        } catch (error) {
+          previous.exec('ROLLBACK')
+          throw error
+        }
+        previous.exec('PRAGMA wal_checkpoint(TRUNCATE)')
+        rowCounts = readNormalizedRowCounts(previous)
+        if (!options.dryRun) {
+          const integrity = spawnSync('node', ['scripts/phase5-normalized-ops-check.mjs', '--sqlite', baselinePath, '--output', path.join(importDir, 'candidate-integrity.json')], { cwd: workspaceRoot, stdio: 'inherit' })
+          if (integrity.status !== 0) throw new Error('Candidate operational integrity failed; published database unchanged')
+        }
+        sqlPaths = [sqlPath]
+      } finally { previous.close() }
     } finally {
       normalized.close()
     }
 
     if (!options.dryRun) {
+      console.info('[sync:normalized-d1] Publishing validated delta in one import')
       for (const sqlPath of sqlPaths) {
         const executed = await executeD1Import(d1Database, sqlPath, workspaceRoot)
         if (!executed) {
-          throw new Error(`D1 import failed for ${path.basename(sqlPath)}`)
+          // A lost acknowledgement is not an import failure. Reconcile the
+          // commit marker before deciding; never replay a partially known job.
+          const candidate = openDatabase(baselinePath)
+          try {
+            if (!isPublishedGeneration(d1Database, readSyncGeneration(candidate), workspaceRoot)) throw new Error(`D1 import failed or acknowledgement unavailable for ${path.basename(sqlPath)}; preserve candidate for reconciliation`)
+          } finally { candidate.close() }
         }
       }
       if (!options.keepFiles) {
@@ -284,15 +370,17 @@ export async function runNormalizedD1Sync(
       }
     }
 
-    const verify = options.verify ?? true
-    const verification =
-      !options.dryRun && verify
-        ? await verifyNormalizedD1Import(d1Database, rowCounts, workspaceRoot)
-        : undefined
+    const verification = undefined
     // Date-scoped verification is cheap and must run after every import. The
     // full-table row-count verification can be limited by the caller because
     // repeating it for every daily sync exhausts D1 Free Tier row reads.
     if (!options.dryRun) {
+      const candidate = openDatabase(baselinePath)
+      try {
+        const generation = readSyncGeneration(candidate)
+        if (!isPublishedGeneration(d1Database, generation, workspaceRoot)) throw new Error('Published generation could not be confirmed')
+      } finally { candidate.close() }
+      await copyFile(baselinePath, path.join(importDir, 'published.sqlite'))
       dateSnapshots.push(...verifyDates.map((date) => ({
         stage: 'd1_post_import' as const,
         date,
@@ -307,7 +395,7 @@ export async function runNormalizedD1Sync(
       sqliteDir,
       d1Database,
       dryRun: options.dryRun === true,
-      verified: Boolean(verification && verification.mismatches.length === 0),
+      verified: !options.dryRun,
       legacyPath,
       normalizedPath,
       sqlPaths,
@@ -321,9 +409,6 @@ export async function runNormalizedD1Sync(
       },
     }
     await writeFile(summaryPath, `${JSON.stringify(summary, null, 2)}\n`, 'utf8')
-    if (verification && verification.mismatches.length > 0) {
-      throw new Error(formatVerificationFailure(verification.mismatches))
-    }
     if (dateMismatches.length > 0) {
       throw new Error(`Date integrity verification failed: ${JSON.stringify(dateMismatches)}`)
     }
@@ -374,39 +459,6 @@ function readNormalizedRowCounts(
   ) as Record<NormalizedImportTable, number>
 }
 
-async function buildNormalizedD1ImportFiles(
-  database: SqliteDatabase,
-  importDir: string,
-): Promise<string[]> {
-  const sqlPaths: string[] = []
-  const cleanupPath = path.join(importDir, 'normalized_000_cleanup.sql')
-  await writeFile(
-    cleanupPath,
-    `${[...NORMALIZED_IMPORT_TABLES]
-      .reverse()
-      .map((table) => `DELETE FROM "${escapeIdentifier(table)}";`)
-      .join('\n')}\n`,
-    'utf8',
-  )
-  sqlPaths.push(cleanupPath)
-
-  for (const table of NORMALIZED_IMPORT_TABLES) {
-    const { columns, rows } = readTableRows(database, table)
-    for (let index = 0; index < rows.length || (index === 0 && rows.length === 0); index += IMPORT_CHUNK_ROWS) {
-      const chunk = rows.slice(index, index + IMPORT_CHUNK_ROWS)
-      const statements = buildInsertStatements(table, columns, chunk)
-      const chunkNumber = String(Math.floor(index / IMPORT_CHUNK_ROWS) + 1).padStart(4, '0')
-      const sqlPath = path.join(importDir, `normalized_${table}_${chunkNumber}.sql`)
-      await writeFile(sqlPath, `${statements.join('\n')}\n`, 'utf8')
-      sqlPaths.push(sqlPath)
-      if (rows.length === 0) {
-        break
-      }
-    }
-  }
-  return sqlPaths
-}
-
 function tableExists(database: SqliteDatabase, table: string, schema = 'main'): boolean {
   const row = database
     .prepare(
@@ -421,35 +473,6 @@ function readTableColumns(database: SqliteDatabase, table: string, schema = 'mai
     .prepare(`PRAGMA ${schema}.table_info("${escapeIdentifier(table)}")`)
     .all()
     .map((row) => String((row as { name: string }).name))
-}
-
-function readTableRows(
-  database: SqliteDatabase,
-  table: string,
-): { columns: string[]; rows: Record<string, unknown>[] } {
-  const columns = readTableColumns(database, table).filter((column) => !D1_OMIT_COLUMNS.has(column))
-  if (columns.length === 0) {
-    return { columns, rows: [] }
-  }
-  const rows = database
-    .prepare(`SELECT ${columns.map((column) => `"${escapeIdentifier(column)}"`).join(', ')} FROM "${escapeIdentifier(table)}" ORDER BY rowid ASC`)
-    .all() as Record<string, unknown>[]
-  return { columns, rows }
-}
-
-function buildInsertStatements(
-  table: string,
-  columns: string[],
-  rows: Record<string, unknown>[],
-): string[] {
-  if (columns.length === 0 || rows.length === 0) {
-    return []
-  }
-  const quotedColumns = columns.map((column) => `"${escapeIdentifier(column)}"`).join(', ')
-  return rows.map((row) => {
-    const values = columns.map((column) => sqlLiteral(row[column])).join(', ')
-    return `INSERT OR REPLACE INTO "${escapeIdentifier(table)}" (${quotedColumns}) VALUES (${values});`
-  })
 }
 
 function countRows(database: SqliteDatabase, table: string): number {
@@ -534,80 +557,35 @@ function sameDateCounts(left: DateDomainCounts, right: DateDomainCounts): boolea
     .every((key) => left[key] === right[key])
 }
 
-async function verifyNormalizedD1Import(
-  databaseName: string,
-  expectedTableCounts: Record<NormalizedImportTable, number>,
-  workspaceRoot: string,
-): Promise<SyncNormalizedD1VerificationResult> {
-  const actualTableCounts = Object.fromEntries(
-    NORMALIZED_IMPORT_TABLES.map((table) => [
-      table,
-      executeD1CountQuery(databaseName, table, workspaceRoot),
-    ]),
-  ) as Record<NormalizedImportTable, number>
-  const mismatches = NORMALIZED_IMPORT_TABLES
-    .filter((table) => actualTableCounts[table] !== expectedTableCounts[table])
-    .map((table) => ({
-      table,
-      expected: expectedTableCounts[table],
-      actual: actualTableCounts[table],
-    }))
-  return { expectedTableCounts, actualTableCounts, mismatches }
-}
-
 async function executeD1Import(
   databaseName: string,
   sqlPath: string,
   workspaceRoot: string,
 ): Promise<boolean> {
-  const maxAttempts = 3
-  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
-    const result = spawnSync(
-      'wrangler',
-      ['d1', 'execute', databaseName, '--remote', '--yes', '--file', sqlPath],
-      {
-        cwd: workspaceRoot,
-        stdio: 'inherit',
-        env: process.env,
-      },
-    )
-    if ((result.status ?? 1) === 0) {
-      return true
-    }
-    if (attempt < maxAttempts) {
-      console.warn(
-        `[sync:normalized-d1] wrangler import failed for ${path.basename(sqlPath)}; retrying (${attempt + 1}/${maxAttempts})`,
-      )
-      await sleep(5000 * attempt)
-    }
-  }
-  return false
+  const result = spawnSync('wrangler', ['d1', 'execute', databaseName, '--remote', '--yes', '--file', sqlPath], {
+    cwd: workspaceRoot, stdio: 'inherit', env: process.env,
+  })
+  return result.status === 0
 }
 
-function executeD1CountQuery(
-  databaseName: string,
-  table: NormalizedImportTable,
-  workspaceRoot: string,
-): number {
-  const query = `SELECT COUNT(*) AS count FROM "${escapeIdentifier(table)}";`
-  const result = spawnSync(
-    'wrangler',
-    ['d1', 'execute', databaseName, '--remote', '--yes', '--json', '--command', query],
-    {
-      cwd: workspaceRoot,
-      encoding: 'utf8',
-      stdio: ['ignore', 'pipe', 'pipe'],
-      env: process.env,
-    },
-  )
-  if ((result.status ?? 1) !== 0) {
-    throw new Error(`D1 verification query failed for table ${table}`)
+function isPublishedGeneration(database: string, generation: string, workspaceRoot: string): boolean {
+  const check = spawnSync('wrangler', ['d1', 'execute', database, '--remote', '--command', 'SELECT generation FROM normalized_sync_publication WHERE singleton=1', '--json'], { cwd: workspaceRoot, encoding: 'utf8' })
+  if (check.status !== 0) return false
+  try {
+    return Boolean(JSON.parse(check.stdout)?.[0]?.results?.some((row: { generation?: string }) => row.generation === generation))
+  } catch { return false }
+}
+
+function remoteSyncGeneration(database: string, workspaceRoot: string): string {
+  const query = (sql: string) => {
+    const result = spawnSync('wrangler', ['d1', 'execute', database, '--remote', '--command', sql, '--json'], { cwd: workspaceRoot, encoding: 'utf8' })
+    if (result.status !== 0) throw new Error('Cannot read publication state; refusing to sync')
+    const parsed = JSON.parse(result.stdout)
+    if (!parsed[0]?.success) throw new Error('Invalid publication state response')
+    return parsed[0].results
   }
-  const count = extractCountFromJson(JSON.parse(result.stdout.trim()) as unknown)
-  if (count === null) {
-    throw new Error(`Unable to parse D1 verification count for table ${table}`)
-  }
-  return count
+  if (!query("SELECT name FROM sqlite_master WHERE type='table' AND name='normalized_sync_publication'").length) return 'legacy'
+  return query('SELECT generation FROM normalized_sync_publication WHERE singleton=1')[0]?.generation ?? 'legacy'
 }
 
 function executeD1DateCounts(
@@ -661,39 +639,6 @@ function extractDateCountsFromJson(value: unknown): DateDomainCounts | null {
   return null
 }
 
-function extractCountFromJson(value: unknown): number | null {
-  if (typeof value === 'number' && Number.isFinite(value)) {
-    return value
-  }
-  if (Array.isArray(value)) {
-    for (const item of value) {
-      const extracted = extractCountFromJson(item)
-      if (extracted !== null) return extracted
-    }
-    return null
-  }
-  if (!value || typeof value !== 'object') {
-    return null
-  }
-  const record = value as Record<string, unknown>
-  if (typeof record.count === 'number' && Number.isFinite(record.count)) {
-    return record.count
-  }
-  for (const nested of Object.values(record)) {
-    const extracted = extractCountFromJson(nested)
-    if (extracted !== null) return extracted
-  }
-  return null
-}
-
-function formatVerificationFailure(
-  mismatches: SyncNormalizedD1VerificationResult['mismatches'],
-): string {
-  return `Normalized D1 verification failed: ${mismatches
-    .map((mismatch) => `${mismatch.table} expected ${mismatch.expected} but got ${mismatch.actual}`)
-    .join(', ')}`
-}
-
 async function listYearSqliteFiles(sqliteDir: string): Promise<Array<{ year: number; sqlitePath: string }>> {
   const entries = await readdir(sqliteDir, { withFileTypes: true })
   return entries
@@ -728,8 +673,4 @@ function sqlLiteral(value: unknown): string {
 
 function escapeIdentifier(identifier: string): string {
   return identifier.replaceAll('"', '""')
-}
-
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms))
 }

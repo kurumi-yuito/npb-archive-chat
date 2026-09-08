@@ -2,6 +2,7 @@
 import { spawnSync } from 'node:child_process'
 import { mkdirSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
+import { DatabaseSync } from 'node:sqlite'
 
 const NORMALIZED_DB_NAME = 'npb-archive-chat-normalized'
 const NORMALIZED_DB_ID = 'eb614de3-eb0c-4816-a7b2-8440e94093a8'
@@ -15,6 +16,7 @@ const FAIL_95 = MAX_BYTES * 0.95
 const args = parseArgs(process.argv.slice(2))
 const database = args.database ?? NORMALIZED_DB_NAME
 const output = args.output ?? 'data/logs/phase5-normalized-ops-check.json'
+const local = args.sqlite ? new DatabaseSync(args.sqlite, { readOnly: true }) : null
 
 if (database === LEGACY_DB_NAME || database === LEGACY_DB_ID) {
   fail(`Refusing to run normalized production checks against legacy D1 ${database}`)
@@ -91,8 +93,9 @@ const report = {
   startedAt,
   finishedAt,
   database: {
-    name: NORMALIZED_DB_NAME,
-    id: NORMALIZED_DB_ID,
+    name: args.sqlite ? 'local normalized candidate' : NORMALIZED_DB_NAME,
+    id: args.sqlite ? null : NORMALIZED_DB_ID,
+    sqlite: args.sqlite ?? null,
     legacyName: LEGACY_DB_NAME,
     legacyId: LEGACY_DB_ID,
   },
@@ -122,6 +125,7 @@ function parseArgs(argv) {
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i]
     if (arg === '--database') parsed.database = argv[++i]
+    else if (arg === '--sqlite') parsed.sqlite = argv[++i]
     else if (arg?.startsWith('--database=')) parsed.database = arg.slice('--database='.length)
     else if (arg === '--output') parsed.output = argv[++i]
     else if (arg?.startsWith('--output=')) parsed.output = arg.slice('--output='.length)
@@ -144,6 +148,7 @@ function queryOne(sql) {
 }
 
 function queryAll(sql) {
+  if (local) return local.prepare(sql).all()
   const result = spawnSync('wrangler', ['d1', 'execute', database, '--remote', '--yes', '--json', '--command', sql], {
     encoding: 'utf8',
     stdio: ['ignore', 'pipe', 'pipe'],
@@ -156,6 +161,7 @@ function queryAll(sql) {
 }
 
 function readD1FileSize() {
+  if (local) return Number(local.prepare('PRAGMA page_count').get().page_count) * Number(local.prepare('PRAGMA page_size').get().page_size)
   const result = spawnSync('wrangler', ['d1', 'list', '--json'], {
     encoding: 'utf8',
     stdio: ['ignore', 'pipe', 'pipe'],

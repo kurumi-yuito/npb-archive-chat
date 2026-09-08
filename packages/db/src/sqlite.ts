@@ -6,6 +6,7 @@ type SqliteStatement = {
   run: (...params: Array<string | number | null>) => unknown
   get: (...params: Array<string | number | null>) => unknown
   all: (...params: Array<string | number | null>) => unknown[]
+  iterate: (...params: Array<string | number | null>) => Iterable<unknown>
 }
 
 export type SqliteDatabase = {

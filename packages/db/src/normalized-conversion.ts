@@ -115,6 +115,14 @@ export function runNormalizeDatabase(options: NormalizeDatabaseArgs): NormalizeD
   }
 }
 
+export function validateNormalizedCandidate(source: string, target: string): NormalizeParityResult {
+  const database = openDatabase(target)
+  try {
+    database.exec(`ATTACH DATABASE '${source.replaceAll("'", "''")}' AS legacy`)
+    return checkNormalizedParity(database)
+  } finally { database.close() }
+}
+
 function normalizeDatabase(database: SqliteDatabase): void {
   withTransaction(database, () => {
     database.exec('PRAGMA defer_foreign_keys = ON')

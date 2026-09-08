@@ -102,24 +102,12 @@ describe('runNormalizedD1Sync', () => {
         },
       ])
 
-      const cleanupSql = await readFile(
-        result.sqlPaths.find((sqlPath) => sqlPath.endsWith('_000_cleanup.sql'))!,
-        'utf8',
-      )
-      expect(cleanupSql).toContain('DELETE FROM "event_facts";')
-      expect(cleanupSql).toContain('DELETE FROM "teams";')
-
-      const gameSql = await readFile(
-        result.sqlPaths.find((sqlPath) => sqlPath.includes('_game_facts_'))!,
-        'utf8',
-      )
-      expect(gameSql).toContain('INSERT OR REPLACE INTO "game_facts"')
-
-      const eventSql = await readFile(
-        result.sqlPaths.find((sqlPath) => sqlPath.includes('_event_facts_'))!,
-        'utf8',
-      )
-      expect(eventSql).toContain('51155118')
+      expect(result.sqlPaths).toHaveLength(1)
+      const sql = await readFile(result.sqlPaths[0], 'utf8')
+      expect(sql).not.toMatch(/DELETE FROM "(?:event_facts|teams)";/u)
+      expect(sql).toContain('INSERT INTO "game_facts"')
+      expect(sql).toContain('51155118')
+      expect(sql).toContain('normalized_sync_publication')
     } finally {
       await rm(tempRoot, { recursive: true, force: true })
     }

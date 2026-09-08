@@ -27,6 +27,7 @@ import { guestUsageGuardBucketKey } from '../utils/guest-usage-guard'
 import { parseChatIdentity } from '../utils/parse-chat-identity'
 import { parseChatRequestBody } from '../utils/parse-chat-request'
 import { createPublicApiError } from '../utils/public-api-error'
+import { captureDataPublication, DataPublicationChangedError } from '../utils/data-publication-fence'
 import { resolveQaFixtureMode } from '../utils/qa-fixture-mode'
 import { getServerChatQueryService, getServerMetaDatabase } from '../utils/server-database'
 
@@ -160,6 +161,7 @@ export default defineEventHandler(async (event) => {
         generateFinalAnswer: undefined,
         allowFinalAnswerFallback: true,
       })
+      const assertSamePublication = await captureDataPublication(cloudflareEnv?.NPB_DB)
       let core: Awaited<ReturnType<typeof service.answerQuestion>>
       try {
         core = await service.answerQuestion(body.message, {
@@ -189,6 +191,7 @@ export default defineEventHandler(async (event) => {
         }
       }
 
+      await assertSamePublication()
       const usage = !isEffectivePro(account) && effectiveBucket
         ? buildFreeUsageInfo(effectiveBucket, usageConfig, now)
         : buildProUsageInfo(now)
@@ -203,6 +206,9 @@ export default defineEventHandler(async (event) => {
   } catch (error) {
     publishOpenAiCallCounts()
     console.error('[chat.post] unhandled error', error)
+    if (error instanceof DataPublicationChangedError) {
+      throw createPublicApiError(503, 'data_publication_changed', error.message)
+    }
     if (error instanceof ZodError) {
       throw createPublicApiError(500, 'internal_validation_failed', 'Internal response validation failed', {
         validation: error.flatten(),

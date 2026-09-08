@@ -4,8 +4,7 @@ on:
   schedule:
     # 10:05 / 16:05 / 22:05 JST. Cloudflare Cron also dispatches this workflow,
     # but GitHub schedule keeps the update running if Worker dispatch stops.
-    # Keep entries separate so the 01:05 UTC run can perform the one daily
-    # full-table verification without repeating it on every scheduled sync.
+    # All integrity checks run on the local candidate before atomic publication.
     - cron: '5 1 * * *'
     - cron: '5 7 * * *'
     - cron: '5 13 * * *'
@@ -94,6 +93,9 @@ jobs:
           export AWS_SECRET_ACCESS_KEY="$(printf '%s' "$AWS_SECRET_ACCESS_KEY" | tr -d '\r\n ')"
           r2_endpoint="https://${CLOUDFLARE_ACCOUNT_ID}.r2.cloudflarestorage.com"
           mkdir -p data
+          if aws s3api head-object --bucket "$NPB_R2_BUCKET" --key "${NPB_R2_SQLITE_BACKUP_PREFIX}/published-normalized.sqlite" --endpoint-url "$r2_endpoint" >/dev/null 2>&1; then
+            aws s3 cp "s3://${NPB_R2_BUCKET}/${NPB_R2_SQLITE_BACKUP_PREFIX}/published-normalized.sqlite" data/published-normalized.sqlite --endpoint-url "$r2_endpoint" --only-show-errors
+          fi
           for year in $(seq 2016 2026); do
             aws s3 cp "s3://${NPB_R2_BUCKET}/${NPB_R2_SQLITE_BACKUP_PREFIX}/npb-${year}.sqlite" \
               "data/npb-${year}.sqlite" \
@@ -207,16 +209,16 @@ jobs:
           test "$NPB_D1_DATABASE_ID" = "eb614de3-eb0c-4816-a7b2-8440e94093a8"
           sqlite_dir="${GITHUB_WORKSPACE}/data"
           test -f "${sqlite_dir}/npb-2026.sqlite"
-          verification_args=(--no-verify)
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ] || [ "${{ github.event.schedule }}" = "5 1 * * *" ]; then
-            verification_args=(--verify)
+          baseline_args=()
+          if [ -f data/published-normalized.sqlite ]; then
+            baseline_args=(--baseline data/published-normalized.sqlite)
           fi
           pnpm --filter @npb/db run sync:normalized-d1 -- \
             --sqlite-dir "$sqlite_dir" \
             --workspace-root "$GITHUB_WORKSPACE" \
             --d1-database "$NPB_D1_DATABASE" \
             --keep-files \
-            "${verification_args[@]}" \
+            "${baseline_args[@]}" \
             --verify-date 2026-05-10 \
             | tee data/logs/d1-sync-action.log
 
@@ -226,35 +228,6 @@ jobs:
         run: |
           set -euo pipefail
           test -f data/logs/d1-sync-normalized/summary.json
-
-      - name: Backfill official pitching evidence
-        if: ${{ env.IS_DRY_RUN != 'true' }}
-        shell: bash
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_D1_API_TOKEN }}
-        run: |
-          set -euo pipefail
-          if [ -z "${CLOUDFLARE_API_TOKEN:-}" ]; then
-            echo "CLOUDFLARE_D1_API_TOKEN GitHub secret is required for official pitching evidence backfill" >&2
-            exit 1
-          fi
-          export CLOUDFLARE_API_TOKEN="$(printf '%s' "$CLOUDFLARE_API_TOKEN" | tr -d '\r\n ')"
-          node scripts/phase4-backfill-official-pitching-evidence.mjs \
-            --output data/logs/phase4-backfill-official-pitching-evidence.json
-
-      - name: Verify normalized D1 integrity after sync
-        # This full-database operational audit is intentionally manual. Running
-        # it after all three daily syncs exhausts the D1 Free Tier row-read cap.
-        if: ${{ env.IS_DRY_RUN != 'true' && github.event_name == 'workflow_dispatch' }}
-        shell: bash
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_D1_API_TOKEN }}
-        run: |
-          set -euo pipefail
-          export CLOUDFLARE_API_TOKEN="$(printf '%s' "$CLOUDFLARE_API_TOKEN" | tr -d '\r\n ')"
-          node scripts/phase5-normalized-ops-check.mjs \
-            --database "$NPB_D1_DATABASE" \
-            --output data/logs/phase5-normalized-ops-check-after-sync.json
 
       - name: Save SQLite backups to R2
         if: ${{ always() && env.IS_DRY_RUN != 'true' && steps.update_daily.outcome == 'success' && steps.enrich_farm.outcome == 'success' && steps.sync_normalized.outcome == 'success' }}
@@ -279,6 +252,10 @@ jobs:
               --content-type application/vnd.sqlite3 \
               --only-show-errors
           done
+
+          aws s3 cp data/logs/d1-sync-normalized/published.sqlite \
+            "s3://${NPB_R2_BUCKET}/${NPB_R2_SQLITE_BACKUP_PREFIX}/published-normalized.sqlite" \
+            --endpoint-url "$r2_endpoint" --only-show-errors
 
       - name: Write summary
         if: always()
@@ -336,6 +313,9 @@ jobs:
             data/logs/phase23-r2-restored-date-integrity.json
             data/logs/d1-sync-action.log
             data/logs/d1-sync-normalized/summary.json
+            data/logs/d1-sync-normalized/delta.json
+            data/logs/d1-sync-normalized/backfill.json
+            data/logs/d1-sync-normalized/candidate-integrity.json
             data/logs/phase4-backfill-official-pitching-evidence.json
             data/logs/phase5-normalized-ops-check-after-sync.json
             data/logs/player-identity-coverage.json

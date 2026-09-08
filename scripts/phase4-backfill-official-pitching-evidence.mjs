@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto'
 import { readdir, readFile, writeFile } from 'node:fs/promises'
 import path from 'node:path'
+import { DatabaseSync } from 'node:sqlite'
 
 const DEFAULT_LOG_DIR = 'data/logs'
 const DEFAULT_SOURCE_DB = '14c099c3-03ac-4307-9704-7a770b31d108'
@@ -54,6 +55,8 @@ const sourceDatabaseId = args.sourceDatabaseId ?? DEFAULT_SOURCE_DB
 const targetDatabaseId = args.targetDatabaseId ?? DEFAULT_TARGET_DB
 const dryRun = args.dryRun === true
 const outputPath = args.output ?? null
+if (!args.localTarget && !dryRun) throw new Error('Backfill must run on --local-target before atomic publication')
+const localTarget = args.localTarget ? new DatabaseSync(args.localTarget) : null
 
 const evidenceRows = await extractEvidenceRows(logDir)
 const selectedRows = selectCanonicalEvidenceRows(evidenceRows)
@@ -121,12 +124,14 @@ if (!dryRun) {
 }
 
 process.stdout.write(`${JSON.stringify(report, null, 2)}\n`)
+localTarget?.close()
 
 function parseArgs(argv) {
   const out = {}
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i]
     if (arg === '--log-dir') { out.logDir = argv[++i]; continue }
+    if (arg === '--local-target') { out.localTarget = argv[++i]; continue }
     if (arg === '--source-database-id') { out.sourceDatabaseId = argv[++i]; continue }
     if (arg === '--target-database-id') { out.targetDatabaseId = argv[++i]; continue }
     if (arg === '--output') { out.output = argv[++i]; continue }
@@ -469,6 +474,12 @@ async function executeStatement(databaseId, statement) {
 }
 
 async function d1Query(databaseId, statement) {
+  if (localTarget && databaseId === targetDatabaseId) {
+    const prepared = localTarget.prepare(statement.sql)
+    if (/^\s*SELECT\b/iu.test(statement.sql)) return [{ success: true, results: prepared.all(...(statement.params ?? [])) }]
+    prepared.run(...(statement.params ?? []))
+    return [{ success: true, results: [] }]
+  }
   const url = `https://api.cloudflare.com/client/v4/accounts/${accountId}/d1/database/${databaseId}/query`
   const response = await fetch(url, {
     method: 'POST',
