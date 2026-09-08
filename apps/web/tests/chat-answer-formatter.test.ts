@@ -5,6 +5,20 @@ import { formatChatAnswer } from '../server/services/chat-answer-formatter'
 import type { ChatExecutionMetadata } from '../server/services/chat-query-plan'
 
 describe('chat-answer-formatter', () => {
+  it('explains Q-70 alternative batting averages with their at-bat sample sizes', () => {
+    const results = emptyResults()
+    results.aggregates = [{ kind: 'batting', label: '* 加藤 貴之', total: 9, stats: {
+      team: '北海道日本ハムファイターズ', games: 9, atBats: 1, hits: 1,
+      homeRuns: 0, runsBattedIn: 1, battingAverage: 1,
+    } }]
+    const answer = formatChatAnswer({ question: '今シーズンの得点圏打率が高い選手を3人教えてください',
+      structuredQuery: { intent: 'aggregate_batting', filters: { year: 2026, limit: 3, sort_by: 'battingAverage' } },
+      results, sources: [] })
+    expect(answer.summary).toContain('2026年の得点圏打率はこのデータベースでは直接算出できない')
+    expect(answer.summary).toContain('9試合に出場し、1打数1安打、打率は1.000')
+    expect(answer.summary).toContain('通常の打率は安打÷打数')
+  })
+
   it('preserves Q-69 season batting metrics and explains their calculations', () => {
     const results = emptyResults()
     results.aggregates = [{ kind: 'batting', label: '* 坂倉 将吾', total: 49, stats: {

@@ -948,6 +948,16 @@ function formatAggregateSummary(
 ): string {
   if (structuredQuery.intent === 'aggregate_batting') {
     const filters = structuredQuery.filters as Record<string, unknown>
+    if (/得点圏打率/u.test(question)) {
+      return [
+        `${typeof filters.year === 'number' ? `${filters.year}年の` : ''}得点圏打率はこのデータベースでは直接算出できないため、代わりに通常の打率が高い選手上位${rows.length}人をご紹介します。`,
+        ...rows.map((row, index) => {
+          const s = row.stats
+          return `${index + 1}位は${s.team ?? ''}の${row.label.replace(/^[*+\s]+/u, '').replace(/\s+/gu, '')}選手で、${s.games ?? row.total}試合に出場し、${s.atBats ?? '不明'}打数${s.hits ?? '不明'}安打、打率は${formatMaybeRate(s.battingAverage)}です。本塁打${s.homeRuns ?? 0}本、打点${s.runsBattedIn ?? 0}です。`
+        }),
+        '対象試合数と打数も合わせてご確認ください。通常の打率は安打÷打数で計算しています。',
+      ].join('\n')
+    }
     if (filters.group_by === 'year') {
       const playerName = typeof filters.player_name === 'string'
         ? filters.player_name
