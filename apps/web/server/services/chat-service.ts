@@ -1083,12 +1083,12 @@ export function preserveExplicitPlayerNameInSummary(
   const filters = structuredQuery.filters as Record<string, unknown>
   const fullName = ['player_name', 'pitcher_name', 'batter_name', 'runner_name']
     .map((field) => filters[field])
-    .find((value): value is string => typeof value === 'string' && /[\s　]/u.test(value))
+    .find((value): value is string => typeof value === 'string' && /[\s\u3000]/u.test(value))
   if (!fullName) return summary
 
-  const compactFullName = fullName.replace(/[\s　]+/gu, '')
+  const compactFullName = fullName.replace(/[\s\u3000]+/gu, '')
   if (summary.includes(fullName) || summary.includes(compactFullName)) return summary
-  const surname = fullName.trim().split(/[\s　]+/u)[0]
+  const surname = fullName.trim().split(/[\s\u3000]+/u)[0]
   if (!surname || !summary.includes(`${surname}選手`)) return summary
   return summary.replace(`${surname}選手`, `${compactFullName}選手`)
 }
