@@ -73,6 +73,10 @@ jobs:
         if: ${{ env.IS_DRY_RUN != 'true' }}
         run: npm install -g wrangler@4.83.0
 
+      - name: Install SQLite snapshot loader
+        if: ${{ env.IS_DRY_RUN != 'true' }}
+        run: sudo apt-get update && sudo apt-get install -y sqlite3
+
       - name: Install AWS CLI
         if: ${{ env.IS_DRY_RUN != 'true' }}
         run: python -m pip install --user awscli
