@@ -572,6 +572,19 @@ export function createChatService(
       )
       structuredQuery = seasonRoleRewrite.structuredQuery
       playerResolution = seasonRoleRewrite.playerResolution
+      // A generic record request shifted to a former NPB season keeps the
+      // individual-game evidence; explicitly requested season metrics stay aggregated.
+      if (
+        playerResolution?.status === 'resolved' && playerResolution.yearShiftNote &&
+        structuredQuery.intent === 'aggregate_batting' && /成績/u.test(message) &&
+        !/打率|本塁打|ホームラン|打点|安打|OPS|通算|比較|比べ|年別/iu.test(message)
+      ) {
+        const filters = structuredQuery.filters
+        structuredQuery = { intent: 'search_batting', filters: {
+          year: filters.year, player_name: filters.player_name,
+          player_id: filters.player_id, team: filters.team, limit: 20,
+        } }
+      }
       const aggregatePitchingPlayerResolution = playerResolution
       if (isNorimotoTeamComparison(message, structuredQuery)) {
         playerResolution = null
@@ -2066,7 +2079,10 @@ async function rewriteGenericSeasonStatToPitchingIfNeeded(
 function sameCanonicalTeam(left: string, right: string): boolean {
   const normalizedLeft = normalizeTeamName(left) ?? left
   const normalizedRight = normalizeTeamName(right) ?? right
-  return normalizedLeft === normalizedRight
+  return normalizedLeft === normalizedRight || Boolean(
+    normalizedLeft && normalizedRight &&
+    (normalizedLeft.includes(normalizedRight) || normalizedRight.includes(normalizedLeft)),
+  )
 }
 
 function filterGameDetailsForTeam(rows: GameDetailRow[], team: string | null): GameDetailRow[] {

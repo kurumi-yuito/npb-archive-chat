@@ -3,6 +3,7 @@ import path from 'node:path'
 
 const baseUrl = process.env.NPB_ACCEPTANCE_BASE_URL ?? 'http://127.0.0.1:3000'
 const selection = process.argv.find((arg) => arg.startsWith('--cases='))?.slice('--cases='.length) ?? 'all'
+const continueOnFailure = process.argv.includes('--continue-on-failure')
 const explicitCaseIds = new Set(selection.split(',').filter(Boolean))
 const outputDir = path.resolve(process.env.NPB_ACCEPTANCE_OUTPUT_DIR ?? 'data/logs')
 
@@ -187,7 +188,7 @@ acceptanceRun: for (const conversation of selected) {
     process.stdout.write(`${turn.id}\t${result.verdict.toUpperCase()}\tHTTP ${result.status}\t${result.durationMs}ms\t${result.intent ?? '-'}\t${oneLine(result.summary)}\n`)
     history.push({ role: 'user', content: turn.message })
     history.push({ role: 'assistant', content: result.summary ?? '回答を取得できませんでした。' })
-    if (result.verdict === 'fail') {
+    if (result.verdict === 'fail' && !continueOnFailure) {
       stopReason = `fail_fast:${result.id}`
       outputPath = await saveRunLog()
       break acceptanceRun
@@ -207,7 +208,7 @@ async function saveRunLog() {
   const log = {
     baseUrl,
     selection,
-    status: failed.length > 0 ? 'stopped' : 'completed',
+    status: stopReason ? 'stopped' : 'completed',
     stopReason,
     lastExecutedCase: results.at(-1)?.id ?? null,
     passCount: results.length - failed.length,

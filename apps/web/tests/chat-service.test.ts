@@ -2707,26 +2707,17 @@ describe('chat-service', () => {
           years: [2017],
         }]
       },
-      aggregateBattingLines: async (filters) => {
-        if (filters.year !== 2017) {
-          return []
-        }
+      // Generic former-player records use individual-game evidence (QA Q-77).
+      // Return the resolved player here, rather than the default unrelated row.
+      searchBattingLines: async (filters) => {
+        expect(filters.year).toBe(2017)
         expect(filters.player_id).toBe('otani-2017')
         return [{
-          kind: 'batting',
-          label: '大谷 翔平',
-          total: 61,
-          stats: {
-            team: '北海道日本ハムファイターズ',
-            games: 61,
-            atBats: 202,
-            hits: 67,
-            homeRuns: 8,
-            runsBattedIn: 31,
-            walks: 24,
-            strikeouts: 63,
-            battingAverage: 0.332,
-          },
+          gameId: 'r20170401f-l-02', gameDate: '2017-04-01',
+          team: '北海道日本ハムファイターズ', playerName: '大谷 翔平',
+          battingOrder: 3, position: '(指)', atBats: 4, hits: 2,
+          runs: 0, runsBattedIn: 0, stolenBases: 0, walks: 0,
+          strikeouts: 1, rawText: '',
         }]
       },
     }), {
@@ -3385,7 +3376,7 @@ describe('chat-service', () => {
     })
     expect(response.answer.result_count).toBe(1)
     expect(response.answer.summary).toContain('1. 2021年4月16日')
-    expect(response.answer.summary).toContain('該当数: 1件')
+    expect(response.answer.summary).toContain('ホームランは1件')
     expect(response.answer.summary).not.toContain('条件に一致するイベントは見つかりません')
   })
 

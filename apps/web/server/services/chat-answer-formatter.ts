@@ -646,7 +646,6 @@ function buildSummary(
       results.pitching as PitchingLineRow[],
       resultCount,
       executionMetadata,
-      question,
     )}`
   }
 
@@ -1300,21 +1299,25 @@ function formatGameDetailSummary(
   pitchingRows: PitchingLineRow[],
   resultCount: number,
   executionMetadata?: ChatExecutionMetadata,
-  question = '',
 ): string {
   if (executionMetadata?.answerMode === 'reason_explanation' && rows[0]) {
     const linescore = parseLinescore(rows[0].linescoreJson)
     if (linescore) {
-      const losingTeam = /阪神/u.test(question) ? '阪神' : displayTeamName(
-        linescore.away.totals.runs < linescore.home.totals.runs ? linescore.away.team : linescore.home.team,
-      )
-      const losingSide = displayTeamName(linescore.away.team) === losingTeam ? linescore.away : linescore.home
+      const losingSide = linescore.away.totals.runs < linescore.home.totals.runs ? linescore.away : linescore.home
+      const losingTeam = displayTeamName(losingSide.team)
       const winningSide = losingSide === linescore.away ? linescore.home : linescore.away
-      const scoringInnings = winningSide.innings
+      const scoringDescription = winningSide.innings
         .map((runs, index) => Number(runs) > 0 ? `${index + 1}回${Number(runs)}点` : null)
         .filter((value): value is string => value !== null)
         .join('と')
-      return `${displayTeamName(winningSide.team)}が${scoringInnings}を挙げ、${losingTeam}は${losingSide.totals.hits}安打に抑えられたため、攻撃面で差がつきました。`
+      const gameId = rows[0].gameId
+      const eventEvidence = highlightEventSentence(events.filter((event) => event.gameId === gameId), scoringInnings(linescore), displayTeamName(winningSide.team))
+      const pitchingEvidence = highlightPitchingSentence(pitchingRows.filter((row) => row.gameId === gameId))
+      return [
+        pitchingEvidence,
+        eventEvidence,
+        `${displayTeamName(winningSide.team)}が${scoringDescription}を挙げ、${losingTeam}は${losingSide.totals.hits}安打に抑えられたため、攻撃面で差がつきました。`,
+      ].filter(Boolean).join('\n')
     }
   }
   const lines = rows.slice(0, 5).flatMap((row, index) => {
@@ -1997,15 +2000,10 @@ function formatPitchingEvaluationSummary(rows: PitchingLineRow[], limit = 5): st
     totals.earnedRuns === 0 ? '自責点0' : `${totals.earnedRuns}自責点`,
     totals.pitchCount > 0 ? `${totals.pitchCount}球` : undefined,
   ].filter(Boolean)
-  const league = gameRows.every((row) => row.gameId.startsWith('f'))
-    ? '二軍'
-    : gameRows.every((row) => !row.gameId.startsWith('f'))
-      ? '一軍'
-      : '一軍・二軍'
   const teamPrefix = gameRows[0]?.team ? `${gameRows[0].team} ` : ''
   const latest = gameRows[0]
   return [
-    latest ? `${teamPrefix}${pitcherName}は${formatDateJa(latest.gameDate)}の${league}登板で、${formatInningsForDisplay(latest.inningsPitched)}、${latest.strikeouts}奪三振、自責点${latest.earnedRuns}${latest.pitchCount > 0 ? `、${latest.pitchCount}球` : ''}でした。` : undefined,
+    latest ? `${teamPrefix}${pitcherName}は${formatDateJa(latest.gameDate)}の${latest.gameId.startsWith('f') ? '二軍' : '一軍'}登板で、${formatInningsForDisplay(latest.inningsPitched)}、${latest.strikeouts}奪三振、自責点${latest.earnedRuns}${latest.pitchCount > 0 ? `、${latest.pitchCount}球` : ''}でした。` : undefined,
     ...(gameRows.length > 1 ? [`直近${gameRows.length}登板の合計は${positives.join('、')}です。`] : []),
     ...(gameRows.length > 1 ? [`登板日: ${gameRows.map((row) => formatDateJa(row.gameDate)).join('、')}`] : []),
     buildInternalRecentGapNote(gameRows.map((row) => row.gameDate)),
@@ -2051,7 +2049,10 @@ function formatPitchingScopeClarificationSummary(
   const hasFarm = targetRows.some((row) => row.gameId.startsWith('f'))
   const hasFirst = targetRows.some((row) => !row.gameId.startsWith('f'))
   if (hasFarm && hasFirst) {
-    return `一軍・二軍の両方を含む話です。${formatPitchingEvaluationSummary(targetRows, 5)}`
+    const datesFor = (farm: boolean) => targetRows
+      .filter((row) => row.gameId.startsWith('f') === farm)
+      .map((row) => formatDateJa(row.gameDate)).join('、')
+    return `一軍・二軍の両方を含む話です。確認できる最新${targetRows.length}試合の内訳は、一軍: ${datesFor(false)}、二軍: ${datesFor(true)}です。\n${formatPitchingEvaluationSummary(targetRows, 5)}`
   }
   if (!hasFarm) return null
   return `いいえ、二軍の話です。直近${targetRows.length}登板はいずれも二軍です。`
@@ -2544,9 +2545,8 @@ function formatEventListSummary(
     return `${index + 1}. ${formatDateJa(event.gameDate)} ${event.inning}回${half} ${displayTeamName(event.offenseTeam)} ${batter}${event.resultText}`
   }) : []
   return [
-    detailLines[0] ?? `${title}です。`,
-    `該当数: ${resultCount}件`,
-    ...detailLines.slice(1),
+    ...(detailLines.length > 0 ? [`${title}は${resultCount}件です。`] : [`${title}です。`, `該当数: ${resultCount}件`]),
+    ...detailLines,
     ...(detailLines.length > 0 && resultCount > detailLines.length ? [`ほか${resultCount - detailLines.length}件は省略しています。`] : []),
   ].join('\n')
 }
