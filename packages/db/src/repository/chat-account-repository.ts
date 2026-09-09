@@ -48,7 +48,7 @@ export async function getOrCreateChatAccount(
   userId: string,
   seedPlan: ChatPlan = 'free',
 ): Promise<ChatAccountRow> {
-  await database
+  const inserted = await database
     .prepare(
       `INSERT INTO chat_accounts (
         user_id,
@@ -62,12 +62,30 @@ export async function getOrCreateChatAccount(
         stripe_subscription_id,
         stripe_price_id,
         stripe_checkout_session_id
-      )
+       )
        VALUES (?, 'guest', NULL, 0, ?, 'active', 'stripe', NULL, NULL, NULL, NULL)
-       ON CONFLICT(user_id) DO NOTHING`,
+       ON CONFLICT(user_id) DO NOTHING
+       RETURNING
+         user_id AS userId,
+         auth_provider AS authProvider,
+         auth_subject AS authSubject,
+         auth_email_verified AS authEmailVerified,
+         email,
+         display_name AS displayName,
+         plan,
+         billing_status AS billingStatus,
+         billing_provider AS billingProvider,
+         stripe_customer_id AS stripeCustomerId,
+         stripe_subscription_id AS stripeSubscriptionId,
+         stripe_price_id AS stripePriceId,
+         stripe_checkout_session_id AS stripeCheckoutSessionId,
+         created_at AS createdAt,
+         updated_at AS updatedAt`,
     )
-  .run(userId, seedPlan)
-  return (await getChatAccount(database, userId))!
+    .get(userId, seedPlan) as ChatAccountRow | undefined
+  // A conflict means the account already existed; only that path needs the
+  // follow-up read. New guest accounts are returned by INSERT ... RETURNING.
+  return inserted ?? (await getChatAccount(database, userId))!
 }
 
 export async function getChatAccount(
