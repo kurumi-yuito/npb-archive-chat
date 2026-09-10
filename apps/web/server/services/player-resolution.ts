@@ -239,7 +239,7 @@ function detectYearShift(
   const note = yearGap >= 1
     ? `${requestedYear}年はNPBに在籍していないため、代わりに最終在籍年（${latestYear}年）のデータを表示します。`
     : `${requestedYear}年の記録は確認できないため、代わりに最終確認年（${latestYear}年）のデータを表示します。`
-  return { targetYear: latestYear, note }
+  return { targetYear: latestYear, note: `${candidate.name.replace(/\s+/gu, '')}について、${note}` }
 }
 
 function applyYearShift(structuredQuery: ChatStructuredQuery, targetYear: number): ChatStructuredQuery {

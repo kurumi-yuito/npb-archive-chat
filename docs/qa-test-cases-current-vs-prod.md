@@ -1,5 +1,15 @@
 # QAテストケース一覧 - 現行本番との差分
 
+
+## 2026-09-10 Acceptance D1 read監査（進行中）
+
+- Release Ready未達。182件QAはAcceptance Pass後に実行する。
+- 監査詳細: [acceptance-d1-read-audit-20260910.md](acceptance-d1-read-audit-20260910.md)。
+- 本番Version `1fc18fbf-4050-46fb-9cc4-3c688d43c6c2` でFail IDのみ再実行。B01〜B03 Pass、B04 Fail（HTTP 200）。その他43件はこの再実行で未実行。
+- 本番ログ: `data/logs/qa-acceptance-B01-1789004802214.json`、`data/logs/qa-acceptance-selected-cases-1789004898387.json`。
+- B04の本番summary: 「【注意】2026年はNPBに在籍していないため、代わりに最終在籍年（2017年）のデータを表示します。2017年3月31日の一軍・北海道日本ハムファイターズ 大谷の打撃成績は、4打数2安打でした。該当数: 20件」（改行のみ省略）。
+- 182件の既存A・期待値は変更していない。過去47件のrows_readは未記録のため不明。
+
 ## 原因A・Bの共通運用原因（2026-09-07・未完了）
 
 - 現行Deploy Version: `9099380b-9256-4671-a893-2bc3baa10284`

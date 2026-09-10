@@ -173,6 +173,8 @@ acceptanceRun: for (const conversation of selected) {
       filters: body?.structured_query?.filters ?? null,
       summary: body?.answer?.summary ?? null,
       executionMetadata: body?.answer?.execution_metadata ?? null,
+      d1ReadAudit: JSON.parse(response?.headers.get('x-npb-d1-read-audit') ?? 'null'),
+      responseError: resultError(body),
       error: requestError,
     }
     const pattern = acceptancePatterns[turn.id]
@@ -270,4 +272,8 @@ async function waitForReady() {
 
 function oneLine(value) {
   return typeof value === 'string' ? value.replace(/\s+/gu, ' ').slice(0, 180) : '(summary null)'
+}
+
+function resultError(body) {
+  return body?.error === true || body?.statusCode >= 400 ? body : null
 }

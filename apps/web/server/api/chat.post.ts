@@ -1,3 +1,5 @@
+import { withD1ReadAudit } from '../utils/d1-read-audit'
+import { lazyChatQueryService } from '../utils/lazy-chat-query-service'
 import { getHeader, readBody, setResponseHeader } from 'h3'
 import { ZodError } from 'zod'
 import {
@@ -31,7 +33,7 @@ import { captureDataPublication, DataPublicationChangedError } from '../utils/da
 import { resolveQaFixtureMode } from '../utils/qa-fixture-mode'
 import { getServerChatQueryService, getServerMetaDatabase } from '../utils/server-database'
 
-export default defineEventHandler(async (event) => {
+export default defineEventHandler(async (event) => withD1ReadAudit(async () => {
   const config = useRuntimeConfig(event)
   const openAiCalls = { planner: 0, answer: 0, other: 0 }
   const publishOpenAiCallCounts = () => {
@@ -139,11 +141,15 @@ export default defineEventHandler(async (event) => {
           ? cloudflareEnv.CHAT_ALLOW_HEURISTIC_FALLBACK
           : config.chatAllowHeuristicFallback,
       )
-      const queryService = await getServerChatQueryService(
-        event,
-        String(config.npbSqlitePath ?? ''),
-        typeof config.npbSqliteDir === 'string' ? config.npbSqliteDir : '',
-      )
+      let assertSamePublication = async () => {}
+      const queryService = lazyChatQueryService(async () => {
+        assertSamePublication = await captureDataPublication(cloudflareEnv?.NPB_DB)
+        return getServerChatQueryService(
+          event,
+          String(config.npbSqlitePath ?? ''),
+          typeof config.npbSqliteDir === 'string' ? config.npbSqliteDir : '',
+        )
+      })
       const queryParser = fixtureMode.enabled
         ? async () => body.fixture_structured_query!
         : createChatQueryParser({
@@ -161,7 +167,6 @@ export default defineEventHandler(async (event) => {
         generateFinalAnswer: undefined,
         allowFinalAnswerFallback: true,
       })
-      const assertSamePublication = await captureDataPublication(cloudflareEnv?.NPB_DB)
       let core: Awaited<ReturnType<typeof service.answerQuestion>>
       try {
         core = await service.answerQuestion(body.message, {
@@ -222,4 +227,7 @@ export default defineEventHandler(async (event) => {
     }
     throw error
   }
-})
+}, (audit) => {
+  setResponseHeader(event, 'x-npb-d1-read-audit', JSON.stringify({ ...audit, entries: undefined }))
+  console.log('[d1-read-audit]', JSON.stringify({ caseId: getHeader(event, 'user-agent'), ...audit }))
+}))

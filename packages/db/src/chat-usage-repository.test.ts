@@ -12,6 +12,25 @@ const config = { capacity: 10, refillIntervalSeconds: 2 * 60 * 60 }
 const start = Math.floor(new Date('2026-08-08T00:00:00+09:00').getTime() / 1000)
 
 describe('chat usage token bucket', () => {
+  it('returns committed consumption with one statement for new, existing and exhausted buckets', async () => {
+    const database = openDatabase()
+    try {
+      migrateDatabase(database)
+      const query = sqliteDatabaseToQuery(database)
+      let statements = 0
+      const counted = { ...query, prepare: (sql: string) => { statements += 1; return query.prepare(sql) } }
+      const small = { ...config, capacity: 2 }
+      expect((await consumeChatUsageToken(counted, 'account:single', small, start))?.tokens).toBe(1)
+      expect(statements).toBe(1)
+      expect((await consumeChatUsageToken(counted, 'account:single', small, start))?.tokens).toBe(0)
+      expect(statements).toBe(2)
+      expect(await consumeChatUsageToken(counted, 'account:single', small, start)).toBeNull()
+      expect(statements).toBe(3)
+      expect((await consumeChatUsageToken(counted, 'account:single', small, start + config.refillIntervalSeconds))?.tokens).toBe(0)
+      expect(statements).toBe(4)
+    } finally { database.close() }
+  })
+
   it('starts full, consumes to zero, and rejects the next request', async () => {
     const database = openDatabase()
     try {

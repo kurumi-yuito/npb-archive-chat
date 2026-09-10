@@ -3,7 +3,6 @@ import { sqliteDatabaseToQuery } from '@npb/db/query-driver'
 import {
   createMultiYearQueryService,
   createSingleDatabaseQueryService,
-  getNormalizedRuntimeMetadata,
   type ChatQueryService,
 } from '@npb/db'
 import type { D1Database } from '@cloudflare/workers-types'
@@ -22,7 +21,7 @@ let sqliteCache: { path: string; db: QueryDatabase } | null = null
 let d1Cache: QueryDatabase | null = null
 let metaD1Cache: QueryDatabase | null = null
 let multiYearCache: { dir: string; service: ChatQueryService } | null = null
-let normalizedRuntimeValidated = false
+let normalizedRuntimeValidation: Promise<void> | null = null
 
 async function getSqlite() {
   await import('node:sqlite')
@@ -43,13 +42,24 @@ export async function getServerDatabase(
     if (!d1Cache) {
       d1Cache = createQueryDatabaseFromD1(d1)
     }
-    if (!normalizedRuntimeValidated) {
-      const metadata = await getNormalizedRuntimeMetadata(d1Cache)
-      if (metadata.schema_version !== 'phase5-normalized-v1' || metadata.runtime_contract !== 'normalized-only') {
-        throw new Error('NPB_DB must be normalized D1 runtime schema phase5-normalized-v1')
-      }
-      normalizedRuntimeValidated = true
+    if (!normalizedRuntimeValidation) {
+      const database = d1Cache
+      normalizedRuntimeValidation = (async () => {
+        // This binding requires the normalized schema; absence must fail closed.
+        // Optional-table discovery scans sqlite_master and adds no information here.
+        const rows = await database.prepare(
+          "SELECT metadata_key AS key, metadata_value AS value FROM normalized_runtime_metadata WHERE metadata_key IN ('schema_version', 'runtime_contract')",
+        ).all() as Array<{ key: string; value: string }>
+        const metadata = Object.fromEntries(rows.map((row) => [row.key, row.value]))
+        if (metadata.schema_version !== 'phase5-normalized-v1' || metadata.runtime_contract !== 'normalized-only') {
+          throw new Error('NPB_DB must be normalized D1 runtime schema phase5-normalized-v1')
+        }
+      })().catch((error) => {
+        normalizedRuntimeValidation = null
+        throw error
+      })
     }
+    await normalizedRuntimeValidation
     return d1Cache
   }
 
@@ -77,7 +87,7 @@ export async function getServerMetaDatabase(
   const d1 = cloudflare?.env?.NPB_META_DB
   if (d1) {
     if (!metaD1Cache) {
-      metaD1Cache = createQueryDatabaseFromD1(d1)
+      metaD1Cache = createQueryDatabaseFromD1(d1, 'meta')
     }
     return metaD1Cache
   }
