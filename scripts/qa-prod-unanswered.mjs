@@ -12,6 +12,10 @@ const httpRetryDelaysMs = process.env.QA_DISABLE_HTTP_RETRIES === '1'
   ? []
   : [5000, 15000, 30000, 60000]
 
+function capabilityFetch(url, options = {}) {
+  return fetch(url, { ...options, signal: options.signal ?? AbortSignal.timeout(fetchTimeoutMs) })
+}
+
 let startId = null
 let endId = null
 let fixturePath = null
@@ -541,7 +545,7 @@ async function runCapabilityCheck(testCase, userId) {
   try {
     if (apiContractCases.has(testCase.id)) {
       const url = `${baseUrl}/api/chat`
-      const response = await fetch(url, {
+      const response = await capabilityFetch(url, {
         method: 'POST',
         headers: {
           'content-type': 'application/json',
@@ -562,12 +566,12 @@ async function runCapabilityCheck(testCase, userId) {
     }
     if (uiCapabilityCases.has(testCase.id)) {
       const url = `${baseUrl}/chat`
-      const response = await fetch(url, { headers: { 'user-agent': `npb-production-qa/${testCase.id}` } })
+      const response = await capabilityFetch(url, { headers: { 'user-agent': `npb-production-qa/${testCase.id}` } })
       const html = await response.text()
       const stylesheetUrls = [...html.matchAll(/<link[^>]+rel=["']stylesheet["'][^>]+href=["']([^"']+)["']/gi)]
         .map((match) => new URL(match[1], url).toString())
       const stylesheetBodies = await Promise.all(stylesheetUrls.map(async (stylesheetUrl) => {
-        const stylesheetResponse = await fetch(stylesheetUrl, { headers: { 'user-agent': `npb-production-qa/${testCase.id}` } })
+        const stylesheetResponse = await capabilityFetch(stylesheetUrl, { headers: { 'user-agent': `npb-production-qa/${testCase.id}` } })
         return stylesheetResponse.ok ? stylesheetResponse.text() : ''
       }))
       const compactHtml = `${html}\n${stylesheetBodies.join('\n')}`.replace(/\s+/g, '')
@@ -588,7 +592,7 @@ async function runCapabilityCheck(testCase, userId) {
     }
     if (usageCapabilityCases.has(testCase.id)) {
       const usageUrl = `${baseUrl}/api/chat/usage`
-      const response = await fetch(usageUrl, {
+      const response = await capabilityFetch(usageUrl, {
         headers: { 'user-agent': `npb-production-qa/${testCase.id}-${userId}` },
       })
       const usage = await response.json()
@@ -617,7 +621,7 @@ async function runCapabilityCheck(testCase, userId) {
         const remainingSequence = []
         const successfulRequests = testCase.id === 'Q-165' ? usage.limit : testCase.id === 'Q-173' ? 2 : 1
         for (let attempt = 0; attempt < successfulRequests; attempt += 1) {
-          const chatResponse = await fetch(`${baseUrl}/api/chat`, {
+          const chatResponse = await capabilityFetch(`${baseUrl}/api/chat`, {
             method: 'POST',
             headers: {
               'content-type': 'application/json',
@@ -640,7 +644,7 @@ async function runCapabilityCheck(testCase, userId) {
           `usage did not decrement immediately: ${remainingSequence.join(',')}`,
         )
         if (testCase.id === 'Q-165') {
-          const limitedResponse = await fetch(`${baseUrl}/api/chat`, {
+          const limitedResponse = await capabilityFetch(`${baseUrl}/api/chat`, {
             method: 'POST',
             headers: { 'content-type': 'application/json', 'user-agent': userAgent, cookie },
             body: JSON.stringify({ message: 'それ詳しく' }),
@@ -652,7 +656,7 @@ async function runCapabilityCheck(testCase, userId) {
           assert(limitedPayload?.data?.usage?.nextTokenAt, '429 response does not contain nextTokenAt')
         }
         if (testCase.id === 'Q-170') {
-          const deletedCookieResponse = await fetch(usageUrl, { headers: { 'user-agent': userAgent } })
+          const deletedCookieResponse = await capabilityFetch(usageUrl, { headers: { 'user-agent': userAgent } })
           const deletedCookieUsage = await deletedCookieResponse.json()
           evidence.usageFlow.afterCookieDeletion = deletedCookieUsage
           assert(deletedCookieUsage.remaining === usage.limit - 1, 'guest guard reset after deleting the account cookie')
@@ -661,7 +665,7 @@ async function runCapabilityCheck(testCase, userId) {
 
       if (['Q-166', 'Q-167', 'Q-169', 'Q-171'].includes(testCase.id)) {
         const plansUrl = `${baseUrl}/api/billing/plans`
-        const plansResponse = await fetch(plansUrl)
+        const plansResponse = await capabilityFetch(plansUrl)
         const plans = await plansResponse.json()
         checkedUrls.push(plansUrl)
         evidence.plans = { status: plansResponse.status, body: plans }

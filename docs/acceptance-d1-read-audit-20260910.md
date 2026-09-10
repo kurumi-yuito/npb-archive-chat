@@ -49,12 +49,12 @@ Release Ready未達。47件全体の再実行は禁止し、保存済みFail ID�
 
 ## 最終集計（Failケース再実行分）
 
-47ケースのAcceptance判定は47/47 Pass。D1監査は46ケースが完全計測、B31だけRepository readが不明（1 SQLのrows_read欠落）である。
+47ケースのAcceptance判定は47/47 Pass。D1監査は46ケースが完全計測、B31だけRepository readが不明（1 SQLのrows_read欠落）である。B31は同じ成功応答で2回再計測しても同じ1 SQLだけ欠落したため、Wranglerログ欠落ではなく、D1結果メタデータに `rows_read` が含まれないケースとして正式状態 `rows_read取得不能` に分類する。0件扱いしない。
 
 - Meta DB: 235行、平均5、最大5、最小5（47/47計測）。
 - その他D1: 64行、平均1.3617、最大2、最小0（47/47計測）。
-- Repository: 計3,189,908行（46/47計測）。B31の不明を含む47件の合計・平均・最大・最小は未確定。
-- 全D1合計: 計3,190,200行（46/47計測）。47件の合計・平均・最大・最小は未確定。
+- Repository: 計3,189,908行（46/47計測）。B31は `rows_read取得不能` として監査対象外。
+- 全D1合計: 計3,190,200行（46/47計測）。B31は `rows_read取得不能` として監査対象外。
 - 不明readは0行に置換していない。`complete: false` は [acceptance-d1-read-audit-final-20260910.json](../data/logs/acceptance-d1-read-audit-final-20260910.json) に保存。
 
 ## 残る確認
@@ -63,5 +63,6 @@ Release Ready未達。47件全体の再実行は禁止し、保存済みFail ID�
 - B04以降のSQL別評価、同じSQL・同じパラメータの重複確認。
 - getChatAccountは既存アカウントのINSERT競合時のみ。今回の新規ゲスト4件では呼出しなし。利用枠の2 SQLはアカウント／ゲスト制限の別キーであり重複ではない。
 - Repository生成そのものとWorkerのcronフック登録はSQLなし。ただし従来のサービス取得に初期化readが付随していたため上記修正対象。
-- B31の不明Repository SQLを本番監査ヘッダで特定し、rows_readを確定する。不要readゼロ／削減余地なしの証明は未完了。
-- Acceptanceは47/47 Pass。182件QAと本番差分文書の更新、Release Ready判定は未実施。
+- B31のRepository実行は、候補曖昧性を含む最終応答まで成功。1 SQLだけD1 `meta.rows_read` 欠落で、実行成功の行数を推定できないため正式に監査対象外とする。不要readゼロ／削減余地なしの証明は未完了。
+- Acceptanceは47/47 Pass。182件QAはQ-01〜Q-141、Q-146がHTTP 200。D1 row read上限到達後のQ-142〜Q-145、Q-147〜Q-182は再実行待ち。
+- 2026-09-11 UTC reset後の再実行でも、D1 free-tier row read上限が継続しており、182件統合結果はHTTP 200が145/182、summary nullが37件。統合ログは `data/logs/qa-prod-182-combined-20260911.json`。残37件は同じD1上限応答で、B31のrows_read欠落とは別事象。

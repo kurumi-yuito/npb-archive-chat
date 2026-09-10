@@ -1,0 +1,573 @@
+{
+  "baseline": "data/logs/qa-acceptance-all-1788960517410.json",
+  "reruns": [
+    "data/logs/qa-acceptance-B01-1789004802214.json",
+    "data/logs/qa-acceptance-selected-cases-1789004898387.json",
+    "data/logs/qa-acceptance-B04-1789025112814.json",
+    "data/logs/qa-acceptance-B05-1789025139432.json",
+    "data/logs/qa-acceptance-selected-cases-1789025203427.json"
+  ],
+  "duplicateIds": [],
+  "complete": true,
+  "excludedCases": [
+    "B31"
+  ],
+  "note": "Unrecorded/failed D1 measurements are unknown, never zero. A repeated successful response with one missing D1 meta.rows_read is formally excluded as rows_read取得不能; it is not Wrangler log loss and is not counted as zero. Reruns replace baseline cases by ID; baseline consumption cannot be reconstructed from later runs.",
+  "summary": {
+    "meta": {
+      "measuredCases": 47,
+      "totalCases": 47,
+      "sum": 235,
+      "average": 5,
+      "max": 5,
+      "min": 5,
+      "measuredSubtotal": 235
+    },
+    "repository": {
+      "measuredCases": 46,
+      "totalCases": 47,
+      "sum": null,
+      "average": null,
+      "max": null,
+      "min": null,
+      "measuredSubtotal": 3189908
+    },
+    "other": {
+      "measuredCases": 47,
+      "totalCases": 47,
+      "sum": 64,
+      "average": 1.3617021276595744,
+      "max": 2,
+      "min": 0,
+      "measuredSubtotal": 64
+    },
+    "total": {
+      "measuredCases": 46,
+      "totalCases": 47,
+      "sum": null,
+      "average": null,
+      "max": null,
+      "min": null,
+      "measuredSubtotal": 3190200
+    }
+  },
+  "cases": [
+    {
+      "id": "B01",
+      "source": "data/logs/qa-acceptance-B01-1789004802214.json",
+      "verdict": "pass",
+      "meta": 5,
+      "repository": 90,
+      "other": 2,
+      "total": 97,
+      "unknownStatements": 0,
+      "readStatus": "measured"
+    },
+    {
+      "id": "B02",
+      "source": "data/logs/qa-acceptance-selected-cases-1789004898387.json",
+      "verdict": "pass",
+      "meta": 5,
+      "repository": 88,
+      "other": 2,
+      "total": 95,
+      "unknownStatements": 0,
+      "readStatus": "measured"
+    },
+    {
+      "id": "B03",
+      "source": "data/logs/qa-acceptance-selected-cases-1789004898387.json",
+      "verdict": "pass",
+      "meta": 5,
+      "repository": 88,
+      "other": 2,
+      "total": 95,
+      "unknownStatements": 0,
+      "readStatus": "measured"
+    },
+    {
+      "id": "B04",
+      "source": "data/logs/qa-acceptance-B04-1789025112814.json",
+      "verdict": "pass",
+      "meta": 5,
+      "repository": 17902,
+      "other": 2,
+      "total": 17909,
+      "unknownStatements": 0,
+      "readStatus": "measured"
+    },
+    {
+      "id": "B05",
+      "source": "data/logs/qa-acceptance-B05-1789025139432.json",
+      "verdict": "pass",
+      "meta": 5,
+      "repository": 419907,
+      "other": 2,
+      "total": 419914,
+      "unknownStatements": 0,
+      "readStatus": "measured"
+    },
+    {
+      "id": "B06",
+      "source": "data/logs/qa-acceptance-selected-cases-1789025203427.json",
+      "verdict": "pass",
+      "meta": 5,
+      "repository": 2899,
+      "other": 2,
+      "total": 2906,
+      "unknownStatements": 0,
+      "readStatus": "measured"
+    },
+    {
+      "id": "B07",
+      "source": "data/logs/qa-acceptance-selected-cases-1789025203427.json",
+      "verdict": "pass",
+      "meta": 5,
+      "repository": 2875,
+      "other": 2,
+      "total": 2882,
+      "unknownStatements": 0,
+      "readStatus": "measured"
+    },
+    {
+      "id": "B08",
+      "source": "data/logs/qa-acceptance-selected-cases-1789025203427.json",
+      "verdict": "pass",
+      "meta": 5,
+      "repository": 2254,
+      "other": 2,
+      "total": 2261,
+      "unknownStatements": 0,
+      "readStatus": "measured"
+    },
+    {
+      "id": "B09",
+      "source": "data/logs/qa-acceptance-selected-cases-1789025203427.json",
+      "verdict": "pass",
+      "meta": 5,
+      "repository": 217117,
+      "other": 2,
+      "total": 217124,
+      "unknownStatements": 0,
+      "readStatus": "measured"
+    },
+    {
+      "id": "B10",
+      "source": "data/logs/qa-acceptance-selected-cases-1789025203427.json",
+      "verdict": "pass",
+      "meta": 5,
+      "repository": 0,
+      "other": 0,
+      "total": 5,
+      "unknownStatements": 0,
+      "readStatus": "measured"
+    },
+    {
+      "id": "B11",
+      "source": "data/logs/qa-acceptance-selected-cases-1789025203427.json",
+      "verdict": "pass",
+      "meta": 5,
+      "repository": 17419,
+      "other": 2,
+      "total": 17426,
+      "unknownStatements": 0,
+      "readStatus": "measured"
+    },
+    {
+      "id": "B12",
+      "source": "data/logs/qa-acceptance-selected-cases-1789025203427.json",
+      "verdict": "pass",
+      "meta": 5,
+      "repository": 217093,
+      "other": 2,
+      "total": 217100,
+      "unknownStatements": 0,
+      "readStatus": "measured"
+    },
+    {
+      "id": "B13",
+      "source": "data/logs/qa-acceptance-selected-cases-1789025203427.json",
+      "verdict": "pass",
+      "meta": 5,
+      "repository": 3103,
+      "other": 2,
+      "total": 3110,
+      "unknownStatements": 0,
+      "readStatus": "measured"
+    },
+    {
+      "id": "B14",
+      "source": "data/logs/qa-acceptance-selected-cases-1789025203427.json",
+      "verdict": "pass",
+      "meta": 5,
+      "repository": 0,
+      "other": 0,
+      "total": 5,
+      "unknownStatements": 0,
+      "readStatus": "measured"
+    },
+    {
+      "id": "B15",
+      "source": "data/logs/qa-acceptance-selected-cases-1789025203427.json",
+      "verdict": "pass",
+      "meta": 5,
+      "repository": 0,
+      "other": 0,
+      "total": 5,
+      "unknownStatements": 0,
+      "readStatus": "measured"
+    },
+    {
+      "id": "B16",
+      "source": "data/logs/qa-acceptance-selected-cases-1789025203427.json",
+      "verdict": "pass",
+      "meta": 5,
+      "repository": 0,
+      "other": 0,
+      "total": 5,
+      "unknownStatements": 0,
+      "readStatus": "measured"
+    },
+    {
+      "id": "B17",
+      "source": "data/logs/qa-acceptance-selected-cases-1789025203427.json",
+      "verdict": "pass",
+      "meta": 5,
+      "repository": 203691,
+      "other": 2,
+      "total": 203698,
+      "unknownStatements": 0,
+      "readStatus": "measured"
+    },
+    {
+      "id": "B18",
+      "source": "data/logs/qa-acceptance-selected-cases-1789025203427.json",
+      "verdict": "pass",
+      "meta": 5,
+      "repository": 6212,
+      "other": 2,
+      "total": 6219,
+      "unknownStatements": 0,
+      "readStatus": "measured"
+    },
+    {
+      "id": "B19",
+      "source": "data/logs/qa-acceptance-selected-cases-1789025203427.json",
+      "verdict": "pass",
+      "meta": 5,
+      "repository": 198937,
+      "other": 2,
+      "total": 198944,
+      "unknownStatements": 0,
+      "readStatus": "measured"
+    },
+    {
+      "id": "B20",
+      "source": "data/logs/qa-acceptance-selected-cases-1789025203427.json",
+      "verdict": "pass",
+      "meta": 5,
+      "repository": 0,
+      "other": 0,
+      "total": 5,
+      "unknownStatements": 0,
+      "readStatus": "measured"
+    },
+    {
+      "id": "B21",
+      "source": "data/logs/qa-acceptance-selected-cases-1789025203427.json",
+      "verdict": "pass",
+      "meta": 5,
+      "repository": 0,
+      "other": 0,
+      "total": 5,
+      "unknownStatements": 0,
+      "readStatus": "measured"
+    },
+    {
+      "id": "B22",
+      "source": "data/logs/qa-acceptance-selected-cases-1789025203427.json",
+      "verdict": "pass",
+      "meta": 5,
+      "repository": 0,
+      "other": 0,
+      "total": 5,
+      "unknownStatements": 0,
+      "readStatus": "measured"
+    },
+    {
+      "id": "B23",
+      "source": "data/logs/qa-acceptance-selected-cases-1789025203427.json",
+      "verdict": "pass",
+      "meta": 5,
+      "repository": 2925,
+      "other": 2,
+      "total": 2932,
+      "unknownStatements": 0,
+      "readStatus": "measured"
+    },
+    {
+      "id": "B24",
+      "source": "data/logs/qa-acceptance-selected-cases-1789025203427.json",
+      "verdict": "pass",
+      "meta": 5,
+      "repository": 0,
+      "other": 0,
+      "total": 5,
+      "unknownStatements": 0,
+      "readStatus": "measured"
+    },
+    {
+      "id": "B25",
+      "source": "data/logs/qa-acceptance-selected-cases-1789025203427.json",
+      "verdict": "pass",
+      "meta": 5,
+      "repository": 18646,
+      "other": 2,
+      "total": 18653,
+      "unknownStatements": 0,
+      "readStatus": "measured"
+    },
+    {
+      "id": "B26",
+      "source": "data/logs/qa-acceptance-selected-cases-1789025203427.json",
+      "verdict": "pass",
+      "meta": 5,
+      "repository": 11353,
+      "other": 2,
+      "total": 11360,
+      "unknownStatements": 0,
+      "readStatus": "measured"
+    },
+    {
+      "id": "B27",
+      "source": "data/logs/qa-acceptance-selected-cases-1789025203427.json",
+      "verdict": "pass",
+      "meta": 5,
+      "repository": 3103,
+      "other": 2,
+      "total": 3110,
+      "unknownStatements": 0,
+      "readStatus": "measured"
+    },
+    {
+      "id": "B28",
+      "source": "data/logs/qa-acceptance-selected-cases-1789025203427.json",
+      "verdict": "pass",
+      "meta": 5,
+      "repository": 3107,
+      "other": 2,
+      "total": 3114,
+      "unknownStatements": 0,
+      "readStatus": "measured"
+    },
+    {
+      "id": "B29",
+      "source": "data/logs/qa-acceptance-selected-cases-1789025203427.json",
+      "verdict": "pass",
+      "meta": 5,
+      "repository": 0,
+      "other": 0,
+      "total": 5,
+      "unknownStatements": 0,
+      "readStatus": "measured"
+    },
+    {
+      "id": "B30",
+      "source": "data/logs/qa-acceptance-selected-cases-1789025203427.json",
+      "verdict": "pass",
+      "meta": 5,
+      "repository": 0,
+      "other": 0,
+      "total": 5,
+      "unknownStatements": 0,
+      "readStatus": "measured"
+    },
+    {
+      "id": "B31",
+      "source": "data/logs/qa-acceptance-selected-cases-1789025203427.json",
+      "verdict": "pass",
+      "meta": 5,
+      "repository": null,
+      "other": 2,
+      "total": null,
+      "unknownStatements": 1,
+      "readStatus": "rows_read取得不能"
+    },
+    {
+      "id": "B32",
+      "source": "data/logs/qa-acceptance-selected-cases-1789025203427.json",
+      "verdict": "pass",
+      "meta": 5,
+      "repository": 43603,
+      "other": 2,
+      "total": 43610,
+      "unknownStatements": 0,
+      "readStatus": "measured"
+    },
+    {
+      "id": "B33",
+      "source": "data/logs/qa-acceptance-selected-cases-1789025203427.json",
+      "verdict": "pass",
+      "meta": 5,
+      "repository": 0,
+      "other": 0,
+      "total": 5,
+      "unknownStatements": 0,
+      "readStatus": "measured"
+    },
+    {
+      "id": "MT01-Turn1",
+      "source": "data/logs/qa-acceptance-selected-cases-1789025203427.json",
+      "verdict": "pass",
+      "meta": 5,
+      "repository": 3103,
+      "other": 2,
+      "total": 3110,
+      "unknownStatements": 0,
+      "readStatus": "measured"
+    },
+    {
+      "id": "MT01-Turn2",
+      "source": "data/logs/qa-acceptance-selected-cases-1789025203427.json",
+      "verdict": "pass",
+      "meta": 5,
+      "repository": 18626,
+      "other": 2,
+      "total": 18633,
+      "unknownStatements": 0,
+      "readStatus": "measured"
+    },
+    {
+      "id": "MT01-Turn3",
+      "source": "data/logs/qa-acceptance-selected-cases-1789025203427.json",
+      "verdict": "pass",
+      "meta": 5,
+      "repository": 7044,
+      "other": 2,
+      "total": 7051,
+      "unknownStatements": 0,
+      "readStatus": "measured"
+    },
+    {
+      "id": "MT02-Turn1",
+      "source": "data/logs/qa-acceptance-selected-cases-1789025203427.json",
+      "verdict": "pass",
+      "meta": 5,
+      "repository": 217093,
+      "other": 2,
+      "total": 217100,
+      "unknownStatements": 0,
+      "readStatus": "measured"
+    },
+    {
+      "id": "MT02-Turn2",
+      "source": "data/logs/qa-acceptance-selected-cases-1789025203427.json",
+      "verdict": "pass",
+      "meta": 5,
+      "repository": 433850,
+      "other": 2,
+      "total": 433857,
+      "unknownStatements": 0,
+      "readStatus": "measured"
+    },
+    {
+      "id": "MT02-Turn3",
+      "source": "data/logs/qa-acceptance-selected-cases-1789025203427.json",
+      "verdict": "pass",
+      "meta": 5,
+      "repository": 235443,
+      "other": 2,
+      "total": 235450,
+      "unknownStatements": 0,
+      "readStatus": "measured"
+    },
+    {
+      "id": "MT03-Turn1",
+      "source": "data/logs/qa-acceptance-selected-cases-1789025203427.json",
+      "verdict": "pass",
+      "meta": 5,
+      "repository": 0,
+      "other": 0,
+      "total": 5,
+      "unknownStatements": 0,
+      "readStatus": "measured"
+    },
+    {
+      "id": "MT03-Turn2",
+      "source": "data/logs/qa-acceptance-selected-cases-1789025203427.json",
+      "verdict": "pass",
+      "meta": 5,
+      "repository": 0,
+      "other": 0,
+      "total": 5,
+      "unknownStatements": 0,
+      "readStatus": "measured"
+    },
+    {
+      "id": "MT03-Turn3",
+      "source": "data/logs/qa-acceptance-selected-cases-1789025203427.json",
+      "verdict": "pass",
+      "meta": 5,
+      "repository": 0,
+      "other": 0,
+      "total": 5,
+      "unknownStatements": 0,
+      "readStatus": "measured"
+    },
+    {
+      "id": "MT04-Turn1",
+      "source": "data/logs/qa-acceptance-selected-cases-1789025203427.json",
+      "verdict": "pass",
+      "meta": 5,
+      "repository": 12371,
+      "other": 2,
+      "total": 12378,
+      "unknownStatements": 0,
+      "readStatus": "measured"
+    },
+    {
+      "id": "MT04-Turn2",
+      "source": "data/logs/qa-acceptance-selected-cases-1789025203427.json",
+      "verdict": "pass",
+      "meta": 5,
+      "repository": 0,
+      "other": 0,
+      "total": 5,
+      "unknownStatements": 0,
+      "readStatus": "measured"
+    },
+    {
+      "id": "MT05-Turn1",
+      "source": "data/logs/qa-acceptance-selected-cases-1789025203427.json",
+      "verdict": "pass",
+      "meta": 5,
+      "repository": 217281,
+      "other": 2,
+      "total": 217288,
+      "unknownStatements": 0,
+      "readStatus": "measured"
+    },
+    {
+      "id": "MT05-Turn2",
+      "source": "data/logs/qa-acceptance-selected-cases-1789025203427.json",
+      "verdict": "pass",
+      "meta": 5,
+      "repository": 217702,
+      "other": 2,
+      "total": 217709,
+      "unknownStatements": 0,
+      "readStatus": "measured"
+    },
+    {
+      "id": "MT05-Turn3",
+      "source": "data/logs/qa-acceptance-selected-cases-1789025203427.json",
+      "verdict": "pass",
+      "meta": 5,
+      "repository": 434983,
+      "other": 2,
+      "total": 434990,
+      "unknownStatements": 0,
+      "readStatus": "measured"
+    }
+  ]
+}

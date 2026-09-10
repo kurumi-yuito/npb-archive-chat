@@ -9,6 +9,7 @@
 - 本番ログ: `data/logs/qa-acceptance-B01-1789004802214.json`、`data/logs/qa-acceptance-selected-cases-1789004898387.json`。
 - B04の本番summary: 「【注意】2026年はNPBに在籍していないため、代わりに最終在籍年（2017年）のデータを表示します。2017年3月31日の一軍・北海道日本ハムファイターズ 大谷の打撃成績は、4打数2安打でした。該当数: 20件」（改行のみ省略）。
 - 182件の既存A・期待値は変更していない。過去47件のrows_readは未記録のため不明。
+- 182件本番QA統合ログ `data/logs/qa-prod-182-combined-20260911.json`: 182件収録、HTTP 200は145件、summary nullは37件。残37件はD1 free-tier row read上限の503/500であり、QA完了条件（全件HTTP 200・summary非null）を満たさない。
 
 ## 原因A・Bの共通運用原因（2026-09-07・未完了）
 

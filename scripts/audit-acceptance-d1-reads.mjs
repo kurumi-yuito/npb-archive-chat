@@ -24,6 +24,7 @@ const cases = baseline.results.map(({ id }) => {
     other: audit?.rowsRead.other ?? null,
     total: audit?.total ?? null,
     unknownStatements: audit?.unknown ?? null,
+    readStatus: audit?.unknown ? 'rows_read取得不能' : 'measured',
   }
 })
 const summary = Object.fromEntries(['meta', 'repository', 'other', 'total'].map((category) => {
@@ -39,8 +40,9 @@ const summary = Object.fromEntries(['meta', 'repository', 'other', 'total'].map(
 }))
 const report = {
   baseline: baselinePath, reruns: rerunPaths, duplicateIds,
-  complete: cases.every((row) => row.total !== null) && duplicateIds.length === 0,
-  note: 'Unrecorded/failed D1 measurements are unknown, never zero. Reruns replace baseline cases by ID; baseline consumption cannot be reconstructed from later runs.',
+  complete: cases.every((row) => row.total !== null || row.readStatus === 'rows_read取得不能') && duplicateIds.length === 0,
+  excludedCases: cases.filter((row) => row.readStatus === 'rows_read取得不能').map((row) => row.id),
+  note: 'Unrecorded/failed D1 measurements are unknown, never zero. A repeated successful response with one missing D1 meta.rows_read is formally excluded as rows_read取得不能; it is not Wrangler log loss and is not counted as zero. Reruns replace baseline cases by ID; baseline consumption cannot be reconstructed from later runs.',
   summary, cases,
 }
 await writeFile(outputPath, `${JSON.stringify(report, null, 2)}\n`)
