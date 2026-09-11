@@ -16,6 +16,19 @@ export function buildProUsageInfo(now = new Date()): ChatUsageInfo {
   }
 }
 
+export function buildUnavailableUsageInfo(plan: 'free' | 'pro' = 'free', now = new Date()): ChatUsageInfo {
+  return {
+    plan,
+    timezone: 'Asia/Tokyo',
+    asOf: toJstIso(now),
+    limit: null,
+    remaining: null,
+    refillIntervalMinutes: null,
+    nextTokenAt: null,
+    fullAt: null,
+  }
+}
+
 export function buildFreeUsageInfo(
   bucket: BucketSnapshot,
   config: ChatRuntimeUsageConfig,

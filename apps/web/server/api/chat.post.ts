@@ -17,6 +17,7 @@ import { parseStructuredQueryFromMessageStub } from '../services/chat-query-pars
 import {
   buildFreeUsageInfo,
   buildProUsageInfo,
+  buildUnavailableUsageInfo,
 } from '../utils/build-chat-usage'
 import {
   parseBoolean,
@@ -80,7 +81,10 @@ export default defineEventHandler(async (event) => withD1ReadAudit(async () => {
     const billingConfig = resolveChatRuntimeStripeBillingConfig(config, event)
     const identity = parseChatIdentity(event, authConfig)
     const metaDatabase = await getServerMetaDatabase(event, config.npbSqlitePath)
-    const account = await getEffectiveChatAccount(
+    let account: Awaited<ReturnType<typeof getEffectiveChatAccount>> | null = null
+    let usageUnavailable = false
+    try {
+      account = await getEffectiveChatAccount(
       metaDatabase,
       identity.userId,
       authConfig.defaultPlan ?? 'free',
@@ -88,13 +92,18 @@ export default defineEventHandler(async (event) => withD1ReadAudit(async () => {
       authConfig.googleAuthConfigured,
       usageConfig.capacity,
       usageConfig.refillIntervalMinutes,
-    )
+      )
+    } catch (error) {
+      usageUnavailable = true
+      console.error('[chat.post] account persistence unavailable; continuing', error)
+    }
     const now = new Date()
     const nowSeconds = Math.floor(now.getTime() / 1000)
     const accountBucketKey = `account:${identity.userId}`
     const consumedBucketKeys: string[] = []
     let effectiveBucket: { tokens: number; lastRefillAt: number } | null = null
-    if (!isEffectivePro(account)) {
+    try {
+    if (account && !isEffectivePro(account)) {
       const accountBucket = await consumeChatUsageToken(metaDatabase, accountBucketKey, usageConfig, nowSeconds)
       if (!accountBucket) {
         const snapshot = await getChatUsageBucket(metaDatabase, accountBucketKey, usageConfig, nowSeconds)
@@ -119,6 +128,16 @@ export default defineEventHandler(async (event) => withD1ReadAudit(async () => {
         consumedBucketKeys.push(guardKey)
         if (guardBucket.tokens < effectiveBucket.tokens) effectiveBucket = guardBucket
       }
+    }
+    } catch (error) {
+      if (error && typeof error === 'object' && 'statusCode' in error) throw error
+      usageUnavailable = true
+      account = null
+      console.error('[chat.post] usage persistence unavailable; continuing', error)
+      await Promise.all(consumedBucketKeys.map((bucketKey) =>
+        refundChatUsageToken(metaDatabase, bucketKey, usageConfig, nowSeconds).catch(() => {})))
+      consumedBucketKeys.length = 0
+      effectiveBucket = null
     }
 
     try {
@@ -197,9 +216,11 @@ export default defineEventHandler(async (event) => withD1ReadAudit(async () => {
       }
 
       await assertSamePublication()
-      const usage = !isEffectivePro(account) && effectiveBucket
-        ? buildFreeUsageInfo(effectiveBucket, usageConfig, now)
-        : buildProUsageInfo(now)
+      const usage = usageUnavailable || !account
+        ? buildUnavailableUsageInfo(authConfig.defaultPlan ?? 'free', now)
+        : !isEffectivePro(account) && effectiveBucket
+          ? buildFreeUsageInfo(effectiveBucket, usageConfig, now)
+          : buildProUsageInfo(now)
 
       publishOpenAiCallCounts()
       return chatResponseSchema.parse({ error: false, ...core, usage })
