@@ -307,14 +307,25 @@ async function searchNormalizedEvents(
     values.push(normalizedFilters.runner_name)
   }
   if (normalizedFilters.player_id) {
-    clauses.push(
-      `(
-        event_facts.batter_player_id = ?
-        OR event_facts.pitcher_player_id = ?
-        OR event_facts.runner_player_id = ?
-      )`,
-    )
-    values.push(normalizedFilters.player_id, normalizedFilters.player_id, normalizedFilters.player_id)
+    // A home run in a plate appearance can only be credited to the batter.
+    // Keeping this invariant in the predicate lets SQLite use the existing
+    // idx_events_batter_player index. The generic player search still covers
+    // pitcher/runner matches for all other event searches.
+    const isBatterOnlyHomeRunSearch = normalizedFilters.event_type === 'plate_appearance' &&
+      normalizedFilters.result_text_contains === 'ホームラン'
+    if (isBatterOnlyHomeRunSearch) {
+      clauses.push('event_facts.batter_player_id = ?')
+      values.push(normalizedFilters.player_id)
+    } else {
+      clauses.push(
+        `(
+          event_facts.batter_player_id = ?
+          OR event_facts.pitcher_player_id = ?
+          OR event_facts.runner_player_id = ?
+        )`,
+      )
+      values.push(normalizedFilters.player_id, normalizedFilters.player_id, normalizedFilters.player_id)
+    }
   } else if (normalizedFilters.player_name) {
     clauses.push('(batter_name.name = ? OR pitcher_name.name = ? OR runner_name.name = ?)')
     values.push(normalizedFilters.player_name, normalizedFilters.player_name, normalizedFilters.player_name)
