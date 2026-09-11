@@ -306,6 +306,20 @@ describe('chat-query-llm', () => {
   })
 
   it.each([
+    ['村上宗隆は今シーズン打率どのくらい？', '村上宗隆'],
+    ['ヤクルトの村上の今シーズン打率と本塁打数を教えてください', '村上'],
+    ['村上宗隆の2019年から2025年の年別本塁打数を教えてください', '村上宗隆'],
+  ])('restores a dropped batting subject when planner emits only year for %s', (message, playerName) => {
+    expect(normalizeStructuredQueryFromLlmMessage(message, {
+      intent: 'aggregate_batting',
+      filters: { year: 2025 },
+    })).toMatchObject({
+      intent: 'aggregate_batting',
+      filters: { player_name: playerName },
+    })
+  })
+
+  it.each([
     ['藤浪の直近試合の内容は', 1],
     ['藤浪の直近の試合はどうだった', 1],
     ['藤浪の最新登板を教えて', 1],

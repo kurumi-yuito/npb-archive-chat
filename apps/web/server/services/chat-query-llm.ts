@@ -449,6 +449,21 @@ function normalizeExplicitPlannerContract(
     changed = true
   }
 
+  // Some season batting questions were returned by the planner with only a
+  // year filter (for example, "村上宗隆は今シーズン..."). Recover the
+  // explicit subject from the user message before entity resolution runs so
+  // the aggregate query is scoped to that player.
+  const hasPersonFilter = ['player_name', 'pitcher_name', 'batter_name', 'runner_name']
+    .some((field) => typeof filters[field] === 'string' && String(filters[field]).trim().length > 0)
+  const hasBattingSignal = /打率|本塁打|ホームラン|打点|安打|OPS|出塁率|長打率/u.test(message)
+  if (isSeasonBattingAggregate && hasBattingSignal && !hasPersonFilter) {
+    const subject = extractExplicitBattingSubject(message)
+    if (subject) {
+      filters.player_name = subject
+      changed = true
+    }
+  }
+
   if (/年別/u.test(message) && /本塁打|ホームラン/u.test(message)) {
     if (intent !== 'aggregate_batting' || filters.group_by !== 'year' || typeof filters.limit !== 'number' || filters.limit < 100) {
       intent = 'aggregate_batting'
@@ -619,6 +634,19 @@ function restoreExplicitPersonName(message: string, parsedName: string): string 
   if (!candidate || !candidate.startsWith(compactParsedName)) return null
   if (!/^[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}ー]+$/u.test(candidate)) return null
   return candidate.length > compactParsedName.length ? candidate : null
+}
+
+function extractExplicitBattingSubject(message: string): string | null {
+  const normalized = message.normalize('NFKC').replace(/\s/gu, '')
+  const matches = [...normalized.matchAll(/(?:^|の)([\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}ー]{2,8})(?:は|が|の|$)/gu)]
+  const excluded = new Set(['今シーズン', '今シーズンの', '今年', '今季', '成績', '打率', '本塁打'])
+  for (const match of matches.reverse()) {
+    const candidate = match[1]?.split('の').at(-1) ?? ''
+    if (candidate && !excluded.has(candidate) && !/シーズン|成績|本塁打|ホームラン/u.test(candidate)) {
+      return candidate
+    }
+  }
+  return null
 }
 
 function extractExplicitYearRange(message: string): { yearFrom: number; yearTo: number } | null {
