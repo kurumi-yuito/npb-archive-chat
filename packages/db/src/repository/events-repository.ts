@@ -76,7 +76,6 @@ export async function searchEvents(
     "events.result_text NOT LIKE 'Play-by-play was not ingested from this source%'",
   ]
   const values: Array<string | number> = []
-
   if (normalizedFilters.game_date) {
     clauses.push('games.date = ?')
     values.push(normalizedFilters.game_date)
@@ -246,6 +245,9 @@ async function searchNormalizedEvents(
     "result_codes.result_text NOT LIKE 'Play-by-play was not ingested from this source%'",
   ]
   const values: Array<string | number> = []
+  const isBatterOnlyHomeRunSearch = normalizedFilters.player_id !== undefined &&
+    normalizedFilters.event_type === 'plate_appearance' &&
+    normalizedFilters.result_text_contains === 'ホームラン'
 
   if (normalizedFilters.game_date) {
     clauses.push('game_facts.game_date = ?')
@@ -311,8 +313,6 @@ async function searchNormalizedEvents(
     // Keeping this invariant in the predicate lets SQLite use the existing
     // idx_events_batter_player index. The generic player search still covers
     // pitcher/runner matches for all other event searches.
-    const isBatterOnlyHomeRunSearch = normalizedFilters.event_type === 'plate_appearance' &&
-      normalizedFilters.result_text_contains === 'ホームラン'
     if (isBatterOnlyHomeRunSearch) {
       clauses.push('event_facts.batter_player_id = ?')
       values.push(normalizedFilters.player_id)
@@ -346,7 +346,7 @@ async function searchNormalizedEvents(
 
   const rows = await database
     .prepare(
-      `${normalizedEventSelectSql()}
+      `${normalizedEventSelectSql(isBatterOnlyHomeRunSearch)}
       WHERE ${clauses.join(' AND ')}
       ORDER BY game_facts.game_date ASC, event_facts.game_id ASC, event_facts.sequence ASC
       LIMIT ?`,
@@ -355,7 +355,7 @@ async function searchNormalizedEvents(
   return rows as EventRow[]
 }
 
-function normalizedEventSelectSql(): string {
+function normalizedEventSelectSql(useBatterPlayerIndex = false): string {
   return `SELECT
         event_facts.game_id AS gameId,
         game_facts.game_date AS gameDate,
@@ -375,7 +375,7 @@ function normalizedEventSelectSql(): string {
           'runner_url', CASE WHEN event_facts.runner_player_id IS NOT NULL THEN 'https://npb.jp/bis/players/' || event_facts.runner_player_id || '.html' ELSE NULL END
         ) AS eventAttributesJson,
         source_snapshot_facts.source_url AS sourceUrl
-      FROM event_facts
+      FROM event_facts${useBatterPlayerIndex ? ' INDEXED BY idx_events_batter_player' : ''}
       INNER JOIN game_facts ON game_facts.game_id = event_facts.game_id
       LEFT JOIN teams AS offense_team ON offense_team.team_id = event_facts.offense_team_id
       INNER JOIN event_types ON event_types.event_type_id = event_facts.event_type_id
