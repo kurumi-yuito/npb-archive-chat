@@ -80,18 +80,19 @@ export default defineEventHandler(async (event) => withD1ReadAudit(async () => {
     const usageConfig = resolveChatRuntimeUsageConfig(config, event)
     const billingConfig = resolveChatRuntimeStripeBillingConfig(config, event)
     const identity = parseChatIdentity(event, authConfig)
-    const metaDatabase = await getServerMetaDatabase(event, config.npbSqlitePath)
+    let metaDatabase: Awaited<ReturnType<typeof getServerMetaDatabase>> | null = null
     let account: Awaited<ReturnType<typeof getEffectiveChatAccount>> | null = null
     let usageUnavailable = false
     try {
+      metaDatabase = await getServerMetaDatabase(event, config.npbSqlitePath)
       account = await getEffectiveChatAccount(
-      metaDatabase,
-      identity.userId,
-      authConfig.defaultPlan ?? 'free',
-      billingConfig.billingConfigured,
-      authConfig.googleAuthConfigured,
-      usageConfig.capacity,
-      usageConfig.refillIntervalMinutes,
+        metaDatabase,
+        identity.userId,
+        authConfig.defaultPlan ?? 'free',
+        billingConfig.billingConfigured,
+        authConfig.googleAuthConfigured,
+        usageConfig.capacity,
+        usageConfig.refillIntervalMinutes,
       )
     } catch (error) {
       usageUnavailable = true
@@ -103,7 +104,7 @@ export default defineEventHandler(async (event) => withD1ReadAudit(async () => {
     const consumedBucketKeys: string[] = []
     let effectiveBucket: { tokens: number; lastRefillAt: number } | null = null
     try {
-    if (account && !isEffectivePro(account)) {
+    if (metaDatabase && account && !isEffectivePro(account)) {
       const accountBucket = await consumeChatUsageToken(metaDatabase, accountBucketKey, usageConfig, nowSeconds)
       if (!accountBucket) {
         const snapshot = await getChatUsageBucket(metaDatabase, accountBucketKey, usageConfig, nowSeconds)
@@ -134,8 +135,10 @@ export default defineEventHandler(async (event) => withD1ReadAudit(async () => {
       usageUnavailable = true
       account = null
       console.error('[chat.post] usage persistence unavailable; continuing', error)
-      await Promise.all(consumedBucketKeys.map((bucketKey) =>
-        refundChatUsageToken(metaDatabase, bucketKey, usageConfig, nowSeconds).catch(() => {})))
+      if (metaDatabase) {
+        await Promise.all(consumedBucketKeys.map((bucketKey) =>
+          refundChatUsageToken(metaDatabase!, bucketKey, usageConfig, nowSeconds).catch(() => {})))
+      }
       consumedBucketKeys.length = 0
       effectiveBucket = null
     }
@@ -225,8 +228,10 @@ export default defineEventHandler(async (event) => withD1ReadAudit(async () => {
       publishOpenAiCallCounts()
       return chatResponseSchema.parse({ error: false, ...core, usage })
     } catch (innerError) {
-      await Promise.all(consumedBucketKeys.map((bucketKey) =>
-        refundChatUsageToken(metaDatabase, bucketKey, usageConfig, nowSeconds).catch(() => {})))
+      if (metaDatabase) {
+        await Promise.all(consumedBucketKeys.map((bucketKey) =>
+          refundChatUsageToken(metaDatabase!, bucketKey, usageConfig, nowSeconds).catch(() => {})))
+      }
       throw innerError
     }
   } catch (error) {
