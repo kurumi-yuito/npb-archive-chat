@@ -1,0 +1,1258 @@
+{
+  "passedCases": 145,
+  "measuredCases": 137,
+  "excludedCases": [
+    {
+      "id": "Q-13",
+      "meta": 5,
+      "repository": null,
+      "other": 2,
+      "total": null,
+      "status": "rows_read取得不能"
+    },
+    {
+      "id": "Q-61",
+      "meta": 5,
+      "repository": null,
+      "other": 2,
+      "total": null,
+      "status": "rows_read取得不能"
+    },
+    {
+      "id": "Q-62",
+      "meta": 5,
+      "repository": null,
+      "other": 2,
+      "total": null,
+      "status": "rows_read取得不能"
+    },
+    {
+      "id": "Q-120",
+      "meta": 5,
+      "repository": null,
+      "other": 2,
+      "total": null,
+      "status": "rows_read取得不能"
+    },
+    {
+      "id": "Q-144",
+      "meta": null,
+      "repository": null,
+      "other": null,
+      "total": null,
+      "status": "capability-no-D1"
+    },
+    {
+      "id": "Q-145",
+      "meta": null,
+      "repository": null,
+      "other": null,
+      "total": null,
+      "status": "capability-no-D1"
+    },
+    {
+      "id": "Q-146",
+      "meta": null,
+      "repository": null,
+      "other": null,
+      "total": null,
+      "status": "capability-no-D1"
+    },
+    {
+      "id": "Q-168",
+      "meta": null,
+      "repository": null,
+      "other": null,
+      "total": null,
+      "status": "capability-no-D1"
+    }
+  ],
+  "cases": [
+    {
+      "id": "Q-01",
+      "meta": 5,
+      "repository": 82765,
+      "other": 2,
+      "total": 82772,
+      "status": "measured"
+    },
+    {
+      "id": "Q-02",
+      "meta": 5,
+      "repository": 79892,
+      "other": 2,
+      "total": 79899,
+      "status": "measured"
+    },
+    {
+      "id": "Q-03",
+      "meta": 5,
+      "repository": 13384,
+      "other": 2,
+      "total": 13391,
+      "status": "measured"
+    },
+    {
+      "id": "Q-04",
+      "meta": 5,
+      "repository": 203677,
+      "other": 2,
+      "total": 203684,
+      "status": "measured"
+    },
+    {
+      "id": "Q-05",
+      "meta": 5,
+      "repository": 183370,
+      "other": 2,
+      "total": 183377,
+      "status": "measured"
+    },
+    {
+      "id": "Q-06",
+      "meta": 5,
+      "repository": 22550,
+      "other": 2,
+      "total": 22557,
+      "status": "measured"
+    },
+    {
+      "id": "Q-07",
+      "meta": 5,
+      "repository": 209947,
+      "other": 2,
+      "total": 209954,
+      "status": "measured"
+    },
+    {
+      "id": "Q-08",
+      "meta": 5,
+      "repository": 5311600,
+      "other": 2,
+      "total": 5311607,
+      "status": "measured"
+    },
+    {
+      "id": "Q-09",
+      "meta": 5,
+      "repository": 12080,
+      "other": 2,
+      "total": 12087,
+      "status": "measured"
+    },
+    {
+      "id": "Q-10",
+      "meta": 5,
+      "repository": 11855,
+      "other": 2,
+      "total": 11862,
+      "status": "measured"
+    },
+    {
+      "id": "Q-11",
+      "meta": 5,
+      "repository": 11978,
+      "other": 2,
+      "total": 11985,
+      "status": "measured"
+    },
+    {
+      "id": "Q-12",
+      "meta": 5,
+      "repository": 12721,
+      "other": 2,
+      "total": 12728,
+      "status": "measured"
+    },
+    {
+      "id": "Q-13",
+      "meta": 5,
+      "repository": null,
+      "other": 2,
+      "total": null,
+      "status": "rows_read取得不能"
+    },
+    {
+      "id": "Q-14",
+      "meta": 5,
+      "repository": 970,
+      "other": 2,
+      "total": 977,
+      "status": "measured"
+    },
+    {
+      "id": "Q-15",
+      "meta": 5,
+      "repository": 217093,
+      "other": 2,
+      "total": 217100,
+      "status": "measured"
+    },
+    {
+      "id": "Q-16",
+      "meta": 5,
+      "repository": 217093,
+      "other": 2,
+      "total": 217100,
+      "status": "measured"
+    },
+    {
+      "id": "Q-17",
+      "meta": 5,
+      "repository": 66305,
+      "other": 2,
+      "total": 66312,
+      "status": "measured"
+    },
+    {
+      "id": "Q-18",
+      "meta": 5,
+      "repository": 94173,
+      "other": 2,
+      "total": 94180,
+      "status": "measured"
+    },
+    {
+      "id": "Q-19",
+      "meta": 5,
+      "repository": 94173,
+      "other": 2,
+      "total": 94180,
+      "status": "measured"
+    },
+    {
+      "id": "Q-20",
+      "meta": 5,
+      "repository": 17874,
+      "other": 2,
+      "total": 17881,
+      "status": "measured"
+    },
+    {
+      "id": "Q-21",
+      "meta": 5,
+      "repository": 29867,
+      "other": 2,
+      "total": 29874,
+      "status": "measured"
+    },
+    {
+      "id": "Q-22",
+      "meta": 5,
+      "repository": 1042,
+      "other": 2,
+      "total": 1049,
+      "status": "measured"
+    },
+    {
+      "id": "Q-23",
+      "meta": 5,
+      "repository": 66,
+      "other": 2,
+      "total": 73,
+      "status": "measured"
+    },
+    {
+      "id": "Q-24",
+      "meta": 5,
+      "repository": 26,
+      "other": 2,
+      "total": 33,
+      "status": "measured"
+    },
+    {
+      "id": "Q-25",
+      "meta": 5,
+      "repository": 1871,
+      "other": 2,
+      "total": 1878,
+      "status": "measured"
+    },
+    {
+      "id": "Q-26",
+      "meta": 5,
+      "repository": 1727,
+      "other": 2,
+      "total": 1734,
+      "status": "measured"
+    },
+    {
+      "id": "Q-27",
+      "meta": 5,
+      "repository": 42567,
+      "other": 2,
+      "total": 42574,
+      "status": "measured"
+    },
+    {
+      "id": "Q-28",
+      "meta": 5,
+      "repository": 134367,
+      "other": 2,
+      "total": 134374,
+      "status": "measured"
+    },
+    {
+      "id": "Q-29",
+      "meta": 5,
+      "repository": 152788,
+      "other": 2,
+      "total": 152795,
+      "status": "measured"
+    },
+    {
+      "id": "Q-30",
+      "meta": 5,
+      "repository": 2935,
+      "other": 2,
+      "total": 2942,
+      "status": "measured"
+    },
+    {
+      "id": "Q-31",
+      "meta": 5,
+      "repository": 2871,
+      "other": 2,
+      "total": 2878,
+      "status": "measured"
+    },
+    {
+      "id": "Q-32",
+      "meta": 5,
+      "repository": 2935,
+      "other": 2,
+      "total": 2942,
+      "status": "measured"
+    },
+    {
+      "id": "Q-33",
+      "meta": 5,
+      "repository": 2871,
+      "other": 2,
+      "total": 2878,
+      "status": "measured"
+    },
+    {
+      "id": "Q-34",
+      "meta": 5,
+      "repository": 2871,
+      "other": 2,
+      "total": 2878,
+      "status": "measured"
+    },
+    {
+      "id": "Q-35",
+      "meta": 5,
+      "repository": 2935,
+      "other": 2,
+      "total": 2942,
+      "status": "measured"
+    },
+    {
+      "id": "Q-36",
+      "meta": 5,
+      "repository": 74,
+      "other": 2,
+      "total": 81,
+      "status": "measured"
+    },
+    {
+      "id": "Q-37",
+      "meta": 5,
+      "repository": 93,
+      "other": 2,
+      "total": 100,
+      "status": "measured"
+    },
+    {
+      "id": "Q-38",
+      "meta": 5,
+      "repository": 47914,
+      "other": 2,
+      "total": 47921,
+      "status": "measured"
+    },
+    {
+      "id": "Q-39",
+      "meta": 5,
+      "repository": 29944,
+      "other": 2,
+      "total": 29951,
+      "status": "measured"
+    },
+    {
+      "id": "Q-40",
+      "meta": 5,
+      "repository": 47914,
+      "other": 2,
+      "total": 47921,
+      "status": "measured"
+    },
+    {
+      "id": "Q-41",
+      "meta": 5,
+      "repository": 29944,
+      "other": 2,
+      "total": 29951,
+      "status": "measured"
+    },
+    {
+      "id": "Q-42",
+      "meta": 5,
+      "repository": 19902,
+      "other": 2,
+      "total": 19909,
+      "status": "measured"
+    },
+    {
+      "id": "Q-43",
+      "meta": 5,
+      "repository": 8156,
+      "other": 2,
+      "total": 8163,
+      "status": "measured"
+    },
+    {
+      "id": "Q-44",
+      "meta": 5,
+      "repository": 48297,
+      "other": 2,
+      "total": 48304,
+      "status": "measured"
+    },
+    {
+      "id": "Q-45",
+      "meta": 5,
+      "repository": 7429,
+      "other": 2,
+      "total": 7436,
+      "status": "measured"
+    },
+    {
+      "id": "Q-46",
+      "meta": 5,
+      "repository": 48297,
+      "other": 2,
+      "total": 48304,
+      "status": "measured"
+    },
+    {
+      "id": "Q-47",
+      "meta": 5,
+      "repository": 18646,
+      "other": 2,
+      "total": 18653,
+      "status": "measured"
+    },
+    {
+      "id": "Q-48",
+      "meta": 5,
+      "repository": 3103,
+      "other": 2,
+      "total": 3110,
+      "status": "measured"
+    },
+    {
+      "id": "Q-49",
+      "meta": 5,
+      "repository": 3101,
+      "other": 2,
+      "total": 3108,
+      "status": "measured"
+    },
+    {
+      "id": "Q-50",
+      "meta": 5,
+      "repository": 23554,
+      "other": 2,
+      "total": 23561,
+      "status": "measured"
+    },
+    {
+      "id": "Q-51",
+      "meta": 5,
+      "repository": 570603,
+      "other": 2,
+      "total": 570610,
+      "status": "measured"
+    },
+    {
+      "id": "Q-52",
+      "meta": 5,
+      "repository": 217093,
+      "other": 2,
+      "total": 217100,
+      "status": "measured"
+    },
+    {
+      "id": "Q-53",
+      "meta": 5,
+      "repository": 4077621,
+      "other": 2,
+      "total": 4077628,
+      "status": "measured"
+    },
+    {
+      "id": "Q-54",
+      "meta": 5,
+      "repository": 3586,
+      "other": 2,
+      "total": 3593,
+      "status": "measured"
+    },
+    {
+      "id": "Q-55",
+      "meta": 5,
+      "repository": 4,
+      "other": 2,
+      "total": 11,
+      "status": "measured"
+    },
+    {
+      "id": "Q-56",
+      "meta": 5,
+      "repository": 24258,
+      "other": 2,
+      "total": 24265,
+      "status": "measured"
+    },
+    {
+      "id": "Q-57",
+      "meta": 5,
+      "repository": 27520,
+      "other": 2,
+      "total": 27527,
+      "status": "measured"
+    },
+    {
+      "id": "Q-58",
+      "meta": 5,
+      "repository": 19924,
+      "other": 2,
+      "total": 19931,
+      "status": "measured"
+    },
+    {
+      "id": "Q-59",
+      "meta": 5,
+      "repository": 3039,
+      "other": 2,
+      "total": 3046,
+      "status": "measured"
+    },
+    {
+      "id": "Q-60",
+      "meta": 5,
+      "repository": 5279,
+      "other": 2,
+      "total": 5286,
+      "status": "measured"
+    },
+    {
+      "id": "Q-61",
+      "meta": 5,
+      "repository": null,
+      "other": 2,
+      "total": null,
+      "status": "rows_read取得不能"
+    },
+    {
+      "id": "Q-62",
+      "meta": 5,
+      "repository": null,
+      "other": 2,
+      "total": null,
+      "status": "rows_read取得不能"
+    },
+    {
+      "id": "Q-63",
+      "meta": 5,
+      "repository": 161838,
+      "other": 2,
+      "total": 161845,
+      "status": "measured"
+    },
+    {
+      "id": "Q-64",
+      "meta": 5,
+      "repository": 970,
+      "other": 2,
+      "total": 977,
+      "status": "measured"
+    },
+    {
+      "id": "Q-65",
+      "meta": 5,
+      "repository": 12800,
+      "other": 2,
+      "total": 12807,
+      "status": "measured"
+    },
+    {
+      "id": "Q-66",
+      "meta": 5,
+      "repository": 1128,
+      "other": 2,
+      "total": 1135,
+      "status": "measured"
+    },
+    {
+      "id": "Q-67",
+      "meta": 5,
+      "repository": 1116,
+      "other": 2,
+      "total": 1123,
+      "status": "measured"
+    },
+    {
+      "id": "Q-68",
+      "meta": 5,
+      "repository": 20097,
+      "other": 2,
+      "total": 20104,
+      "status": "measured"
+    },
+    {
+      "id": "Q-69",
+      "meta": 5,
+      "repository": 1120,
+      "other": 2,
+      "total": 1127,
+      "status": "measured"
+    },
+    {
+      "id": "Q-70",
+      "meta": 5,
+      "repository": 2895,
+      "other": 2,
+      "total": 2902,
+      "status": "measured"
+    },
+    {
+      "id": "Q-71",
+      "meta": 5,
+      "repository": 2935,
+      "other": 2,
+      "total": 2942,
+      "status": "measured"
+    },
+    {
+      "id": "Q-72",
+      "meta": 5,
+      "repository": 2895,
+      "other": 2,
+      "total": 2902,
+      "status": "measured"
+    },
+    {
+      "id": "Q-73",
+      "meta": 5,
+      "repository": 0,
+      "other": 0,
+      "total": 5,
+      "status": "measured"
+    },
+    {
+      "id": "Q-74",
+      "meta": 5,
+      "repository": 0,
+      "other": 0,
+      "total": 5,
+      "status": "measured"
+    },
+    {
+      "id": "Q-75",
+      "meta": 5,
+      "repository": 0,
+      "other": 0,
+      "total": 5,
+      "status": "measured"
+    },
+    {
+      "id": "Q-76",
+      "meta": 5,
+      "repository": 22540,
+      "other": 2,
+      "total": 22547,
+      "status": "measured"
+    },
+    {
+      "id": "Q-77",
+      "meta": 5,
+      "repository": 21372,
+      "other": 2,
+      "total": 21379,
+      "status": "measured"
+    },
+    {
+      "id": "Q-78",
+      "meta": 5,
+      "repository": 91,
+      "other": 2,
+      "total": 98,
+      "status": "measured"
+    },
+    {
+      "id": "Q-79",
+      "meta": 5,
+      "repository": 1128,
+      "other": 2,
+      "total": 1135,
+      "status": "measured"
+    },
+    {
+      "id": "Q-80",
+      "meta": 5,
+      "repository": 5889,
+      "other": 2,
+      "total": 5896,
+      "status": "measured"
+    },
+    {
+      "id": "Q-81",
+      "meta": 5,
+      "repository": 42202,
+      "other": 2,
+      "total": 42209,
+      "status": "measured"
+    },
+    {
+      "id": "Q-82",
+      "meta": 5,
+      "repository": 42202,
+      "other": 2,
+      "total": 42209,
+      "status": "measured"
+    },
+    {
+      "id": "Q-83",
+      "meta": 5,
+      "repository": 5949367,
+      "other": 2,
+      "total": 5949374,
+      "status": "measured"
+    },
+    {
+      "id": "Q-84",
+      "meta": 5,
+      "repository": 925,
+      "other": 2,
+      "total": 932,
+      "status": "measured"
+    },
+    {
+      "id": "Q-85",
+      "meta": 5,
+      "repository": 40981,
+      "other": 2,
+      "total": 40988,
+      "status": "measured"
+    },
+    {
+      "id": "Q-86",
+      "meta": 5,
+      "repository": 15991,
+      "other": 2,
+      "total": 15998,
+      "status": "measured"
+    },
+    {
+      "id": "Q-87",
+      "meta": 5,
+      "repository": 16141,
+      "other": 2,
+      "total": 16148,
+      "status": "measured"
+    },
+    {
+      "id": "Q-88",
+      "meta": 5,
+      "repository": 11338,
+      "other": 2,
+      "total": 11345,
+      "status": "measured"
+    },
+    {
+      "id": "Q-89",
+      "meta": 5,
+      "repository": 17221,
+      "other": 2,
+      "total": 17228,
+      "status": "measured"
+    },
+    {
+      "id": "Q-90",
+      "meta": 5,
+      "repository": 16440,
+      "other": 2,
+      "total": 16447,
+      "status": "measured"
+    },
+    {
+      "id": "Q-91",
+      "meta": 5,
+      "repository": 925,
+      "other": 2,
+      "total": 932,
+      "status": "measured"
+    },
+    {
+      "id": "Q-92",
+      "meta": 5,
+      "repository": 925,
+      "other": 2,
+      "total": 932,
+      "status": "measured"
+    },
+    {
+      "id": "Q-93",
+      "meta": 5,
+      "repository": 925,
+      "other": 2,
+      "total": 932,
+      "status": "measured"
+    },
+    {
+      "id": "Q-94",
+      "meta": 5,
+      "repository": 21372,
+      "other": 2,
+      "total": 21379,
+      "status": "measured"
+    },
+    {
+      "id": "Q-95",
+      "meta": 5,
+      "repository": 308693,
+      "other": 2,
+      "total": 308700,
+      "status": "measured"
+    },
+    {
+      "id": "Q-96",
+      "meta": 5,
+      "repository": 5949277,
+      "other": 2,
+      "total": 5949284,
+      "status": "measured"
+    },
+    {
+      "id": "Q-97",
+      "meta": 5,
+      "repository": 40033,
+      "other": 2,
+      "total": 40040,
+      "status": "measured"
+    },
+    {
+      "id": "Q-98",
+      "meta": 5,
+      "repository": 42202,
+      "other": 2,
+      "total": 42209,
+      "status": "measured"
+    },
+    {
+      "id": "Q-99",
+      "meta": 5,
+      "repository": 925,
+      "other": 2,
+      "total": 932,
+      "status": "measured"
+    },
+    {
+      "id": "Q-100",
+      "meta": 5,
+      "repository": 925,
+      "other": 2,
+      "total": 932,
+      "status": "measured"
+    },
+    {
+      "id": "Q-101",
+      "meta": 5,
+      "repository": 965,
+      "other": 2,
+      "total": 972,
+      "status": "measured"
+    },
+    {
+      "id": "Q-102",
+      "meta": 5,
+      "repository": 41891,
+      "other": 2,
+      "total": 41898,
+      "status": "measured"
+    },
+    {
+      "id": "Q-103",
+      "meta": 5,
+      "repository": 308693,
+      "other": 2,
+      "total": 308700,
+      "status": "measured"
+    },
+    {
+      "id": "Q-104",
+      "meta": 5,
+      "repository": 50,
+      "other": 2,
+      "total": 57,
+      "status": "measured"
+    },
+    {
+      "id": "Q-105",
+      "meta": 5,
+      "repository": 139834,
+      "other": 2,
+      "total": 139841,
+      "status": "measured"
+    },
+    {
+      "id": "Q-106",
+      "meta": 5,
+      "repository": 925,
+      "other": 2,
+      "total": 932,
+      "status": "measured"
+    },
+    {
+      "id": "Q-107",
+      "meta": 5,
+      "repository": 190435,
+      "other": 2,
+      "total": 190442,
+      "status": "measured"
+    },
+    {
+      "id": "Q-108",
+      "meta": 5,
+      "repository": 1179,
+      "other": 2,
+      "total": 1186,
+      "status": "measured"
+    },
+    {
+      "id": "Q-109",
+      "meta": 5,
+      "repository": 27211,
+      "other": 2,
+      "total": 27218,
+      "status": "measured"
+    },
+    {
+      "id": "Q-110",
+      "meta": 5,
+      "repository": 27211,
+      "other": 2,
+      "total": 27218,
+      "status": "measured"
+    },
+    {
+      "id": "Q-111",
+      "meta": 5,
+      "repository": 145908,
+      "other": 2,
+      "total": 145915,
+      "status": "measured"
+    },
+    {
+      "id": "Q-112",
+      "meta": 5,
+      "repository": 40766,
+      "other": 2,
+      "total": 40773,
+      "status": "measured"
+    },
+    {
+      "id": "Q-113",
+      "meta": 5,
+      "repository": 308693,
+      "other": 2,
+      "total": 308700,
+      "status": "measured"
+    },
+    {
+      "id": "Q-114",
+      "meta": 5,
+      "repository": 1116,
+      "other": 2,
+      "total": 1123,
+      "status": "measured"
+    },
+    {
+      "id": "Q-115",
+      "meta": 5,
+      "repository": 145908,
+      "other": 2,
+      "total": 145915,
+      "status": "measured"
+    },
+    {
+      "id": "Q-116",
+      "meta": 5,
+      "repository": 41891,
+      "other": 2,
+      "total": 41898,
+      "status": "measured"
+    },
+    {
+      "id": "Q-117",
+      "meta": 5,
+      "repository": 26,
+      "other": 2,
+      "total": 33,
+      "status": "measured"
+    },
+    {
+      "id": "Q-118",
+      "meta": 5,
+      "repository": 925,
+      "other": 2,
+      "total": 932,
+      "status": "measured"
+    },
+    {
+      "id": "Q-119",
+      "meta": 5,
+      "repository": 570603,
+      "other": 2,
+      "total": 570610,
+      "status": "measured"
+    },
+    {
+      "id": "Q-120",
+      "meta": 5,
+      "repository": null,
+      "other": 2,
+      "total": null,
+      "status": "rows_read取得不能"
+    },
+    {
+      "id": "Q-121",
+      "meta": 5,
+      "repository": 0,
+      "other": 0,
+      "total": 5,
+      "status": "measured"
+    },
+    {
+      "id": "Q-122",
+      "meta": 5,
+      "repository": 0,
+      "other": 0,
+      "total": 5,
+      "status": "measured"
+    },
+    {
+      "id": "Q-123",
+      "meta": 5,
+      "repository": 1546188,
+      "other": 2,
+      "total": 1546195,
+      "status": "measured"
+    },
+    {
+      "id": "Q-124",
+      "meta": 5,
+      "repository": 1546188,
+      "other": 2,
+      "total": 1546195,
+      "status": "measured"
+    },
+    {
+      "id": "Q-125",
+      "meta": 5,
+      "repository": 925,
+      "other": 2,
+      "total": 932,
+      "status": "measured"
+    },
+    {
+      "id": "Q-126",
+      "meta": 5,
+      "repository": 1128,
+      "other": 2,
+      "total": 1135,
+      "status": "measured"
+    },
+    {
+      "id": "Q-127",
+      "meta": 5,
+      "repository": 925,
+      "other": 2,
+      "total": 932,
+      "status": "measured"
+    },
+    {
+      "id": "Q-128",
+      "meta": 5,
+      "repository": 1087,
+      "other": 2,
+      "total": 1094,
+      "status": "measured"
+    },
+    {
+      "id": "Q-129",
+      "meta": 5,
+      "repository": 945,
+      "other": 2,
+      "total": 952,
+      "status": "measured"
+    },
+    {
+      "id": "Q-130",
+      "meta": 5,
+      "repository": 42,
+      "other": 2,
+      "total": 49,
+      "status": "measured"
+    },
+    {
+      "id": "Q-131",
+      "meta": 5,
+      "repository": 116,
+      "other": 2,
+      "total": 123,
+      "status": "measured"
+    },
+    {
+      "id": "Q-132",
+      "meta": 5,
+      "repository": 82723,
+      "other": 2,
+      "total": 82730,
+      "status": "measured"
+    },
+    {
+      "id": "Q-133",
+      "meta": 5,
+      "repository": 3101,
+      "other": 2,
+      "total": 3108,
+      "status": "measured"
+    },
+    {
+      "id": "Q-134",
+      "meta": 5,
+      "repository": 27211,
+      "other": 2,
+      "total": 27218,
+      "status": "measured"
+    },
+    {
+      "id": "Q-135",
+      "meta": 5,
+      "repository": 925,
+      "other": 2,
+      "total": 932,
+      "status": "measured"
+    },
+    {
+      "id": "Q-136",
+      "meta": 5,
+      "repository": 1087,
+      "other": 2,
+      "total": 1094,
+      "status": "measured"
+    },
+    {
+      "id": "Q-137",
+      "meta": 5,
+      "repository": 0,
+      "other": 0,
+      "total": 5,
+      "status": "measured"
+    },
+    {
+      "id": "Q-138",
+      "meta": 5,
+      "repository": 0,
+      "other": 0,
+      "total": 5,
+      "status": "measured"
+    },
+    {
+      "id": "Q-139",
+      "meta": 5,
+      "repository": 2584153,
+      "other": 2,
+      "total": 2584160,
+      "status": "measured"
+    },
+    {
+      "id": "Q-140",
+      "meta": 5,
+      "repository": 41321,
+      "other": 2,
+      "total": 41328,
+      "status": "measured"
+    },
+    {
+      "id": "Q-141",
+      "meta": 5,
+      "repository": 36477,
+      "other": 2,
+      "total": 36484,
+      "status": "measured"
+    },
+    {
+      "id": "Q-144",
+      "meta": null,
+      "repository": null,
+      "other": null,
+      "total": null,
+      "status": "capability-no-D1"
+    },
+    {
+      "id": "Q-145",
+      "meta": null,
+      "repository": null,
+      "other": null,
+      "total": null,
+      "status": "capability-no-D1"
+    },
+    {
+      "id": "Q-146",
+      "meta": null,
+      "repository": null,
+      "other": null,
+      "total": null,
+      "status": "capability-no-D1"
+    },
+    {
+      "id": "Q-168",
+      "meta": null,
+      "repository": null,
+      "other": null,
+      "total": null,
+      "status": "capability-no-D1"
+    }
+  ],
+  "measuredSummary": {
+    "meta": {
+      "sum": 685,
+      "average": 5.0,
+      "max": 5,
+      "min": 5
+    },
+    "repository": {
+      "sum": 33177130,
+      "average": 242168.8321167883,
+      "max": 5949367,
+      "min": 0
+    },
+    "other": {
+      "sum": 260,
+      "average": 1.897810218978102,
+      "max": 2,
+      "min": 0
+    },
+    "total": {
+      "sum": 33178075,
+      "average": 242175.7299270073,
+      "max": 5949374,
+      "min": 5
+    }
+  }
+}

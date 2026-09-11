@@ -66,3 +66,25 @@ Release Ready未達。47件全体の再実行は禁止し、保存済みFail ID�
 - B31のRepository実行は、候補曖昧性を含む最終応答まで成功。1 SQLだけD1 `meta.rows_read` 欠落で、実行成功の行数を推定できないため正式に監査対象外とする。不要readゼロ／削減余地なしの証明は未完了。
 - Acceptanceは47/47 Pass。182件QAはQ-01〜Q-141、Q-146がHTTP 200。D1 row read上限到達後のQ-142〜Q-145、Q-147〜Q-182は再実行待ち。
 - 2026-09-11 UTC reset後の再実行でも、D1 free-tier row read上限が継続しており、182件統合結果はHTTP 200が145/182、summary nullが37件。統合ログは `data/logs/qa-prod-182-combined-20260911.json`。残37件は同じD1上限応答で、B31のrows_read欠落とは別事象。
+
+## 145件Pass時点の全ケース集計
+
+全145ケースのケース別内訳は [qa-prod-145-d1-read-audit-20260911.json](../data/logs/qa-prod-145-d1-read-audit-20260911.json) に保存した。通常チャット137件は完全計測、Q-13/Q-61/Q-62/Q-120はD1結果メタデータの `rows_read` 欠落、Q-144/Q-145/Q-146/Q-168はUIまたはcapability確認でD1を呼ばない。
+
+- Meta DB: 累計685行、145件換算平均4.7241行、完全計測ケース平均5、最大5、最小5。
+- Repository: 累計33,177,130行、145件換算平均228,807.7931行、完全計測137件平均242,168.8321、最大5,949,367、最小0。
+- その他D1: 累計260行、145件換算平均1.7931行、完全計測ケース平均1.8978、最大2、最小0。
+- 合計: 累計33,178,075行、145件換算平均228,814.3103行、完全計測137件平均242,175.7299、最大5,949,374、最小5。
+- Cloudflare Workers FreeのD1 rows read上限は5,000,000行/日。145件時点の計測累計は上限の663.5615%。[Cloudflare D1 pricing](https://developers.cloudflare.com/d1/platform/pricing/)
+
+Q-83/Q-96/Q-08/Q-53/Q-139/Q-123/Q-124が最大readを占め、単一ケースで最大5,949,374行。これは削減余地が残る証拠であり、rows_read最小の証明には未達。
+
+145件のAPI呼び出しは通常ケースでは1ケース1回。Q-144/Q-145/Q-146/Q-168はUI/capability確認でD1呼出しなし。Meta 5行はアカウント作成・利用枠2キーの設計上の読み書き結果で、getChatAccountの競合後SELECTは新規ゲスト経路では発生していない。Repository初期化の `sqlite_master` 走査は遅延初期化修正後の本番コードには残っていない。D1キャッシュ・初期化Promise共有により同一リクエスト群の初期化read重複も抑止している。
+
+一方、Q-83等の5百万行級は `event_facts` の名前・結果条件を含む検索であり、現在の正規化DBに対応する検索索引がなくフルスキャンとなる。これは削減可能なreadであり、現時点で「設計上最小」とは証明できない。DB同期・D1操作禁止の運用ルールにより、今回の復旧で勝手に索引やDBを変更していない。
+
+## 37件の到達位置
+
+最初のD1上限応答はQ-142（Q-141はHTTP 200、12:04:21 UTC、Q-142はHTTP 503、12:04:24 UTC）。したがって開始時点ではなく、Q-01〜Q-141の実行途中で到達した。Q-142/Q-143はD1上限、Q-144/Q-145/Q-146/Q-168はD1を使わないcapability確認のため成功し、Q-147〜Q-164、Q-165〜Q-167、Q-169〜Q-182は上限到達後に失敗した。
+
+Cloudflare公式仕様はFree rows read 5百万行/日で、上限到達後はD1 APIがエラーを返し、リセットはUTC 0時である。[Cloudflare changelog](https://developers.cloudflare.com/changelog/post/2026-09-01-d1-free-tier-limit-enforcement/)
