@@ -311,6 +311,14 @@ async function aggregateNormalizedBattingLines(
     homeRunScopeClauses.push('hr_games.year <= ?')
     homeRunScopeValues.push(normalized.year_to)
   }
+  // When the aggregate is explicitly scoped to a player, do not build
+  // home-run/extra-base statistics for every event in the database. The
+  // normalized facts schema has a player batter index, so constrain this
+  // subquery before grouping.
+  if (normalized.player_id) {
+    homeRunScopeClauses.push('event_facts.batter_player_id = ?')
+    homeRunScopeValues.push(normalized.player_id)
+  }
   const homeRunScopeSql = homeRunScopeClauses.length > 0
     ? `AND ${homeRunScopeClauses.join(' AND ')}`
     : ''
@@ -354,7 +362,7 @@ async function aggregateNormalizedBattingLines(
             WHEN result_codes.result_text LIKE '%二塁打%' OR result_codes.result_text LIKE '%ツーベース%' THEN 1
             ELSE 0
           END) AS extra_bases
-        FROM event_facts
+        FROM event_facts INDEXED BY idx_events_batter_player
         INNER JOIN game_facts AS hr_games ON hr_games.game_id = event_facts.game_id
         INNER JOIN result_codes ON result_codes.result_code_id = event_facts.result_code_id
         LEFT JOIN person_names AS batter_name ON batter_name.name_id = event_facts.batter_name_id
