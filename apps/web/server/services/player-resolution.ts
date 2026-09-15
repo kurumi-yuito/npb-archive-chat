@@ -1,5 +1,5 @@
 import type { ChatStructuredQuery, PlayerCandidate } from '@npb/schemas'
-import type { ChatQueryService } from '@npb/db'
+import { canonicalTeamName, type ChatQueryService } from '@npb/db'
 import { normalizeFreeText } from './chat-query-normalizer'
 import { buildAliases } from './player-alias'
 import type { SearchPlayerCandidatesFilters } from '@npb/db'
@@ -396,7 +396,10 @@ function selectCandidatesForInput(
     const explicitSurnameProfileIds = [
       ...new Set(explicitSurnameProfiles.map((candidate) => candidate.player_id).filter(Boolean)),
     ]
-    if (inputKey.length === 1 && exact.length === 0 && explicitSurnameProfileIds.length === 1) {
+    if (
+      inputKey.length === 1 && explicitSurnameProfileIds.length === 1 &&
+      exact.every((candidate) => !candidate.player_id || candidate.player_id === explicitSurnameProfileIds[0])
+    ) {
       return collapseSameEntityFallbacks(
         surnameCandidates.filter((candidate) => candidate.player_id === explicitSurnameProfileIds[0]),
         inputKey,
@@ -541,7 +544,7 @@ function sameTeamAlias(left: string, right: string): boolean {
 }
 
 function teamAliasKey(team: string): string {
-  return normalizeLookupKey(team)
+  return normalizeLookupKey(canonicalTeamName(team))
 }
 
 function normalizeLookupKey(value: string): string {

@@ -18,6 +18,22 @@ function createQueryService(candidates: PlayerCandidate[]): ChatQueryService {
 }
 
 describe('player-identity facade', () => {
+  it('matches the existing canonical team alias for a qualified pitcher', async () => {
+    const queryService = createQueryService([{
+      player_id: 'norimoto',
+      name: '則本 昂大',
+      primary_team: '読売ジャイアンツ',
+      roles: ['profile', 'pitcher'],
+      teams: ['読売ジャイアンツ'],
+      years: [2026],
+    }])
+    const result = await resolvePlayer(queryService, {
+      intent: 'search_pitching',
+      filters: { pitcher_name: '則本昂大', team: '巨人', year: 2026, recent: true },
+    })
+    expect(result.resolution).toMatchObject({ status: 'resolved', player_id: 'norimoto' })
+  })
+
   it('normalizes identity glyph variants on canonical Repository candidates', async () => {
     const queryService = createQueryService([{
       player_id: '03305153',
@@ -108,6 +124,14 @@ describe('player-identity facade', () => {
 
   it('uses an explicit surname boundary in a profile to exclude longer different surnames', async () => {
     const queryService = createQueryService([
+      {
+        player_id: null,
+        name: '牧',
+        primary_team: 'DeNA',
+        roles: ['batter'],
+        teams: ['DeNA', '横浜DeNAベイスターズ'],
+        years: [2026],
+      },
       {
         player_id: 'maki-shugo',
         name: '牧 秀悟',

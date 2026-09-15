@@ -1492,6 +1492,46 @@ describe('chat-service', () => {
     expect(pitchingFilters).toMatchObject({ pitcher_name: '藤浪', recent: true })
   })
 
+  it('keeps season pitcher comparisons aggregated with each former player’s covered season', async () => {
+    const aggregatePitchingLines = vi.fn(async (filters: NonNullable<Parameters<ChatQueryService['aggregatePitchingLines']>[0]>) => [{
+      kind: 'pitching' as const, label: filters.pitcher_name ?? '', total: 25,
+      stats: { games: 25, inningsPitched: 180, earnedRuns: 40, strikeouts: 190 },
+    }])
+    const searchPitchingLines = vi.fn(async () => [])
+    const service = createChatService(createFakeQueryService({
+      playerCandidatesForFilters: (filters) => {
+        const first = filters.name === '山本由伸'
+        return [{
+          player_id: first ? 'yamamoto' : 'sasaki',
+          name: first ? '山本 由伸' : '佐々木 朗希',
+          primary_team: first ? 'オリックス' : 'ロッテ',
+          roles: ['profile', 'pitcher'],
+          teams: [first ? 'オリックス' : 'ロッテ'],
+          years: [first ? 2023 : 2024],
+        }]
+      },
+      aggregatePitchingLines,
+      searchPitchingLines,
+    }), {
+      parseStructuredQueryFromMessage: async () => ({
+        intent: 'aggregate_pitching',
+        filters: { year: 2026, pitcher_names: ['山本由伸', '佐々木朗希'], limit: 3, sort_by: 'era' },
+      }),
+      formatChatAnswer,
+    })
+    const response = await service.answerQuestion('今シーズン（2026年）の山本由伸と佐々木朗希を比較してください。防御率・奪三振・投球回の3つの観点で。')
+    expect(response.structured_query?.intent).toBe('aggregate_pitching')
+    expect(aggregatePitchingLines).toHaveBeenCalledWith(expect.objectContaining({ pitcher_player_id: 'yamamoto', year: 2023 }))
+    expect(aggregatePitchingLines).toHaveBeenCalledWith(expect.objectContaining({ pitcher_player_id: 'sasaki', year: 2024 }))
+    expect(searchPitchingLines).not.toHaveBeenCalled()
+    expect(response.answer.summary).toContain('山本由伸')
+    expect(response.answer.summary).toContain('佐々木朗希')
+    expect(response.answer.summary).toContain('投球回180')
+    expect(response.answer.summary).toContain('奪三振190')
+    expect(response.answer.summary).toContain('防御率2.00')
+    expect(response.answer.summary).not.toContain('直近3登板')
+  })
+
   it('keeps multi-pitcher recent comparisons as pitching evidence for each resolved player', async () => {
     const service = createChatService(createFakeQueryService({
       playerCandidatesForFilters: (filters) => {
@@ -2010,6 +2050,45 @@ describe('chat-service', () => {
     expect(historicalResolver).not.toHaveBeenCalled()
     expect(response.answer.execution_metadata?.identity_resolution?.context?.scope).toBe('unspecified')
     expect(response.answer.summary).toContain('打撃成績')
+  })
+
+  it('includes every requested batting metric in a former-season answer', async () => {
+    const service = createChatService(createFakeQueryService({
+      aggregateBattingLines: async () => [{
+        kind: 'batting', label: '村上', total: 56,
+        stats: { games: 56, battingAverage: 0.273, homeRuns: 22 },
+      }],
+    }))
+    const response = await service.answerQuestion('ヤクルトの村上の今シーズン打率と本塁打数を教えてください')
+    expect(response.answer.summary).toContain('2025年')
+    expect(response.answer.summary).toContain('打率.273')
+    expect(response.answer.summary).toContain('本塁打22本')
+  })
+
+  it('preserves a former-team constraint on year-by-year batting totals without an explicit year', async () => {
+    const aggregateBattingLines = vi.fn(async () => [])
+    const service = createChatService(createFakeQueryService({
+      playerCandidates: [{
+        player_id: 'yamakawa',
+        name: '山川 穂高',
+        primary_team: 'ソフトバンク',
+        roles: ['batter'],
+        teams: ['西武', 'ソフトバンク'],
+        years: [2023, 2024, 2025, 2026],
+      }],
+      aggregateBattingLines,
+    }), {
+      parseStructuredQueryFromMessage: async () => ({
+        intent: 'aggregate_batting',
+        filters: { team: '西武', player_name: '山川穂高', group_by: 'year', limit: 100 },
+      }),
+    })
+
+    const response = await service.answerQuestion('西武時代の山川穂高の年別本塁打数を教えてください')
+
+    expect(response.structured_query?.filters).toMatchObject({ team: '西武', group_by: 'year' })
+    expect(aggregateBattingLines).toHaveBeenCalledWith(expect.objectContaining({ team: '西武', group_by: 'year' }))
+    expect(response.answer.summary).not.toContain('現所属を優先')
   })
 
   it('does not apply current team correction for historical identity scope', async () => {

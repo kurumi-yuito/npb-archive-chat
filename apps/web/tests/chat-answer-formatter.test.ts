@@ -5,6 +5,25 @@ import { formatChatAnswer } from '../server/services/chat-answer-formatter'
 import type { ChatExecutionMetadata } from '../server/services/chat-query-plan'
 
 describe('chat-answer-formatter', () => {
+  it('lists all starters in batting order for a specified game without ranking appearances', () => {
+    const results = emptyResults()
+    results.roster = Array.from({ length: 9 }, (_, index) => ({
+      gameId: 'r20260510c-s-08', gameDate: '2026-05-10', team: '広島東洋カープ',
+      groupLabel: 'スタメン', playerName: `打者${9 - index}`, uniformNumber: null,
+      position: '(左)右', starter: true, battingOrder: 9 - index,
+    }))
+    results.roster.push({ ...results.roster[0]!, playerName: '途中出場', starter: false, battingOrder: null })
+    const answer = formatChatAnswer({
+      question: '2026年5月10日の広島のスタメンを教えてください',
+      structuredQuery: { intent: 'search_roster', filters: { game_date: '2026-05-10', team: '広島', starter: true } },
+      results, sources: [],
+    })
+    expect(answer.summary).toContain('2026年5月10日')
+    expect(answer.summary).toMatch(/1番（左）打者1[\s\S]*9番（左）打者9/u)
+    expect(answer.summary).not.toContain('途中出場')
+    expect(answer.summary).not.toContain('最も多い')
+  })
+
   it('explains Q-70 alternative batting averages with their at-bat sample sizes', () => {
     const results = emptyResults()
     results.aggregates = [{ kind: 'batting', label: '* 加藤 貴之', total: 9, stats: {

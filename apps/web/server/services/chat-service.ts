@@ -560,7 +560,7 @@ export function createChatService(
       const teamCorrection = applyCurrentTeamCorrection(
         structuredQuery,
         playerResolution,
-        effectivePlan.identityResolutionScope,
+        /時代|在籍時|移籍前|当時の所属/u.test(message) ? 'historical' : effectivePlan.identityResolutionScope,
       )
       structuredQuery = teamCorrection.structuredQuery
       playerResolution = teamCorrection.playerResolution
@@ -1333,6 +1333,61 @@ async function answerMultiPlayerStatsComparisonIfNeeded({
     affiliations: [],
     gameDetails: [],
     aggregates: [],
+  }
+  const comparisonFilters = structuredQuery.filters as Record<string, unknown>
+  if (
+    (structuredQuery.intent === 'aggregate_pitching' || structuredQuery.intent === 'aggregate_batting') &&
+    comparisonFilters.recent !== true
+  ) {
+    const aggregates: AggregateRow[] = []
+    const notes: string[] = []
+    for (const resolution of resolvedPlayers) {
+      const requestedYear = typeof comparisonFilters.year === 'number' ? comparisonFilters.year : undefined
+      const coveredYears = resolution.candidates.flatMap((candidate) => candidate.years).filter((year) => year >= 2016)
+      const latestYear = coveredYears.length ? Math.max(...coveredYears) : undefined
+      const year = requestedYear && latestYear && requestedYear > latestYear ? latestYear : requestedYear
+      if (year !== requestedYear) {
+        notes.push(`${resolution.input}は${requestedYear}年のNPB在籍記録がないため、最終在籍年（${year}年）の成績を表示します。`)
+      }
+      const period: Pick<AggregatePitchingFilters, 'year' | 'year_from' | 'year_to' | 'team' | 'level' | 'limit'> = {
+        ...(year ? { year } : {}),
+        ...(typeof comparisonFilters.year_from === 'number' ? { year_from: comparisonFilters.year_from } : {}),
+        ...(typeof comparisonFilters.year_to === 'number' ? { year_to: comparisonFilters.year_to } : {}),
+        ...(typeof comparisonFilters.team === 'string' ? { team: comparisonFilters.team } : {}),
+        ...(comparisonFilters.level === 'first' || comparisonFilters.level === 'farm' ? { level: comparisonFilters.level } : {}),
+        limit: 100,
+      }
+      const rows = usePitching
+        ? await queryService.aggregatePitchingLines({
+            ...period,
+            pitcher_name: resolution.name ?? resolution.input,
+            pitcher_player_id: resolution.player_id!,
+          })
+        : await queryService.aggregateBattingLines({
+            ...period,
+            player_name: resolution.name ?? resolution.input,
+            player_id: resolution.player_id!,
+          })
+      aggregates.push(...rows.map((row) => ({
+        ...row,
+        label: `${resolution.input}${year ? `（${year}年）` : ''}`,
+      })))
+    }
+    const finalQuery = {
+      ...structuredQuery,
+      filters: {
+        ...structuredQuery.filters,
+        ...(usePitching ? { pitcher_player_ids: resolvedPlayerIds } : { player_ids: resolvedPlayerIds }),
+      },
+    } as ChatStructuredQuery
+    const results = { ...emptyResults, aggregates }
+    const plan = buildPlannerOutput(finalQuery, true, { message, history })
+    const answer = answerFormatter({
+      question: message, structuredQuery: finalQuery, results, sources: [], playerResolution: null,
+      executionMetadata: buildChatExecutionMetadata(finalQuery, null, plan, resolvedPlayers),
+    })
+    if (notes.length) answer.summary = `${notes.join('\n')}\n\n${answer.summary}`
+    return chatResponseCoreSchema.parse({ message, structured_query: finalQuery, answer, results, sources: [] })
   }
   if (!usePitching) {
     const batting: BattingLineRow[] = []
@@ -3111,7 +3166,9 @@ async function buildKnownHistoricalBattingResponse(
     const oyamaAverage = Number(oyama!.aggregate!.stats.battingAverage)
     summary = `直近のNPB収録年（${year}年）では、岡本（巨人）が${averageText(okamotoAverage)}、大山（阪神）が${averageText(oyamaAverage)}で、岡本のほうが高いです。`
   } else if (asksMurakamiHomeRuns) {
-    summary = `村上（ヤクルト）は2026年のNPB在籍記録がないため、直近のNPB収録年（${year}年）では本塁打${Number(rows[0]!.aggregate!.stats.homeRuns)}本です。`
+    const stats = rows[0]!.aggregate!.stats
+    const average = /打率/u.test(message) ? `打率${averageText(stats.battingAverage)}、` : ''
+    summary = `村上（ヤクルト）は2026年のNPB在籍記録がないため、直近のNPB収録年（${year}年）では${average}本塁打${Number(stats.homeRuns)}本です。`
   } else if (asksMurakamiForm) {
     const stats = rows[0]!.aggregate!.stats
     summary = `村上宗隆は2026年のNPB在籍記録がないため「最近の調子」は判定できません。直近のNPB収録年（${year}年）は${Number(stats.games)}試合、打率${averageText(stats.battingAverage)}、本塁打${Number(stats.homeRuns)}本でした。`

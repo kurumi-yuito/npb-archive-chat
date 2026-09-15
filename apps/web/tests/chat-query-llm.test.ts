@@ -272,6 +272,11 @@ describe('chat-query-llm', () => {
 
   it.each([
     [
+      '坂倉将吾の最近の打席内容を教えてください',
+      { intent: 'search_events', filters: { year: 2026, batter_name: '坂倉将吾', event_type: 'plate_appearance' } },
+      { intent: 'search_batting', filters: { year: 2026, player_name: '坂倉将吾', recent: true, limit: 5 } },
+    ],
+    [
       '村上宗隆は今シーズン打率どのくらい？',
       { intent: 'aggregate_batting', filters: { year: 2026, player_name: '村上宗隆', player_id: 'wrong-id', team: '阪神' } },
       { intent: 'aggregate_batting', filters: { year: 2026, player_name: '村上宗隆' } },

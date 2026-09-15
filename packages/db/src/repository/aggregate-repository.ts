@@ -885,7 +885,7 @@ async function aggregateCurrentBattingStats(
   database: QueryDatabase,
   filters: AggregateBattingFilters,
 ): Promise<AggregateRow[]> {
-  const clauses: string[] = []
+  const clauses: string[] = ["json_extract(values_json, '$.試合') IS NOT NULL"]
   const values: Array<string | number> = []
   if (filters.year) {
     clauses.push('player_batting_stats.year = ?')

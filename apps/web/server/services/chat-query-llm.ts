@@ -432,6 +432,23 @@ function normalizeExplicitPlannerContract(
     changed = true
   }
 
+  if (
+    intent === 'search_events' && /最近|直近|最新/u.test(message) && /打席内容|打撃成績/u.test(message) &&
+    typeof filters.batter_name === 'string' &&
+    !filters.pitcher_name && !filters.game_date && !filters.game_id &&
+    !filters.event_subtype && !filters.result_text_contains &&
+    (!filters.event_type || filters.event_type === 'plate_appearance')
+  ) {
+    intent = 'search_batting'
+    filters.player_name = filters.batter_name
+    delete filters.batter_name
+    delete filters.batter_player_id
+    delete filters.event_type
+    filters.recent = true
+    filters.limit = inferRecentAppearanceLimit(message) ?? 5
+    changed = true
+  }
+
   const isSeasonPitchingAggregate =
     /(?:防御率|登板数|投球回|奪三振|勝敗).*(?:教えて|詳しく|成績)|(?:成績).*(?:防御率|登板数|投球回|奪三振|勝敗)/u.test(message) &&
     !/(?:最近|直近|最新|最後|どんな投球)/u.test(message)

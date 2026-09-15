@@ -826,6 +826,20 @@ function formatMatchupExample(
 
 function formatRosterSummary(rows: RosterEntryRow[], filters: Record<string, unknown>): string {
   const starters = rows.filter((row) => row.starter === true)
+  if ((filters.game_date || filters.game_id) && filters.starter === true && starters.length > 0) {
+    const lineups = new Map<string, RosterEntryRow[]>()
+    for (const row of starters) {
+      const key = `${row.gameId}:${row.team}`
+      lineups.set(key, [...(lineups.get(key) ?? []), row])
+    }
+    return [...lineups.values()].map((lineup) => [
+      `${formatDateJa(lineup[0]!.gameDate)}の${displayTeamName(lineup[0]!.team)}のスタメンです。`,
+      ...[...lineup].sort((a, b) => (a.battingOrder ?? 99) - (b.battingOrder ?? 99)).map((row) => {
+        const position = row.position?.match(/^\(([^)]+)\)/u)?.[1] ?? row.position ?? '守備位置不明'
+        return `${row.battingOrder ?? '打順不明'}番（${position}）${row.playerName}`
+      }),
+    ].join('\n')).join('\n\n')
+  }
   const grouped = new Map<string, { row: RosterEntryRow; count: number }>()
   for (const row of starters.length > 0 ? starters : rows) {
     const key = `${row.playerName}:${row.team}`
