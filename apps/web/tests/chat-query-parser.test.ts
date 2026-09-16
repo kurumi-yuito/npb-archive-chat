@@ -653,6 +653,10 @@ describe('chat-query-parser', () => {
   })
 
   it('routes affiliation questions to player_affiliation instead of event search', () => {
+    expect(parseStructuredQueryFromMessageStub('藤浪晋太郎は今どこの球団にいますか')).toEqual({
+      intent: 'player_affiliation',
+      filters: { player_name: '藤浪晋太郎' },
+    })
     expect(parseStructuredQueryFromMessageStub('藤浪晋太郎の所属チームは')).toEqual({
       intent: 'player_affiliation',
       filters: {

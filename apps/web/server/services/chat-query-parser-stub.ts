@@ -245,7 +245,7 @@ function inferIntent(
   if (/スタメン|ロスター|登録メンバー|出場選手/u.test(message)) {
     return 'search_roster'
   }
-  if (/所属チーム|どこのチーム|所属|在籍|チームは/u.test(message)) {
+  if (/所属チーム|どこのチーム|どこの球団|所属|在籍|チームは/u.test(message)) {
     return 'player_affiliation'
   }
   if (/新人王|最優秀新人/u.test(message)) {
@@ -614,7 +614,8 @@ function buildPlayerAffiliationFilters(
   explicit: Record<string, string>,
 ): PlayerAffiliationFilters {
   const phrase =
-    matchValue(message, /(?:\d{4}年(?:の)?|横断で)?(.+?)(?:の所属チーム|はどこのチーム|はどのチーム|は所属|の所属|の在籍|は在籍|のチームは|チームは)/u) ??
+    matchValue(message, /(.+?)は今どこの球団(?:にいますか|ですか)?/u) ??
+    matchValue(message, /(?:\d{4}年(?:の)?|横断で)?(.+?)(?:の所属チーム|はどこのチーム|はどこの球団|はどのチーム|は所属|の所属|の在籍|は在籍|のチームは|チームは)/u) ??
     matchValue(message, /(?:所属|在籍|チーム)(?:は|=|:)\s*([^\s、。]+)/u)
   // Strip colloquial particles that follow player names (e.g. "田中将大って今" → "田中将大")
   const rawPlayerName =
