@@ -519,6 +519,34 @@ export function createChatService(
       }
       let structuredQuery = resolved.structuredQuery
       let playerResolution = resolved.resolution
+      // Preserve explicit multi-year scopes after identity resolution. The
+      // resolver may narrow a surname to its latest season, but a question
+      // such as "2019年から2025年" or "2016年以降" is an aggregate scope.
+      if (structuredQuery.intent === 'aggregate_batting' || structuredQuery.intent === 'aggregate_pitching') {
+        const range = extractMentionedYearRange(message)
+        const since = extractSinceYear(message)
+        if (range.year_from && range.year_to) {
+          structuredQuery = {
+            ...structuredQuery,
+            filters: {
+              ...structuredQuery.filters,
+              year: undefined,
+              year_from: range.year_from,
+              year_to: range.year_to,
+            },
+          } as ChatStructuredQuery
+        } else if (since && /通算|以降/u.test(message)) {
+          structuredQuery = {
+            ...structuredQuery,
+            filters: {
+              ...structuredQuery.filters,
+              year: undefined,
+              year_from: since,
+              year_to: undefined,
+            },
+          } as ChatStructuredQuery
+        }
+      }
       if (shouldPreserveRequestedYearForCurrentFarmQuery(message, rawParsedQuery, structuredQuery, playerResolution)) {
         const rawYear = (rawParsedQuery.filters as Record<string, unknown>).year
         if (typeof rawYear === 'number') {

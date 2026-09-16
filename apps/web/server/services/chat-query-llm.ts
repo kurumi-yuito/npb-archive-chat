@@ -414,6 +414,46 @@ function normalizeExplicitPlannerContract(
     }
   }
 
+  // Recover team/game scopes that the planner occasionally drops or turns
+  // into a player name. These are deterministic lexical constraints and must
+  // be applied before entity resolution.
+  const mentionedTeams = extractTeamsFromMessage(message)
+  if (mentionedTeams.length >= 2 && /対/u.test(message) &&
+      (intent === 'game_detail' || intent === 'search_games')) {
+    const [team, opponent] = mentionedTeams
+    if (filters.team !== team || filters.opponent !== opponent) {
+      intent = 'game_detail'
+      filters.team = team
+      filters.opponent = opponent
+      changed = true
+    }
+  }
+  if (mentionedTeams.length >= 1 &&
+      (intent === 'search_batting' || intent === 'aggregate_batting' || intent === 'search_roster') &&
+      /(?:スタメン|打順|捕手|ショート|遊撃)/u.test(message) &&
+      (!filters.team || !messageMentionsTeam(message, String(filters.team)))) {
+    filters.team = mentionedTeams[0]
+    changed = true
+  }
+
+  if (/サヨナラ勝ち/u.test(message)) {
+    intent = 'search_events'
+    filters.year = typeof filters.year === 'number' ? filters.year : currentJstYear()
+    if (mentionedTeams[0]) filters.team = mentionedTeams[0]
+    filters.result_text_contains = 'サヨナラ'
+    filters.limit = 100
+    changed = true
+  }
+
+  if (/勝利数が最も多いチーム|勝利数の最も多いチーム|勝ち数が最も多いチーム/u.test(message)) {
+    intent = 'aggregate_games'
+    delete filters.player_name
+    delete filters.player_id
+    const league = /セ・?リーグ/u.test(message) ? 'セ・リーグ' : /パ・?リーグ/u.test(message) ? 'パ・リーグ' : undefined
+    if (league) filters.team = league
+    changed = true
+  }
+
   if (/通算/u.test(message) && (typeof filters.year_from === 'number' || typeof filters.year_to === 'number')) {
     if ('group_by' in filters) {
       delete filters.group_by
@@ -603,6 +643,22 @@ function normalizeExplicitPlannerContract(
   }
 
   return changed ? { intent, filters } : query
+}
+
+function extractTeamsFromMessage(message: string): string[] {
+  const entries: Array<[string, RegExp]> = [
+    ['阪神', /阪神|タイガース/u], ['DeNA', /DeNA|横浜|ベイスターズ/u],
+    ['巨人', /巨人|読売|ジャイアンツ/u], ['ヤクルト', /ヤクルト|スワローズ/u],
+    ['中日', /中日|ドラゴンズ/u], ['広島', /広島|カープ/u],
+    ['日本ハム', /日本ハム|ファイターズ/u], ['楽天', /楽天|イーグルス/u],
+    ['西武', /西武|ライオンズ/u], ['ロッテ', /ロッテ|マリーンズ/u],
+    ['オリックス', /オリックス|バファローズ/u], ['ソフトバンク', /ソフトバンク|ホークス/u],
+  ]
+  return entries
+    .map(([team, pattern]) => ({ team, index: message.search(pattern) }))
+    .filter((entry) => entry.index >= 0)
+    .sort((a, b) => a.index - b.index)
+    .map((entry) => entry.team)
 }
 
 function currentJstYear(): number {
