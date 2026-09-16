@@ -1,5 +1,13 @@
 # QAテストケース一覧 - 現行本番との差分
 
+## 2026-09-16 現行本番再確認 — 外部D1上限で未完了
+
+最新確認時点でRelease Ready未達。HEAD `890e25625` は `origin/main` と一致し、Worker Version `78695420-ff58-4ed4-8c72-162583afb30d` にデプロイ済み。Acceptance全47ターンを `data/logs/qa-acceptance-all-1789563338839.json` へ保存したが、17/47 Pass、30 Fail、0未実行。HTTP 500は30件、HTTP 503は0件、summary nullは30件。最新Versionへの単発再現もHTTP 500。
+
+Cloudflare tailで、失敗原因を `D1_ERROR: Your account has exceeded D1's free tier daily row read limit` と確認した。失敗対象は利用量バケットの書き込みを含む複数DB操作と検索DB metadata SELECTであり、ユーザーの成績照会前に検索DBの利用自体が拒否されている。同じログではOpenAI PlannerもHTTP 429 `insufficient_quota` / `credit_balance_exhausted`。既存のD1 rows_read監査・証明は再実施していない。新しいAcceptance失敗B17（「今どこの球団」表現）は決定的parserが質問を所属intentへ分類できない独立原因と特定し、修正 `890e25625` でローカルparserテスト33/33とtypecheckを通した。現在のD1上限ではこの修正を本番データで確認できない。
+
+Acceptanceが全件Passしていないため、指示どおり182件QAは開始していない。QA正本・期待値・DBデータは変更していない。HTTP500/503・summary null、Planner Contract違反、Validation失敗の全件判定は未完了。詳細な外部障害証拠、回避不能性、停止地点、再開条件とコマンドは[障害記録](incidents/2026-09-13-release-ready-d1-limit.md)を参照。
+
 ## 2026-09-13 現在HEAD・本番での再実行
 
 Release Ready未達。Acceptance 47/47 Pass、182件QAは58件実行・124件未実行。HTTP 200:48、HTTP 500:10、HTTP 503:0、summary null:10。HTTP 200回答にも意味・形式差分があり、48件Passとは判定していない。
