@@ -1,5 +1,9 @@
 # QAテストケース一覧 - 現行本番との差分
 
+## 2026-09-20 UTC 本日のD1消費主体を特定
+
+本日の500万rows超の消費主体は、このCodexセッションが実行した本番Acceptance `scripts/qa-acceptance.mjs`。47件の応答ログから18,253,121 rows以上を直接確認した。Cloudflareの03:13–03:14 UTCのDB集計は19,113,987 rows、本番Workerの同時間帯実行数は47件。欠測を含む差860,866 rowsは特定ケースへ推定配賦していない。今日全体のDB集計19,113,999 rowsのうち、後続QA・再開確認・証拠取得の時間帯は計12 rows。利用主体別表、SQL・Workflow・Cron・他Worker・管理ツールの確認結果と権限上の限界は[消費主体調査](incidents/2026-09-20-d1-consumers.md)を参照。これはRelease Readyの完了判定ではない。
+
 ## 2026-09-20 03:31–03:32 UTC 新規Cloudflareログによる原因確認
 
 本番Version `b76e5b68-f602-497e-842e-ab4a573c9ebe` への新規2リクエストでHTTP500を再現。Worker tailのD1_ERROR本文は9月13日および直前9月20日の保存ログと文字列として完全一致した。runtime metadata以外の `chat_usage_token_buckets` 操作でも同じ日次上限例外を取得。tail全文、例外・SQL・スタック全文、Ray ID、取得不能な識別子、Cloudflare公開障害情報との照合は[客観的証拠記録](incidents/2026-09-20-d1-error-proof.md)に保存した。前回Acceptanceの47/47をこのVersionのPassとして流用しない。Release Readyは未達。
