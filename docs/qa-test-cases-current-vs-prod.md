@@ -1,5 +1,11 @@
 # QAテストケース一覧 - 現行本番との差分
 
+## 2026-09-20 現行本番確認 — Acceptance通過後に外部D1上限
+
+本番Version `90621778-f8a6-43c1-9e56-6d02f8bdd5de` に対しAcceptance **47/47 Pass**（`data/logs/qa-acceptance-all-1789874092331.json`）。続く182件QAはQ-01/Q-02でHTTP500・summary nullを各2件記録し、D1日次読み取り上限をWorker tailと実API応答で再現した。未実行180件、QA Pass=0、HTTP503=0。実API応答のanswer.summaryは両件ともnullであり、Aとして生成・補完していない。QAログは `data/logs/qa-prod-run/qa-prod-1789874630876/`。
+
+Release Ready未達。後続の独立ブラックボックス47件は未開始。Planner Contract違反・Validation失敗の全件0、HEAD/Deploy対応も未証明。開始時HEAD `ab107f5d736d36172cfd3ee4c2f29377701c06fd` はリモートmainと一致・clean。原因、証拠、コードでの回避不能性、再開条件・コマンド、停止地点・残作業は[今回の障害記録](incidents/2026-09-20-release-d1-limit.md)を参照。以下の過去回答は今回のPass証拠には使わない。
+
 ## 2026-09-16 現行本番再確認 — 外部D1上限で未完了
 
 最新確認時点でRelease Ready未達。HEAD `890e25625` は `origin/main` と一致し、Worker Version `78695420-ff58-4ed4-8c72-162583afb30d` にデプロイ済み。Acceptance全47ターンを `data/logs/qa-acceptance-all-1789563338839.json` へ保存したが、17/47 Pass、30 Fail、0未実行。HTTP 500は30件、HTTP 503は0件、summary nullは30件。最新Versionへの単発再現もHTTP 500。
