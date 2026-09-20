@@ -1,5 +1,9 @@
 # QAテストケース一覧 - 現行本番との差分
 
+## 2026-09-20 03:31–03:32 UTC 新規Cloudflareログによる原因確認
+
+本番Version `b76e5b68-f602-497e-842e-ab4a573c9ebe` への新規2リクエストでHTTP500を再現。Worker tailのD1_ERROR本文は9月13日および直前9月20日の保存ログと文字列として完全一致した。runtime metadata以外の `chat_usage_token_buckets` 操作でも同じ日次上限例外を取得。tail全文、例外・SQL・スタック全文、Ray ID、取得不能な識別子、Cloudflare公開障害情報との照合は[客観的証拠記録](incidents/2026-09-20-d1-error-proof.md)に保存した。前回Acceptanceの47/47をこのVersionのPassとして流用しない。Release Readyは未達。
+
 ## 2026-09-20 現行本番確認 — Acceptance通過後に外部D1上限
 
 本番Version `90621778-f8a6-43c1-9e56-6d02f8bdd5de` に対しAcceptance **47/47 Pass**（`data/logs/qa-acceptance-all-1789874092331.json`）。続く182件QAはQ-01/Q-02でHTTP500・summary nullを各2件記録し、D1日次読み取り上限をWorker tailと実API応答で再現した。未実行180件、QA Pass=0、HTTP503=0。実API応答のanswer.summaryは両件ともnullであり、Aとして生成・補完していない。QAログは `data/logs/qa-prod-run/qa-prod-1789874630876/`。
