@@ -61,6 +61,34 @@ export function canonicalPlayerNameMatchSql(factNameColumn: string, factYearColu
   )`
 }
 
+/**
+ * A permissive indexed prefilter for canonicalPlayerFactMatchSql, not an
+ * identity decision. Keep the full match predicate after this condition: year,
+ * team, alias validity and ambiguous prefixes still need its exact checks.
+ * Bind the canonical id twice. Normalize the dictionary once, rather than
+ * evaluating identity subqueries against every historical fact row.
+ */
+export function canonicalPlayerFactCandidateSql(factIdColumn: string, factNameIdColumn: string): string {
+  return `(${factIdColumn} = ? OR ${factNameIdColumn} IN (
+    WITH candidate_identity AS MATERIALIZED (
+      SELECT player_id, ${normalizedIdentitySql('COALESCE(canonical_name, full_name)')} AS name
+      FROM player_profiles WHERE player_id = ?
+    ), candidate_dictionary AS MATERIALIZED (
+      SELECT name_id, ${normalizedIdentitySql('name')} AS name FROM person_names
+    ), candidate_aliases AS MATERIALIZED (
+      SELECT ${normalizedIdentitySql('alias')} AS name FROM player_aliases
+      WHERE player_id IN (SELECT player_id FROM candidate_identity)
+    )
+    SELECT name_id FROM candidate_dictionary
+    WHERE name IN (SELECT name FROM candidate_aliases)
+       OR EXISTS (
+         SELECT 1 FROM candidate_identity
+         WHERE candidate_identity.name LIKE candidate_dictionary.name || '%'
+            OR candidate_dictionary.name LIKE candidate_identity.name || '%'
+       )
+  ))`
+}
+
 function canonicalUniqueNamePrefixSql(factName: string): string {
   const canonicalName = normalizedIdentitySql('COALESCE(identity_profile.canonical_name, identity_profile.full_name)')
   const otherCanonicalName = normalizedIdentitySql('COALESCE(other_identity_profile.canonical_name, other_identity_profile.full_name)')

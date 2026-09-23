@@ -306,7 +306,7 @@ describe('runNormalizeDatabase', () => {
         expect(aggregatePlans.some((detail) => /SEARCH event_facts USING INDEX .*\(game_id=\?\)/u.test(detail))).toBe(true)
         expect(aggregatePlans.some((detail) => /SEARCH batting_line_facts USING INDEX idx_batting_name_game/u.test(detail))).toBe(true)
 
-        const playerIdWithNameFallbackRows = await aggregateBattingLines(queryDatabase, {
+        const playerIdWithNameFallbackRows = await aggregateBattingLines(measuredDatabase, {
           year: 2025,
           player_id: '13115153',
           player_name: '牧秀悟',
@@ -324,6 +324,11 @@ describe('runNormalizeDatabase', () => {
             },
           },
         ])
+        const careerIdWithNameFallbackRows = await aggregateBattingLines(measuredDatabase, {
+          player_id: '13115153', player_name: '牧秀悟', team: '楽天', limit: 10,
+        })
+        expect(careerIdWithNameFallbackRows).toEqual(playerIdWithNameFallbackRows)
+        expect(aggregatePlans.some(detail => /SEARCH batting_line_facts USING INDEX idx_batting_player_game/u.test(detail))).toBe(true)
 
         const ambiguousOneCharacterRows = await aggregateBattingLines(queryDatabase, {
           year: 2025,

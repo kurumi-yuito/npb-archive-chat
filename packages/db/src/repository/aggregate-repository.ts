@@ -12,7 +12,7 @@ import type { QueryDatabase } from '../query-driver'
 import { isNormalizedFactsSchema } from './schema-detection'
 import { canonicalTeamName, toJapaneseTeamAliases, toEnglishLeagueTeams, toGameTeamAliases } from './team-name-utils'
 import { venueSearchValues } from './venue-aliases'
-import { canonicalPlayerFactMatchSql, canonicalPlayerNameMatchSql } from './player-identity-link'
+import { canonicalPlayerFactCandidateSql, canonicalPlayerFactMatchSql, canonicalPlayerNameMatchSql } from './player-identity-link'
 
 export type AggregateRow = {
   kind: 'batting' | 'pitching' | 'events' | 'games'
@@ -252,6 +252,12 @@ async function aggregateNormalizedBattingLines(
   const values: Array<string | number> = []
   appendNormalizedGameClauses(clauses, values, normalized)
   if (normalized.player_id) {
+    // A season/date already narrows facts through the game index. Only pay for
+    // the dictionary prefilter when this is an otherwise unbounded career query.
+    if (!normalized.year && !normalized.year_from && !normalized.year_to && !normalized.game_date) {
+      clauses.push(canonicalPlayerFactCandidateSql('batting_line_facts.player_id', 'batting_line_facts.player_name_id'))
+      values.push(normalized.player_id, normalized.player_id)
+    }
     clauses.push(canonicalPlayerFactMatchSql('batting_line_facts.player_id', 'person_names.name', 'game_facts.year', 'teams.team_name'))
     values.push(normalized.player_id, normalized.player_id)
   } else if (normalized.player_name) {

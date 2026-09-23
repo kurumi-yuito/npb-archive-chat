@@ -85,3 +85,32 @@ HEAD `48ff8f985`、Deploy Version `d5cc67a1-2963-47a6-84f0-e06131a45400` でAcce
 150件を超える同姓候補の回帰テストで、100個上限の下でも検索結果と索引利用を確認した。第2修正の本番確認と182件QAは継続中。「設計上これ以上削減不能」とは判定していない。
 
 47件の修正後rows_read降順・SQL全文・実行計画・索引一覧は[ケース別SQL資料](acceptance-read-sql-plans-20260923.md)を参照。
+
+## 第2修正の本番再実行とQAで見つかった追加削減
+
+第2修正を含むHEAD `3da7b040c4df1ba7110345f711dc76f790f2d8c3` / Version `b7c2bd35-b456-401a-911d-3bf1aa17c6d0` で47件を再実行した結果は**17 Pass / 30 Fail**。HTTP500・summary nullは各30件。`json-bind/qa-acceptance-all-1790173638736.json` と `json-bind-d1-failures.json` に応答・例外本文・SQL・stack・Ray IDを保存。検索前のmetadata照会を含め、Cloudflareが日次上限で拒否しているため、B31の修正後rows_readは未計測。第1修正の47/47をこのVersionのPassとは扱わない。
+
+第1修正後のQA 37件では、Q-08「西武時代の山川穂高の年別本塁打数」が2,145,318 rows_read。全履歴の打撃行に選手照合のOR・相関条件を適用していた。既存ID・名前ID索引で候補を先に絞り、元の年度・球団・別名有効期間・曖昧性の照合条件をそのまま適用する修正を追加した。候補条件は元条件の必要条件だけであり、候補条件だけで選手同一性を決定しない。DB変更なし。
+
+- 通算検索に限り、名前辞書・対象プロフィール・別名を一度だけ正規化して候補化。年度・日付条件のある検索には追加の辞書読み取りを課さない。
+- 実データスナップショットの12選手×通算/2025年、24条件で返却値が全項目一致。`candidate-aggregate-comparison.json`。
+- Q-08は修正前後の返却値一致。`idx_batting_player_game` と `idx_batting_name_game` によるMULTI-INDEX OR検索。約654ms→126msはローカル時間であり、本番rows_read削減量ではない。
+- Q-36のresult INDEX利用もローカルで試したが、残余改善の実測は未完了であり、この実験は本番コードへ反映していない。
+
+**「設計上これ以上削減不能」という証明は得ていない。** AcceptanceのFree Tier内完走は第1修正で実測済みだが、追加修正後の47件、182件QA、独立ブラックボックス47件、Release Readyは未完了。
+
+## 本番検証の再開条件とコマンド
+
+必要条件はCloudflareが検索DB・Meta DBの要求を受け付けること。実際の例外が示す解除時刻は次のUTC日付境界（2026-09-24 00:00 UTC / 09:00 JST）。有料化はFree Tier目標に反し、別DBへの複製・データ変更は許可されていない。固定回答・期待値緩和・欠測を0とする処理は正しい回避策にならない。すでに消費した日次量をアプリのSQL変更で取り消すAPIはなく、metadataを省いても検索SQLが同じアカウントのD1拒否を受ける。再開時には最新HEADとDeploy Versionを確認し、Acceptanceから実行する。
+
+```bash
+wrangler whoami
+wrangler deployments list --config wrangler.toml
+env NPB_ACCEPTANCE_BASE_URL=https://npb-chat.dom9th-works.com NPB_ACCEPTANCE_OUTPUT_DIR=data/logs/acceptance-read-resume node scripts/qa-acceptance.mjs --continue-on-failure
+# Acceptanceの47/47と全体rows_read確認後に実行
+env QA_ALL=1 QA_DISABLE_HTTP_RETRIES=1 node scripts/qa-prod-unanswered.mjs docs/qa-test-cases.md
+# 182件QAを正本と全件照合した後、独立した47件を実行
+env NPB_ACCEPTANCE_OUTPUT_DIR=data/logs/blackbox-release-resume node scripts/qa-acceptance.mjs --continue-on-failure
+```
+
+停止地点は追加修正後の本番Acceptance検証。残作業はB31/通算集計の本番rows_read検証、最新Versionの47件全件Pass、182件QAの全件実行・意味形式比較・必要修正、独立ブラックボックス47件、Release ReadyとGit/Deploy一致の最終確認。外部上限のみを削減作業完了の根拠にはしない。

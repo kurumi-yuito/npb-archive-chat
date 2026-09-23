@@ -1,5 +1,10 @@
 # QAテストケース一覧 - 現行本番との差分
 
+## 2026-09-23 追加修正VersionのAcceptance
+
+Version `b7c2bd35-b456-401a-911d-3bf1aa17c6d0` / HEAD `3da7b040c` の再実行は17/47 Pass・30 Fail、HTTP500=30、HTTP503=0、summary null=30。`data/logs/acceptance-read-20260923/json-bind/qa-acceptance-all-1790173638736.json`。全47リクエストのtailでD1上限例外を記録（うち17件は検索不要経路でHTTP200）。追加修正後のB31 SQLの正常実行・rows_readは未確認。前Versionの47/47 Passを流用しない。QAで確認した通算集計の大きな読み取りについてもローカル修正・回帰を進めたが、本番確認は未完了。Release Ready未達。詳細は[改善記録](acceptance-read-optimization-20260923.md)。
+
+
 ## 2026-09-23 rows_read改善後の本番検証（継続中）
 
 HEAD `48ff8f985` / Version `d5cc67a1-2963-47a6-84f0-e06131a45400` のAcceptanceは47/47 Pass。公式D1集計は2,400,899 rows_readでFree Tierの500万行以内。根拠は[改善記録](acceptance-read-optimization-20260923.md)。
