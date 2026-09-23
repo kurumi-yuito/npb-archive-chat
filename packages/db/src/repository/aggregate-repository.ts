@@ -255,7 +255,13 @@ async function aggregateNormalizedBattingLines(
     clauses.push(canonicalPlayerFactMatchSql('batting_line_facts.player_id', 'person_names.name', 'game_facts.year', 'teams.team_name'))
     values.push(normalized.player_id, normalized.player_id)
   } else if (normalized.player_name) {
-    clauses.push(prefixMatchesCompactNameSql('?', 'person_names.name', normalized.team ? 1 : 2))
+    // Resolve matching name IDs in the small dictionary before reading facts.
+    // Keep the existing prefix/one-character rules, while allowing the
+    // (player_name_id, game_id) index to seek only matching batting records.
+    clauses.push(`batting_line_facts.player_name_id IN (
+      SELECT person_names.name_id FROM person_names
+      WHERE ${prefixMatchesCompactNameSql('?', 'person_names.name', normalized.team ? 1 : 2)}
+    )`)
     values.push(normalized.player_name)
   }
   if (normalized.team) {
@@ -329,9 +335,21 @@ async function aggregateNormalizedBattingLines(
       ? 'HAVING SUM(batting_line_facts.at_bats) >= 10 AND COUNT(*) >= 3'
       : 'HAVING SUM(batting_line_facts.at_bats) >= 10'
     : ''
+  // Materialize the requested batting rows once. The event primary key starts
+  // with game_id, so extra-base totals can read only their games instead of
+  // scanning the batter index across every season before applying the filters.
   const rows = await database
     .prepare(
-      `SELECT
+      `WITH selected_batting AS MATERIALIZED (
+        SELECT batting_line_facts.*
+        FROM batting_line_facts${normalized.player_name && !normalized.player_id ? ' INDEXED BY idx_batting_name_game' : ''}
+        INNER JOIN game_facts ON game_facts.game_id = batting_line_facts.game_id
+        INNER JOIN teams ON teams.team_id = batting_line_facts.team_id
+        INNER JOIN person_names ON person_names.name_id = batting_line_facts.player_name_id
+        LEFT JOIN positions ON positions.position_id = batting_line_facts.position_id
+        ${whereClause}
+      )
+      SELECT
         ${groupByYear ? 'CAST(game_facts.year AS TEXT)' : 'MAX(person_names.name)'} AS label,
         MAX(person_names.name) AS playerName,
         MAX(teams.team_name) AS team,
@@ -345,7 +363,7 @@ async function aggregateNormalizedBattingLines(
         SUM(COALESCE(batting_line_facts.strikeouts, 0)) AS strikeouts,
         COALESCE(SUM(hr_stats.hr_count), 0) AS homeRuns,
         COALESCE(SUM(hr_stats.extra_bases), 0) AS extraBases
-      FROM batting_line_facts
+      FROM selected_batting AS batting_line_facts
       INNER JOIN game_facts ON game_facts.game_id = batting_line_facts.game_id
       INNER JOIN teams ON teams.team_id = batting_line_facts.team_id
       INNER JOIN person_names ON person_names.name_id = batting_line_facts.player_name_id
@@ -362,13 +380,14 @@ async function aggregateNormalizedBattingLines(
             WHEN result_codes.result_text LIKE '%二塁打%' OR result_codes.result_text LIKE '%ツーベース%' THEN 1
             ELSE 0
           END) AS extra_bases
-        FROM event_facts INDEXED BY idx_events_batter_player
+        FROM event_facts
         INNER JOIN game_facts AS hr_games ON hr_games.game_id = event_facts.game_id
         INNER JOIN result_codes ON result_codes.result_code_id = event_facts.result_code_id
         LEFT JOIN person_names AS batter_name ON batter_name.name_id = event_facts.batter_name_id
         WHERE (result_codes.result_text LIKE '%ホームラン%'
            OR result_codes.result_text LIKE '%三塁打%' OR result_codes.result_text LIKE '%スリーベース%'
            OR result_codes.result_text LIKE '%二塁打%' OR result_codes.result_text LIKE '%ツーベース%')
+        AND event_facts.game_id IN (SELECT game_id FROM selected_batting)
         ${homeRunScopeSql}
         GROUP BY event_facts.game_id, event_facts.batter_player_id, batter_name.name
       ) hr_stats
@@ -377,13 +396,12 @@ async function aggregateNormalizedBattingLines(
           (hr_stats.batter_player_id IS NOT NULL AND hr_stats.batter_player_id = batting_line_facts.player_id)
           OR hr_stats.batter_name = person_names.name
        )
-      ${whereClause}
       GROUP BY ${groupByYear ? 'game_facts.year' : playerGroup}
       ${havingClause}
       ORDER BY ${groupByYear ? 'CAST(label AS INTEGER) ASC' : `${normalizedBattingSortClause(normalized.sort_by)}, label ASC`}
       LIMIT ?`,
     )
-    .all(...homeRunScopeValues, ...values, normalized.limit ?? 50)
+    .all(...values, ...homeRunScopeValues, normalized.limit ?? 50)
 
   return (rows as Array<Record<string, string | number | null>>).map((row) => {
     const atBats = Number(row.atBats ?? 0)

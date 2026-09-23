@@ -184,6 +184,22 @@ describe('runNormalizeDatabase', () => {
         })
 
         const queryDatabase = sqliteDatabaseToQuery(normalized)
+        const aggregatePlans: string[] = []
+        const measuredDatabase = {
+          ...queryDatabase,
+          prepare(sql: string) {
+            const statement = queryDatabase.prepare(sql)
+            return {
+              ...statement,
+              async all(...params: Array<string | number | null>) {
+                if (sql.includes('AS homeRuns') && sql.includes('event_facts')) {
+                  aggregatePlans.push(...(normalized.prepare(`EXPLAIN QUERY PLAN ${sql}`).all(...params) as Array<{ detail: string }>).map((row) => row.detail))
+                }
+                return statement.all(...params)
+              },
+            }
+          },
+        }
         const variantNameCandidates = await searchPlayerCandidates(queryDatabase, {
           name: '山崎伊織',
           includeEvents: false,
@@ -267,7 +283,7 @@ describe('runNormalizeDatabase', () => {
           },
         ])
 
-        const oneCharacterRegisteredNameRows = await aggregateBattingLines(queryDatabase, {
+        const oneCharacterRegisteredNameRows = await aggregateBattingLines(measuredDatabase, {
           year: 2025,
           player_name: '牧秀悟',
           team: '楽天',
@@ -284,6 +300,11 @@ describe('runNormalizeDatabase', () => {
             },
           },
         ])
+        // B09/B12 and MT02/MT05 use name-scoped season aggregates. Preserve
+        // their name matching while preventing a full event-index scan.
+        expect(aggregatePlans.some((detail) => /^SCAN event_facts\b/u.test(detail))).toBe(false)
+        expect(aggregatePlans.some((detail) => /SEARCH event_facts USING INDEX .*\(game_id=\?\)/u.test(detail))).toBe(true)
+        expect(aggregatePlans.some((detail) => /SEARCH batting_line_facts USING INDEX idx_batting_name_game/u.test(detail))).toBe(true)
 
         const playerIdWithNameFallbackRows = await aggregateBattingLines(queryDatabase, {
           year: 2025,
