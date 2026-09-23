@@ -1,5 +1,12 @@
 # QAテストケース一覧 - 現行本番との差分
 
+## 2026-09-23 rows_read改善後の本番検証（継続中）
+
+HEAD `48ff8f985` / Version `d5cc67a1-2963-47a6-84f0-e06131a45400` のAcceptanceは47/47 Pass。公式D1集計は2,400,899 rows_readでFree Tierの500万行以内。根拠は[改善記録](acceptance-read-optimization-20260923.md)。
+
+続くQAは37/182件を実行し、HTTP状態は{200: 37}、summary nullは0件。これは意味・形式のPass件数ではない。B31の252パラメータSQL失敗と全走査フォールバックを解消する追加修正を行うため、この版でのQAは終了し、修正デプロイ後にAcceptanceから再実行する。部分QAの既知rows_read合計は7,372,284。ログは `data/logs/qa-prod-run/qa-prod-1790167788230/`。Release Ready未達。以下の過去結果は最新修正のPassに流用しない。
+
+
 ## 2026-09-20 UTC 本日のD1消費主体を特定
 
 本日の500万rows超の消費主体は、このCodexセッションが実行した本番Acceptance `scripts/qa-acceptance.mjs`。47件の応答ログから18,253,121 rows以上を直接確認した。Cloudflareの03:13–03:14 UTCのDB集計は19,113,987 rows、本番Workerの同時間帯実行数は47件。欠測を含む差860,866 rowsは特定ケースへ推定配賦していない。今日全体のDB集計19,113,999 rowsのうち、後続QA・再開確認・証拠取得の時間帯は計12 rows。利用主体別表、SQL・Workflow・Cron・他Worker・管理ツールの確認結果と権限上の限界は[消費主体調査](incidents/2026-09-20-d1-consumers.md)を参照。これはRelease Readyの完了判定ではない。
