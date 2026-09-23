@@ -352,6 +352,41 @@ describe('runNormalizeDatabase', () => {
           "SELECT COUNT(*) AS count FROM award_facts WHERE year = 2025 AND award_type = 'rookie_of_the_year'",
         ).get() as { count?: number } | undefined
         expect(awardCount?.count).toBe(2)
+
+        // A common surname can match more names than D1 accepts bind parameters.
+        // Extra dictionary entries must not force the compatibility-view fallback.
+        for (let i = 0; i < 150; i++) {
+          normalized.prepare('INSERT INTO person_names (name) VALUES (?)').run(`浅村候補${i}`)
+        }
+        let rejectedBindings = 0
+        const candidatePlans: string[] = []
+        const limitedDatabase = {
+          ...queryDatabase,
+          prepare(sql: string) {
+            const statement = queryDatabase.prepare(sql)
+            return {
+              ...statement,
+              async all(...params: Array<string | number | null>) {
+                if (params.length > 100) {
+                  rejectedBindings++
+                  throw new Error('too many SQL variables')
+                }
+                if (sql.includes('idx_batting_name_game')) {
+                  candidatePlans.push(...(normalized.prepare(`EXPLAIN QUERY PLAN ${sql}`).all(...params) as Array<{ detail: string }>).map(row => row.detail))
+                }
+                return statement.all(...params)
+              },
+            }
+          },
+        }
+        const commonSurnameCandidates = await searchPlayerCandidates(limitedDatabase, {
+          name: '浅村', includeEvents: false, searchDomain: 'batting', limit: 50,
+        })
+        expect(commonSurnameCandidates).toEqual(expect.arrayContaining([
+          expect.objectContaining({ player_id: '51155118' }),
+        ]))
+        expect(rejectedBindings).toBe(0)
+        expect(candidatePlans.some(detail => /SEARCH batting_line_facts USING INDEX idx_batting_name_game/u.test(detail))).toBe(true)
       } finally {
         normalized.close()
       }

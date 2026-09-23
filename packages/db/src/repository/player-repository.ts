@@ -687,7 +687,9 @@ async function queryNormalizedPlayerMentions(
   }
   if (matchedNames.length === 0) return []
   const matchedNameIds = matchedNames.map((row) => row.nameId)
-  const matchedNameSql = `person_names.name_id IN (${matchedNameIds.map(() => '?').join(', ')})`
+  // Keep the full candidate set in one binding: common surnames can exceed
+  // D1's parameter limit and otherwise fall back to scanning compatibility views.
+  const matchedNameSql = 'person_names.name_id IN (SELECT value FROM json_each(?))'
 
   const yearClauses: string[] = []
   const yearValues: number[] = []
@@ -750,7 +752,7 @@ async function queryNormalizedPlayerMentions(
     for (const source of sources) {
       rows.push(...await database
         .prepare(`${source.sql} LIMIT ?`)
-        .all(source.role, ...matchedNameIds, ...yearValues, Math.max((filters.limit ?? 10) * 50, 200)) as RawPlayerMention[])
+        .all(source.role, JSON.stringify(matchedNameIds), ...yearValues, Math.max((filters.limit ?? 10) * 50, 200)) as RawPlayerMention[])
     }
     return rows
   } catch {

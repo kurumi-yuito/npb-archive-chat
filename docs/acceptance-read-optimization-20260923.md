@@ -68,4 +68,20 @@
 - 読みやすいSQL・計画一覧: `data/logs/acceptance-read-20260923/sql-and-plans.md`
 - 47件の基準ログ: `data/logs/qa-acceptance-all-1789874092331.json`
 
-本番47件の再実行と全体rows_read確認、続く182件QAは未完了。「設計上これ以上削減不能」とはまだ判定していない。
+## 本番再実行（第1修正）
+
+HEAD `48ff8f985`、Deploy Version `d5cc67a1-2963-47a6-84f0-e06131a45400` でAcceptance **47/47 Pass**。Cloudflare公式日次集計の実行前は記録なし、実行後は検索DB 2,400,664 + Meta DB 235 = **2,400,899 rows_read**で、500万行以内で完走した。リクエストヘッダーの既知分合計1,540,033はB31の欠測を含まないため全体値としては使用しない。
+
+- 本番応答: `data/logs/acceptance-read-20260923/qa-acceptance-all-1790135005735.json`
+- 公式集計: 同ディレクトリ `daily-before.json`、`daily-after-acceptance.json`
+- 各ケースSQL・ローカルEXPLAIN: 同ディレクトリ `case-sql-plans.json`。tailにはパラメータ値がないため、この一覧のEXPLAINはNULL仮引数による構造確認。実パラメータでの確認は `before.json` / `after.json` / `other-queries-json-bind.json` と区別する。
+
+## B31の残存SQL失敗と第2修正
+
+「田中選手の成績を教えて」の候補検索で、250件の名前IDにroleとLIMITを加えた**252パラメータ**のSQLが本番tailでfailedとなっていた。100パラメータ上限を設定したローカルSQLiteでも同じSQLの `too many SQL variables` を再現。D1の上限は[公式limits](https://developers.cloudflare.com/d1/platform/limits/)に記載されている。本番の例外本文はcatchで記録されていないため、ローカル再現の例外を本番ログの引用とは扱わない。
+
+名前ID集合をJSON配列1パラメータにまとめ、`IN (SELECT value FROM json_each(?))` とする。候補の省略やLIMIT変更はしない。250件の名前ID・2500件の返却行を使う実データスナップショットで、変更前後の行・順序が完全一致。パラメータ数は252から3へ減り、`SEARCH batting_line_facts USING INDEX idx_batting_name_game (player_name_id=?)` を維持した。失敗後に互換ビューの全走査へフォールバックする経路を回避する。
+
+150件を超える同姓候補の回帰テストで、100個上限の下でも検索結果と索引利用を確認した。第2修正の本番確認と182件QAは継続中。「設計上これ以上削減不能」とは判定していない。
+
+47件の修正後rows_read降順・SQL全文・実行計画・索引一覧は[ケース別SQL資料](acceptance-read-sql-plans-20260923.md)を参照。
