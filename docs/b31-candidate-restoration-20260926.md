@@ -64,4 +64,6 @@ SELECT person_names.name AS name,
 
 ## 検証状況
 
-ローカル正規化変換・候補検索回帰テストPass。B31本番確認→Acceptance47件→QA182件→独立ブラックボックス47件→Release Readyの順に続行する。現時点では本番合格・完全リリースとは判定していない。
+ローカル正規化変換・候補検索回帰テスト、typecheck、lintはPass（lint既存135 warnings / 0 errors）。本番Version `2846efc9-1c56-464c-8caf-88c2aea87874` でB31単独Pass。旧版本番のsummaryとidentity_resolution metadata（ID・名前・順序・candidateCountを含む）が完全一致し、失敗SQL・未知の測定値は0。続くAcceptance47/47 Pass。
+
+その後QAでB31とは別種の必要情報欠落を確認し、今回指定された停止条件に基づき停止。QA182件・独立ブラックボックス47件・Release Ready・完全リリースは未完了。[障害記録](incidents/2026-09-26-qa-detailed-pitching-answer.md)に実応答と再現結果を保存。
