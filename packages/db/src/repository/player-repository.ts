@@ -463,10 +463,9 @@ export async function searchPlayerCandidates(
 
   const rows: RawPlayerMention[] = []
   const normalizedRows = await queryNormalizedPlayerMentions(database, aliases, filters)
-  if (normalizedRows !== null) {
-    rows.push(...normalizedRows)
-  }
-  if (normalizedRows === null && filters.searchDomain === 'all') {
+  // Normalized facts replace the legacy fact views, not the independent BIS
+  // sources. Keep BIS mentions first, as in the legacy candidate pipeline.
+  if (filters.searchDomain === 'all') {
     rows.push(...await queryRawPlayerMentions(database, aliases, filters, {
       sql: 'SELECT current_team_roster.player_name AS name, current_team_roster.player_id AS player_url, ? AS role, current_team_roster.team_name AS team, current_team_roster.year AS year FROM current_team_roster',
       role: 'bis_roster',
@@ -474,7 +473,7 @@ export async function searchPlayerCandidates(
       yearColumn: 'current_team_roster.year',
     }))
   }
-  if (normalizedRows === null && filters.searchDomain !== 'pitching') {
+  if (filters.searchDomain !== 'pitching') {
     rows.push(...await queryRawPlayerMentions(database, aliases, filters, {
       sql: 'SELECT player_batting_stats.player_name AS name, player_batting_stats.player_id AS player_url, ? AS role, player_batting_stats.team_name AS team, player_batting_stats.year AS year FROM player_batting_stats',
       role: 'bis_batting',
@@ -482,7 +481,7 @@ export async function searchPlayerCandidates(
       yearColumn: 'player_batting_stats.year',
     }))
   }
-  if (normalizedRows === null && filters.searchDomain !== 'batting') {
+  if (filters.searchDomain !== 'batting') {
     const bisRows = await queryRawPlayerMentions(database, aliases, filters, {
       sql: 'SELECT player_pitching_stats.player_name AS name, player_pitching_stats.player_id AS player_url, ? AS role, player_pitching_stats.team_name AS team, player_pitching_stats.year AS year FROM player_pitching_stats',
       role: 'bis_pitching',
@@ -490,6 +489,9 @@ export async function searchPlayerCandidates(
       yearColumn: 'player_pitching_stats.year',
     })
     rows.push(...bisRows)
+  }
+  if (normalizedRows !== null) {
+    rows.push(...normalizedRows)
   }
   if (normalizedRows === null && filters.includeEvents !== false) {
     if (filters.searchDomain !== 'pitching') {
@@ -706,10 +708,11 @@ async function queryNormalizedPlayerMentions(
     yearValues.push(filters.year_to)
   }
   const whereYear = yearClauses.length > 0 ? ` AND ${yearClauses.join(' AND ')}` : ''
-  const sources: Array<{ sql: string, role: string }> = []
+  const sources: Array<{ sql: string, role: string, orderBy: string }> = []
   if (filters.searchDomain !== 'pitching') {
     sources.push({
       role: 'batter',
+      orderBy: 'batting_line_facts.rowid',
       sql: `SELECT person_names.name AS name,
               CASE WHEN batting_line_facts.player_id IS NOT NULL THEN 'https://npb.jp/bis/players/' || batting_line_facts.player_id || '.html' ELSE NULL END AS player_url,
               ? AS role, teams.team_name AS team, game_facts.year AS year
@@ -723,6 +726,7 @@ async function queryNormalizedPlayerMentions(
   if (filters.searchDomain !== 'batting') {
     sources.push({
       role: 'pitcher',
+      orderBy: 'pitching_line_facts.rowid',
       sql: `SELECT person_names.name AS name,
               CASE WHEN pitching_line_facts.pitcher_id IS NOT NULL THEN 'https://npb.jp/bis/players/' || pitching_line_facts.pitcher_id || '.html' ELSE NULL END AS player_url,
               ? AS role, teams.team_name AS team, game_facts.year AS year
@@ -736,6 +740,7 @@ async function queryNormalizedPlayerMentions(
   if (filters.searchDomain === 'all') {
     sources.push({
       role: 'roster',
+      orderBy: 'roster_entry_facts.rowid',
       sql: `SELECT person_names.name AS name,
               CASE WHEN roster_entry_facts.player_id IS NOT NULL THEN 'https://npb.jp/bis/players/' || roster_entry_facts.player_id || '.html' ELSE NULL END AS player_url,
               ? AS role, teams.team_name AS team, game_facts.year AS year
@@ -751,7 +756,10 @@ async function queryNormalizedPlayerMentions(
   try {
     for (const source of sources) {
       rows.push(...await database
-        .prepare(`${source.sql} LIMIT ?`)
+        // The name index visits facts in name-ID order. Apply the legacy fact
+        // storage order before LIMIT so the optimization cannot change which
+        // mentions reach grouping (or their first-seen name/team ordering).
+        .prepare(`${source.sql} ORDER BY ${source.orderBy} LIMIT ?`)
         .all(source.role, JSON.stringify(matchedNameIds), ...yearValues, Math.max((filters.limit ?? 10) * 50, 200)) as RawPlayerMention[])
     }
     return rows

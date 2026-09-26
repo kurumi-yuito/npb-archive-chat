@@ -392,6 +392,44 @@ describe('runNormalizeDatabase', () => {
         ]))
         expect(rejectedBindings).toBe(0)
         expect(candidatePlans.some(detail => /SEARCH batting_line_facts USING INDEX idx_batting_name_game/u.test(detail))).toBe(true)
+
+        // Make name-index order differ from fact storage order across LIMIT.
+        // A BIS-only mention must also survive the normalized fast path.
+        normalized.prepare('INSERT INTO person_names (name) VALUES (?)').run('架空後')
+        normalized.prepare('INSERT INTO person_names (name) VALUES (?)').run('架空先')
+        const insertMention = normalized.prepare(`
+          INSERT INTO batting_line_facts (
+            game_id, team_id, row_index, player_name_id,
+            at_bats, runs, hits, runs_batted_in, stolen_bases
+          )
+          SELECT game_id, team_id, ?, (SELECT name_id FROM person_names WHERE name = ?),
+            1, 0, 0, 0, 0 FROM batting_line_facts LIMIT 1
+        `)
+        insertMention.run(1000, '架空先')
+        for (let i = 0; i < 500; i++) insertMention.run(1001 + i, '架空後')
+        normalized.prepare(`INSERT INTO player_batting_stats (
+          year, team_id, team_name, player_key, player_name, row_index, values_json, source_url
+        ) VALUES (2025, 'test', '楽天', 'bis-only', '* 架空記録', 1, '{}', 'https://example.test/bis')`).run()
+        const legacyDatabase = {
+          ...queryDatabase,
+          prepare(sql: string) {
+            const statement = queryDatabase.prepare(sql)
+            return {
+              ...statement,
+              async get(...params: Array<string | number | null>) {
+                if (sql.includes('sqlite_master') && params.includes('person_names')) return undefined
+                return statement.get(...params)
+              },
+            }
+          },
+        }
+        const candidateFilters = {
+          name: '架空', includeEvents: false, searchDomain: 'batting' as const, limit: 10,
+        }
+        const legacyCandidates = await searchPlayerCandidates(legacyDatabase, candidateFilters)
+        const indexedCandidates = await searchPlayerCandidates(limitedDatabase, candidateFilters)
+        expect(indexedCandidates).toEqual(legacyCandidates)
+        expect(indexedCandidates.map(row => row.name)).toEqual(expect.arrayContaining(['架空先', '* 架空記録']))
       } finally {
         normalized.close()
       }
