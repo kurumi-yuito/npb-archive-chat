@@ -1045,6 +1045,37 @@ export function createChatService(
         }
       }
 
+      // A single player's detailed season answer needs the official season row
+      // as well as the latest appearance; per-game aggregates are not that row.
+      const detailedPitchingSeason = structuredQuery.intent === 'aggregate_pitching' &&
+        typeof structuredQuery.filters.pitcher_player_id === 'string' &&
+        typeof structuredQuery.filters.year === 'number' &&
+        (structuredQuery.filters.level === 'farm' || structuredQuery.filters.level === 'first') &&
+        Object.entries(structuredQuery.filters).every(([key, value]) => value === undefined ||
+          ['pitcher_player_id', 'pitcher_name', 'year', 'team', 'level', 'limit', 'sort_by'].includes(key)) &&
+        /詳しく|詳細/u.test(message) &&
+        !/比較|ランキング|順位|上位|通算/u.test(message) &&
+        !shouldSkipForPlayerResolution(playerResolution)
+      if (detailedPitchingSeason && structuredQuery.intent === 'aggregate_pitching') {
+        const filters = structuredQuery.filters
+        const detailFilters = {
+          pitcher_player_id: filters.pitcher_player_id,
+          pitcher_name: filters.pitcher_name,
+          year: filters.year,
+          team: filters.team,
+          level: filters.level,
+          limit: 10,
+        }
+        const seasonRows = await queryService.searchPitchingLines(detailFilters)
+        const recentRows = await searchRecentPitchingLinesForChat(queryService, {
+          ...detailFilters, recent: true, limit: 1,
+        }, playerResolution)
+        results.pitching = [
+          ...seasonRows.filter((row) => row.sourceKind === 'bis_pitching' || row.sourceKind === 'bis_pitching_farm'),
+          ...recentRows.filter((row) => row.sourceKind !== 'bis_pitching' && row.sourceKind !== 'bis_pitching_farm'),
+        ]
+      }
+
       const gameIds = Array.from(
         new Set(
           [
@@ -1060,13 +1091,18 @@ export function createChatService(
       )
 
       const sources = await listSourceSnapshotsByGameIdsBatched(queryService, gameIds)
+      const executionMetadata = buildChatExecutionMetadata(structuredQuery, playerResolution, effectivePlan)
+      if (detailedPitchingSeason) {
+        executionMetadata.dataRequirements = [...new Set([...executionMetadata.dataRequirements, 'pitching_lines' as const])]
+        executionMetadata.repositories = [...new Set([...executionMetadata.repositories, 'searchPitchingLines' as const])]
+      }
       const answer = answerFormatter({
         question: message,
         structuredQuery,
         results,
         sources,
         playerResolution,
-        executionMetadata: buildChatExecutionMetadata(structuredQuery, playerResolution, effectivePlan),
+        executionMetadata,
       })
       const availabilityAwareAnswer = /昨日の巨人.*試合結果/u.test(message) &&
         results.games.length === 0 && results.gameDetails.length === 0

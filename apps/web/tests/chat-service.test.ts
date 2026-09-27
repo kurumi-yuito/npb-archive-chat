@@ -3101,6 +3101,45 @@ describe('chat-service', () => {
     }
   })
 
+  it('retrieves official season detail and a same-scope latest appearance for Q-02', async () => {
+    const searches: unknown[] = []
+    const service = createChatService(createFakeQueryService({
+      playerCandidates: [{ player_id: '41045137', name: '藤浪 晋太郎', primary_team: '横浜DeNAベイスターズ',
+        roles: ['pitcher'], teams: ['横浜DeNAベイスターズ'], years: [2026] }],
+      aggregatePitchingLines: async () => [{ kind: 'pitching', label: '藤浪 晋太郎', total: 9,
+        stats: { games: 9, inningsPitched: 36, earnedRuns: 9, strikeouts: 36 } }],
+      searchPitchingLines: async (filters) => {
+        searches.push(filters)
+        return filters.recent ? [{
+          gameId: 'f20260522db-d-05', gameDate: '2026-05-22', team: '横浜DeNAベイスターズ',
+          pitcherName: '藤浪 晋太郎', inningsPitched: '5', pitchCount: 0,
+          strikeouts: 8, runs: 1, earnedRuns: 1, sourceKind: 'box',
+        }] : [{
+          gameId: 'bis:2026:db:idp2', gameDate: '2026-01-01', team: '横浜DeNAベイスターズ',
+          pitcherName: '藤浪 晋太郎', inningsPitched: '14', pitchCount: 0,
+          strikeouts: 19, runs: 5, earnedRuns: 3, sourceKind: 'bis_pitching_farm',
+          statsJson: JSON.stringify({ 登板: 5, 投球回: 14, 被安打: 11, 与四球: 7, 三振: 19, 失点: 5, 自責点: 3, 防御率: '1.93' }),
+        }]
+      },
+    }), {
+      allowFinalAnswerFallback: false,
+      parseStructuredQueryFromMessage: async () => ({ intent: 'aggregate_pitching', filters: {
+        year: 2026, pitcher_name: '藤浪 晋太郎', pitcher_player_id: '41045137', level: 'farm',
+      } }),
+      formatChatAnswer,
+    })
+    const response = await service.answerQuestion('藤浪は2026年のここまでの二軍での成績はどうですか？防御率や登板数など詳しく教えてください')
+    expect(searches).toEqual(expect.arrayContaining([
+      expect.objectContaining({ year: 2026, level: 'farm', pitcher_player_id: '41045137' }),
+      expect.objectContaining({ year: 2026, level: 'farm', pitcher_player_id: '41045137', recent: true, limit: 1 }),
+    ]))
+    for (const text of ['被安打11', '与四球7', '失点5', '自責点3', '防御率1.93', '2026年5月22日', '5回、8奪三振']) {
+      expect(response.answer.summary).toContain(text)
+    }
+    expect(response.answer.summary).not.toContain('1位')
+    expect(response.answer.execution_metadata?.repositories).toContain('searchPitchingLines')
+  })
+
   it.skip('includes hits and walks in BIS pitching season summaries', async () => {
     const service = createChatService(createFakeQueryService({
       searchPitchingLines: async () => [{

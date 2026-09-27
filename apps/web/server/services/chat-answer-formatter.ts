@@ -672,6 +672,11 @@ function buildSummary(
     ].join('\n')
   }
 
+  if (structuredQuery.intent === 'aggregate_pitching' && /詳しく|詳細/u.test(question)) {
+    const seasonAndRecent = formatPitchingSeasonAndRecentSummary(question, results.pitching, results.aggregates)
+    if (seasonAndRecent) return `${yearShiftPrefix}${seasonAndRecent}`
+  }
+
   if (
     structuredQuery.intent === 'aggregate_batting' ||
     structuredQuery.intent === 'aggregate_pitching' ||
@@ -1253,11 +1258,18 @@ function formatPitchingSeasonAndRecentSummary(
   pitchingRows: PitchingLineRow[],
   aggregateRows: AggregateRow[],
 ): string | null {
-  if (!/何回登板|登板数/u.test(question) || pitchingRows.length === 0 || aggregateRows.length === 0) {
+  if (!/何回登板|登板数|詳しく|詳細/u.test(question) || pitchingRows.length === 0) {
     return null
   }
+  const officialSeason = pitchingRows.find((row) => row.sourceKind === 'bis_pitching' || row.sourceKind === 'bis_pitching_farm')
   const season = aggregateRows[0]
   const recent = pitchingRows.find((row) => row.sourceKind !== 'bis_pitching' && row.sourceKind !== 'bis_pitching_farm')
+  if (officialSeason) {
+    return [
+      formatBisPitchingSummary(officialSeason, 1),
+      ...(recent ? [`直近の登板は${formatDateJa(recent.gameDate)}で、${formatInningsForDisplay(recent.inningsPitched)}、${recent.strikeouts}奪三振、失点${recent.runs}、自責点${recent.earnedRuns}でした。`] : []),
+    ].join('\n')
+  }
   if (!season || !recent) {
     return null
   }
