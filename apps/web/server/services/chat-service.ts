@@ -13,6 +13,7 @@ import {
 } from '@npb/schemas'
 import {
   createSingleDatabaseQueryService,
+  canonicalTeamName,
   DEFAULT_CHAT_QUERY_YEARS,
   type ChatQueryService,
   type AggregateRow,
@@ -1050,10 +1051,12 @@ export function createChatService(
       const detailedPitchingSeason = (structuredQuery.intent === 'aggregate_pitching' || structuredQuery.intent === 'search_pitching') &&
         typeof structuredQuery.filters.pitcher_player_id === 'string' &&
         typeof structuredQuery.filters.year === 'number' &&
-        (structuredQuery.filters.level === 'farm' || structuredQuery.filters.level === 'first') &&
+        (structuredQuery.filters.level === 'farm' || structuredQuery.filters.level === 'first' ||
+          (structuredQuery.intent === 'search_pitching' && structuredQuery.filters.recent === true && results.pitching.some((row) => row.sourceKind === 'box'))) &&
         Object.entries(structuredQuery.filters).every(([key, value]) => value === undefined ||
           ['pitcher_player_id', 'pitcher_name', 'year', 'team', 'level', 'limit', 'recent'].includes(key)) &&
-        /詳しく|詳細|何回登板|登板数/u.test(message) &&
+        (/詳しく|詳細|何回登板|登板数/u.test(message) ||
+          (structuredQuery.intent === 'search_pitching' && structuredQuery.filters.recent === true && /最近|調子/u.test(message))) &&
         !/比較|ランキング|順位|上位|通算/u.test(message) &&
         !shouldSkipForPlayerResolution(playerResolution)
       if (detailedPitchingSeason && (structuredQuery.intent === 'aggregate_pitching' || structuredQuery.intent === 'search_pitching')) {
@@ -1063,7 +1066,7 @@ export function createChatService(
           pitcher_name: filters.pitcher_name,
           year: filters.year,
           team: filters.team,
-          level: filters.level,
+          level: filters.level ?? (results.pitching.find((row) => row.sourceKind === 'box')?.gameId.startsWith('f') ? 'farm' as const : 'first' as const),
           limit: 10,
         }
         const seasonRows = await queryService.searchPitchingLines(detailFilters)
@@ -2202,8 +2205,8 @@ async function rewriteGenericSeasonStatToPitchingIfNeeded(
 }
 
 function sameCanonicalTeam(left: string, right: string): boolean {
-  const normalizedLeft = normalizeTeamName(left) ?? left
-  const normalizedRight = normalizeTeamName(right) ?? right
+  const normalizedLeft = canonicalTeamName(normalizeTeamName(left) ?? left)
+  const normalizedRight = canonicalTeamName(normalizeTeamName(right) ?? right)
   return normalizedLeft === normalizedRight || Boolean(
     normalizedLeft && normalizedRight &&
     (normalizedLeft.includes(normalizedRight) || normalizedRight.includes(normalizedLeft)),

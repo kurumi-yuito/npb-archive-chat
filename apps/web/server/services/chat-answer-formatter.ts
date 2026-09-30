@@ -2028,8 +2028,10 @@ function formatPitchingEvaluationSummary(rows: PitchingLineRow[], limit = 5): st
   ].filter(Boolean)
   const teamPrefix = gameRows[0]?.team ? `${gameRows[0].team} ` : ''
   const latest = gameRows[0]
+  const seasonRow = rows.find((row) => row.sourceKind === 'bis_pitching' || row.sourceKind === 'bis_pitching_farm')
   return [
     latest ? `${teamPrefix}${pitcherName}は${formatDateJa(latest.gameDate)}の${latest.gameId.startsWith('f') ? '二軍' : '一軍'}登板で、${formatInningsForDisplay(latest.inningsPitched)}、${latest.strikeouts}奪三振、自責点${latest.earnedRuns}${latest.pitchCount > 0 ? `、${latest.pitchCount}球` : ''}でした。` : undefined,
+    ...(seasonRow ? [formatBisPitchingSummary(seasonRow, 1)] : []),
     ...(gameRows.length > 1 ? [`直近${gameRows.length}登板の合計は${positives.join('、')}です。`] : []),
     ...(gameRows.length > 1 ? [`登板日: ${gameRows.map((row) => formatDateJa(row.gameDate)).join('、')}`] : []),
     buildInternalRecentGapNote(gameRows.map((row) => row.gameDate)),

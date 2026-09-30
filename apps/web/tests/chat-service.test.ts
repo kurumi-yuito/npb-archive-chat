@@ -3738,6 +3738,32 @@ describe('chat-service', () => {
     expect(response.answer.summary).toContain('どの村上ですか')
   })
 
+  it('keeps equivalent team aliases without a false current affiliation warning', async () => {
+    const service = createChatService(createFakeQueryService({
+      playerCandidates: [{ player_id: 'norimoto', name: '則本 昂大', primary_team: '読売ジャイアンツ',
+        roles: ['pitcher'], teams: ['読売ジャイアンツ'], years: [2026] }],
+      searchPitchingLines: async (filters) => filters.recent ? [{ gameId: 'r20260905g-t-01', gameDate: '2026-09-05',
+        team: '読売ジャイアンツ', pitcherName: '則本 昂大', inningsPitched: '1', pitchCount: 16,
+        strikeouts: 2, runs: 0, earnedRuns: 0, sourceKind: 'box' }] : [{
+        gameId: 'bis:2026:g:idp1', gameDate: '2026-01-01', team: '読売ジャイアンツ',
+        pitcherName: '則本 昂大', inningsPitched: '30', pitchCount: 0, strikeouts: 22,
+        runs: 9, earnedRuns: 9, sourceKind: 'bis_pitching',
+        statsJson: JSON.stringify({ 登板: 5, 投球回: 30, 三振: 22, 防御率: '2.70' }),
+      }],
+    }), {
+      parseStructuredQueryFromMessage: async () => ({ intent: 'search_pitching',
+        filters: { year: 2026, team: '巨人', pitcher_name: '則本昂大', recent: true } }),
+      formatChatAnswer,
+    })
+    const response = await service.answerQuestion('巨人の則本昂大、最近の登板調子はどう？')
+    expect(response.answer.summary).toContain('則本')
+    expect(response.answer.summary).not.toContain('現在のNPB所属')
+    expect(response.answer.summary).not.toContain('現所属を優先')
+    expect(response.answer.summary).toContain('登板5')
+    expect(response.answer.summary).toContain('投球回30')
+    expect(response.answer.summary).toContain('防御率2.70')
+  })
+
   it('uses a team-qualified mention as a resolution hint but searches current team for non-era recent questions', async () => {
     let pitchingFilters: unknown = null
     const service = createChatService(createFakeQueryService({

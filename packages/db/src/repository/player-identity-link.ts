@@ -83,8 +83,8 @@ export function canonicalPlayerFactCandidateSql(factIdColumn: string, factNameId
     WHERE name IN (SELECT name FROM candidate_aliases)
        OR EXISTS (
          SELECT 1 FROM candidate_identity
-         WHERE candidate_identity.name LIKE candidate_dictionary.name || '%'
-            OR candidate_dictionary.name LIKE candidate_identity.name || '%'
+         WHERE instr(candidate_identity.name, candidate_dictionary.name) = 1
+            OR instr(candidate_dictionary.name, candidate_identity.name) = 1
        )
   ))`
 }
