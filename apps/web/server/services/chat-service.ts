@@ -1047,16 +1047,16 @@ export function createChatService(
 
       // A single player's detailed season answer needs the official season row
       // as well as the latest appearance; per-game aggregates are not that row.
-      const detailedPitchingSeason = structuredQuery.intent === 'aggregate_pitching' &&
+      const detailedPitchingSeason = (structuredQuery.intent === 'aggregate_pitching' || structuredQuery.intent === 'search_pitching') &&
         typeof structuredQuery.filters.pitcher_player_id === 'string' &&
         typeof structuredQuery.filters.year === 'number' &&
         (structuredQuery.filters.level === 'farm' || structuredQuery.filters.level === 'first') &&
         Object.entries(structuredQuery.filters).every(([key, value]) => value === undefined ||
-          ['pitcher_player_id', 'pitcher_name', 'year', 'team', 'level', 'limit', 'sort_by'].includes(key)) &&
-        /詳しく|詳細/u.test(message) &&
+          ['pitcher_player_id', 'pitcher_name', 'year', 'team', 'level', 'limit', 'recent'].includes(key)) &&
+        /詳しく|詳細|何回登板|登板数/u.test(message) &&
         !/比較|ランキング|順位|上位|通算/u.test(message) &&
         !shouldSkipForPlayerResolution(playerResolution)
-      if (detailedPitchingSeason && structuredQuery.intent === 'aggregate_pitching') {
+      if (detailedPitchingSeason && (structuredQuery.intent === 'aggregate_pitching' || structuredQuery.intent === 'search_pitching')) {
         const filters = structuredQuery.filters
         const detailFilters = {
           pitcher_player_id: filters.pitcher_player_id,
@@ -1067,9 +1067,11 @@ export function createChatService(
           limit: 10,
         }
         const seasonRows = await queryService.searchPitchingLines(detailFilters)
-        const recentRows = await searchRecentPitchingLinesForChat(queryService, {
-          ...detailFilters, recent: true, limit: 1,
-        }, playerResolution)
+        const recentRows = structuredQuery.intent === 'search_pitching' && structuredQuery.filters.recent === true
+          ? results.pitching
+          : await searchRecentPitchingLinesForChat(queryService, {
+              ...detailFilters, recent: true, limit: 1,
+            }, playerResolution)
         results.pitching = [
           ...seasonRows.filter((row) => row.sourceKind === 'bis_pitching' || row.sourceKind === 'bis_pitching_farm'),
           ...recentRows.filter((row) => row.sourceKind !== 'bis_pitching' && row.sourceKind !== 'bis_pitching_farm'),
@@ -1095,6 +1097,10 @@ export function createChatService(
       if (detailedPitchingSeason) {
         executionMetadata.dataRequirements = [...new Set([...executionMetadata.dataRequirements, 'pitching_lines' as const])]
         executionMetadata.repositories = [...new Set([...executionMetadata.repositories, 'searchPitchingLines' as const])]
+        if (results.aggregates.length > 0) {
+          executionMetadata.dataRequirements = [...new Set([...executionMetadata.dataRequirements, 'aggregate_pitching' as const])]
+          executionMetadata.repositories = [...new Set([...executionMetadata.repositories, 'aggregatePitchingLines' as const])]
+        }
       }
       const answer = answerFormatter({
         question: message,

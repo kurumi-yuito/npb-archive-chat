@@ -3101,7 +3101,10 @@ describe('chat-service', () => {
     }
   })
 
-  it('retrieves official season detail and a same-scope latest appearance for Q-02', async () => {
+  it.each([
+    { intent: 'aggregate_pitching' as const, question: '藤浪は2026年のここまでの二軍での成績はどうですか？防御率や登板数など詳しく教えてください' },
+    { intent: 'search_pitching' as const, question: '藤浪は今シーズン二軍で何回登板してる？直近の試合ではどんな投球だった？' },
+  ])('retrieves official season detail and a same-scope latest appearance: $intent', async ({ intent, question }) => {
     const searches: unknown[] = []
     const service = createChatService(createFakeQueryService({
       playerCandidates: [{ player_id: '41045137', name: '藤浪 晋太郎', primary_team: '横浜DeNAベイスターズ',
@@ -3118,22 +3121,23 @@ describe('chat-service', () => {
           gameId: 'bis:2026:db:idp2', gameDate: '2026-01-01', team: '横浜DeNAベイスターズ',
           pitcherName: '藤浪 晋太郎', inningsPitched: '14', pitchCount: 0,
           strikeouts: 19, runs: 5, earnedRuns: 3, sourceKind: 'bis_pitching_farm',
-          statsJson: JSON.stringify({ 登板: 5, 投球回: 14, 被安打: 11, 与四球: 7, 三振: 19, 失点: 5, 自責点: 3, 防御率: '1.93' }),
+          statsJson: JSON.stringify({ 登板: 5, 勝利: 1, 敗北: 1, 投球回: 14, 被安打: 11, 与四球: 7, 三振: 19, 失点: 5, 自責点: 3, 防御率: '1.93' }),
         }]
       },
     }), {
       allowFinalAnswerFallback: false,
-      parseStructuredQueryFromMessage: async () => ({ intent: 'aggregate_pitching', filters: {
+      parseStructuredQueryFromMessage: async () => ({ intent, filters: {
         year: 2026, pitcher_name: '藤浪 晋太郎', pitcher_player_id: '41045137', level: 'farm',
+        ...(intent === 'search_pitching' ? { recent: true } : {}),
       } }),
       formatChatAnswer,
     })
-    const response = await service.answerQuestion('藤浪は2026年のここまでの二軍での成績はどうですか？防御率や登板数など詳しく教えてください')
+    const response = await service.answerQuestion(question)
     expect(searches).toEqual(expect.arrayContaining([
       expect.objectContaining({ year: 2026, level: 'farm', pitcher_player_id: '41045137' }),
-      expect.objectContaining({ year: 2026, level: 'farm', pitcher_player_id: '41045137', recent: true, limit: 1 }),
+      expect.objectContaining({ year: 2026, level: 'farm', pitcher_player_id: '41045137', recent: true }),
     ]))
-    for (const text of ['被安打11', '与四球7', '失点5', '自責点3', '防御率1.93', '2026年5月22日', '5回、8奪三振']) {
+    for (const text of ['勝利1', '敗北1', '被安打11', '与四球7', '失点5', '自責点3', '防御率1.93', '2026年5月22日', '5回、8奪三振']) {
       expect(response.answer.summary).toContain(text)
     }
     expect(response.answer.summary).not.toContain('1位')
