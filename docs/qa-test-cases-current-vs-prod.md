@@ -1,5 +1,9 @@
 # QAテストケース一覧 - 現行本番との差分
 
+## 2026-10-03 復旧再開 — B31の外部拒否で停止
+
+製品コードHEAD `2990b64566086751202859b4f02ea58eea828dac` / Deploy Version `4ce7fb4a-4a05-44bb-a8af-9c5261932417`。保存済みB31修正を復旧確認し、局所回帰36件・typecheck・buildはPass。最新本番B31は2回ともHTTP500 / summary nullで、WorkerログがCloudflareの日次利用枠による外部拒否を示した。最新VersionのAcceptance47件・182件QA・独立ブラックボックス47件は未実施。Release Ready・完全リリース未達。応答ログと復旧状態は[停止記録](incidents/2026-10-03-release-recovery-external-blocker.md)を参照。以下の過去結果を最新VersionのPass根拠に流用しない。
+
 ## 2026-10-02 最新本番の再開状況
 
 製品コードHEAD `4e8483b6c` / 最新Deploy Version `7363b200-0c15-44be-89a5-b6dd7d783acb`。このVersionでB31・Acceptance・182件QAは未実行。直前Version `31368a9d-6dba-4f6d-a3e9-555396b1418e` ではB31とAcceptance 47/47がPassしたが、Versionが異なるため最新VersionのPass根拠には流用しない。同Versionの182件QAログ `data/logs/qa-prod-1790943797277.json` は全182件を記録したが、HTTP 200は30件、HTTP 500は141件、実行エラーは11件。したがってQA完了・全件比較・Release Readyのいずれにも到達していない。HTTP 200の回答も含め、このログをQA Aの確定回答として扱わない。次回は最新VersionでB31から順に実行する。
