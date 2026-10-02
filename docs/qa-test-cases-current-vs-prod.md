@@ -2,7 +2,7 @@
 
 ## 2026-10-02 最新本番の再開状況
 
-製品コードHEAD `6106b50419ce150a17f1e72617bd45173ad2319f` / Deploy Version `31368a9d-6dba-4f6d-a3e9-555396b1418e`。B31本番確認とAcceptance 47/47はPass。182件QAログ `data/logs/qa-prod-1790943797277.json` は全182件を記録したが、HTTP 200は30件、HTTP 500は141件、実行エラーは11件。したがってQA完了・全件比較・Release Readyのいずれにも到達していない。HTTP 200の回答も含め、このログをQA Aの確定回答として扱わない。次回は同じDeploy VersionでQAを再開する。
+製品コードHEAD `4e8483b6c` / 最新Deploy Version `7363b200-0c15-44be-89a5-b6dd7d783acb`。このVersionでB31・Acceptance・182件QAは未実行。直前Version `31368a9d-6dba-4f6d-a3e9-555396b1418e` ではB31とAcceptance 47/47がPassしたが、Versionが異なるため最新VersionのPass根拠には流用しない。同Versionの182件QAログ `data/logs/qa-prod-1790943797277.json` は全182件を記録したが、HTTP 200は30件、HTTP 500は141件、実行エラーは11件。したがってQA完了・全件比較・Release Readyのいずれにも到達していない。HTTP 200の回答も含め、このログをQA Aの確定回答として扱わない。次回は最新VersionでB31から順に実行する。
 
 局所修正の回帰テストは `pnpm exec vitest run apps/web/tests/chat-query-llm.test.ts` で34件Pass。Q-50/Q-56/Q-131の本番再確認は `data/logs/qa-prod-1790941421159.json` に保存し、すべてHTTP 200。Acceptanceログは `data/logs/qa-acceptance-all-1790941571277.json`、B31ログは `data/logs/qa-acceptance-B31-1790941507006.json`。
 
