@@ -1,5 +1,11 @@
 # QAテストケース一覧 - 現行本番との差分
 
+## 2026-10-02 最新本番の再開状況
+
+製品コードHEAD `6106b50419ce150a17f1e72617bd45173ad2319f` / Deploy Version `31368a9d-6dba-4f6d-a3e9-555396b1418e`。B31本番確認とAcceptance 47/47はPass。182件QAログ `data/logs/qa-prod-1790943797277.json` は全182件を記録したが、HTTP 200は30件、HTTP 500は141件、実行エラーは11件。したがってQA完了・全件比較・Release Readyのいずれにも到達していない。HTTP 200の回答も含め、このログをQA Aの確定回答として扱わない。次回は同じDeploy VersionでQAを再開する。
+
+局所修正の回帰テストは `pnpm exec vitest run apps/web/tests/chat-query-llm.test.ts` で34件Pass。Q-50/Q-56/Q-131の本番再確認は `data/logs/qa-prod-1790941421159.json` に保存し、すべてHTTP 200。Acceptanceログは `data/logs/qa-acceptance-all-1790941571277.json`、B31ログは `data/logs/qa-acceptance-B31-1790941507006.json`。
+
 ## 2026-09-30 本番検証（進行中）
 
 HEAD `7febe202aa25b4946f5c804dac3542bfa74dbab0` / Deploy `fc55dd76-f744-49c6-aa2a-da0ecae2d75a`。Acceptance47/47 Pass。QA182件は未完了で、Release Readyではない。

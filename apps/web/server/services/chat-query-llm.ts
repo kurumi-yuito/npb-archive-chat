@@ -437,21 +437,46 @@ function normalizeExplicitPlannerContract(
   }
 
   if (/サヨナラ勝ち/u.test(message)) {
-    intent = 'search_events'
-    filters.year = typeof filters.year === 'number' ? filters.year : currentJstYear()
-    if (mentionedTeams[0]) filters.team = mentionedTeams[0]
-    filters.result_text_contains = 'サヨナラ'
-    filters.limit = 100
-    changed = true
+    const year = typeof filters.year === 'number' ? filters.year : currentJstYear()
+    const team = mentionedTeams[0]
+    if (intent !== 'search_events') {
+      intent = 'search_events'
+      changed = true
+    }
+    if (filters.year !== year) {
+      filters.year = year
+      changed = true
+    }
+    if (team && filters.team !== team) {
+      filters.team = team
+      changed = true
+    }
+    if (filters.result_text_contains !== 'サヨナラ') {
+      filters.result_text_contains = 'サヨナラ'
+      changed = true
+    }
+    if (filters.limit !== 100) {
+      filters.limit = 100
+      changed = true
+    }
   }
 
   if (/勝利数が最も多いチーム|勝利数の最も多いチーム|勝ち数が最も多いチーム/u.test(message)) {
-    intent = 'aggregate_games'
-    delete filters.player_name
-    delete filters.player_id
+    if (intent !== 'aggregate_games') {
+      intent = 'aggregate_games'
+      changed = true
+    }
+    for (const field of ['player_name', 'player_id']) {
+      if (field in filters) {
+        delete filters[field]
+        changed = true
+      }
+    }
     const league = /セ・?リーグ/u.test(message) ? 'セ・リーグ' : /パ・?リーグ/u.test(message) ? 'パ・リーグ' : undefined
-    if (league) filters.team = league
-    changed = true
+    if (league && filters.team !== league) {
+      filters.team = league
+      changed = true
+    }
   }
 
   if (/通算/u.test(message) && (typeof filters.year_from === 'number' || typeof filters.year_to === 'number')) {

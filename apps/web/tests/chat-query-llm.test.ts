@@ -311,6 +311,24 @@ describe('chat-query-llm', () => {
   })
 
   it.each([
+    [
+      '2024年のセ・リーグで勝利数が最も多いチームはどこですか？',
+      { intent: 'aggregate_games', filters: { year: 2024, team: 'セ・リーグ' } },
+    ],
+    [
+      '今シーズン阪神のサヨナラ勝ちはいつ？',
+      { intent: 'search_events', filters: { year: 2026, team: '阪神', result_text_contains: 'サヨナラ', limit: 100 } },
+    ],
+    [
+      '今シーズンのサヨナラ勝ちの試合詳細を1つ教えて',
+      { intent: 'search_events', filters: { year: 2026, result_text_contains: 'サヨナラ', limit: 100 } },
+    ],
+  ])('normalizes repeated explicit constraints idempotently for %s', (message, parsed) => {
+    const normalized = normalizeStructuredQueryFromLlmMessage(message, parsed)
+    expect(normalizeStructuredQueryFromLlmMessage(message, normalized)).toEqual(normalized)
+  })
+
+  it.each([
     ['村上宗隆は今シーズン打率どのくらい？', '村上宗隆'],
     ['ヤクルトの村上の今シーズン打率と本塁打数を教えてください', '村上'],
     ['村上宗隆の2019年から2025年の年別本塁打数を教えてください', '村上宗隆'],
