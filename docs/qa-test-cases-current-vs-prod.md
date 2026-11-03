@@ -1,5 +1,17 @@
 # QAテストケース一覧 - 現行本番との差分
 
+## 2026-11-02 再設計開始時の本番確認
+
+`wrangler deployments list`で最新配信Version `c19d9daf-3d4b-4228-ae95-c7e9b6f80c3a`を確認。今回の再設計コードは、この記録時点では未デプロイ。`/api/health`はHTTP 200。`/api/account`はHTTP 200で`billingConfigured: true`・`googleAuthConfigured: true`を返したが、ログイン・実決済・権限同期のE2E合格を意味しない。
+
+追加Q-183の本番回答（HTTP 200、検索0件）:
+
+```text
+どの山田ですか。選手候補が複数あるため検索を実行しませんでした。候補：山田 哲人（ヤクルト・2012-2025年）、山田 大樹（ヤクルト・2010-2020年）。フルネームまたはチーム名を指定してください。
+```
+
+2025年・ヤクルトの出場根拠で候補を絞れていないためFail。実行ログは`data/logs/redesign-20261102/baseline-Q183.json`、独立評価ログは`data/logs/redesign-20261102/baseline-contract-eval.json`。独立評価はPass 0 / Fail 1 / Blocked 0。意味・選手解決・検索制約・完全性・回答・出典はFail、検索計画のみPass、集計は要求なしとして`not_applicable`。既存182件・Acceptance47件・追加Q-184はこの日に未実行。許容外差分0件・Release Readyとは判定しない。
+
 ## 2026-10-03 復旧再開 — B31の外部拒否で停止
 
 製品コードHEAD `2990b64566086751202859b4f02ea58eea828dac` / Deploy Version `4ce7fb4a-4a05-44bb-a8af-9c5261932417`。保存済みB31修正を復旧確認し、局所回帰36件・typecheck・buildはPass。最新本番B31は2回ともHTTP500 / summary nullで、WorkerログがCloudflareの日次利用枠による外部拒否を示した。最新VersionのAcceptance47件・182件QA・独立ブラックボックス47件は未実施。Release Ready・完全リリース未達。応答ログと復旧状態は[停止記録](incidents/2026-10-03-release-recovery-external-blocker.md)を参照。以下の過去結果を最新VersionのPass根拠に流用しない。

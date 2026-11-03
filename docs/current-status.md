@@ -1,5 +1,9 @@
 # Current Status
 
+## リリース再設計（作業中）
+
+2026-11-02開始の質問理解・検索・回答検証の再設計は未完了。最新の候補版・検証結果・残作業は [release-redesign-progress.md](release-redesign-progress.md) を参照する。以下の実装済み一覧は、今回のリリース条件の全件合格を意味しない。
+
 ## Canonical Data Flow
 
 現在の年次データ更新の正規フローは次に統一する。

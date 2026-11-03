@@ -163,7 +163,7 @@ export function createMultiYearQueryService({
       runAcrossYears(
         filters,
         searchEvents,
-        (row) => `${row.gameDate}:${row.gameId}:${row.sequence}`,
+        (row) => `${row.gameDate}:${row.gameId}:${String(row.sequence).padStart(12, '0')}`,
         filters.limit ?? 50,
       ),
     searchGames: (filters) =>

@@ -10,6 +10,9 @@ export type SearchPlayerCandidatesFilters = {
   year?: number
   year_from?: number
   year_to?: number
+  /** Require dated participation evidence; never expand with current profiles. */
+  scopeToEvidence?: boolean
+  team?: string
   latestOnly?: boolean
   includeEvents?: boolean
   searchDomain?: 'all' | 'batting' | 'pitching'
@@ -436,7 +439,7 @@ export async function searchPlayerCandidates(
     await resolvePlayerIdsFromAliases(database, aliases),
   )
   const profilePlayerIds = profileMatches.map((m) => m.player_id)
-  if (profileMatches.length > 1 && !filters.latestOnly && !isShortIdentityInput) {
+  if (!filters.scopeToEvidence && profileMatches.length > 1 && !filters.latestOnly && !isShortIdentityInput) {
     return profileMatches.map((profile) => ({
       player_id: profile.player_id,
       name: profile.fullName ?? filters.name,
@@ -447,7 +450,7 @@ export async function searchPlayerCandidates(
       match_kind: 'profile',
     } as PlayerCandidate & { match_kind: 'profile' }))
   }
-  if (profileMatches.length === 1 && !filters.latestOnly && !isShortIdentityInput) {
+  if (!filters.scopeToEvidence && profileMatches.length === 1 && !filters.latestOnly && !isShortIdentityInput) {
     const profile = profileMatches[0]!
     const inferredRoles = await inferPlayerRoles(database, profile.player_id)
     return [{
@@ -542,6 +545,24 @@ export async function searchPlayerCandidates(
     }))
   }
 
+  // Filter paired team/year observations before grouping. Separate arrays of
+  // career teams and years cannot establish affiliation in a particular year.
+  if (filters.scopeToEvidence) {
+    const scopedRows = rows.filter((row) =>
+      (!filters.year || Number(row.year) === filters.year) &&
+      (!filters.year_from || Number(row.year) >= filters.year_from) &&
+      (!filters.year_to || Number(row.year) <= filters.year_to) &&
+      (!filters.team || (row.team !== null && sameTeamAlias(row.team, filters.team))),
+    )
+    return groupPlayerMentions(scopedRows, aliases)
+      .filter((candidate) => candidate.player_id)
+      .filter((candidate) => profilePlayerIds.length === 0 || profilePlayerIds.includes(candidate.player_id!))
+      .map((candidate) => ({
+        ...candidate,
+        name: profileMatches.find((profile) => profile.player_id === candidate.player_id)?.fullName ?? candidate.name,
+      }))
+      .slice(0, filters.limit ?? 10)
+  }
   const candidateRows = filters.latestOnly ? latestMentionRows(rows) : rows
   let candidates = mergeFallbackCandidates(groupPlayerMentions(candidateRows, aliases))
 

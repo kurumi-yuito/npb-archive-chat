@@ -9,6 +9,7 @@ import {
 } from '@npb/db'
 import { chatResponseSchema } from '@npb/schemas'
 import { createChatService } from '../services/chat-service'
+import { EventEvidenceError } from '../services/chat-event-evidence'
 import {
   ChatQueryParserUnavailableError,
   createChatQueryParser,
@@ -82,7 +83,6 @@ export default defineEventHandler(async (event) => withD1ReadAudit(async () => {
     const identity = parseChatIdentity(event, authConfig)
     let metaDatabase: Awaited<ReturnType<typeof getServerMetaDatabase>> | null = null
     let account: Awaited<ReturnType<typeof getEffectiveChatAccount>> | null = null
-    let usageUnavailable = false
     try {
       metaDatabase = await getServerMetaDatabase(event, config.npbSqlitePath)
       account = await getEffectiveChatAccount(
@@ -95,8 +95,8 @@ export default defineEventHandler(async (event) => withD1ReadAudit(async () => {
         usageConfig.refillIntervalMinutes,
       )
     } catch (error) {
-      usageUnavailable = true
-      console.error('[chat.post] account persistence unavailable; continuing', error)
+      console.error('[chat.post] account persistence unavailable', error)
+      throw createPublicApiError(503, 'account_unavailable', 'アカウントと利用制限を確認できませんでした。時間をおいて再度お試しください。')
     }
     const now = new Date()
     const nowSeconds = Math.floor(now.getTime() / 1000)
@@ -132,15 +132,14 @@ export default defineEventHandler(async (event) => withD1ReadAudit(async () => {
     }
     } catch (error) {
       if (error && typeof error === 'object' && 'statusCode' in error) throw error
-      usageUnavailable = true
-      account = null
-      console.error('[chat.post] usage persistence unavailable; continuing', error)
+      console.error('[chat.post] usage persistence unavailable', error)
       if (metaDatabase) {
         await Promise.all(consumedBucketKeys.map((bucketKey) =>
           refundChatUsageToken(metaDatabase!, bucketKey, usageConfig, nowSeconds).catch(() => {})))
       }
       consumedBucketKeys.length = 0
       effectiveBucket = null
+      throw createPublicApiError(503, 'usage_unavailable', '利用制限を確認できませんでした。時間をおいて再度お試しください。')
     }
 
     try {
@@ -184,7 +183,11 @@ export default defineEventHandler(async (event) => withD1ReadAudit(async () => {
       const service = createChatService(queryService, {
         parseStructuredQueryFromMessage: async (...args) => {
           if (!fixtureMode.enabled) openAiCalls.planner += 1
-          return queryParser(...args)
+          const parsed = await queryParser(...args)
+          if (!fixtureMode.enabled && !allowHeuristicFallback && parsed.intent !== 'off_topic' && !parsed.query_contract) {
+            throw new ChatQueryParserUnavailableError('Planner did not return the required semantic query contract')
+          }
+          return parsed
         },
         generateFinalAnswer: undefined,
         allowFinalAnswerFallback: true,
@@ -195,8 +198,7 @@ export default defineEventHandler(async (event) => withD1ReadAudit(async () => {
           history: body.history,
         })
       } catch (plannerExecutionError) {
-        const upstreamPlannerUnavailable = plannerExecutionError instanceof ChatQueryParserUnavailableError
-        if (fixtureMode.enabled || (!allowHeuristicFallback && !upstreamPlannerUnavailable)) {
+        if (fixtureMode.enabled || !allowHeuristicFallback) {
           throw plannerExecutionError
         }
         console.error('[chat.post] planner execution failed; retrying with deterministic parser', plannerExecutionError)
@@ -218,8 +220,12 @@ export default defineEventHandler(async (event) => withD1ReadAudit(async () => {
         }
       }
 
+      const plannerValidation = core.answer.execution_metadata?.planner_validation
+      if (plannerValidation && plannerValidation.status !== 'valid') {
+        throw createPublicApiError(503, 'query_contract_invalid', '質問の処理計画を検証できませんでした。時間をおいて再度お試しください。')
+      }
       await assertSamePublication()
-      const usage = usageUnavailable || !account
+      const usage = !account
         ? buildUnavailableUsageInfo(authConfig.defaultPlan ?? 'free', now)
         : !isEffectivePro(account) && effectiveBucket
           ? buildFreeUsageInfo(effectiveBucket, usageConfig, now)
@@ -239,6 +245,9 @@ export default defineEventHandler(async (event) => withD1ReadAudit(async () => {
     console.error('[chat.post] unhandled error', error)
     if (error instanceof DataPublicationChangedError) {
       throw createPublicApiError(503, 'data_publication_changed', error.message)
+    }
+    if (error instanceof EventEvidenceError) {
+      throw createPublicApiError(503, 'evidence_validation_failed', '検索結果の整合性または全件取得を確認できませんでした。', { issues: error.issues })
     }
     if (error instanceof ZodError) {
       throw createPublicApiError(500, 'internal_validation_failed', 'Internal response validation failed', {

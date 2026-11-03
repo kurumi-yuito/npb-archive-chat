@@ -93,6 +93,7 @@ export function formatChatAnswer({
     ...(executionMetadata
       ? {
         execution_metadata: {
+          ...(executionMetadata.queryContract ? { query_contract: executionMetadata.queryContract } : {}),
           data_requirements: executionMetadata.dataRequirements,
           repositories: executionMetadata.repositories,
           player_id_required: executionMetadata.playerIdRequired,

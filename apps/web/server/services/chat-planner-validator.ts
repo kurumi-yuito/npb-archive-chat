@@ -1,8 +1,10 @@
 import {
   chatPlannerOutputSchema,
+  inferDataRequirements,
   type ChatPlannerOutput,
   type ChatPlannerValidationResult,
 } from './chat-query-plan'
+import { validateQueryContractExecution } from './chat-query-contract'
 
 type PlannerValidationIssue = ChatPlannerValidationResult['issues'][number]
 
@@ -27,6 +29,11 @@ export function validateChatPlannerOutput(output: unknown): ChatPlannerValidatio
     return { status: 'planner_output_inconsistent', issues: ['intent_mismatch'] }
   }
   const intent = plan.structuredQuery.intent
+  if (plan.queryContract && validateQueryContractExecution(
+    plan.queryContract, plan.structuredQuery, inferDataRequirements(plan.structuredQuery),
+  ).length > 0) {
+    issues.push('query_contract_not_preserved')
+  }
 
   if (
     (plan.domain === 'non_npb' && intent !== 'off_topic') ||

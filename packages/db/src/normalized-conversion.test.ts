@@ -230,6 +230,11 @@ describe('runNormalizeDatabase', () => {
             sourceUrl: 'https://npb.jp/scores/2025/0328/b-e-01/playbyplay.html',
           },
         ])
+        expect(events[0]?.opponentTeam).toBe('オリックス')
+        expect(await searchEvents(queryDatabase, {
+          batter_player_id: '51155118',
+          after: { game_date: events[0]!.gameDate, game_id: events[0]!.gameId, sequence: events[0]!.sequence },
+        })).toEqual([])
 
         const homeRunEvents = await searchEvents(queryDatabase, {
           year: 2025,

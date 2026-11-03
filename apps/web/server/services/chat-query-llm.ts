@@ -1,5 +1,6 @@
 import {
   chatStructuredQuerySchema,
+  queryContractJsonSchema,
   type AggregateBattingFilters,
   type AggregatePitchingFilters,
   type ChatStructuredQuery,
@@ -56,9 +57,10 @@ const plannerResponseFormat = {
       type: 'object',
       properties: {
         intent: { type: 'string', enum: plannerIntentValues },
+        query_contract: queryContractJsonSchema,
         filters: { type: 'object' },
       },
-      required: ['intent', 'filters'],
+      required: ['intent', 'filters', 'query_contract'],
       additionalProperties: false,
     },
   },
@@ -159,7 +161,10 @@ export function createChatQueryLlm(
 
       const parsed = JSON.parse(extractJsonObject(text))
       const normalized = normalizeStructuredQueryFromLlmMessage(message, parsed)
-      const validated = chatStructuredQuerySchema.safeParse(normalized)
+      const validated = chatStructuredQuerySchema.safeParse({
+        ...(normalized as Record<string, unknown>),
+        ...(parsed.query_contract ? { query_contract: parsed.query_contract } : {}),
+      })
       if (!validated.success) {
         const plannerIntent = parsed && typeof parsed === 'object'
           ? (parsed as { intent?: unknown }).intent
@@ -228,6 +233,14 @@ function extractJsonObject(content: string): string {
 }
 
 export function normalizeStructuredQueryFromLlmMessage(message: string, value: unknown): unknown {
+  const normalized = normalizeLegacyQueryFromLlmMessage(message, value)
+  if (value && typeof value === 'object' && 'query_contract' in value && normalized && typeof normalized === 'object') {
+    return { ...normalized, query_contract: value.query_contract }
+  }
+  return normalized
+}
+
+function normalizeLegacyQueryFromLlmMessage(message: string, value: unknown): unknown {
   if (!value || typeof value !== 'object') {
     return value
   }

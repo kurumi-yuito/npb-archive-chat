@@ -162,7 +162,7 @@ describe('chat-query-parser', () => {
     )
 
     await expect(parser(message)).resolves.toEqual(expected)
-    expect(generateStructuredQuery).not.toHaveBeenCalled()
+    expect(generateStructuredQuery).toHaveBeenCalledOnce()
   })
 
   it.each([
@@ -177,8 +177,8 @@ describe('chat-query-parser', () => {
       },
       'game_detail',
     ],
-  ])('uses the deterministic route for unstable planner input %s', async (message, context, intent) => {
-    const generateStructuredQuery = vi.fn()
+  ])('uses the planner for every named or contextual input when fallback is disabled: %s', async (message, context, intent) => {
+    const generateStructuredQuery = vi.fn().mockResolvedValue({ intent, filters: {} })
     const parser = createChatQueryParser(
       { baseUrl: 'https://example.test/v1', apiKey: 'secret', model: 'test-model' },
       { allowFallback: false, llmGenerator: { generateStructuredQuery } },
@@ -186,7 +186,7 @@ describe('chat-query-parser', () => {
 
     const result = await parser(message, context)
     expect(result.intent).toBe(intent)
-    expect(generateStructuredQuery).not.toHaveBeenCalled()
+    expect(generateStructuredQuery).toHaveBeenCalledWith(message, context)
   })
 
   it('does not use the stub parser when fallback is disabled and LLM config is missing', async () => {

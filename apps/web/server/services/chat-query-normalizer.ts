@@ -21,7 +21,7 @@ const positionAliasMap = new Map(
   positionAliasEntries.map(([alias, canonical]) => [normalizeLookupKey(alias), canonical]),
 )
 
-export function normalizeChatStructuredQuery(
+function normalizeLegacyStructuredQuery(
   structuredQuery: ChatStructuredQuery,
 ): ChatStructuredQuery {
   if (structuredQuery.intent === 'search_games') {
@@ -282,4 +282,12 @@ function normalizeLookupKey(value: string): string {
     .replace(/[‐‑‒–—―ーｰ−]/gu, 'ー')
     .replace(/[ \u3000\t\r\n]+/gu, '')
     .toLowerCase()
+}
+
+/** Preserve semantic intent independently of normalization of repository filters. */
+export function normalizeChatStructuredQuery(structuredQuery: ChatStructuredQuery): ChatStructuredQuery {
+  const normalized = normalizeLegacyStructuredQuery(structuredQuery)
+  return structuredQuery.query_contract
+    ? chatStructuredQuerySchema.parse({ ...normalized, query_contract: structuredQuery.query_contract })
+    : normalized
 }

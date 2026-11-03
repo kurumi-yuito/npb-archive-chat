@@ -1,0 +1,44 @@
+{
+  "version": 1,
+  "cases": [
+    {
+      "id": "QC-R001",
+      "split": "regression",
+      "question": "2025年にヤクルトの山田が打ったホームラン一覧",
+      "semantic_authority": "2026-11-02 user implementation instruction, section 2.2",
+      "meaning": {
+        "version": 1,
+        "requested_output": [{ "kind": "event_records", "fields": ["gameDate", "opponent", "gameId", "sourceUrl"] }],
+        "entities": [
+          { "kind": "player", "role": "batter", "mention": "山田" },
+          { "kind": "team", "role": "subject", "mention": "ヤクルト" }
+        ],
+        "temporal_scope": { "years": [2025], "year_from": null, "year_to": null, "date_from": null, "date_to": null, "relative": null },
+        "competition_scope": { "level": "unspecified", "competitions": [] },
+        "predicates": [{ "field": "result_text", "operator": "contains", "value": "ホームラン" }],
+        "aggregation": [],
+        "grouping": [],
+        "ordering": [],
+        "completeness": { "mode": "all", "limit": null },
+        "context_references": [],
+        "unresolved_constraints": []
+      },
+      "resolution": { "player_id": "91895133", "exclude_player_ids": ["11815114"] },
+      "official_result": {
+        "regular_season_home_runs": 12,
+        "verified_on": "2026-11-02",
+        "sources": [
+          "https://npb.jp/bis/2025/stats/idb1_s.html",
+          "https://npb.jp/bis/players/91895133.html",
+          "https://npb.jp/bis/players/11815114.html"
+        ]
+      }
+    }
+  ],
+  "release_gate": {
+    "development_corpus_complete": false,
+    "regression_corpus_complete": false,
+    "held_out_corpus_complete": false,
+    "note": "One user-specified semantic oracle only. This corpus does not establish category coverage or generalization. Synthetic DB fixtures are not official event-list oracles."
+  }
+}

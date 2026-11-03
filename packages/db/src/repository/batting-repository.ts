@@ -8,6 +8,7 @@ import { isNormalizedFactsSchema } from './schema-detection'
 import { canonicalPlayerFactMatchSql, canonicalPlayerNameMatchSql } from './player-identity-link'
 
 export type BattingLineRow = {
+  playerId?: string | null
   gameId: string
   gameDate: string
   team: string
@@ -289,6 +290,7 @@ async function searchCurrentBattingStats(
             CAST(COALESCE(json_extract(player_batting_stats.values_json, '$.四球'), '0') AS INTEGER) AS walks,
             player_batting_stats.values_json AS rawText,
             'bis_batting' AS sourceKind,
+        player_batting_stats.player_id AS playerId,
             player_batting_stats.source_url AS sourceUrl,
             player_batting_stats.values_json AS statsJson
           FROM player_batting_stats
@@ -305,6 +307,11 @@ async function searchCurrentBattingStats(
 
   const clauses: string[] = [...baseClauses]
   const values: Array<string | number> = [...baseValues]
+  // A roster row is optional evidence, not permission to discard an explicit ID.
+  if (filters.player_id) {
+    clauses.push('player_batting_stats.player_id = ?')
+    values.push(filters.player_id)
+  }
   if (filters.player_name) {
     clauses.push(`${compactNameSql('player_batting_stats.player_name')} LIKE ?`)
     values.push(`%${compactName(filters.player_name)}%`)
@@ -329,6 +336,7 @@ async function searchCurrentBattingStats(
         CAST(COALESCE(json_extract(player_batting_stats.values_json, '$.四球'), '0') AS INTEGER) AS walks,
         player_batting_stats.values_json AS rawText,
         'bis_batting' AS sourceKind,
+        player_batting_stats.player_id AS playerId,
         player_batting_stats.source_url AS sourceUrl,
         player_batting_stats.values_json AS statsJson
       FROM player_batting_stats

@@ -1,4 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest'
+import { readFileSync } from 'node:fs'
+import { queryContractSchema } from '@npb/schemas'
 import {
   createSingleDatabaseQueryService,
   migrateDatabase,
@@ -31,6 +33,27 @@ afterEach(() => {
 })
 
 describe('chat eval: db-backed query plan, result, formatter regression', () => {
+  it('executes the independent list contract and certifies the total against BIS', async () => {
+    const { service } = createEvalService(true, true)
+    const response = await service.answerQuestion('2025年にヤクルトの山田が打ったホームラン一覧')
+    expect(response.answer.resolved_player).toMatchObject({ status: 'resolved', player_id: '91895133' })
+    expect(response.results.events).toHaveLength(12)
+    expect(response.results.events.every((event) => event.opponentTeam === '中日')).toBe(true)
+    expect(response.answer.evidence_validation).toMatchObject({
+      database_exhausted: true, observed_count: 12, official_total: 12, official_total_status: 'verified',
+    })
+    expect(response.answer.source_urls).toContain('https://npb.jp/bis/2025/stats/idb1_s.html')
+    expect(response.answer.execution_metadata?.query_contract?.entities[0]?.mention).toBe('山田')
+  })
+  it('excludes a past Yakult namesake from an explicitly dated event request', async () => {
+    const { service, calls } = createEvalService(true)
+    const response = await service.answerQuestion('2025年にヤクルトの山田が打ったホームラン一覧')
+    expect(response.answer.resolved_player).toMatchObject({ status: 'resolved', player_id: '91895133' })
+    expect(response.results.events).toHaveLength(12)
+    expect(calls.find((call) => call.method === 'searchPlayerCandidates')?.filters).toMatchObject({
+      year: 2025, team: 'ヤクルト', scopeToEvidence: true,
+    })
+  })
   it('01 ambiguous name: stops before event search', async () => {
     const { service, calls } = createEvalService()
 
@@ -418,18 +441,35 @@ describe('chat eval: db-backed query plan, result, formatter regression', () => 
   })
 })
 
-function createEvalService() {
+function createEvalService(withRetiredNamesake = false, withContract = false) {
   const database = openDatabase()
   migrateDatabase(database)
   insertEvalFixture(database)
+  if (withRetiredNamesake) {
+    database.prepare(`INSERT INTO player_profiles
+      (player_id, full_name, team_name, year_teams_json, source_url)
+      VALUES ('11815114', '山田 大樹', 'ヤクルト', '{"2020":"ヤクルト"}',
+      'https://npb.jp/bis/players/11815114.html')`).run()
+  }
+  const contract = withContract
+    ? queryContractSchema.parse(JSON.parse(readFileSync(new URL('../../../docs/eval-query-contracts.json', import.meta.url), 'utf8')).cases[0].meaning)
+    : undefined
+  if (withContract) {
+    insertPlayerBattingStats(database, {
+      year: 2025, teamId: 's', teamName: 'ヤクルト', playerName: '山田 哲人', playerId: '91895133',
+      sourceUrl: 'https://npb.jp/bis/2025/stats/idb1_s.html', values: { 本塁打: '12' },
+    })
+  }
 
   const base = createSingleDatabaseQueryService(sqliteDatabaseToQuery(database))
   openServices.push(base)
 
   const calls: QueryCall[] = []
   const service = createChatService(recordQueryCalls(base, calls), {
-    parseStructuredQueryFromMessage: async (message) =>
-      parseStructuredQueryFromMessageStub(message),
+    parseStructuredQueryFromMessage: async (message) => ({
+      ...parseStructuredQueryFromMessageStub(message),
+      ...(contract ? { query_contract: contract } : {}),
+    }),
   })
 
   return { service, calls }

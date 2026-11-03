@@ -94,11 +94,23 @@ Vitest の失敗差分で、どの field がずれたか確認できる。
 
 ## ケース更新方針
 
-- parser を改善したら、まず実結果を確認してから期待値を更新する
-- team alias や player alias を辞書に追加したら、正規化後期待値も更新する
+- 意味仕様・公式データ・確定済みQAに基づいて期待値を管理する。実結果に合わせて期待値を変更しない。
+- alias追加時も、公式の同一人物・球団対応を確認し、実装の出力を正解の根拠にしない。
 - failure を見つけたら、回帰防止のためケースを増やす
 - phrase 系改善では raw の改善を優先し、normalized はその結果を前提に確認する
 - explicit assignment 改善では raw の終端判定と空白結合を優先して見る
+
+## Query Contract の独立評価（移行中）
+
+`docs/eval-query-contracts.json` は質問の意味と選手解決後の期待値を分離する。最初のケースは2026-11-02のユーザー指示で明示された意味仕様を正とし、選手IDを意味解析の期待値へ混ぜない。本塁打の公式年度集計値はNPB公式ページから別に確認した。合成DB fixtureの12イベントは実装テストであり、公式の12本の各試合の正解データではない。
+
+```bash
+NPB_EVAL_BASE_URL=https://<target> node scripts/eval-query-contracts.mjs --split=regression
+```
+
+意味解析・選手解決・検索計画・検索制約・完全性・集計・回答・出典を別々に記録する。HTTP 200や空でないsummaryだけではPassにしない。集計を要求しないケースの集計工程は`not_applicable`と明記し、Pass件数に加算しない。非2xx・通信失敗はBlockedであり、Passではない。空のsplitも失敗終了する。
+
+現時点の意味正解データは1ケースのみで、開発用・未使用評価用の網羅性は未達。`release_gate`のfalseを維持する。この評価だけをQA正本・Acceptance Testの代わりにしない。
 
 
 ## 次に人間が見るべき観点

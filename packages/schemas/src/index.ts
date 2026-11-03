@@ -1,4 +1,6 @@
 import { z } from 'zod'
+import { queryContractSchema } from './query-contract'
+export { queryContractSchema, queryContractJsonSchema, type QueryContract } from './query-contract'
 
 /**
  * Shared Zod schemas for validation boundaries (see AGENTS.md).
@@ -115,6 +117,11 @@ const coercedId = z.union([
 ])
 
 export const searchEventsFiltersSchema = z.object({
+  after: z.object({
+    game_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    game_id: z.string().min(1),
+    sequence: z.number().int().nonnegative(),
+  }).optional(),
   year: z.number().int().min(1936).optional(),
   year_from: z.number().int().min(1936).optional(),
   year_to: z.number().int().min(1936).optional(),
@@ -258,6 +265,7 @@ export const aggregatePitchingFiltersSchema = searchPitchingLinesFiltersSchema.o
 
 export const aggregateEventsFiltersSchema = searchEventsFiltersSchema.omit({
   limit: true,
+  after: true,
 }).extend({
   limit: z.number().int().positive().max(100).optional(),
 })
@@ -386,54 +394,67 @@ export const updateChatSubscriptionRequestSchema = z.object({
 export const chatStructuredQuerySchema = z.discriminatedUnion('intent', [
   z.object({
     intent: z.literal('search_events'),
+    query_contract: queryContractSchema.optional(),
     filters: searchEventsFiltersSchema,
   }),
   z.object({
     intent: z.literal('search_games'),
+    query_contract: queryContractSchema.optional(),
     filters: searchGamesFiltersSchema,
   }),
   z.object({
     intent: z.literal('search_batting'),
+    query_contract: queryContractSchema.optional(),
     filters: searchBattingLinesFiltersSchema,
   }),
   z.object({
     intent: z.literal('search_pitching'),
+    query_contract: queryContractSchema.optional(),
     filters: searchPitchingLinesFiltersSchema,
   }),
   z.object({
     intent: z.literal('search_roster'),
+    query_contract: queryContractSchema.optional(),
     filters: searchRosterEntriesFiltersSchema,
   }),
   z.object({
     intent: z.literal('player_affiliation'),
+    query_contract: queryContractSchema.optional(),
     filters: playerAffiliationFiltersSchema,
   }),
   z.object({
     intent: z.literal('game_detail'),
+    query_contract: queryContractSchema.optional(),
     filters: gameDetailFiltersSchema,
   }),
   z.object({
     intent: z.literal('aggregate_batting'),
+    query_contract: queryContractSchema.optional(),
     filters: aggregateBattingFiltersSchema,
   }),
   z.object({
     intent: z.literal('aggregate_pitching'),
+    query_contract: queryContractSchema.optional(),
     filters: aggregatePitchingFiltersSchema,
   }),
   z.object({
     intent: z.literal('aggregate_events'),
+    query_contract: queryContractSchema.optional(),
     filters: aggregateEventsFiltersSchema,
   }),
   z.object({
     intent: z.literal('aggregate_games'),
+    query_contract: queryContractSchema.optional(),
     filters: aggregateGamesFiltersSchema,
   }),
   z.object({
     intent: z.literal('award_winners'),
+    query_contract: queryContractSchema.optional(),
     filters: awardWinnersFiltersSchema,
   }),
   z.object({
     intent: z.literal('off_topic'),
+    query_contract: queryContractSchema.optional(),
     filters: z.object({}),
   }),
 ])
@@ -454,6 +475,13 @@ export const chatResponseSchema = z.object({
     remaining_count: z.number().int().nonnegative().optional(),
     suggested_questions: z.array(z.string().min(1)).max(5).optional(),
     source_urls: z.array(z.string().url()),
+    evidence_validation: z.object({
+      database_exhausted: z.literal(true),
+      observed_count: z.number().int().nonnegative(),
+      official_total: z.number().int().nonnegative().nullable(),
+      official_total_status: z.enum(['verified', 'unavailable', 'not_applicable']),
+      source_urls: z.array(z.string().url()),
+    }).optional(),
     resolved_player: z.object({
       input: z.string().min(1),
       player_id: z.string().min(1).nullable().optional(),
@@ -464,6 +492,7 @@ export const chatResponseSchema = z.object({
     }).nullable().optional(),
     applied_filters: z.record(z.unknown()).optional(),
     execution_metadata: z.object({
+      query_contract: queryContractSchema.optional(),
       data_requirements: z.array(z.string().min(1)),
       repositories: z.array(z.string().min(1)),
       player_id_required: z.boolean(),
@@ -590,9 +619,14 @@ export const chatResponseSchema = z.object({
         inning: z.number().int().positive(),
         half: inningHalfSchema,
         offenseTeam: z.string(),
+        opponentTeam: z.string().nullable().optional(),
+        competition: z.string().nullable().optional(),
         eventType: z.string().min(1),
         eventSubtype: z.string().min(1),
         batterName: z.string().nullable(),
+        batterUrl: z.string().nullable().optional(),
+        pitcherUrl: z.string().nullable().optional(),
+        runnerUrl: z.string().nullable().optional(),
         pitcherName: z.string().nullable(),
         runnerName: z.string().nullable(),
         resultText: z.string().min(1),
@@ -628,6 +662,7 @@ export const chatResponseSchema = z.object({
     ),
     batting: z.array(
       z.object({
+        playerId: z.string().nullable().optional(),
         gameId: z.string().min(1),
         gameDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
         team: z.string().min(1),

@@ -50,6 +50,10 @@ export async function resolveStructuredQueryPlayer(
   const inputKey = normalizeLookupKey(input)
   const aliases = buildAliases(input)
   const hasTeamQualifier = teamQualifier(structuredQuery).length > 0
+  // Exact event requests must never substitute another season. Season-stat
+  // fallback remains governed by the existing published product specification.
+  const scopeToEvidence = hasTeamQualifier && hasExplicitYearFilter(structuredQuery) &&
+    (structuredQuery.intent === 'search_events' || structuredQuery.intent === 'aggregate_events')
   const isUnqualifiedShortName = inputKey.length <= 2 && !hasTeamQualifier
   const searchDomain: SearchPlayerCandidatesFilters['searchDomain'] =
     isUnqualifiedShortName
@@ -64,6 +68,7 @@ export async function resolveStructuredQueryPlayer(
       ? 'pitching'
       : 'all'
   const candidateFilters = {
+    ...(scopeToEvidence ? { scopeToEvidence: true, team: teamQualifier(structuredQuery)[0] } : {}),
     // A season narrows records, not identity. For an unqualified surname, inspect
     // every covered season so a single current-season row cannot silently choose
     // one person among historical namesakes.
@@ -76,6 +81,14 @@ export async function resolveStructuredQueryPlayer(
     limit: 50,
   }
   let rawCandidates = await queryService.searchPlayerCandidates(candidateFilters)
+  if (scopeToEvidence) {
+    const years = yearFilters(structuredQuery)
+    rawCandidates = rawCandidates.filter((candidate) => candidate.player_id && candidate.years.some((year) =>
+      (!years.year || year === years.year) &&
+      (!years.year_from || year >= years.year_from) &&
+      (!years.year_to || year <= years.year_to),
+    ))
+  }
   let verifiedCandidates = selectVerifiedHistoricalCandidates(input, rawCandidates)
   const verifiedIdentity = VERIFIED_HISTORICAL_IDENTITIES[inputKey]
   if (verifiedIdentity && !verifiedCandidates) {
@@ -109,7 +122,7 @@ export async function resolveStructuredQueryPlayer(
   if (hasUniqueRepositoryEntity && !isUnqualifiedShortName && filterCandidates(repositoryEntityCandidates, teamQualifier(structuredQuery)).length > 0) {
     candidates = selectCandidatesForInput(verifiedCandidates ? verifiedCandidates[0]!.name : input, repositoryEntityCandidates).filter(isCoveredCandidate)
   }
-  if (candidates.length === 0 && hasExplicitYearFilter(structuredQuery)) {
+  if (candidates.length === 0 && hasExplicitYearFilter(structuredQuery) && !scopeToEvidence) {
     const fallbackCandidates = await queryService.searchPlayerCandidates({
       name: candidateFilters.name,
       aliases,

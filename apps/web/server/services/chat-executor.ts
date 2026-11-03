@@ -23,6 +23,7 @@ export function buildChatExecutionMetadata(
     : false
   const identityResolution = buildExecutionIdentityResolution(structuredQuery, playerResolution)
   return {
+    ...(plannerOutput?.queryContract ? { queryContract: plannerOutput.queryContract } : {}),
     dataRequirements: plannerOutput?.dataRequirements ?? inferDataRequirements(structuredQuery),
     repositories: repositoriesForQuery(structuredQuery),
     playerResolution,

@@ -1,0 +1,76 @@
+import { z } from 'zod'
+
+const outputKinds = ['event_records', 'game_results', 'game_details', 'batting_records', 'pitching_records', 'batting_statistics', 'pitching_statistics', 'fielding_statistics', 'affiliations', 'roster', 'awards'] as const
+const scalar = z.union([z.string(), z.number(), z.boolean()])
+const year = z.number().int().min(1936).max(2200)
+const date = z.string().regex(/^\d{4}-\d{2}-\d{2}$/)
+
+/** Semantic request before identity resolution. IDs belong to execution evidence. */
+export const queryContractSchema = z.object({
+  version: z.literal(1),
+  requested_output: z.array(z.object({
+    kind: z.enum(outputKinds),
+    fields: z.array(z.string().min(1)),
+  }).strict()).min(1),
+  entities: z.array(z.object({
+    kind: z.enum(['player', 'team', 'venue']),
+    role: z.enum(['subject', 'batter', 'pitcher', 'runner', 'opponent']),
+    mention: z.string().min(1),
+  }).strict()),
+  temporal_scope: z.object({
+    years: z.array(year),
+    year_from: year.nullable(),
+    year_to: year.nullable(),
+    date_from: date.nullable(),
+    date_to: date.nullable(),
+    relative: z.string().min(1).nullable(),
+  }).strict(),
+  competition_scope: z.object({
+    level: z.enum(['first', 'farm', 'both', 'unspecified']),
+    competitions: z.array(z.string().min(1)),
+  }).strict(),
+  predicates: z.array(z.object({
+    field: z.string().min(1),
+    operator: z.enum(['eq', 'ne', 'gt', 'gte', 'lt', 'lte', 'contains', 'in']),
+    value: z.union([scalar, z.array(scalar)]),
+  }).strict()),
+  aggregation: z.array(z.object({
+    operation: z.enum(['count', 'sum', 'average', 'min', 'max', 'rate']),
+    field: z.string().min(1),
+  }).strict()),
+  grouping: z.array(z.string().min(1)),
+  ordering: z.array(z.object({ field: z.string().min(1), direction: z.enum(['asc', 'desc']) }).strict()),
+  completeness: z.object({
+    mode: z.enum(['all', 'top_n', 'bounded', 'unspecified']),
+    limit: z.number().int().positive().nullable(),
+  }).strict(),
+  context_references: z.array(z.object({ field: z.string().min(1), reference: z.string().min(1) }).strict()),
+  unresolved_constraints: z.array(z.string().min(1)),
+}).strict()
+
+export type QueryContract = z.infer<typeof queryContractSchema>
+
+// JSON schema for the provider. Runtime validation above remains authoritative.
+const text = { type: 'string', minLength: 1 }
+const nullableText = { type: ['string', 'null'] }
+const strings = { type: 'array', items: text }
+const object = (properties: Record<string, unknown>) => ({
+  type: 'object', properties, required: Object.keys(properties), additionalProperties: false,
+})
+const array = (items: unknown) => ({ type: 'array', items })
+const enumeration = (values: readonly string[]) => ({ type: 'string', enum: values })
+const nullableYear = { type: ['integer', 'null'], minimum: 1936, maximum: 2200 }
+export const queryContractJsonSchema = object({
+  version: { type: 'integer', enum: [1] },
+  requested_output: { ...array(object({ kind: enumeration(outputKinds), fields: strings })), minItems: 1 },
+  entities: array(object({ kind: enumeration(['player', 'team', 'venue']), role: enumeration(['subject', 'batter', 'pitcher', 'runner', 'opponent']), mention: text })),
+  temporal_scope: object({ years: array({ type: 'integer', minimum: 1936, maximum: 2200 }), year_from: nullableYear, year_to: nullableYear, date_from: nullableText, date_to: nullableText, relative: nullableText }),
+  competition_scope: object({ level: enumeration(['first', 'farm', 'both', 'unspecified']), competitions: strings }),
+  predicates: array(object({ field: text, operator: enumeration(['eq', 'ne', 'gt', 'gte', 'lt', 'lte', 'contains', 'in']), value: { anyOf: [{ type: ['string', 'number', 'boolean'] }, array({ type: ['string', 'number', 'boolean'] })] } })),
+  aggregation: array(object({ operation: enumeration(['count', 'sum', 'average', 'min', 'max', 'rate']), field: text })),
+  grouping: strings,
+  ordering: array(object({ field: text, direction: enumeration(['asc', 'desc']) })),
+  completeness: object({ mode: enumeration(['all', 'top_n', 'bounded', 'unspecified']), limit: { type: ['integer', 'null'], minimum: 1 } }),
+  context_references: array(object({ field: text, reference: text })),
+  unresolved_constraints: strings,
+})

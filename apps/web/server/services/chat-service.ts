@@ -51,6 +51,7 @@ import { buildPlannerOutput, createChatPlanner } from './chat-planner'
 import { buildChatExecutionMetadata } from './chat-executor'
 import type { ChatPlannerOutput } from './chat-query-plan'
 import { validateChatPlannerOutput } from './chat-planner-validator'
+import { searchCompleteEventEvidence, verifyOfficialHomeRunTotal, type EventCompletenessEvidence } from './chat-event-evidence'
 import {
   buildCapabilityFailureResponse,
   classifyChatCapability,
@@ -125,6 +126,9 @@ export function createChatService(
         history: options.history,
       })
       const initialValidation = validateChatPlannerOutput(initialPlan)
+      if (initialPlan.queryContract && initialValidation.status !== 'valid' && initialPlan.structuredQuery) {
+        return buildPlannerContractFailureResponse(message, initialPlan.structuredQuery, initialPlan, initialValidation)
+      }
       if (initialPlan.responsePolicy) {
         return chatResponseCoreSchema.parse(buildClarificationResponse(message, initialPlan, initialValidation))
       }
@@ -206,6 +210,7 @@ export function createChatService(
       if (parsedQuery.intent === 'off_topic' && (!capability || capability.usesRepository)) {
         return buildOffTopicResponse(message, parsedQuery)
       }
+      if (initialPlan.queryContract) effectivePlan = { ...effectivePlan, queryContract: initialPlan.queryContract }
       plannerValidation = validateChatPlannerOutput(effectivePlan)
       if (
         effectivePlan.followUpType !== 'correction_request' &&
@@ -350,6 +355,7 @@ export function createChatService(
         }
       }
 
+      if (initialPlan.queryContract) effectivePlan = { ...effectivePlan, queryContract: initialPlan.queryContract }
       plannerValidation = validateChatPlannerOutput(effectivePlan)
       if (plannerValidation.status !== 'valid') {
         return buildPlannerContractFailureResponse(message, parsedQuery, effectivePlan, plannerValidation)
@@ -638,6 +644,7 @@ export function createChatService(
           typeof (structuredQuery.filters as Record<string, unknown>).player_id === 'string'
         )
       let results: ChatResponseCore['results']
+      let eventCompleteness: EventCompletenessEvidence | undefined
       if (yearlyBattingFastPath && shouldSkipForPlayerResolution(playerResolution)) {
         results = emptyResults
       } else if (yearlyBattingFastPath) {
@@ -715,8 +722,13 @@ export function createChatService(
               if (shouldSkipForPlayerResolution(playerResolution)) {
                 results = emptyResults
               } else if (structuredQuery.intent === 'search_events') {
-                const events = await queryService.searchEvents(structuredQuery.filters)
+                const events = effectivePlan.queryContract?.completeness.mode === 'all'
+                  ? await searchCompleteEventEvidence(queryService, structuredQuery.filters)
+                  : await queryService.searchEvents(structuredQuery.filters)
                 results = { ...emptyResults, events }
+                if (effectivePlan.queryContract?.completeness.mode === 'all') {
+                  eventCompleteness = await verifyOfficialHomeRunTotal(queryService, structuredQuery.filters, events)
+                }
               } else if (structuredQuery.intent === 'search_games') {
                 results = { ...emptyResults, games: await queryService.searchGames(structuredQuery.filters) }
               } else if (structuredQuery.intent === 'search_batting') {
@@ -1113,6 +1125,13 @@ export function createChatService(
         playerResolution,
         executionMetadata,
       })
+      if (eventCompleteness) {
+        answer.evidence_validation = eventCompleteness
+        answer.source_urls = [...new Set([...answer.source_urls, ...eventCompleteness.source_urls])]
+        if (eventCompleteness.official_total_status === 'unavailable') {
+          answer.summary += '\n収録済みの該当記録は全件取得しました。公式年度集計との件数照合は未確認です。'
+        }
+      }
       const availabilityAwareAnswer = /昨日の巨人.*試合結果/u.test(message) &&
         results.games.length === 0 && results.gameDetails.length === 0
         ? {
@@ -3501,6 +3520,7 @@ function buildPlannerContractFailureResponse(
       result_count: 0,
       source_urls: [],
       execution_metadata: {
+        ...(executionMetadata.queryContract ? { query_contract: executionMetadata.queryContract } : {}),
         data_requirements: executionMetadata.dataRequirements,
         repositories: executionMetadata.repositories,
         player_id_required: executionMetadata.playerIdRequired,

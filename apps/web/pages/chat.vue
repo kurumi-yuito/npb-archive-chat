@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import type { ChatPlan, ChatResponse, ChatStructuredQuery } from '@npb/schemas'
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import type { ChatPlan, ChatResponse, ChatStructuredQuery, PlayerCandidate } from '@npb/schemas'
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { formatRemainingDuration, useChat } from '~/composables/useChat'
 
 defineOptions({ name: 'ChatPage' })
@@ -141,8 +141,22 @@ function inningHalfLabel(half: 'top' | 'bottom'): string {
   return half === 'top' ? '表' : '裏'
 }
 
+const eventDisplayLimits = reactive(new WeakMap<ChatResponse, number>())
+
 function visibleEvents(response: ChatResponse) {
-  return response.results.events.slice(0, 20)
+  return response.results.events.slice(0, eventDisplayLimits.get(response) ?? 20)
+}
+
+function showMoreEvents(response: ChatResponse) {
+  eventDisplayLimits.set(response, (eventDisplayLimits.get(response) ?? 20) + 20)
+}
+
+async function selectPlayerCandidate(response: ChatResponse, question: string, candidate: PlayerCandidate) {
+  const mention = response.answer.resolved_player?.input
+  const clarifiedQuestion = mention && question.includes(mention)
+    ? question.replace(mention, candidate.name)
+    : `対象選手は${candidate.name}です。${question}`
+  await sendMessage(clarifiedQuestion)
 }
 
 function visibleSources(response: ChatResponse): string[] {
@@ -403,7 +417,12 @@ function toggleSidebar() {
                     v-for="candidate in turn.assistant.answer.resolved_player.candidates"
                     :key="`${candidate.player_id}-${candidate.name}-${candidate.primary_team}`"
                   >
-                    <span class="candidate-name">{{ candidate.name }}</span>
+                    <button
+                      type="button"
+                      class="candidate-name"
+                      :disabled="loading"
+                      @click="selectPlayerCandidate(turn.assistant, turn.userMessage, candidate)"
+                    >{{ candidate.name }}</button>
                     <small class="candidate-meta">
                       <template v-if="candidate.primary_team">{{ candidate.primary_team }}</template>
                     </small>
@@ -422,6 +441,7 @@ function toggleSidebar() {
                   >
                     <div class="event-item__meta">
                       <strong>{{ event.gameDate }}</strong>
+                      <span v-if="event.opponentTeam">対 {{ displayTeamLabel(event.opponentTeam) }}</span>
                       <span>{{ event.inning }}回{{ inningHalfLabel(event.half) }}</span>
                     </div>
                     <p class="event-item__text">
@@ -436,6 +456,12 @@ function toggleSidebar() {
                     >{{ sourceLabel(event.sourceUrl) }}</a>
                   </li>
                 </ol>
+                <button
+                  v-if="visibleEvents(turn.assistant).length < turn.assistant.results.events.length"
+                  type="button"
+                  class="prompt-card"
+                  @click="showMoreEvents(turn.assistant)"
+                >続きを表示（残り{{ turn.assistant.results.events.length - visibleEvents(turn.assistant).length }}件）</button>
               </div>
 
               <!-- Batting stats -->

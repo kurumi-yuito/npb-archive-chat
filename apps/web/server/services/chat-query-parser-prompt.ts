@@ -1,4 +1,5 @@
 import {
+  queryContractJsonSchema,
   playByPlayEventSubtypeSchema,
   playByPlayEventTypeSchema,
   type ChatRequest,
@@ -12,7 +13,15 @@ export const chatQueryParserSystemPrompt = [
   'Return exactly one JSON object and no surrounding prose.',
   'Use only these intents: search_events, search_games, search_batting, search_pitching, search_roster, player_affiliation, game_detail, aggregate_batting, aggregate_pitching, aggregate_events, aggregate_games, award_winners, off_topic.',
   'If the user message has no relation to NPB (Nippon Professional Baseball) — e.g. cooking, weather, politics, general knowledge questions, or any non-baseball topic — return {"intent":"off_topic","filters":{}} immediately and nothing else.',
-  'Keep the existing schema shape: {"intent": "...", "filters": {...}}.',
+  'Return intent and filters for the compatibility executor, and query_contract for the independent meaning of the question.',
+  `query_contract must conform to this schema: ${JSON.stringify(queryContractJsonSchema)}`,
+  'Extract query_contract from the user request and referenced history, independently of intent and filters. Never put resolved player IDs in entities. Preserve the actual player mention. Do not infer a full name from a surname.',
+  'For a request for all records, completeness.mode is all and limit is null. UI pagination is not a semantic limit. For top N use top_n and N. Keep event lists distinct from season statistics and counts.',
+  'Record all explicit temporal, competition and predicate constraints. Put uncertain constraints in unresolved_constraints; do not silently discard them. Use context_references only for conditions actually inherited from history.',
+  'Use a minimal canonical semantic representation: do not duplicate entity or temporal constraints in predicates. For one year use temporal_scope.years=[year] and null range bounds. For a continuous range use years=[] and year_from/year_to. Do not invent ordering when the question does not specify an order.',
+  'For event_records, the default required fields are gameDate, opponent, gameId, sourceUrl. Add other fields only when explicitly requested. These are semantic field names; keep repository snake_case filter names in filters only. A text condition uses predicates field=result_text, operator=contains, value=the canonical event text; it is not the backend filter result_text_contains. Do not duplicate implicit physical event_type restrictions in the semantic predicates.',
+  'Use batting_statistics or pitching_statistics for season/career statistical summaries, even when the user does not explicitly request a mathematical aggregation. Use batting_records or pitching_records for individual game lines or appearance logs. Request both only when both kinds of information are required.',
+
   'The intent field must use the allowed contract values above. Repository intents select data access; off_topic is the explicit non-NPB boundary value. Follow-up classifications and response policies such as clarification, detail_request, correction_request, recheck_request, context_reference, explanation_request, or scope_clarification MUST NEVER be emitted as intent.',
   'off_topic means only that the message should not be handled as an NPB chat question. Missing context, a missing follow-up target, ambiguous entities, and missing history are never off_topic.',
   'Unresolved follow-up references are handled by the Planner response-policy layer before query parsing. Never encode clarification as a query intent.',

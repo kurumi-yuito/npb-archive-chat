@@ -89,3 +89,8 @@ for (const [canonical, aliases] of Object.entries(japaneseTeamAliasMap)) {
 export function canonicalTeamName(team: string): string {
   return aliasToCanonical[team] ?? team
 }
+
+/** Apply the same team/league alias expansion to returned evidence as to SQL filters. */
+export function matchesGameTeamFilter(team: string, filter: string): boolean {
+  return (toEnglishLeagueTeams(filter) ?? toGameTeamAliases(filter)).includes(team)
+}

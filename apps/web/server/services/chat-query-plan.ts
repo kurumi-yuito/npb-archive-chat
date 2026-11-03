@@ -1,4 +1,4 @@
-import { clarificationReasonSchema, z, type ChatRequest, type ChatStructuredQuery } from '@npb/schemas'
+import { clarificationReasonSchema, queryContractSchema, z, type QueryContract, type ChatRequest, type ChatStructuredQuery } from '@npb/schemas'
 import type { IdentityResolutionMetadata, IdentityResolutionScope } from './player-identity'
 import type { PlayerResolution } from './player-resolution'
 import type { ChatCapabilityIntent, ChatCapabilityRoute } from './chat-capability'
@@ -181,6 +181,7 @@ export const chatClarificationPolicySchema = z.object({
 export type ChatClarificationPolicy = z.infer<typeof chatClarificationPolicySchema>
 
 export const chatPlannerOutputSchema = z.object({
+  queryContract: queryContractSchema.optional(),
   structuredQuery: z.custom<ChatStructuredQuery>().nullable(),
   responsePolicy: chatClarificationPolicySchema.nullable(),
   entities: z.record(z.unknown()),
@@ -218,6 +219,7 @@ export const chatPlannerOutputSchema = z.object({
 export type ChatPlannerOutput = z.infer<typeof chatPlannerOutputSchema>
 
 export type ChatExecutionMetadata = {
+  queryContract?: QueryContract
   dataRequirements: ChatDataRequirement[]
   repositories: ChatExecutionRepository[]
   playerResolution: PlayerResolution | null
@@ -248,6 +250,7 @@ export type ChatExecutionMetadata = {
 
 export const chatPlannerValidationIssueSchema = z.enum([
   'schema_invalid',
+  'query_contract_not_preserved',
   'intent_mismatch',
   'off_topic_with_entities',
   'off_topic_with_target_id',

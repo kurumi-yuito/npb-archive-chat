@@ -16,6 +16,7 @@ import {
 import { inferIdentityResolutionScope } from './chat-identity-scope'
 import { classifyChatCapability } from './chat-capability'
 import { clarificationForUnresolvedFollowUp } from './chat-follow-up-clarification'
+import { requirementsForContract } from './chat-query-contract'
 
 export type ChatPlanner = (
   message: string,
@@ -165,6 +166,7 @@ export function buildPlannerOutput(
     correctionGuard,
   })
   return chatPlannerOutputSchema.parse({
+    ...(structuredQuery.query_contract ? { queryContract: structuredQuery.query_contract } : {}),
     structuredQuery,
     responsePolicy: null,
     entities: extractPlannerEntities(structuredQuery),
@@ -178,7 +180,7 @@ export function buildPlannerOutput(
     targetGameId: classification.targetGameId,
     targetPlayerId: classification.targetPlayerId,
     timeRange: extractPlannerTimeRange(structuredQuery),
-    dataRequirements: inferDataRequirements(structuredQuery),
+    dataRequirements: structuredQuery.query_contract ? requirementsForContract(structuredQuery.query_contract) : inferDataRequirements(structuredQuery),
     answerMode: classification.answerMode,
     identityResolutionScope: updatedIdentityResolutionScope,
     confidence: legacyStabilizationApplied ? 0.72 : 0.86,

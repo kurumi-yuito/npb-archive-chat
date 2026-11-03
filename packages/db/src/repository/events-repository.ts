@@ -16,9 +16,14 @@ export type EventRow = {
   inning: number
   half: InningHalf
   offenseTeam: string
+  opponentTeam?: string | null
+  competition?: string | null
   eventType: PlayByPlayEventType
   eventSubtype: PlayByPlayEventSubtype
   batterName: string | null
+  batterUrl?: string | null
+  pitcherUrl?: string | null
+  runnerUrl?: string | null
   pitcherName: string | null
   runnerName: string | null
   resultText: string
@@ -42,9 +47,14 @@ export async function listEventsByGameId(
         events.inning,
         events.half,
         events.offense_team AS offenseTeam,
+        CASE WHEN events.half = 'top' THEN games.home_team_name ELSE games.away_team_name END AS opponentTeam,
+        games.competition AS competition,
         events.event_type AS eventType,
         events.event_subtype AS eventSubtype,
         events.batter_name AS batterName,
+        events.batter_url AS batterUrl,
+        events.pitcher_url AS pitcherUrl,
+        events.runner_url AS runnerUrl,
         events.pitcher_name AS pitcherName,
         events.runner_name AS runnerName,
         events.result_text AS resultText,
@@ -76,6 +86,9 @@ export async function searchEvents(
     "events.result_text NOT LIKE 'Play-by-play was not ingested from this source%'",
   ]
   const values: Array<string | number> = []
+  if (normalizedFilters.after) {
+    addEventCursor(clauses, values, normalizedFilters.after, 'games.date', 'events.game_id', 'events.sequence')
+  }
   if (normalizedFilters.game_date) {
     clauses.push('games.date = ?')
     values.push(normalizedFilters.game_date)
@@ -200,9 +213,14 @@ export async function searchEvents(
         events.inning,
         events.half,
         events.offense_team AS offenseTeam,
+        CASE WHEN events.half = 'top' THEN games.home_team_name ELSE games.away_team_name END AS opponentTeam,
+        games.competition AS competition,
         events.event_type AS eventType,
         events.event_subtype AS eventSubtype,
         events.batter_name AS batterName,
+        events.batter_url AS batterUrl,
+        events.pitcher_url AS pitcherUrl,
+        events.runner_url AS runnerUrl,
         events.pitcher_name AS pitcherName,
         events.runner_name AS runnerName,
         events.result_text AS resultText,
@@ -248,6 +266,9 @@ async function searchNormalizedEvents(
   const isBatterOnlyHomeRunSearch = normalizedFilters.player_id !== undefined &&
     normalizedFilters.event_type === 'plate_appearance' &&
     normalizedFilters.result_text_contains === 'ホームラン'
+  if (normalizedFilters.after) {
+    addEventCursor(clauses, values, normalizedFilters.after, 'game_facts.game_date', 'event_facts.game_id', 'event_facts.sequence')
+  }
 
   if (normalizedFilters.game_date) {
     clauses.push('game_facts.game_date = ?')
@@ -363,9 +384,14 @@ function normalizedEventSelectSql(useBatterPlayerIndex = false): string {
         event_facts.inning,
         CASE event_facts.half_code WHEN 1 THEN 'top' ELSE 'bottom' END AS half,
         COALESCE(offense_team.team_name, '') AS offenseTeam,
+        CASE WHEN event_facts.half_code = 1 THEN home_team.team_name ELSE away_team.team_name END AS opponentTeam,
+        game_facts.competition AS competition,
         event_types.event_type AS eventType,
         event_subtypes.event_subtype AS eventSubtype,
         batter_name.name AS batterName,
+        CASE WHEN event_facts.batter_player_id IS NOT NULL THEN 'https://npb.jp/bis/players/' || event_facts.batter_player_id || '.html' END AS batterUrl,
+        CASE WHEN event_facts.pitcher_player_id IS NOT NULL THEN 'https://npb.jp/bis/players/' || event_facts.pitcher_player_id || '.html' END AS pitcherUrl,
+        CASE WHEN event_facts.runner_player_id IS NOT NULL THEN 'https://npb.jp/bis/players/' || event_facts.runner_player_id || '.html' END AS runnerUrl,
         pitcher_name.name AS pitcherName,
         runner_name.name AS runnerName,
         result_codes.result_text AS resultText,
@@ -378,6 +404,8 @@ function normalizedEventSelectSql(useBatterPlayerIndex = false): string {
       FROM event_facts${useBatterPlayerIndex ? ' INDEXED BY idx_events_batter_player' : ''}
       INNER JOIN game_facts ON game_facts.game_id = event_facts.game_id
       LEFT JOIN teams AS offense_team ON offense_team.team_id = event_facts.offense_team_id
+      LEFT JOIN teams AS home_team ON home_team.team_id = game_facts.home_team_id
+      LEFT JOIN teams AS away_team ON away_team.team_id = game_facts.away_team_id
       INNER JOIN event_types ON event_types.event_type_id = event_facts.event_type_id
       INNER JOIN event_subtypes ON event_subtypes.event_subtype_id = event_facts.event_subtype_id
       INNER JOIN result_codes ON result_codes.result_code_id = event_facts.result_code_id
@@ -385,6 +413,14 @@ function normalizedEventSelectSql(useBatterPlayerIndex = false): string {
       LEFT JOIN person_names AS pitcher_name ON pitcher_name.name_id = event_facts.pitcher_name_id
       LEFT JOIN person_names AS runner_name ON runner_name.name_id = event_facts.runner_name_id
       LEFT JOIN source_snapshot_facts ON source_snapshot_facts.source_snapshot_id = event_facts.source_snapshot_id`
+}
+
+function addEventCursor(
+  clauses: string[], values: Array<string | number>, cursor: NonNullable<SearchEventsFilters['after']>,
+  dateColumn: string, gameColumn: string, sequenceColumn: string,
+): void {
+  clauses.push(`(${dateColumn} > ? OR (${dateColumn} = ? AND ${gameColumn} > ?) OR (${dateColumn} = ? AND ${gameColumn} = ? AND ${sequenceColumn} > ?))`)
+  values.push(cursor.game_date, cursor.game_date, cursor.game_id, cursor.game_date, cursor.game_id, cursor.sequence)
 }
 
 function addPlayerIdFilter(
