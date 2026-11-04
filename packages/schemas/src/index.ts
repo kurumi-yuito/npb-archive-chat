@@ -145,6 +145,7 @@ export const searchEventsFiltersSchema = z.object({
 })
 
 export const playerCandidateSchema = z.object({
+  matched_aliases: z.array(z.string()).optional(),
   player_id: z.string().min(1).nullable(),
   name: z.string().min(1),
   primary_team: z.string().min(1).nullable(),
@@ -470,6 +471,7 @@ export const chatResponseSchema = z.object({
   message: z.string().min(1),
   structured_query: chatStructuredQuerySchema.nullable(),
   answer: z.object({
+    query_contract: queryContractSchema.optional(),
     summary: z.string().min(1),
     result_count: z.number().int().nonnegative(),
     remaining_count: z.number().int().nonnegative().optional(),
@@ -698,15 +700,27 @@ export const chatResponseSchema = z.object({
     affiliations: z.array(
       z.object({
         year: z.number().int().min(1936),
-        gameId: z.string().min(1),
-        gameDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+        gameId: z.string().min(1).nullable(),
+        gameDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable(),
         team: z.string().min(1),
         playerName: z.string().min(1),
         playerId: z.string().nullable(),
-        sourceKind: z.enum(['bis_roster', 'roster', 'batting', 'pitching', 'event']),
+        sourceKind: z.enum(['official_profile', 'bis_roster', 'roster', 'batting', 'pitching', 'event']),
         sourceUrl: z.string().nullable(),
-      }),
+      }).refine((row) => row.sourceKind === 'official_profile' ? row.gameId === null && row.gameDate === null : row.gameId !== null && row.gameDate !== null),
     ),
+    playerInformation: z.array(z.object({
+      playerId: z.string().min(1), name: z.string().min(1), fetchedAt: z.string(), sourceUrls: z.array(z.string().url()),
+      affiliations: z.array(z.object({ year: z.number().int(), team: z.string() })),
+      registrations: z.array(z.object({ year: z.number().int(), team: z.string(), position: z.string().nullable(),
+        uniformNumber: z.string().nullable(), bats: z.string().nullable(), throws: z.string().nullable() })),
+      statistics: z.array(z.object({ year: z.number().int(), team: z.string(), kind: z.enum(['batting', 'pitching']),
+        metrics: z.record(z.string()), sourceUrl: z.string().url(), fetchedAt: z.string() })).optional(),
+    })).optional(),
+    awards: z.array(z.object({
+      year: z.number().int().min(1936), awardType: z.string().min(1), league: z.string().min(1),
+      playerName: z.string().min(1), team: z.string().min(1), sourceUrl: z.string().url(),
+    })).optional(),
     gameDetails: z.array(
       z.object({
         gameId: z.string().min(1),
@@ -1033,3 +1047,4 @@ export type ChatResponseCore = z.infer<typeof chatResponseCoreSchema>
 export type PublicApiErrorResponse = z.infer<typeof publicApiErrorResponseSchema>
 export type ChatApiResponse = z.infer<typeof chatApiResponseSchema>
 export type RichGame = z.infer<typeof richGameSchema>
+export { normalizePlayerNameKey } from './identity-text'

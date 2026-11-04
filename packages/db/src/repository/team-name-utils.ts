@@ -14,18 +14,18 @@ const japaneseToEnglishMap: Record<string, string> = {
 }
 
 const japaneseTeamAliasMap: Record<string, string[]> = {
-  巨人: ['巨人', '読売ジャイアンツ'],
-  ヤクルト: ['ヤクルト', '東京ヤクルトスワローズ'],
-  DeNA: ['DeNA', '横浜DeNAベイスターズ'],
+  巨人: ['巨人', '読売ジャイアンツ', '読売'],
+  ヤクルト: ['ヤクルト', '東京ヤクルトスワローズ', '東京ヤクルト'],
+  DeNA: ['DeNA', '横浜DeNAベイスターズ', '横浜DeNA', '横浜'],
   中日: ['中日', '中日ドラゴンズ'],
   阪神: ['阪神', '阪神タイガース'],
-  広島: ['広島', '広島東洋カープ'],
-  日本ハム: ['日本ハム', '北海道日本ハムファイターズ'],
-  楽天: ['楽天', '東北楽天ゴールデンイーグルス'],
-  西武: ['西武', '埼玉西武ライオンズ'],
-  ロッテ: ['ロッテ', '千葉ロッテマリーンズ'],
+  広島: ['広島', '広島東洋カープ', '広島東洋'],
+  日本ハム: ['日本ハム', '北海道日本ハムファイターズ', '北海道日本ハム'],
+  楽天: ['楽天', '東北楽天ゴールデンイーグルス', '東北楽天'],
+  西武: ['西武', '埼玉西武ライオンズ', '埼玉西武'],
+  ロッテ: ['ロッテ', '千葉ロッテマリーンズ', '千葉ロッテ'],
   オリックス: ['オリックス', 'オリックス・バファローズ'],
-  ソフトバンク: ['ソフトバンク', '福岡ソフトバンクホークス'],
+  ソフトバンク: ['ソフトバンク', '福岡ソフトバンクホークス', '福岡ソフトバンク'],
   'セ・リーグ': ['巨人', '読売ジャイアンツ', 'ヤクルト', '東京ヤクルトスワローズ', 'DeNA', '横浜DeNAベイスターズ', '中日', '中日ドラゴンズ', '阪神', '阪神タイガース', '広島', '広島東洋カープ'],
   'パ・リーグ': ['日本ハム', '北海道日本ハムファイターズ', '楽天', '東北楽天ゴールデンイーグルス', '西武', '埼玉西武ライオンズ', 'ロッテ', '千葉ロッテマリーンズ', 'オリックス', 'オリックス・バファローズ', 'ソフトバンク', '福岡ソフトバンクホークス'],
 }
@@ -87,10 +87,12 @@ for (const [canonical, aliases] of Object.entries(japaneseTeamAliasMap)) {
 
 /** チーム名の表記ゆれを正規の短縮名に統一（「福岡ソフトバンクホークス」→「ソフトバンク」等） */
 export function canonicalTeamName(team: string): string {
-  return aliasToCanonical[team] ?? team
+  const normalized = team.normalize('NFKC').replace(/\s+/gu, '')
+  return aliasToCanonical[normalized] ?? normalized
 }
 
 /** Apply the same team/league alias expansion to returned evidence as to SQL filters. */
 export function matchesGameTeamFilter(team: string, filter: string): boolean {
-  return (toEnglishLeagueTeams(filter) ?? toGameTeamAliases(filter)).includes(team)
+  const aliases = toEnglishLeagueTeams(filter) ?? toGameTeamAliases(filter)
+  return aliases.some((alias) => alias === team || canonicalTeamName(alias) === canonicalTeamName(team))
 }

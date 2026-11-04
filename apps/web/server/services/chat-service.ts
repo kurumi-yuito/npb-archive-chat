@@ -1101,7 +1101,7 @@ export function createChatService(
             ...results.pitching.map((row) => row.gameId),
             ...results.batting.map((row) => row.gameId),
             ...results.roster.map((row) => row.gameId),
-            ...results.affiliations.map((row) => row.gameId),
+            ...results.affiliations.flatMap((row) => row.gameId ? [row.gameId] : []),
             ...results.gameDetails.map((row) => row.gameId),
           ],
         ),

@@ -4,6 +4,31 @@
 
 ## 2026-11-03 更新
 
+### 2026-11-04 継続作業（未完了・作業継続中）
+
+#### 最新の引き継ぎ状態
+
+- **公式統計の本番DB反映は実行済み**。6出典391行を世代`0c00e1d7-30f3-43de-b2c1-e67479c5fc8d`から`d133e7af-dd68-4e4e-a0e1-7b4e81bd1816`へ原子的に追加した。出典原文はR2にも保存済み。既存の試合・イベント・アカウント行はこの差分の対象外。`data/logs/redesign-20261102/official-publication-receipt.json`、`official-production-verified.json`が反映・読取証拠。準備manifestの`published:false`は準備時点の状態であり、実行後のreceiptを参照する。
+- 本番DBの事前exportをSQLiteへ復元し、R2の`backups/sqlite/before-official-statistics-0c00e1d7.sqlite`へ保存して再ダウンロードした。SHA256は元と復元の双方`5eda79e45b6e518f16efb130d957d1e434ef4e45a7306dbdf54390d4449bca2a`。原本`/tmp/npb-official-production-baseline.sqlite`、R2復元`/tmp/npb-official-restored-baseline.sqlite`。
+- 本番アプリ配信は未変更。最新プレビューは`75c02395-c5c8-4f18-b688-d827a2f35733`。データ反映前のQ-183は意味・選手解決・計画・検索制約・回答がPass、完全性・年度集計出典がFail（`semantic-preview3-before-data-eval.json`）。B31はPass（`data/logs/qa-acceptance-B31-1793764004163.json`）。
+- 同プレビューのAcceptance全47ターンは**11 Pass / 36 Fail / 0 Unexecuted**（`data/logs/qa-acceptance-all-1793764350773.json`）。年度未指定で全年度を合算し現年として説明する重大な誤回答も確認した。compilerに現シーズン既定値を追加し、careerは`relative:"career"`として明示的に分離する修正を追加。過去在籍選手fallback・比較・期間・会話文脈・formatterの誤った説明は引き続き修正が必要。
+- データ反映後のQ-183再評価は`usage_unavailable`の503/Blocked（`semantic-preview3-after-data-eval.json`、`semantic-preview3-usage-tail-replay.json`）。HTTP監査ヘッダーで、LLM呼出前のmetadata DBの`consumeChatUsageToken` INSERTがfailedであることを確認した。SQLそのものは、同一実装から生成した文を本番meta DBの診断専用キーで実行して成功し、tokens=9の診断行を削除した。既存ユーザーの枠は調整していない。SQL実行`/tmp/npb-usage-d1-repro-result.json`、削除`/tmp/npb-usage-d1-repro-cleanup.json`。
+- `server-database.ts`で最初のリクエストのD1 bindingを全リクエストへ使うmodule cacheを発見し、H3 event context内の再利用へ修正。別bindingの2リクエストを混同しない回帰を追加し、関連9件Pass。直接の503原因がこれで解消したかは未検証。最新版ビルド`/tmp/npb-request-scope-build.log`、型検査`/tmp/npb-request-scope-typecheck.log`、全体回帰`/tmp/npb-request-scope-full-tests.log`を実行中。前回の全体回帰は552 Pass / 65 Skipped、前回lintは0 errors / 139 warnings。
+- 公式統計の取得を2025年全12球団へ拡大するCLIを実行中。`/tmp/npb-official-2025-all-teams-ingestion.log`、DB`/tmp/npb-official-2025-verified.sqlite`。取得は本番反映と別工程。**次の差分準備で古い0c00世代のbaselineを再利用しない**。直前の反映後コピー`/tmp/npb-official-publication-final/rehearsal.sqlite`はd133世代を持つ。remote世代を確認し、相違時は再exportしてから準備する。
+- 公開済み公式統計を定期更新候補へ引き継ぐ`official-statistic-preservation.ts`を追加。未収集を削除とみなさず、取得日時・確定IDを後退させない。同一hashでmetricsなどが変われば失敗する。原子的差分・統計・保持の12件Pass。
+
+直近の優先順は、503の実環境再検証→Q-183全工程Pass→47ターンの共通原因修正→独立評価拡充・182件+追加QA→製品/運用/本番E2E。ここで作業を完了・Release Ready扱いにしない。
+
+- 公開routeの意味解析を、旧intent/filtersとの二重生成からsemantic-only出力へ変更。公式エンティティ解決→契約コンパイル→直接実行へ接続し、旧serviceの質問文rewriteを検索ルーティングから外した。追加ファイルは`chat-semantic-llm.ts`、`chat-contract-compiler.ts`、`chat-contract-service.ts`。
+- プレビュー`e461d1f9-1a5e-4544-a668-5f46063172e3`をアップロード。本番配信は未変更。B31はHTTP200で候補確認となりPass（`data/logs/qa-acceptance-B31-1793756041530.json`）。Q-183独立評価は`home_runs > 0`という個別playに不適合な述語により503/Blocked。ログ`semantic-preview-contract-eval.json`。BlockedをPassに含めない。情報種類と述語の整合性を検査し、意味解析を最大2回でやり直す修正を追加したが、この修正後のプレビュー評価はまだ。
+- BIS公式リンクのteam index→現在統計→backnumber→対象年度→各統計への追跡と、対象年度・球団・種類の検証を実装。新CLI`pnpm --filter @npb/db update:official-statistics --year 2025 --team s --sqlite-path /tmp/npb-official-2025.sqlite`で公式6ページ391行を実取得した。一軍/二軍/守備位置/原文バージョンを分離する追加スキーマをlegacyとnormalized両方へ用意。既存イベントは変更していない。
+- 公式辞書コピー後の検証用DBで、山田哲人ID91895133・2025一軍・ヤクルト・本塁打12の公式行を確認した。ただしその後、統計からのID補完にフルネームの一意一致だけでなく、年度・球団の公式所属証拠も必須にする修正を追加している。最終版の実取得検証を改めて行うこと。未解決IDを名前だけで補完しない。
+- `official-statistics-repository.ts`で同一出典の最新版と明示scopeを選択。打撃の既存adapterでは年度・球団・選手IDを指定した照合だけに接続し、部分収集したリーグを完全な検索結果に置き換えない。
+- 原子的差分公開に、追加テーブル・index・データを同一トランザクションで反映する機能を追加。失敗時にschemaごとrollbackする回帰を含む9件がPass。正式な本番DB反映は未実行。
+- 公式profile parserが同一年の所属を最後の球団へ上書きする問題を修正。移籍年は配列として保持し、候補解決の既存consumerも対応。プロフィール・所属scopeの7件Pass。意味解析・公式統計・原子的差分の中間統合16件Pass。全体回帰、最終typecheck/lint、最新Cloudflare buildは実行中。
+
+上記は開発・プレビュー・隔離DBの結果であり、本番QAのAには転記しない。残っている公式統計の本番反映、広範な契約実行、全QA/Acceptance、認証課金・更新運用・E2Eを続行する。
+
 - 最新コードの全体回帰は536 Pass / 65 Skipped（`data/logs/redesign-20261102/npb-redesign-tests-checkpoint.log`）。その後に追加したAPIの失敗時返却テスト2件もPass。実SQLiteのトークンが10回へ戻ること、計画矛盾で検索が走らないこと、account DB障害で処理を継続しないことを確認した。HTTP層はテスト内で置換しており、本番E2Eの証拠にはしない。
 - 最後のAPI修正は、Planner検証失敗を成功応答として課金せず503として返却処理へ進めるもの。修正後のtypecheck・Cloudflare buildは成功（`npb-redesign-typecheck-refund.log`、`npb-redesign-build-refund.log`）。本番配信は行っていない。
 - 候補3は`e01e6d63-3e24-45dc-86ea-1af33961b48e`。Q-183の結果は候補2と同様で、独立評価はFailのまま。B31もFailで、追加原因は指定されていないlevelを`both`として補完する意味解析と、検索計画検証をidentity解決前に適用する段階設計。統計サマリーの出力分類だけでは解消していない。ログは`preview3-contract-eval.json`、`qa-acceptance-B31-1793663502226.json`。候補3にも最後のAPI返却修正は含まれない。
@@ -68,4 +93,19 @@
 7. 認証・Free/Pro利用制限・Stripe live権限同期・PC/スマートフォンのE2E、セキュリティ・性能評価を完了する。
 8. 同一の最終HEAD/本番Versionで正式QA・Acceptanceをすべて合格させ、差分正本を更新してからリリース判定する。
 
-ユーザーの追加承認や秘密情報要求を理由に停止している状態ではない。上記の実装・検証作業が残っている。
+上記の実装・検証作業が残っている。
+
+## 2026-11-04 ローカル修正と本番障害の現状
+
+- 本番D1無料枠の読み取り上限到達を、実際のD1エラーで確認した。原因と影響、実行した診断の後片付けは[障害記録](incidents/2026-11-04-d1-read-budget-exhaustion.md)を参照する。共有本番DBに対する広範囲のプレビュー評価は停止し、以降は隔離したMiniflare D1コピーで検証している。bindingキャッシュ修正をこの障害の解消根拠にはしない。
+- リモート評価runnerは、利用可能な読み取り予算と成功したローカル計測ログを必須にし、予算不足・未知の計測・見積超過では停止する。BlockedはPassに含めない。
+- Q-183の隔離Worker評価は8工程を満たすPass。公式辞書を先に使用する共通解決へ変更し、読み取りを1,287,314行から81,749行へ削減した。本番の正式QA結果には転記していない。
+- B26は通算の全出場成績を取得せず、公式プロフィール・選手一覧を取得する`player_information`へ分離した。隔離Workerの実応答は「阪神・外野手」、読み取り32行。ただし基本成績を含まない段階の受入結果はFailのまま。年度と公式出典を保持した基本成績の追加を実装しており、後続build・実応答確認は未完。
+- 選手一覧parserの見出し判定が、HTML前処理でthタグを除去した後に行われていた問題を修正した。繰り返し見出し、監督の除外、投打の正確な列選択、自由契約備考の保持、過年度としての誤取得拒否を含む12テストがPass。
+- `update:official-roster --year=2026 --storage=local`で公式12球団・12ページ・1,083件を取得し、`/tmp/npb-official-roster-2026.sqlite`へ保存した。リンク探索とページ年度・球団の検証を行い、rawと構造化データに取得日時・基準時点・ハッシュ・備考を残す。掲載だけで現在契約中とは判定しない。隔離D1の2026年度選手一覧もこの完全ページ取得から更新した。本番への反映はしていない。
+- 新規の選手一覧取得CLI、基本成績紹介の後続変更を含むtypecheck・build・回帰試験を継続中。本番アプリの配信Versionは変更しておらず、リリース判定は未合格。
+- 2026年度成績は公式リンク探索から12球団・一軍/ファーム・打撃/投手/守備の72ページ・4,845行をローカルに取得した。球団名の空白・全角表記を共通処理で正規化し、846行のIDを公式プロフィールの同年度所属から追加照合した。残る1,405行はID未解決のまま保持している。全行の値と保存raw HTML、ページ年度・球団・種別、ハッシュ、解決済みIDの所属証拠を再検証した。
+- 次回公式統計差分のローカルリハーサルはPass。基準generation `d133e7af-dd68-4e4e-a0e1-7b4e81bd1816`、準備generation `793f15c8-3f7c-4ae2-9f28-0a1b1eb6cafc`。プロフィール行の変更0、統計source追加72、統計行追加4,845、辞書検索index追加。**未公開**であり、実適用前に本番generation・バックアップ・読み取り予算を再確認する。
+- 再開用の取得DB、ハッシュ付きreceipt、未適用SQLとmanifestは`data/staging/redesign-20261104/`に保存する。raw HTMLと備考を含む選手一覧sidecarは`data/raw/`・`data/structured/`にある。このステージングデータは本番取得・更新稼働や正式QA合格の証拠ではない。
+- 基本成績紹介、表記正規化、別ID排除、過年度指定、出典保持を含む後続の関連19テストがPass。`/tmp/npb-information-fixed-typecheck.log`の型チェックも終了コード0。全体回帰・凍結buildの結果は引き続き確認中。
+- この時点の全体回帰は572 Pass / 65 Skipped（73ファイル中71 Pass / 2 Skipped）。ログは`data/logs/redesign-20261102/20261104-full-tests.log`。SkippedをPass扱いしない。型チェックのログは同ディレクトリの`20261104-typecheck.log`。本番QAとAcceptanceの全件合格は未達。

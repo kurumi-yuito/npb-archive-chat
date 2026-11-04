@@ -8,6 +8,7 @@ const quote = (name: string) => `"${name.replaceAll('"', '""')}"`
 const literal = (value: Value) => value === null ? 'NULL' : typeof value === 'number' ? String(value) : `'${value.replaceAll("'", "''")}'`
 const columns = (db: SqliteDatabase, table: string) => db.prepare(`PRAGMA table_info(${quote(table)})`).all() as Column[]
 const rows = (db: SqliteDatabase, table: string) => db.prepare(`SELECT * FROM ${quote(table)}`).all() as Row[]
+const hasTable = (db: SqliteDatabase, table: string) => Boolean(db.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name=?").get(table))
 const where = (row: Row, names: string[]) => names.map(name => `${quote(name)} IS ${literal(row[name] ?? null)}`).join(' AND ')
 
 export const PUBLICATION_SCHEMA = `CREATE TABLE IF NOT EXISTS normalized_sync_publication (
@@ -73,11 +74,29 @@ export function buildNormalizedDelta(previous: SqliteDatabase, next: SqliteDatab
   const changes: NormalizedDelta['changes'] = {}
   for (const table of tables) {
     const names = columns(next, table).map(column => column.name)
-    if (JSON.stringify(names) !== JSON.stringify(columns(previous, table).map(column => column.name))) throw new Error(`Schema mismatch: ${table}`)
+    if (!names.length) throw new Error(`Missing candidate table: ${table}`)
+    const exists = hasTable(previous, table)
+    if (exists && JSON.stringify(names) !== JSON.stringify(columns(previous, table).map(column => column.name))) throw new Error(`Schema mismatch: ${table}`)
+    if (!exists) {
+      // Additive tables and their indexes travel in the same atomic publication
+      // as their rows. A late failure rolls back both schema and content.
+      const definitions = next.prepare(`SELECT sql FROM sqlite_master WHERE tbl_name=?
+        AND type IN ('table','index') AND sql IS NOT NULL ORDER BY CASE type WHEN 'table' THEN 0 ELSE 1 END, name`)
+        .all(table) as Array<{ sql: string }>
+      for (const definition of definitions) statements.push(`${definition.sql};`)
+    } else {
+      const indexes = next.prepare("SELECT name,sql FROM sqlite_master WHERE type='index' AND tbl_name=? AND sql IS NOT NULL")
+        .all(table) as Array<{ name: string; sql: string }>
+      for (const index of indexes) {
+        if (previous.prepare("SELECT 1 FROM sqlite_master WHERE type='index' AND name=?").get(index.name)) continue
+        if (/CREATE\s+UNIQUE\s+INDEX/iu.test(index.sql)) throw new Error(`New unique index requires an explicit migration plan: ${index.name}`)
+        statements.push(`${index.sql};`)
+      }
+    }
     const keys = businessKey(next, table)
     const key = (row: Row) => JSON.stringify(keys.map(name => row[name]))
     const seen = new Set<string>()
-    const findOld = previous.prepare(`SELECT * FROM ${quote(table)} WHERE ${keys.map(name => `${quote(name)} IS ?`).join(' AND ')}`)
+    const findOld = exists ? previous.prepare(`SELECT * FROM ${quote(table)} WHERE ${keys.map(name => `${quote(name)} IS ?`).join(' AND ')}`) : null
     const foreignKeys = next.prepare(`PRAGMA foreign_key_list(${quote(table)})`).all() as Array<{ table: string; from: string }>
     const stats = { inserted: 0, updated: 0, deleted: 0 }
     const deletes: string[] = []
@@ -93,7 +112,7 @@ export function buildNormalizedDelta(previous: SqliteDatabase, next: SqliteDatab
           row[foreign.from] = mapped
         }
       }
-      const old = findOld.get(...keys.map(name => row[name])) as Row | undefined
+      const old = findOld?.get(...keys.map(name => row[name])) as Row | undefined
       seen.add(key(row))
       if (!old) {
         writes.push(`INSERT INTO ${quote(table)} (${names.map(quote).join(',')}) VALUES (${names.map(name => literal(row[name] ?? null)).join(',')});`)
@@ -107,7 +126,7 @@ export function buildNormalizedDelta(previous: SqliteDatabase, next: SqliteDatab
     }
     // Unused dictionaries remain valid and keep stable IDs, including references
     // from supplemental facts. They are tiny compared with historical facts.
-    if (!idMaps.has(table)) {
+    if (exists && !idMaps.has(table)) {
       for (const old of previous.prepare(`SELECT * FROM ${quote(table)}`).iterate() as Iterable<Row>) {
         if (seen.has(key(old))) continue
         deletes.push(`DELETE FROM ${quote(table)} WHERE ${where(old, names)};`, assert('changes() = 1'))

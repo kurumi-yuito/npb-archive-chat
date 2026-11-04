@@ -11,6 +11,39 @@ INSERT INTO teams VALUES(1,'B'); INSERT INTO game_facts VALUES('one',1,1);`
 const tables = ['teams', 'game_facts']
 
 describe('atomic normalized publication', () => {
+  it('adds a non-unique index to an existing table without rewriting its data', () => {
+    const previous = openDatabase(); const next = openDatabase()
+    try {
+      previous.exec(schema); next.exec(schema)
+      next.exec('CREATE INDEX game_score ON game_facts(score)')
+      const delta = buildNormalizedDelta(previous, next, tables)
+      expect(delta.changes.game_facts).toEqual({ inserted: 0, updated: 0, deleted: 0 })
+      withTransaction(previous, () => previous.exec(delta.sql))
+      expect(previous.prepare("SELECT 1 FROM sqlite_master WHERE name='game_score'").get()).toBeDefined()
+      expect(previous.prepare('SELECT score FROM game_facts').get()).toEqual({ score: 1 })
+    } finally { previous.close(); next.close() }
+  })
+
+  it('publishes additive source tables atomically and rolls their schema back on failure', () => {
+    const previous = openDatabase(); const next = openDatabase()
+    try {
+      previous.exec(schema); next.exec(schema)
+      next.exec(`CREATE TABLE snapshots(id TEXT PRIMARY KEY, source TEXT NOT NULL);
+        CREATE INDEX snapshot_source ON snapshots(source);
+        CREATE TABLE statistics(snapshot_id TEXT REFERENCES snapshots(id), position TEXT, value INTEGER, PRIMARY KEY(snapshot_id,position));
+        INSERT INTO snapshots VALUES('version','https://npb.jp/bis/');
+        INSERT INTO statistics VALUES('version','first',10),('version','third',3);`)
+      const delta = buildNormalizedDelta(previous, next, [...tables, 'snapshots', 'statistics'])
+      expect(() => withTransaction(previous, () => previous.exec(delta.sql + '\nINSERT INTO missing VALUES(1);'))).toThrow()
+      expect(previous.prepare("SELECT 1 FROM sqlite_master WHERE name='snapshots'").get()).toBeUndefined()
+      withTransaction(previous, () => previous.exec(delta.sql))
+      expect(previous.prepare('SELECT * FROM statistics').all()).toHaveLength(2)
+      expect(previous.prepare("SELECT 1 FROM sqlite_master WHERE name='snapshot_source'").get()).toBeDefined()
+      expect(delta.changes.game_facts).toEqual({ inserted: 0, updated: 0, deleted: 0 })
+      expect(readSyncGeneration(previous)).toBe(delta.generation)
+    } finally { previous.close(); next.close() }
+  })
+
   it('keeps unchanged historical facts when conversion renumbers dictionaries', () => {
     const previous = openDatabase(); const next = openDatabase()
     try {

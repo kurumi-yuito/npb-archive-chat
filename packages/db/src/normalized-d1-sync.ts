@@ -9,6 +9,7 @@ import { migrateDatabase } from './migrations'
 import { runNormalizeDatabase, validateNormalizedCandidate } from './normalized-conversion'
 import { openDatabase, type SqliteDatabase } from './sqlite'
 import { buildNormalizedDelta, readSyncGeneration } from './normalized-d1-delta'
+import { preservePublishedOfficialStatistics } from './official-statistic-preservation'
 
 const DEFAULT_SQLITE_DIR = 'data'
 const DEFAULT_D1_DATABASE = 'npb-archive-chat-normalized'
@@ -21,6 +22,8 @@ const DEFAULT_NORMALIZED_MIGRATIONS_DIR = path.resolve(
 )
 
 const LEGACY_MERGE_TABLES = [
+  'official_statistic_snapshots',
+  'official_player_statistics',
   'games',
   'source_snapshots',
   'events',
@@ -41,6 +44,8 @@ const LEGACY_MERGE_TABLES = [
 ] as const
 
 const NORMALIZED_IMPORT_TABLES = [
+  'official_statistic_snapshots',
+  'official_player_statistics',
   'teams',
   'venues',
   'event_types',
@@ -323,6 +328,7 @@ export async function runNormalizedD1Sync(
           if (!normalized.prepare('SELECT 1 FROM game_facts WHERE year=? LIMIT 1').get(row.year)) throw new Error(`Candidate is missing published season ${row.year}`)
         }
         console.info('[sync:normalized-d1] Generating atomic delta')
+        preservePublishedOfficialStatistics(previous, normalized)
         const delta = buildNormalizedDelta(previous, normalized, NORMALIZED_IMPORT_TABLES)
         const dateMismatches = compareDateIntegritySnapshots(dateSnapshots)
         if (dateMismatches.length) throw new Error(`Candidate date integrity failed: ${JSON.stringify(dateMismatches)}`)

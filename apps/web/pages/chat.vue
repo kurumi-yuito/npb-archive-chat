@@ -487,6 +487,18 @@ function toggleSidebar() {
               </div>
 
               <!-- Affiliations -->
+              <div v-if="turn.assistant.results.playerInformation?.length" class="result-section">
+                <h3 class="result-title">選手情報</h3>
+                <div v-for="profile in turn.assistant.results.playerInformation" :key="profile.playerId">
+                  <p>{{ profile.name }}</p>
+                  <ul class="simple-list">
+                    <li v-for="row in profile.registrations" :key="`${row.year}-${row.team}`">
+                      {{ row.year }}年度の選手一覧：{{ row.team }}<template v-if="row.position"> / {{ row.position }}</template>
+                    </li>
+                  </ul>
+                </div>
+              </div>
+
               <div v-if="turn.assistant.results.affiliations.length" class="result-section">
                 <h3 class="result-title">所属</h3>
                 <ul class="simple-list">

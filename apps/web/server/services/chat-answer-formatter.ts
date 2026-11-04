@@ -92,52 +92,56 @@ export function formatChatAnswer({
     applied_filters: structuredQuery.filters,
     ...(executionMetadata
       ? {
-        execution_metadata: {
-          ...(executionMetadata.queryContract ? { query_contract: executionMetadata.queryContract } : {}),
-          data_requirements: executionMetadata.dataRequirements,
-          repositories: executionMetadata.repositories,
-          player_id_required: executionMetadata.playerIdRequired,
-          player_id_satisfied: executionMetadata.playerIdSatisfied,
-          follow_up_type: executionMetadata.followUpType,
-          referenced_context: executionMetadata.referencedContext,
-          target_entity: executionMetadata.targetEntity,
-          follow_up_context: executionMetadata.followUpContext,
-          ...(executionMetadata.appliedFollowUpContext
-            ? { follow_up_context_applied: executionMetadata.appliedFollowUpContext }
-            : {}),
-          correction_guard: executionMetadata.correctionGuard,
-          correction: executionMetadata.correction,
-          identity_intent: executionMetadata.identityIntent,
-          target_game_id: executionMetadata.targetGameId,
-          target_player_id: executionMetadata.targetPlayerId,
-          answer_mode: executionMetadata.answerMode,
-          identity_resolution_scope: executionMetadata.identityResolutionScope,
-          domain: executionMetadata.domain,
-          planner_validation: executionMetadata.validation,
-          ...(executionMetadata.questionIntent
-            ? { question_intent: executionMetadata.questionIntent }
-            : {}),
-          ...(executionMetadata.capabilityRoute
-            ? { capability_route: executionMetadata.capabilityRoute }
-            : {}),
-          ...(executionMetadata.capabilityRequiresAnalysis !== undefined
-            ? { capability_requires_analysis: executionMetadata.capabilityRequiresAnalysis }
-            : {}),
-          ...(executionMetadata.capabilityUsesRepository !== undefined
-            ? { capability_uses_repository: executionMetadata.capabilityUsesRepository }
-            : {}),
-          ...(executionMetadata.capabilityExternalSourceUrl !== undefined
-            ? { external_source_url: executionMetadata.capabilityExternalSourceUrl }
-            : {}),
-          ...(executionMetadata.playerResolutions
-            ? { resolved_players: executionMetadata.playerResolutions }
-            : {}),
-          ...(executionMetadata.identityResolution
-            ? { identity_resolution: executionMetadata.identityResolution }
-            : {}),
-        },
+        execution_metadata: publicExecutionMetadata(executionMetadata),
       }
       : {}),
+  }
+}
+
+export function publicExecutionMetadata(executionMetadata: ChatExecutionMetadata) {
+  return {
+    ...(executionMetadata.queryContract ? { query_contract: executionMetadata.queryContract } : {}),
+    data_requirements: executionMetadata.dataRequirements,
+    repositories: executionMetadata.repositories,
+    player_id_required: executionMetadata.playerIdRequired,
+    player_id_satisfied: executionMetadata.playerIdSatisfied,
+    follow_up_type: executionMetadata.followUpType,
+    referenced_context: executionMetadata.referencedContext,
+    target_entity: executionMetadata.targetEntity,
+    follow_up_context: executionMetadata.followUpContext,
+    ...(executionMetadata.appliedFollowUpContext
+      ? { follow_up_context_applied: executionMetadata.appliedFollowUpContext }
+      : {}),
+    correction_guard: executionMetadata.correctionGuard,
+    correction: executionMetadata.correction,
+    identity_intent: executionMetadata.identityIntent,
+    target_game_id: executionMetadata.targetGameId,
+    target_player_id: executionMetadata.targetPlayerId,
+    answer_mode: executionMetadata.answerMode,
+    identity_resolution_scope: executionMetadata.identityResolutionScope,
+    domain: executionMetadata.domain,
+    planner_validation: executionMetadata.validation,
+    ...(executionMetadata.questionIntent
+      ? { question_intent: executionMetadata.questionIntent }
+      : {}),
+    ...(executionMetadata.capabilityRoute
+      ? { capability_route: executionMetadata.capabilityRoute }
+      : {}),
+    ...(executionMetadata.capabilityRequiresAnalysis !== undefined
+      ? { capability_requires_analysis: executionMetadata.capabilityRequiresAnalysis }
+      : {}),
+    ...(executionMetadata.capabilityUsesRepository !== undefined
+      ? { capability_uses_repository: executionMetadata.capabilityUsesRepository }
+      : {}),
+    ...(executionMetadata.capabilityExternalSourceUrl !== undefined
+      ? { external_source_url: executionMetadata.capabilityExternalSourceUrl }
+      : {}),
+    ...(executionMetadata.playerResolutions
+      ? { resolved_players: executionMetadata.playerResolutions }
+      : {}),
+    ...(executionMetadata.identityResolution
+      ? { identity_resolution: executionMetadata.identityResolution }
+    : {}),
   }
 }
 

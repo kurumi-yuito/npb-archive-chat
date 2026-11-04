@@ -3,23 +3,25 @@ import {
   type PlayerAffiliationFilters,
 } from '@npb/schemas'
 import type { QueryDatabase } from '../query-driver'
+import { matchesGameTeamFilter } from './team-name-utils'
 
 export type PlayerAffiliationRow = {
   year: number
-  gameId: string
-  gameDate: string
+  gameId: string | null
+  gameDate: string | null
   team: string
   playerName: string
   playerId: string | null
-  sourceKind: 'bis_roster' | 'roster' | 'batting' | 'pitching' | 'event'
+  sourceKind: 'official_profile' | 'bis_roster' | 'roster' | 'batting' | 'pitching' | 'event'
   sourceUrl: string | null
 }
 
 export async function searchPlayerAffiliations(
   database: QueryDatabase,
-  filters: PlayerAffiliationFilters,
+  filters: PlayerAffiliationFilters & { dictionaryOnly?: boolean },
 ): Promise<PlayerAffiliationRow[]> {
   const normalized = playerAffiliationFiltersSchema.parse(filters)
+  if (filters.dictionaryOnly) return officialProfileAffiliations(database, normalized)
   const rows: RankedPlayerAffiliationRow[] = []
   rows.push(...await queryAffiliationRows(database, normalized, {
     sql: `SELECT current_team_roster.year AS year, 'bis:' || current_team_roster.year || ':' || current_team_roster.team_id || ':rst' AS gameId, printf('%04d-01-01', current_team_roster.year) AS gameDate, current_team_roster.team_name AS team, current_team_roster.player_name AS playerName, current_team_roster.player_id AS playerId, 'bis_roster' AS sourceKind, current_team_roster.source_url AS sourceUrl, 0 AS sourceRank FROM current_team_roster`,
@@ -84,8 +86,8 @@ export async function searchPlayerAffiliations(
     .sort((left, right) =>
       right.year - left.year ||
       left.sourceRank - right.sourceRank ||
-      right.gameDate.localeCompare(left.gameDate) ||
-      right.gameId.localeCompare(left.gameId),
+      (right.gameDate ?? '').localeCompare(left.gameDate ?? '') ||
+      (right.gameId ?? '').localeCompare(left.gameId ?? ''),
     )
     .slice(0, normalized.limit ?? 200)
     .map((row) => {
@@ -93,6 +95,26 @@ export async function searchPlayerAffiliations(
       void sourceRank
       return affiliation
     })
+}
+
+async function officialProfileAffiliations(database: QueryDatabase, filters: PlayerAffiliationFilters): Promise<PlayerAffiliationRow[]> {
+  if (!filters.player_id) return []
+  const row = await database.prepare('SELECT player_id,full_name,year_teams_json,source_url FROM player_profiles WHERE player_id=?')
+    .get(filters.player_id) as { player_id: string; full_name: string; year_teams_json: string | null; source_url: string } | null
+  if (!row || row.source_url !== `https://npb.jp/bis/players/${row.player_id}.html`) return []
+  const result: PlayerAffiliationRow[] = []
+  let years: Record<string, unknown>
+  try { years = JSON.parse(row.year_teams_json ?? '{}') } catch { return [] }
+  if (!years || typeof years !== 'object' || Array.isArray(years)) return []
+  for (const [yearText, teams] of Object.entries(years)) {
+    const year = Number(yearText)
+    if (!Number.isInteger(year) || year < 1936 || (filters.year && year !== filters.year) || (filters.year_from && year < filters.year_from) || (filters.year_to && year > filters.year_to)) continue
+    for (const team of Array.isArray(teams) ? teams : [teams]) {
+      if (typeof team !== 'string' || !team || (filters.team && !matchesGameTeamFilter(team, filters.team))) continue
+      result.push({ year, gameId: null, gameDate: null, team, playerName: row.full_name, playerId: row.player_id, sourceKind: 'official_profile', sourceUrl: row.source_url })
+    }
+  }
+  return result.sort((a, b) => b.year - a.year || a.team.localeCompare(b.team))
 }
 
 type RankedPlayerAffiliationRow = PlayerAffiliationRow & {

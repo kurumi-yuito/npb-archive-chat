@@ -4,6 +4,8 @@ import type { PlayerResolution } from './player-resolution'
 import type { ChatCapabilityIntent, ChatCapabilityRoute } from './chat-capability'
 
 export const chatDataRequirementSchema = z.enum([
+  'player_profiles',
+  'official_statistics',
   'events',
   'games',
   'batting_lines',
@@ -156,6 +158,7 @@ export const chatIdentityIntentMetadataSchema = z.object({
 export type ChatIdentityIntentMetadata = z.infer<typeof chatIdentityIntentMetadataSchema>
 
 export const chatExecutionRepositorySchema = z.enum([
+  'searchPlayerInformation',
   'searchEvents',
   'searchGames',
   'searchBattingLines',

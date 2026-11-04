@@ -1,5 +1,6 @@
 import { mkdir, writeFile } from 'node:fs/promises'
 import path from 'node:path'
+import { createEvaluationD1Budget, parseD1ReadAudit } from './evaluation-d1-budget.mjs'
 
 const baseUrl = process.env.NPB_ACCEPTANCE_BASE_URL ?? 'http://127.0.0.1:3000'
 const selection = process.argv.find((arg) => arg.startsWith('--cases='))?.slice('--cases='.length) ?? 'all'
@@ -117,8 +118,6 @@ const acceptancePatterns = {
   'MT05-Turn3': /岡本.*\.326.*大山.*\.253.*岡本のほうが高い/u,
 }
 
-await waitForReady()
-
 const selected = conversations.filter((conversation) =>
   selection === 'all' ||
   (selection === 'initial-fail' && conversation.turns.some((turn) => turn.initialVerdict === 'fail')) ||
@@ -130,9 +129,12 @@ const selectedTurnIds = selected.flatMap((conversation) => conversation.turns)
     explicitCaseIds.has(turn.id))
   .map((turn) => turn.id)
 const results = []
-let stopReason = null
+const readBudget = await createEvaluationD1Budget({ baseUrl, caseIds: selectedTurnIds })
+let stopReason = readBudget.preflightIssue
 let outputPath = null
+if (!stopReason) await waitForReady()
 acceptanceRun: for (const conversation of selected) {
+  if (stopReason) break
   const history = []
   for (const turn of conversation.turns) {
     if (selection !== 'all' && selection !== 'initial-fail' && !explicitCaseIds.has(turn.id)) {
@@ -173,23 +175,29 @@ acceptanceRun: for (const conversation of selected) {
       filters: body?.structured_query?.filters ?? null,
       summary: body?.answer?.summary ?? null,
       executionMetadata: body?.answer?.execution_metadata ?? null,
-      d1ReadAudit: JSON.parse(response?.headers.get('x-npb-d1-read-audit') ?? 'null'),
+      d1ReadAudit: parseD1ReadAudit(response),
       responseError: resultError(body),
       error: requestError,
     }
+    const budgetIssue = readBudget.observe(result.id, result.d1ReadAudit)
     const pattern = acceptancePatterns[turn.id]
-    result.verdict = result.status === 200 && typeof result.summary === 'string' &&
+    result.verdict = !budgetIssue && result.status === 200 && typeof result.summary === 'string' &&
       !/^イベントです。?\s*該当数:/u.test(result.summary) &&
       (!pattern || pattern.test(result.summary))
       ? 'pass'
       : 'fail'
     result.failureReason = result.verdict === 'fail'
-      ? getFailureReason(result, pattern)
+      ? budgetIssue ?? getFailureReason(result, pattern)
       : null
     results.push(result)
     process.stdout.write(`${turn.id}\t${result.verdict.toUpperCase()}\tHTTP ${result.status}\t${result.durationMs}ms\t${result.intent ?? '-'}\t${oneLine(result.summary)}\n`)
     history.push({ role: 'user', content: turn.message })
     history.push({ role: 'assistant', content: result.summary ?? '回答を取得できませんでした。' })
+    if (budgetIssue) {
+      stopReason = budgetIssue
+      outputPath = await saveRunLog()
+      break acceptanceRun
+    }
     if (result.verdict === 'fail' && !continueOnFailure) {
       stopReason = `fail_fast:${result.id}`
       outputPath = await saveRunLog()
@@ -201,7 +209,7 @@ acceptanceRun: for (const conversation of selected) {
 outputPath ??= await saveRunLog()
 const failed = results.filter((result) => result.verdict === 'fail')
 process.stdout.write(`Acceptance: ${results.length - failed.length}/${selectedTurnIds.length} pass, ${failed.length} fail, ${selectedTurnIds.length - results.length} unexecuted${failed.length ? ` (${failed.map((result) => result.id).join(', ')})` : ''}\n`)
-if (failed.length > 0) process.exitCode = 1
+if (failed.length > 0 || stopReason) process.exitCode = 1
 
 async function saveRunLog() {
   const executedIds = new Set(results.map((result) => result.id))
@@ -212,6 +220,7 @@ async function saveRunLog() {
     selection,
     status: stopReason ? 'stopped' : 'completed',
     stopReason,
+    readBudget: readBudget.snapshot(),
     lastExecutedCase: results.at(-1)?.id ?? null,
     passCount: results.length - failed.length,
     failCount: failed.length,

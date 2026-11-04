@@ -3,6 +3,7 @@ import type { ChatQueryService } from '@npb/db'
 const methods = new Set<keyof ChatQueryService>([
   'searchEvents', 'searchGames', 'searchBattingLines', 'searchPitchingLines',
   'searchRosterEntries', 'searchPlayerAffiliations', 'searchGameDetails',
+  'searchPlayerInformation',
   'aggregateBattingLines', 'aggregatePitchingLines', 'aggregateEvents',
   'aggregateGameResults', 'searchPlayerCandidates', 'searchAwardWinners',
   'getNormalizedRuntimeMetadata', 'listSourceSnapshotsByGameIds', 'close',

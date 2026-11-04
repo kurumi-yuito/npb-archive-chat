@@ -1,4 +1,5 @@
 import fs from 'node:fs'
+import { searchPlayerInformation, type PlayerInformationRow } from './repository/player-information-repository'
 import path from 'node:path'
 import {
   aggregateBattingLines,
@@ -65,7 +66,8 @@ export type ChatQueryService = {
   searchBattingLines: (filters: SearchBattingLinesFilters) => Promise<BattingLineRow[]>
   searchPitchingLines: (filters: SearchPitchingLinesFilters) => Promise<PitchingLineRow[]>
   searchRosterEntries: (filters: SearchRosterEntriesFilters) => Promise<RosterEntryRow[]>
-  searchPlayerAffiliations: (filters: PlayerAffiliationFilters) => Promise<PlayerAffiliationRow[]>
+  searchPlayerAffiliations: (filters: PlayerAffiliationFilters & { dictionaryOnly?: boolean }) => Promise<PlayerAffiliationRow[]>
+  searchPlayerInformation: (filters: PlayerAffiliationFilters) => Promise<PlayerInformationRow[]>
   searchGameDetails: (filters: GameDetailFilters) => Promise<GameDetailRow[]>
   aggregateBattingLines: (filters: AggregateBattingFilters) => Promise<AggregateRow[]>
   aggregatePitchingLines: (filters: AggregatePitchingFilters) => Promise<AggregateRow[]>
@@ -109,6 +111,7 @@ export function createSingleDatabaseQueryService(database: QueryDatabase): ChatQ
     },
     searchRosterEntries: (filters) => searchRosterEntries(database, filters),
     searchPlayerAffiliations: (filters) => searchPlayerAffiliations(database, filters),
+    searchPlayerInformation: (filters) => searchPlayerInformation(database, filters),
     searchGameDetails: (filters) => searchGameDetails(database, filters),
     aggregateBattingLines: (filters) => aggregateBattingLines(database, filters),
     aggregatePitchingLines: (filters) => aggregatePitchingLines(database, filters),
@@ -238,6 +241,15 @@ export function createMultiYearQueryService({
         (row) => `${9999 - row.year}:${affiliationSourceRank(row.sourceKind)}:${row.gameDate}:${row.gameId}:${row.team}`,
         filters.limit ?? 200,
       ),
+    searchPlayerInformation: async (filters) => {
+      const rows = await runAcrossYears(filters, searchPlayerInformation, (row) => row.playerId, 500)
+      const latest = new Map<string, PlayerInformationRow>()
+      for (const row of rows) {
+        const previous = latest.get(row.playerId)
+        if (!previous || Date.parse(row.fetchedAt) > Date.parse(previous.fetchedAt)) latest.set(row.playerId, row)
+      }
+      return [...latest.values()]
+    },
     searchGameDetails: (filters) =>
       runAcrossYears(
         filters,
@@ -339,6 +351,7 @@ export function createMultiYearQueryService({
 
 function affiliationSourceRank(sourceKind: PlayerAffiliationRow['sourceKind']): number {
   const ranks: Record<PlayerAffiliationRow['sourceKind'], number> = {
+    official_profile: 0,
     bis_roster: 0,
     roster: 1,
     batting: 2,

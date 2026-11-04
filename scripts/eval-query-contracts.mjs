@@ -1,6 +1,7 @@
 import { readFile, mkdir, writeFile } from 'node:fs/promises'
 import { isDeepStrictEqual } from 'node:util'
 import path from 'node:path'
+import { createEvaluationD1Budget, parseD1ReadAudit } from './evaluation-d1-budget.mjs'
 
 const baseUrl = process.env.NPB_EVAL_BASE_URL ?? 'http://127.0.0.1:3000'
 const split = process.argv.find((arg) => arg.startsWith('--split='))?.slice(8) ?? 'regression'
@@ -8,23 +9,31 @@ const corpus = JSON.parse(await readFile(new URL('../docs/eval-query-contracts.j
 const cases = corpus.cases.filter((entry) => entry.split === split)
 const output = process.env.NPB_EVAL_OUTPUT ?? `data/logs/query-contract-eval-${Date.now()}.json`
 const report = { baseUrl, split, startedAt: new Date().toISOString(), corpusReleaseGate: corpus.release_gate, cases: [] }
+const readBudget = await createEvaluationD1Budget({ baseUrl, caseIds: cases.map((entry) => entry.id) })
+let stopReason = readBudget.preflightIssue
 
 for (const entry of cases) {
   const result = { id: entry.id, question: entry.question, status: 'blocked', stages: {} }
   const stage = (name, pass, detail) => { result.stages[name] = { status: pass ? 'pass' : 'fail', ...(detail ? { detail } : {}) } }
+  if (stopReason) {
+    result.reason = stopReason
+    report.cases.push(result)
+    continue
+  }
   try {
     const response = await fetch(`${baseUrl.replace(/\/$/u, '')}/api/chat`, {
       method: 'POST', headers: { 'content-type': 'application/json', 'user-agent': 'npb-independent-contract-eval/1' },
       body: JSON.stringify({ message: entry.question }), signal: AbortSignal.timeout(60_000),
     })
     result.httpStatus = response.status
+    result.d1ReadAudit = parseD1ReadAudit(response)
     result.response = await response.json()
     if (!response.ok) {
       result.reason = `HTTP ${response.status}; no stages counted as passing`
     } else {
       const body = result.response
       const answer = body.answer ?? {}
-      const contract = answer.execution_metadata?.query_contract ?? body.structured_query?.query_contract
+      const contract = answer.query_contract ?? answer.execution_metadata?.query_contract ?? body.structured_query?.query_contract
       stage('meaning', isDeepStrictEqual(canonicalMeaning(contract), canonicalMeaning(entry.meaning)))
       const resolution = answer.resolved_player
       stage('entity_resolution', resolution?.status === 'resolved' && resolution.player_id === entry.resolution.player_id &&
@@ -62,10 +71,18 @@ for (const entry of cases) {
   } catch (error) {
     result.reason = String(error)
   }
+  const budgetIssue = readBudget.observe(result.id, result.d1ReadAudit)
+  if (budgetIssue) {
+    stopReason = budgetIssue
+    result.status = 'blocked'
+    result.reason = budgetIssue
+  }
   report.cases.push(result)
   console.log(`${entry.id}: ${result.status}`)
 }
 report.finishedAt = new Date().toISOString()
+report.readBudget = readBudget.snapshot()
+report.stopReason = stopReason
 report.counts = Object.fromEntries(['pass', 'fail', 'blocked'].map((status) => [status, report.cases.filter((entry) => entry.status === status).length]))
 report.emptySplit = cases.length === 0
 report.releaseReady = false // This corpus alone cannot replace the 184 QA cases and 47 acceptance turns.

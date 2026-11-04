@@ -9,6 +9,9 @@ import {
 } from '@npb/db'
 import { chatResponseSchema } from '@npb/schemas'
 import { createChatService } from '../services/chat-service'
+import { createContractChatService } from '../services/chat-contract-service'
+import { createSemanticQueryLlm } from '../services/chat-semantic-llm'
+import { QueryContractCompileError } from '../services/chat-contract-compiler'
 import { EventEvidenceError } from '../services/chat-event-evidence'
 import {
   ChatQueryParserUnavailableError,
@@ -180,7 +183,9 @@ export default defineEventHandler(async (event) => withD1ReadAudit(async () => {
             }, {
               allowFallback: allowHeuristicFallback,
             })
-      const service = createChatService(queryService, {
+      const service = !fixtureMode.enabled && !allowHeuristicFallback
+        ? createContractChatService(queryService, createSemanticQueryLlm(chatQueryLlmConfig, { onRequest: () => { openAiCalls.planner += 1 } }))
+        : createChatService(queryService, {
         parseStructuredQueryFromMessage: async (...args) => {
           if (!fixtureMode.enabled) openAiCalls.planner += 1
           const parsed = await queryParser(...args)
@@ -248,6 +253,9 @@ export default defineEventHandler(async (event) => withD1ReadAudit(async () => {
     }
     if (error instanceof EventEvidenceError) {
       throw createPublicApiError(503, 'evidence_validation_failed', '検索結果の整合性または全件取得を確認できませんでした。', { issues: error.issues })
+    }
+    if (error instanceof QueryContractCompileError) {
+      throw createPublicApiError(503, 'query_contract_not_executable', '指定された検索条件を完全に適用できないため、回答を確定できませんでした。', { issues: error.issues })
     }
     if (error instanceof ZodError) {
       throw createPublicApiError(500, 'internal_validation_failed', 'Internal response validation failed', {

@@ -28,6 +28,8 @@ import {
 } from './index'
 
 const KNOWN_COMMANDS = new Set([
+  'update:official-statistics',
+  'update:official-roster',
   'migrate',
   'update:bis-current',
   'update-bis-current',
@@ -70,6 +72,19 @@ function resolveCliCommand(): { command: string; tail: string[] } {
 
 async function main() {
   const { command, tail } = resolveCliCommand()
+
+  if (command === 'update:official-statistics') {
+    const { runOfficialStatisticsUpdate } = await import('./update-official-statistics')
+    const result = await runOfficialStatisticsUpdate(parseUpdateBisCurrentArgs(tail))
+    process.stdout.write(`${JSON.stringify(result, null, 2)}\n`)
+    return
+  }
+  if (command === 'update:official-roster') {
+    const { runOfficialRosterUpdate } = await import('./update-official-roster')
+    const result = await runOfficialRosterUpdate(parseUpdateBisCurrentArgs(tail))
+    console.log(JSON.stringify(result, null, 2))
+    return
+  }
 
   if (command === 'update-year') {
     const args = parseUpdateYearArgs(tail)

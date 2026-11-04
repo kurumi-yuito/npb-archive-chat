@@ -6,6 +6,7 @@ import type { QueryDatabase } from '../query-driver'
 import { toJapaneseTeamAliases } from './team-name-utils'
 import { isNormalizedFactsSchema } from './schema-detection'
 import { canonicalPlayerFactMatchSql, canonicalPlayerNameMatchSql } from './player-identity-link'
+import { searchOfficialStatisticRows } from './official-statistics-repository'
 
 export type BattingLineRow = {
   playerId?: string | null
@@ -38,6 +39,19 @@ export async function searchBattingLines(
   // Skip BIS entirely when either is specified to avoid returning unfiltered season stats.
   const skipBis = normalized.game_date || normalized.game_id || normalized.recent
     || normalized.batting_order !== undefined || normalized.position !== undefined
+  // This compatibility adapter certifies one complete published team-season.
+  // A partially collected league must not replace wider legacy search results.
+  if (!skipBis && normalized.year && normalized.team && normalized.player_id && !normalized.result_text_contains && !normalized.player_names && !normalized.player_ids) {
+    const official = await searchOfficialStatisticRows(database, { ...normalized, kind: 'batting', level: 'first', limit })
+    if (official.length) return official.map((row) => {
+      const stats = JSON.parse(row.statsJson) as Record<string, string>
+      const number = (key: string) => Number(stats[key] ?? 0)
+      return { playerId: row.playerId, gameId: `bis:${row.year}:${row.snapshotId}`, gameDate: `${row.year}-01-01`, team: row.team,
+        playerName: row.playerName, battingOrder: null, position: null,
+        atBats: number('打数'), runs: number('得点'), hits: number('安打'), runsBattedIn: number('打点'), stolenBases: number('盗塁'),
+        strikeouts: number('三振'), walks: number('四球'), rawText: row.statsJson, sourceKind: 'bis_batting' as const, sourceUrl: row.sourceUrl, statsJson: row.statsJson }
+    })
+  }
   const currentRows = skipBis
     ? []
     : await searchCurrentBattingStats(database, normalized, limit)
@@ -312,7 +326,7 @@ async function searchCurrentBattingStats(
     clauses.push('player_batting_stats.player_id = ?')
     values.push(filters.player_id)
   }
-  if (filters.player_name) {
+  if (filters.player_name && !filters.player_id) {
     clauses.push(`${compactNameSql('player_batting_stats.player_name')} LIKE ?`)
     values.push(`%${compactName(filters.player_name)}%`)
   }

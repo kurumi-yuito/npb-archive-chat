@@ -1,12 +1,14 @@
-import type { ChatStructuredQuery, QueryContract } from '@npb/schemas'
+import { normalizePlayerNameKey, type ChatStructuredQuery, type QueryContract } from '@npb/schemas'
 import type { ChatDataRequirement } from './chat-query-plan'
 import { normalizeTeamName } from './chat-query-normalizer'
+import { subjectNameField } from './chat-contract-compiler'
 
 /** Plan by requested data, independently of the legacy operation label. */
 export function requirementsForContract(contract: QueryContract): ChatDataRequirement[] {
   const aggregate = contract.aggregation.length > 0
   const requirements = contract.requested_output.flatMap(({ kind }): ChatDataRequirement[] => {
     switch (kind) {
+      case 'player_information': return ['player_profiles']
       case 'event_records': return [aggregate ? 'aggregate_events' : 'events']
       case 'game_results': return [aggregate ? 'aggregate_games' : 'games']
       case 'game_details': return ['game_details', 'events', 'batting_lines', 'pitching_lines']
@@ -71,11 +73,15 @@ export function validateQueryContractExecution(
     } else if (entity.kind === 'venue') {
       if (filters.venue !== entity.mention) issues.push('entity_mismatch:venue')
     } else {
-      const field = entity.role === 'batter' ? 'batter_name'
+      const eventOperation = query.intent === 'search_events' || query.intent === 'aggregate_events'
+      const field = !eventOperation ? subjectNameField(query.intent)
+        : entity.role === 'batter' ? 'batter_name'
         : entity.role === 'pitcher' ? 'pitcher_name'
           : entity.role === 'runner' ? 'runner_name' : 'player_name'
       const mention = compact(entity.mention)
-      if (compact(String(filters[field] ?? '')) !== mention) issues.push(`entity_mismatch:${field}`)
+      const pluralField = field === 'player_name' ? 'player_names' : field === 'pitcher_name' ? 'pitcher_names' : null
+      const values = [filters[field], ...(pluralField && Array.isArray(filters[pluralField]) ? filters[pluralField] as unknown[] : [])]
+      if (!values.some((value) => typeof value === 'string' && compact(value) === mention)) issues.push(`entity_mismatch:${field}`)
     }
   }
   for (const predicate of contract.predicates) {
@@ -90,5 +96,5 @@ export function validateQueryContractExecution(
 }
 
 function compact(value: string): string {
-  return value.normalize('NFKC').replace(/[\s\u3000]/gu, '')
+  return normalizePlayerNameKey(value)
 }

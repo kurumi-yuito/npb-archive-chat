@@ -27,6 +27,8 @@ export type BisSourceSnapshot = {
   rawPath?: string | null
   structuredPath?: string | null
   fetchedAt: string
+  contentHash?: string
+  basisText?: string | null
 }
 
 export type BisCurrentRosterEntry = {
@@ -40,6 +42,10 @@ export type BisCurrentRosterEntry = {
   bats: string | null
   throws: string | null
   sourceUrl: string
+  remarks?: string | null
+  birthDate?: string | null
+  height?: string | null
+  weight?: string | null
 }
 
 export type BisGenericTeamRow = {
@@ -101,19 +107,25 @@ export function parseBisTeamRosterHtml(
   input: { year: number; teamId: string; teamName: string; sourceUrl: string },
 ): BisCurrentRosterEntry[] {
   return parseDataTables(html).flatMap((table) =>
-    table.rows.map((row) => {
+    table.rows.filter((row) => !row.headers.some((header) => ['監督', 'コーチ'].includes(header))).map((row) => {
       const player = findPlayerCell(row)
+      const role = row.headers.find((header) => ['投手', '捕手', '内野手', '外野手'].includes(header)) ?? null
+      const nameIndex = row.headers.findIndex((header) => ['選手', '選手名', '氏名', '登録名', '投手', '捕手', '内野手', '外野手'].includes(header))
       return {
         year: input.year,
         teamId: input.teamId,
         teamName: input.teamName,
         playerId: player.playerId,
-        playerName: player.playerName || valueByHeader(row, ['選手', '選手名', '氏名']) || row.cells[0]?.text || '',
-        position: valueByHeader(row, ['位置', '守備', 'ポジション']),
-        uniformNumber: valueByHeader(row, ['背番号', '番号']),
+        playerName: player.playerName || row.cells[nameIndex]?.text || '',
+        position: valueByHeader(row, ['位置', '守備', 'ポジション']) || role,
+        uniformNumber: valueByHeader(row, ['背番号', '番号', 'No.', 'No']),
         bats: valueByHeader(row, ['打', '打席']),
         throws: valueByHeader(row, ['投', '投打']),
         sourceUrl: input.sourceUrl,
+        remarks: valueByHeader(row, ['備考']),
+        birthDate: valueByHeader(row, ['生年月日']),
+        height: valueByHeader(row, ['身長']),
+        weight: valueByHeader(row, ['体重']),
       }
     }),
   ).filter((row) => row.playerName)
@@ -176,15 +188,18 @@ type ParsedRow = {
 function parseDataTables(html: string): Array<{ headers: string[]; rows: ParsedRow[] }> {
   return extractTopLevelElements(html, 'table').map((tableHtml) => {
     const rawRows = extractTopLevelElements(tableHtml, 'tr')
-      .map((rowHtml) => extractTopLevelCells(rowHtml).map(parseCell))
+      .map((rowHtml) => extractTopLevelCells(rowHtml).map((cellHtml) => ({ ...parseCell(cellHtml), isHeader: /^<th\b/iu.test(cellHtml.trim()) })))
       .filter((cells) => cells.length > 0)
-    const headerIndex = rawRows.findIndex((cells) => cells.some((cell) => /<th\b/i.test(cell.rawHtml) || cell.rawHtml.includes('</th>')))
+    const headerIndex = rawRows.findIndex((cells) => cells.every((cell) => cell.isHeader))
     const headers = (headerIndex >= 0 ? rawRows[headerIndex] : rawRows[0] ?? [])
       .map((cell, index) => cell.text || `col${index + 1}`)
-    const bodyRows = rawRows
-      .slice(headerIndex >= 0 ? headerIndex + 1 : 1)
-      .filter((cells) => cells.some((cell) => cell.text || cell.links.length > 0))
-      .map((cells) => ({ headers, cells }))
+    let activeHeaders = headers
+    const bodyRows: ParsedRow[] = []
+    for (const cells of rawRows.slice(headerIndex >= 0 ? headerIndex + 1 : 1)) {
+      if (cells.every((cell) => cell.isHeader)) {
+        activeHeaders = cells.map((cell, index) => cell.text || `col${index + 1}`)
+      } else if (cells.some((cell) => cell.text || cell.links.length > 0)) bodyRows.push({ headers: activeHeaders, cells })
+    }
     return { headers, rows: bodyRows }
   }).filter((table) => table.rows.length > 0)
 }
@@ -200,7 +215,8 @@ function findPlayerCell(row: ParsedRow): { playerName: string; playerId: string 
 }
 
 function valueByHeader(row: ParsedRow, names: string[]): string | null {
-  const index = row.headers.findIndex((header) => names.some((name) => cleanText(header).includes(name)))
+  const exact = row.headers.findIndex((header) => names.some((name) => cleanText(header) === name))
+  const index = exact >= 0 ? exact : row.headers.findIndex((header) => names.some((name) => cleanText(header).includes(name)))
   return index >= 0 ? row.cells[index]?.text || null : null
 }
 
@@ -247,7 +263,7 @@ export function parseBisPlayerProfileHtml(html: string, playerId: string, source
   if (!fullName) return null
   const teamName = nameTeamMatch[2]?.trim() ?? null
 
-  const yearTeams: Record<string, string> = {}
+  const yearTeams: Record<string, string | string[]> = {}
   for (const table of parseDataTables(html)) {
     const yearIdx = table.headers.findIndex((h) => h === '年度')
     const teamIdx = table.headers.findIndex((h) => h.includes('球団') || h === '所属')
@@ -256,7 +272,12 @@ export function parseBisPlayerProfileHtml(html: string, playerId: string, source
       const year = row.cells[yearIdx]?.text
       const team = row.cells[teamIdx]?.text
       if (year && /^\d{4}$/u.test(year) && team && team !== '計') {
-        yearTeams[year] = team
+        const previous = yearTeams[year]
+        if (!previous) yearTeams[year] = team
+        else {
+          const teams = [...new Set([...(Array.isArray(previous) ? previous : [previous]), team])]
+          yearTeams[year] = teams.length === 1 ? teams[0]! : teams
+        }
       }
     }
   }

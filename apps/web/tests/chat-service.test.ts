@@ -4562,6 +4562,7 @@ function createFakeQueryService(options: {
 } = {}): ChatQueryService {
   const emptyResults = options.empty === true
   return {
+    searchPlayerInformation: async () => [],
     searchEvents: options.searchEvents ?? (async () => emptyResults
       ? []
       : [{

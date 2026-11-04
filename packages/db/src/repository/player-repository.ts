@@ -1,10 +1,14 @@
 import type { PlayerCandidate } from '@npb/schemas'
 import type { QueryDatabase } from '../query-driver'
 import { hasRepositoryTable } from './schema-detection'
+import { matchesGameTeamFilter } from './team-name-utils'
+import { searchOfficialDictionary } from './official-player-dictionary'
 
 export type { PlayerCandidate }
 
 export type SearchPlayerCandidatesFilters = {
+  /** The semantic pipeline resolves identities from the official dictionary. */
+  dictionaryOnly?: boolean
   name: string
   aliases?: string[]
   year?: number
@@ -158,9 +162,9 @@ async function resolvePlayerIdsFromProfiles(
         const years = new Set<number>()
         for (const playerRow of playerRows) {
           try {
-            const yearTeams = JSON.parse(playerRow.year_teams_json ?? '{}') as Record<string, string>
+            const yearTeams = JSON.parse(playerRow.year_teams_json ?? '{}') as Record<string, string | string[]>
             for (const [year, team] of Object.entries(yearTeams)) {
-              if (team) knownTeams.add(team)
+              for (const value of Array.isArray(team) ? team : [team]) if (typeof value === 'string' && value) knownTeams.add(value)
               const parsedYear = Number(year)
               if (Number.isFinite(parsedYear)) years.add(parsedYear)
             }
@@ -191,8 +195,8 @@ async function resolvePlayerIdsFromProfiles(
     let knownTeams: string[] = []
     let years: number[] = []
     try {
-      const yearTeams = JSON.parse(row.year_teams_json ?? '{}') as Record<string, string>
-      knownTeams = Object.values(yearTeams).filter(Boolean)
+      const yearTeams = JSON.parse(row.year_teams_json ?? '{}') as Record<string, string | string[]>
+      knownTeams = Object.values(yearTeams).flatMap((team) => Array.isArray(team) ? team : [team]).filter((team) => typeof team === 'string' && Boolean(team))
       years = Object.keys(yearTeams).map(Number).filter(Number.isFinite)
     } catch {
       // ignore parse errors
@@ -365,9 +369,9 @@ async function resolvePlayerIdsFromAliases(
           }
         }
         try {
-          const yearTeams = JSON.parse(row.year_teams_json ?? '{}') as Record<string, string>
+          const yearTeams = JSON.parse(row.year_teams_json ?? '{}') as Record<string, string | string[]>
           for (const [year, team] of Object.entries(yearTeams)) {
-            if (team) knownTeams.push(team)
+            for (const value of Array.isArray(team) ? team : [team]) if (typeof value === 'string' && value) knownTeams.push(value)
             const parsedYear = Number(year)
             if (Number.isFinite(parsedYear)) {
               years.push(parsedYear)
@@ -428,6 +432,7 @@ export async function searchPlayerCandidates(
   database: QueryDatabase,
   filters: SearchPlayerCandidatesFilters,
 ): Promise<PlayerCandidate[]> {
+  if (filters.dictionaryOnly) return searchOfficialDictionary(database, filters)
   const aliases = uniqueStrings([filters.name, ...(filters.aliases ?? [])])
   if (aliases.length === 0) {
     return []
@@ -465,6 +470,7 @@ export async function searchPlayerCandidates(
   }
 
   const rows: RawPlayerMention[] = []
+  if (filters.scopeToEvidence) rows.push(...await profileMentionsInScope(database, profileMatches, filters))
   const normalizedRows = await queryNormalizedPlayerMentions(database, aliases, filters)
   // Normalized facts replace the legacy fact views, not the independent BIS
   // sources. Keep BIS mentions first, as in the legacy candidate pipeline.
@@ -552,11 +558,11 @@ export async function searchPlayerCandidates(
       (!filters.year || Number(row.year) === filters.year) &&
       (!filters.year_from || Number(row.year) >= filters.year_from) &&
       (!filters.year_to || Number(row.year) <= filters.year_to) &&
-      (!filters.team || (row.team !== null && sameTeamAlias(row.team, filters.team))),
+      (!filters.team || (row.team !== null && (sameTeamAlias(row.team, filters.team) || matchesGameTeamFilter(row.team, filters.team)))),
     )
     return groupPlayerMentions(scopedRows, aliases)
       .filter((candidate) => candidate.player_id)
-      .filter((candidate) => profilePlayerIds.length === 0 || profilePlayerIds.includes(candidate.player_id!))
+      .filter((candidate) => isShortIdentityInput || profilePlayerIds.length === 0 || profilePlayerIds.includes(candidate.player_id!))
       .map((candidate) => ({
         ...candidate,
         name: profileMatches.find((profile) => profile.player_id === candidate.player_id)?.fullName ?? candidate.name,
@@ -669,6 +675,31 @@ type RawPlayerMention = {
   role: string
   team: string | null
   year: number
+}
+
+async function profileMentionsInScope(database: QueryDatabase, matches: ProfileMatch[], filters: SearchPlayerCandidatesFilters): Promise<RawPlayerMention[]> {
+  if (matches.length === 0 || !await hasRepositoryTable(database, 'player_profiles')) return []
+  const ids = matches.map((match) => match.player_id)
+  const profiles = await database.prepare(`SELECT player_id, year_teams_json, source_url FROM player_profiles WHERE player_id IN (${ids.map(() => '?').join(', ')})`)
+    .all(...ids) as Array<{ player_id: string; year_teams_json: string | null; source_url: string }>
+  const mentions: RawPlayerMention[] = []
+  for (const profile of profiles) {
+    if (profile.source_url !== `https://npb.jp/bis/players/${profile.player_id}.html`) continue
+    let yearTeams: Record<string, unknown>
+    try { yearTeams = JSON.parse(profile.year_teams_json ?? '{}') } catch { continue }
+    if (!yearTeams || typeof yearTeams !== 'object' || Array.isArray(yearTeams)) continue
+    for (const [yearText, value] of Object.entries(yearTeams)) {
+      const year = Number(yearText)
+      if (!Number.isInteger(year) || year < 1936 || (filters.year && year !== filters.year) ||
+        (filters.year_from && year < filters.year_from) || (filters.year_to && year > filters.year_to)) continue
+      for (const team of Array.isArray(value) ? value : [value]) {
+        if (typeof team !== 'string' || !team || (filters.team && !sameTeamAlias(team, filters.team) && !matchesGameTeamFilter(team, filters.team))) continue
+        mentions.push({ name: matches.find((match) => match.player_id === profile.player_id)?.fullName ?? filters.name,
+          player_url: profile.source_url, role: 'profile', team, year })
+      }
+    }
+  }
+  return mentions
 }
 
 /**

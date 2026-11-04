@@ -18,10 +18,15 @@ type CloudflareContext = {
 }
 
 let sqliteCache: { path: string; db: QueryDatabase } | null = null
-let d1Cache: QueryDatabase | null = null
-let metaD1Cache: QueryDatabase | null = null
 let multiYearCache: { dir: string; service: ChatQueryService } | null = null
-let normalizedRuntimeValidation: Promise<void> | null = null
+
+type RequestD1State = { database: QueryDatabase; validation?: Promise<void> }
+function requestD1State(event: H3Event, binding: D1Database, category: 'repository' | 'meta'): RequestD1State {
+  const key = category === 'meta' ? 'npbMetaD1State' : 'npbSearchD1State'
+  const context = event.context as typeof event.context & Record<string, RequestD1State | unknown>
+  if (!context[key]) context[key] = { database: createQueryDatabaseFromD1(binding, category) }
+  return context[key] as RequestD1State
+}
 
 async function getSqlite() {
   await import('node:sqlite')
@@ -39,12 +44,10 @@ export async function getServerDatabase(
   const cloudflare = event.context.cloudflare as CloudflareContext | undefined
   const d1 = cloudflare?.env?.NPB_DB
   if (d1) {
-    if (!d1Cache) {
-      d1Cache = createQueryDatabaseFromD1(d1)
-    }
-    if (!normalizedRuntimeValidation) {
-      const database = d1Cache
-      normalizedRuntimeValidation = (async () => {
+    const state = requestD1State(event, d1, 'repository')
+    if (!state.validation) {
+      const database = state.database
+      state.validation = (async () => {
         // This binding requires the normalized schema; absence must fail closed.
         // Optional-table discovery scans sqlite_master and adds no information here.
         const rows = await database.prepare(
@@ -55,12 +58,12 @@ export async function getServerDatabase(
           throw new Error('NPB_DB must be normalized D1 runtime schema phase5-normalized-v1')
         }
       })().catch((error) => {
-        normalizedRuntimeValidation = null
+        state.validation = undefined
         throw error
       })
     }
-    await normalizedRuntimeValidation
-    return d1Cache
+    await state.validation
+    return state.database
   }
 
   if (!sqlitePath) {
@@ -86,10 +89,7 @@ export async function getServerMetaDatabase(
   const cloudflare = event.context.cloudflare as CloudflareContext | undefined
   const d1 = cloudflare?.env?.NPB_META_DB
   if (d1) {
-    if (!metaD1Cache) {
-      metaD1Cache = createQueryDatabaseFromD1(d1, 'meta')
-    }
-    return metaD1Cache
+    return requestD1State(event, d1, 'meta').database
   }
 
   return getServerDatabase(event, sqlitePath)

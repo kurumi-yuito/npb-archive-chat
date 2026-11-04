@@ -6,7 +6,6 @@ import {
   parseBisPlayerProfileHtml,
   parseBisPlayerStatsHtml,
   parseBisTeamMonthlyResultsHtml,
-  parseBisTeamRosterHtml,
   type BisCurrentDataset,
   type BisSourceType,
   type BisTeamInfo,
@@ -16,6 +15,7 @@ import { createObjectStorage, defaultR2Bucket, parseStorageArg, type ObjectStora
 import { openDatabase, type SqliteDatabase } from './sqlite'
 import { withTransaction } from './sqlite'
 import { materializePlayerIdentityArtifacts } from './player-identity-maintenance'
+import { captureOfficialRoster } from './official-roster'
 
 const DEFAULT_SQLITE_DIR = 'data'
 const DEFAULT_USER_AGENT = 'npb-archive-chat/0.1 (+https://npb.jp/)'
@@ -178,7 +178,7 @@ export async function runBisCurrentUpdate(options: UpdateBisCurrentArgs): Promis
   }
 
   for (const snapshot of dataset.sourceSnapshots) {
-    snapshot.structuredPath = path.relative(workspaceRoot, structuredPath)
+    snapshot.structuredPath ??= path.relative(workspaceRoot, structuredPath)
   }
   await storage.putText(structuredKey, `${JSON.stringify(dataset, null, 2)}\n`, 'application/json; charset=utf-8')
 
@@ -234,6 +234,11 @@ export function loadBisCurrentDataset(database: SqliteDatabase, dataset: BisCurr
           source_key, year, team_id, source_type, source_url, raw_path, structured_path, fetched_at
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
       ).run(source.sourceKey, dataset.year, source.sourceKey.split(':')[2] ?? null, source.sourceType, source.sourceUrl, source.rawPath ?? null, source.structuredPath ?? null, source.fetchedAt)
+      if (source.sourceType === 'team_roster' && source.contentHash) {
+        const teamId = source.sourceKey.split(':')[2]
+        if (!dataset.currentTeamRoster.some((row) => row.teamId === teamId && row.year === dataset.year && row.sourceUrl === source.sourceUrl)) throw new Error('Verified roster snapshot has no matching complete page records')
+        database.prepare('DELETE FROM current_team_roster WHERE year=? AND team_id=?').run(dataset.year, teamId)
+      }
     }
     for (const row of dataset.currentTeamRoster) {
       database.prepare(
@@ -264,6 +269,12 @@ async function loadTeamBisPages(
 ) {
   const pages = buildTeamPages(input.year, input.team.teamId)
   for (const page of pages) {
+    if (page.sourceType === 'team_roster') {
+      const captured = await captureOfficialRoster(input)
+      dataset.sourceSnapshots.push(captured.snapshot)
+      dataset.currentTeamRoster.push(...captured.entries)
+      continue
+    }
     let html: string
     try {
       html = await fetchOrReadRaw(page.url, `raw/bis/${input.year}/${page.key}.html`, input.storage, input.userAgent)
@@ -282,9 +293,7 @@ async function loadTeamBisPages(
       fetchedAt: new Date().toISOString(),
     })
     const common = { year: input.year, teamId: input.team.teamId, teamName: input.team.teamName, sourceUrl: page.url }
-    if (page.sourceType === 'team_roster') {
-      dataset.currentTeamRoster.push(...parseBisTeamRosterHtml(html, common))
-    } else if (page.sourceType === 'team_index') {
+    if (page.sourceType === 'team_index') {
       dataset.teamIndex.push(...parseBisGenericTeamTableHtml(html, common))
     } else if (page.sourceType === 'team_yearly_stats') {
       dataset.teamYearlyStats.push(...parseBisGenericTeamTableHtml(html, common))

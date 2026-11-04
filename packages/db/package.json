@@ -36,6 +36,8 @@
     "sync:d1": "node --import tsx ./src/cli.ts sync:d1",
     "sync:normalized-d1": "node --import tsx ./src/cli.ts sync:normalized-d1",
     "update:bis-current": "node --import tsx ./src/cli.ts update:bis-current",
+    "update:official-statistics": "node --import tsx ./src/cli.ts update:official-statistics",
+    "update:official-roster": "node --import tsx ./src/cli.ts update:official-roster",
     "update:daily": "node --import tsx ./src/cli.ts update:daily",
     "update:year": "node --import tsx ./src/cli.ts update-year",
     "typecheck": "tsc -p tsconfig.json --noEmit",
