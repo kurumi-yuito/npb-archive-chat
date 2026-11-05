@@ -2,13 +2,17 @@ import { normalizePlayerNameKey, type ChatStructuredQuery, type QueryContract } 
 import type { ChatDataRequirement } from './chat-query-plan'
 import { normalizeTeamName } from './chat-query-normalizer'
 import { subjectNameField } from './chat-contract-compiler'
+import { statisticSortField } from './chat-statistic-metrics'
+import { isStatisticIdentityProjection } from './chat-output-capabilities'
+import { competitionLeague } from './chat-competition-scope'
+import { matchesGameTeamFilter } from '@npb/db'
 
 /** Plan by requested data, independently of the legacy operation label. */
 export function requirementsForContract(contract: QueryContract): ChatDataRequirement[] {
   const aggregate = contract.aggregation.length > 0
-  const requirements = contract.requested_output.flatMap(({ kind }): ChatDataRequirement[] => {
-    switch (kind) {
-      case 'player_information': return ['player_profiles']
+  const requirements = contract.requested_output.flatMap((output): ChatDataRequirement[] => {
+    switch (output.kind) {
+      case 'player_information': return isStatisticIdentityProjection(contract, output) ? [] : ['player_profiles']
       case 'event_records': return [aggregate ? 'aggregate_events' : 'events']
       case 'game_results': return [aggregate ? 'aggregate_games' : 'games']
       case 'game_details': return ['game_details', 'events', 'batting_lines', 'pitching_lines']
@@ -43,7 +47,7 @@ export function validateQueryContractExecution(
   if (contract.ordering.length > 0) {
     const [order] = contract.ordering
     const naturalEventOrder = query.intent === 'search_events' && ['gameDate', 'game_date', 'date'].includes(order?.field ?? '') && order?.direction === 'asc'
-    if (contract.ordering.length !== 1 || (!naturalEventOrder && (filters.sort_by !== order?.field || order?.direction !== 'desc'))) issues.push('ordering_not_preserved')
+    if (contract.ordering.length !== 1 || (!naturalEventOrder && (filters.sort_by !== statisticSortField(query.intent, order?.field ?? '') || order?.direction !== 'desc'))) issues.push('ordering_not_preserved')
   }
   // Non-standard reductions cannot be represented by the legacy aggregators.
   if (contract.aggregation.some(({ operation }) => !['count', 'sum', 'rate'].includes(operation))) issues.push('aggregation_not_supported')
@@ -61,7 +65,10 @@ export function validateQueryContractExecution(
   if (time.year_from !== null && executionYearFrom !== time.year_from) issues.push('year_from_mismatch')
   if (time.year_to !== null && executionYearTo !== time.year_to) issues.push('year_to_mismatch')
   if (time.date_from !== null || time.date_to !== null) {
-    if (time.date_from !== time.date_to || filters.game_date !== time.date_from) issues.push('date_scope_not_preserved')
+    if (time.date_from === time.date_to) {
+      if (filters.game_date !== time.date_from) issues.push('date_scope_not_preserved')
+    } else if ((time.date_from !== null && filters.date_from !== time.date_from) ||
+      (time.date_to !== null && filters.date_to !== time.date_to)) issues.push('date_scope_not_preserved')
   }
   if (contract.completeness.mode === 'top_n' || contract.completeness.mode === 'bounded') {
     if (contract.completeness.limit === null || filters.limit !== contract.completeness.limit) issues.push('limit_mismatch')
@@ -91,7 +98,12 @@ export function validateQueryContractExecution(
   }
   const scope = contract.competition_scope
   if (scope.level !== 'unspecified' && filters.level !== scope.level && !(scope.level === 'first' && query.intent === 'search_events')) issues.push('level_not_preserved')
-  if (scope.competitions.length > 0 && (scope.competitions.length !== 1 || filters.competition !== scope.competitions[0])) issues.push('competition_not_preserved')
+  if (scope.competitions.length > 0) {
+    const league = scope.competitions.length === 1 ? competitionLeague(scope.competitions[0]!) : null
+    const mapped = league && ['aggregate_batting', 'aggregate_pitching'].includes(query.intent) &&
+      typeof filters.team === 'string' && (filters.team === league || matchesGameTeamFilter(filters.team, league)) && filters.level === 'first'
+    if (!mapped && (scope.competitions.length !== 1 || filters.competition !== scope.competitions[0])) issues.push('competition_not_preserved')
+  }
   return [...new Set(issues)]
 }
 

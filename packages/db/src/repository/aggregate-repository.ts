@@ -12,6 +12,9 @@ import type { QueryDatabase } from '../query-driver'
 import { isNormalizedFactsSchema } from './schema-detection'
 import { canonicalTeamName, toJapaneseTeamAliases, toEnglishLeagueTeams, toGameTeamAliases } from './team-name-utils'
 import { venueSearchValues } from './venue-aliases'
+import { appendDateBounds, appendCompetitionLevel, type DateBounds } from './date-scope'
+import { aggregateOfficialBattingSeason } from './official-batting-aggregate'
+import { aggregateOfficialPitchingSeason } from './official-pitching-aggregate'
 import { canonicalPlayerFactCandidateSql, canonicalPlayerFactMatchSql, canonicalPlayerNameMatchSql } from './player-identity-link'
 
 export type AggregateRow = {
@@ -26,10 +29,12 @@ export async function aggregateBattingLines(
   filters: AggregateBattingFilters = {},
 ): Promise<AggregateRow[]> {
   const normalized = aggregateBattingFiltersSchema.parse(filters)
+  const official = await aggregateOfficialBattingSeason(database, normalized)
+  if (official !== null) return official
   const groupByYear = normalized.group_by === 'year'
   const careerPlayerQuery = (normalized.player_name || normalized.player_id) &&
     !normalized.year && !normalized.year_from && !normalized.year_to
-  if (!careerPlayerQuery && !groupByYear && !normalized.game_date && !normalized.batting_order && !normalized.position) {
+  if (!careerPlayerQuery && !groupByYear && !normalized.game_date && !normalized.date_from && !normalized.date_to && !normalized.batting_order && !normalized.position) {
     const bisRows = await aggregateCurrentBattingStats(database, normalized)
     if (bisRows.length > 0) {
       return bisRows
@@ -154,6 +159,8 @@ export async function aggregatePitchingLines(
   filters: AggregatePitchingFilters = {},
 ): Promise<AggregateRow[]> {
   const normalized = aggregatePitchingFiltersSchema.parse(filters)
+  const official = await aggregateOfficialPitchingSeason(database, normalized)
+  if (official !== null) return official
   const clauses: string[] = []
   const values: Array<string | number> = []
   appendGameClauses(clauses, values, normalized)
@@ -307,6 +314,7 @@ async function aggregateNormalizedBattingLines(
   const whereClause = clauses.length > 0 ? `WHERE ${clauses.join(' AND ')}` : ''
   const homeRunScopeClauses: string[] = []
   const homeRunScopeValues: Array<string | number> = []
+  appendDateBounds(homeRunScopeClauses, homeRunScopeValues, normalized, 'hr_games.game_date')
   if (normalized.game_date) {
     homeRunScopeClauses.push('hr_games.game_date = ?')
     homeRunScopeValues.push(normalized.game_date)
@@ -740,8 +748,10 @@ function teamSideLossSql(side: 'home' | 'away', teamNames: string[]): string {
 function appendGameClauses(
   clauses: string[],
   values: Array<string | number>,
-  filters: { game_date?: string; year?: number; year_from?: number; year_to?: number },
+  filters: DateBounds & { game_date?: string; year?: number; year_from?: number; year_to?: number; level?: 'first' | 'farm' },
 ) {
+  appendDateBounds(clauses, values, filters, 'games.date')
+  appendCompetitionLevel(clauses, filters.level, 'games.game_id')
   if (filters.game_date) {
     clauses.push('games.date = ?')
     values.push(filters.game_date)
@@ -763,8 +773,10 @@ function appendGameClauses(
 function appendNormalizedGameClauses(
   clauses: string[],
   values: Array<string | number>,
-  filters: { game_date?: string; year?: number; year_from?: number; year_to?: number },
+  filters: DateBounds & { game_date?: string; year?: number; year_from?: number; year_to?: number; level?: 'first' | 'farm' },
 ) {
+  appendDateBounds(clauses, values, filters, 'game_facts.game_date')
+  appendCompetitionLevel(clauses, filters.level, 'game_facts.game_id')
   if (filters.game_date) {
     clauses.push('game_facts.game_date = ?')
     values.push(filters.game_date)
@@ -806,6 +818,11 @@ export async function aggregateGameResults(
   const opponentNames = normalized.opponent ? toGameTeamAliases(normalized.opponent) : []
   const clauses: string[] = ["games.game_id NOT LIKE 'f%'"]
   const values: Array<string | number> = []
+  appendDateBounds(clauses, values, normalized, 'games.date')
+  if (normalized.game_date) {
+    clauses.push('games.date = ?')
+    values.push(normalized.game_date)
+  }
 
   if (teamNames.length > 0 && opponentNames.length > 0) {
     const teamList = sqlStringList(teamNames)
@@ -911,6 +928,7 @@ async function aggregateCurrentBattingStats(
 ): Promise<AggregateRow[]> {
   const clauses: string[] = ["json_extract(values_json, '$.試合') IS NOT NULL"]
   const values: Array<string | number> = []
+  if (filters.level) clauses.push(`player_batting_stats.source_url LIKE '%/idb${filters.level === 'farm' ? '2' : '1'}_%'`)
   if (filters.year) {
     clauses.push('player_batting_stats.year = ?')
     values.push(filters.year)

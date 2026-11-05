@@ -4,6 +4,8 @@ import {
   cleanText,
   extractTopLevelCells,
   extractTopLevelElements,
+  extractElementById,
+  extractElementByClass,
   normalizeNumber,
   normalizeNullableText,
   stripTags,
@@ -52,10 +54,8 @@ function parseLineScore(
   homeTeamName: string | null,
   dateLabel: string,
 ): StructuredLineScore {
-  const tableHtml = capture(
-    html,
-    /<div id="table_linescore">([\s\S]*?)<\/table>[\s\S]*?<\/div>/i,
-  )
+  const wrapper = extractElementById(html, 'div', 'table_linescore') ?? extractElementByClass(html, 'div', 'line-score')
+  const tableHtml = wrapper ? extractTopLevelElements(wrapper, 'table')[0] : null
   if (!tableHtml) {
     return emptyLineScore(sourceUrl, awayTeamName, homeTeamName, dateLabel)
   }

@@ -1,5 +1,9 @@
 import { chatStructuredQuerySchema, type ChatStructuredQuery, type QueryContract } from '@npb/schemas'
 import { normalizeTeamName } from './chat-query-normalizer'
+import { statisticSortField } from './chat-statistic-metrics'
+import { isStatisticIdentityProjection } from './chat-output-capabilities'
+import { competitionLeague } from './chat-competition-scope'
+import { matchesGameTeamFilter } from '@npb/db'
 
 export class QueryContractCompileError extends Error {
   constructor(public readonly issues: string[]) {
@@ -22,6 +26,8 @@ export function identityFiltersForContract(contract: QueryContract) {
     ...(time.years.length > 1 ? { year_from: Math.min(...time.years), year_to: Math.max(...time.years) } : {}),
     ...(time.year_from !== null ? { year_from: time.year_from } : {}),
     ...(time.year_to !== null ? { year_to: time.year_to } : {}),
+    ...(!time.years.length && time.year_from === null && time.date_from !== null ? { year_from: Number(time.date_from.slice(0, 4)) } : {}),
+    ...(!time.years.length && time.year_to === null && time.date_to !== null ? { year_to: Number(time.date_to.slice(0, 4)) } : {}),
     ...(team ? { team: normalizeTeamName(team) } : {}),
   }
 }
@@ -57,7 +63,8 @@ export function compileQueryContract(contract: QueryContract): ContractOperation
   if (discreteYears.some((year, index) => index > 0 && year !== discreteYears[index - 1]! + 1)) {
     return discreteYears.flatMap((year) => compileQueryContract({ ...contract, temporal_scope: { ...contract.temporal_scope, years: [year], year_from: null, year_to: null } }))
   }
-  const operations = contract.requested_output.map((output) => {
+  const projections = contract.requested_output.filter((output) => isStatisticIdentityProjection(contract, output))
+  const operations = contract.requested_output.filter((output) => !isStatisticIdentityProjection(contract, output)).map((output) => {
     const intent = operationIntent(output, contract)
     const filters: Record<string, unknown> = { ...identityFiltersForContract(contract) }
     const issues: string[] = []
@@ -69,8 +76,10 @@ export function compileQueryContract(contract: QueryContract): ContractOperation
       filters.year_to = years.at(-1)
     }
     if (time.date_from !== null || time.date_to !== null) {
-      if (time.date_from !== time.date_to) issues.push('date_range_plan_required')
-      else filters.game_date = time.date_from
+      if (time.date_from !== time.date_to) {
+        if (time.date_from !== null) filters.date_from = time.date_from
+        if (time.date_to !== null) filters.date_to = time.date_to
+      } else filters.game_date = time.date_from
     }
     for (const entity of contract.entities) {
       const eventOperation = intent === 'search_events' || intent === 'aggregate_events'
@@ -111,7 +120,7 @@ export function compileQueryContract(contract: QueryContract): ContractOperation
       const naturalEventOrder = intent === 'search_events' && ['gameDate', 'game_date', 'date'].includes(order.field) && order.direction === 'asc'
       if (!naturalEventOrder) {
         if (order.direction !== 'desc') issues.push('ordering_plan_required')
-        filters.sort_by = order.field
+        filters.sort_by = statisticSortField(intent, order.field)
       }
     } else if (contract.ordering.length > 1) issues.push('multi_order_plan_required')
     if (contract.completeness.mode === 'top_n' || contract.completeness.mode === 'bounded') {
@@ -119,10 +128,18 @@ export function compileQueryContract(contract: QueryContract): ContractOperation
       else filters.limit = contract.completeness.limit
     }
     if (contract.competition_scope.level !== 'unspecified') filters.level = contract.competition_scope.level
-    if (contract.competition_scope.competitions.length === 1) filters.competition = contract.competition_scope.competitions[0]
+    if (contract.competition_scope.competitions.length === 1) {
+      const competition = contract.competition_scope.competitions[0]!, league = competitionLeague(competition)
+      if (league && ['aggregate_batting', 'aggregate_pitching'].includes(intent)) {
+        if (filters.team && filters.team !== league && !matchesGameTeamFilter(String(filters.team), league)) issues.push('contradictory_league_team')
+        else if (!filters.team) filters.team = league
+        if (filters.level === 'farm') issues.push('contradictory_league_level')
+        else filters.level = 'first'
+      } else filters.competition = competition
+    }
     else if (contract.competition_scope.competitions.length > 1) issues.push('multi_competition_plan_required')
     if (issues.length) throw new QueryContractCompileError(issues)
-    const operationContract = { ...contract, requested_output: [output] }
+    const operationContract = { ...contract, requested_output: [output, ...(['batting_statistics', 'pitching_statistics'].includes(output.kind) ? projections : [])] }
     const parsed = chatStructuredQuerySchema.safeParse({ intent, filters, query_contract: operationContract })
     if (!parsed.success) throw new QueryContractCompileError(parsed.error.issues.map((issue) => `${issue.path.join('.')}:${issue.code}`))
     // Zod's compatibility schemas strip unknown fields. A planner may not drop constraints this way.

@@ -11,6 +11,8 @@ import { inferDataRequirements, chatExecutionRepositorySchema } from './chat-que
 import { searchCompleteEventEvidence, validateEventEvidence, verifyOfficialHomeRunTotal, EventEvidenceError } from './chat-event-evidence'
 import type { PlayerResolution } from './player-resolution'
 import type { SemanticRequest } from './chat-semantic-llm'
+import { formatContractStatistics } from './chat-statistic-answer'
+import { officialProfileMetricStats, searchOfficialCareerEvidence } from './chat-career-evidence'
 
 type SemanticParser = (message: string, context: { history?: ChatRequest['history'] }) => Promise<SemanticRequest>
 type ResolvedEntity = { entity: QueryContract['entities'][number]; resolution: PlayerResolution }
@@ -32,6 +34,8 @@ export function createContractChatService(databaseService: ChatQueryService, par
     const identities = await resolveContractPlayers(queryService, contract)
     const unresolved = identities.find(({ resolution }) => resolution.status !== 'resolved')
     if (unresolved) {
+      const supplemental = await latestVerifiedSeasonResponse(queryService, contract, message, unresolved)
+      if (supplemental) return supplemental
       const resolution = unresolved.resolution
       const choices = resolution.candidates.map((candidate) => `${candidate.name}${candidate.primary_team ? `（${candidate.primary_team}）` : ''}`).join('、')
       return chatResponseCoreSchema.parse({ message, structured_query: null,
@@ -54,7 +58,13 @@ export function createContractChatService(databaseService: ChatQueryService, par
       if (issues.length) throw new QueryContractCompileError(issues)
       const results = emptyResults()
       let completeness
-      switch (query.intent) {
+      const career = operationContract.temporal_scope.relative === 'career' && identities.length === 1 &&
+        ['batting_statistics', 'pitching_statistics'].includes(operation.output.kind)
+        ? await searchOfficialCareerEvidence(queryService, { contract: operationContract,
+          domain: operation.output.kind === 'batting_statistics' ? 'batting' : 'pitching',
+          playerId: identities[0]!.resolution.player_id!, playerName: identities[0]!.resolution.name ?? identities[0]!.entity.mention }) : null
+      if (career) results.aggregates = career.rows
+      else switch (query.intent) {
         case 'search_events': {
           results.events = operationContract.completeness.mode === 'all'
             ? await searchCompleteEventEvidence(queryService, query.filters)
@@ -80,6 +90,7 @@ export function createContractChatService(databaseService: ChatQueryService, par
         case 'award_winners': results.awards = await queryService.searchAwardWinners({ year: query.filters.year!, award_type: query.filters.award_type ?? 'rookie_of_the_year' }); break
         case 'off_topic': throw new QueryContractCompileError(['unexpected_off_topic_execution'])
       }
+      if (results.aggregates.some((row) => row.stats.evidenceStatus === 'official_identity_incomplete')) throw new QueryContractCompileError(['official_statistics_identity_incomplete'])
       const gameIds = [...new Set([
         ...results.events.map((row) => row.gameId), ...results.games.map((row) => row.gameId),
         ...results.batting.map((row) => row.gameId), ...results.pitching.map((row) => row.gameId),
@@ -96,13 +107,34 @@ export function createContractChatService(databaseService: ChatQueryService, par
         return parsed.success ? [parsed.data] : []
       })
       if (operation.output.kind === 'player_information') metadata.dataRequirements = ['player_profiles', 'official_statistics', 'source_snapshots']
+      if (career) metadata.dataRequirements = ['player_profiles', 'official_statistics', 'source_snapshots']
+      if (results.aggregates.some((row) => row.stats.evidenceStatus === 'official_complete_scope')) metadata.dataRequirements = ['official_statistics', 'source_snapshots']
       const profileAffiliation = results.affiliations.some((row) => row.sourceKind === 'official_profile')
-      const answer: ChatResponseCore['answer'] = profileAffiliation ? {
+      const statisticSummary = formatContractStatistics({ contract: operationContract, query, rows: results.aggregates, playerName: player?.name ?? undefined,
+        careerVerified: career?.verified, asOf: career?.basisText })
+      const answer: ChatResponseCore['answer'] = statisticSummary !== null ? {
+        summary: statisticSummary, result_count: results.aggregates.length,
+        source_urls: [...new Set([...sources.map((row) => row.source_url), ...(career?.sourceUrls ?? []), ...results.aggregates.flatMap((row) => {
+          if (typeof row.stats.sourceUrls !== 'string') return []
+          const urls: unknown = JSON.parse(row.stats.sourceUrls)
+          if (!Array.isArray(urls) || !urls.every((url) => typeof url === 'string' && /^https:\/\/npb\.jp\/bis\//u.test(url))) throw new QueryContractCompileError(['invalid_statistic_sources'])
+          return urls as string[]
+        })])],
+        resolved_player: player, execution_metadata: publicExecutionMetadata(metadata),
+      } : profileAffiliation ? {
         summary: `${player?.name ?? results.affiliations[0]!.playerName}の公式年度記録に基づく所属です。\n${results.affiliations.map((row) => `${row.year}年：${row.team}`).join('\n')}\n現在の契約状況は年度記録だけでは確認できません。`,
         result_count: results.affiliations.length, source_urls: [...new Set(results.affiliations.flatMap((row) => row.sourceUrl ? [row.sourceUrl] : []))],
         resolved_player: player, execution_metadata: publicExecutionMetadata(metadata),
       } : formatChatAnswer({ question: message, structuredQuery: query, results, sources, playerResolution: player, executionMetadata: metadata })
       answer.query_contract = contract
+      if (statisticSummary !== null) {
+        if (operationContract.temporal_scope.relative === 'career' && !career?.verified) {
+          // Partial appearance archives cannot establish an NPB career total.
+          results.aggregates = []
+          answer.result_count = 0
+          answer.source_urls = player?.player_id ? [`https://npb.jp/bis/players/${player.player_id}.html`] : []
+        }
+      }
       if (operation.output.kind === 'player_information') {
         const profiles = results.playerInformation ?? []
         answer.summary = profiles.length ? profiles.map((profile) => {
@@ -155,6 +187,67 @@ export function createContractChatService(databaseService: ChatQueryService, par
   } }
 }
 
+/** Preserve the requested scope, and label a verified earlier NPB season as supplemental evidence. */
+async function latestVerifiedSeasonResponse(service: ChatQueryService, contract: QueryContract, message: string, unresolved: ResolvedEntity): Promise<ChatResponseCore | null> {
+  if (contract.requested_output.length > 1) {
+    if (!contract.requested_output.every((output) => ['batting_statistics', 'pitching_statistics'].includes(output.kind))) return null
+    const parts: ChatResponseCore[] = []
+    for (const output of contract.requested_output) {
+      const part = await latestVerifiedSeasonResponse(service, { ...contract, requested_output: [output] }, message, unresolved)
+      if (!part?.answer.scope_fallback) return null
+      parts.push(part)
+    }
+    const first = parts[0]!, scope = first.answer.scope_fallback!
+    if (parts.some((part) => part.answer.scope_fallback!.evidence_year !== scope.evidence_year)) return null
+    const results = emptyResults()
+    results.aggregates = parts.flatMap((part) => part.results.aggregates)
+    return chatResponseCoreSchema.parse({ ...first, results, answer: { ...first.answer, query_contract: contract,
+      scope_fallback: { ...scope, effective_contract: { ...scope.effective_contract, requested_output: contract.requested_output } },
+      summary: parts.map((part) => part.answer.summary).join('\n\n'), result_count: results.aggregates.length,
+      source_urls: [...new Set(parts.flatMap((part) => part.answer.source_urls))] } })
+  }
+  const time = contract.temporal_scope
+  const requestedYear = (time.years.length === 1 ? time.years[0] : time.year_from === time.year_to ? time.year_from : null) ?? identityFiltersForContract(contract).year
+  const currentYear = Number(new Intl.DateTimeFormat('en', { timeZone: 'Asia/Tokyo', year: 'numeric' }).format(new Date()))
+  const output = contract.requested_output[0]
+  if (unresolved.resolution.status !== 'not_found' || requestedYear !== currentYear || contract.entities.filter((entity) => entity.kind === 'player').length !== 1 ||
+    contract.entities.some((entity) => entity.kind !== 'player' && !(entity.kind === 'team' && entity.role === 'subject')) ||
+    contract.requested_output.length !== 1 || !output || !['batting_statistics', 'pitching_statistics'].includes(output.kind) ||
+    time.date_from !== null || time.date_to !== null || time.relative !== null || contract.predicates.length ||
+    contract.competition_scope.level === 'farm' || contract.competition_scope.competitions.length) return null
+  const historicalContract: QueryContract = { ...contract, requested_output: [{ kind: 'player_information', fields: ['name'] }],
+    temporal_scope: { ...time, years: [], year_from: null, year_to: null } }
+  const historical = (await resolveContractPlayers(service, historicalContract))[0]
+  if (!historical || historical.resolution.status !== 'resolved' || !historical.resolution.player_id) return null
+  const player = historical.resolution
+  const profiles = await service.searchPlayerInformation({ player_id: player.player_id!, player_name: player.name ?? player.input, includeCareer: true })
+  if (profiles.length !== 1 || profiles[0]!.playerId !== player.player_id) return null
+  const profile = profiles[0]!, domain = output.kind === 'batting_statistics' ? 'batting' : 'pitching'
+  const records = (profile.annualStatistics ?? []).filter((row) => row.kind === domain && row.sourceUrl === `https://npb.jp/bis/players/${player.player_id}.html`)
+  const latestYear = Math.max(...records.map((row) => row.year))
+  if (!Number.isInteger(latestYear) || latestYear >= requestedYear) return null
+  const latest = records.filter((row) => row.year === latestYear)
+  // A multi-stint/period season needs a separate reducer, never an arbitrary row.
+  if (latest.length !== 1) return null
+  const record = latest[0]!, stats = officialProfileMetricStats(domain, record.metrics)
+  const team = identityFiltersForContract(contract).team
+  if (team && (!record.team || !matchesGameTeamFilter(record.team, team))) return null
+  if (!Number.isInteger(stats.games) || stats.games! < 0) return null
+  const effective: QueryContract = { ...contract, temporal_scope: { ...time, years: [latestYear], year_from: null, year_to: null } }
+  const operations = compileQueryContract(effective)
+  if (operations.length !== 1) return null
+  const query = applyResolvedIds(operations[0]!.query, [historical])
+  const results = emptyResults()
+  results.aggregates = [{ kind: domain, label: profile.name, total: stats.games!, stats: { ...stats, playerId: profile.playerId, year: latestYear, team: record.team } }]
+  const summary = formatContractStatistics({ contract: effective, query, rows: results.aggregates, playerName: profile.name })
+  if (!summary) return null
+  return chatResponseCoreSchema.parse({ message, structured_query: null, results, sources: [], answer: {
+    query_contract: contract, scope_fallback: { requested_year: requestedYear, evidence_year: latestYear, reason: 'latest_verified_npb_season', effective_contract: effective },
+    summary: `${profile.name.replace(/\s+/gu, '')}の${requestedYear}年度のNPB成績は確認できません。参考として、公式プロフィールで確認できる最終在籍年度（${latestYear}年）の記録です。\n${summary}`,
+    result_count: 1, source_urls: [record.sourceUrl], resolved_player: player,
+  } })
+}
+
 export async function resolveContractPlayers(service: Pick<ChatQueryService, 'searchPlayerCandidates'>, contract: QueryContract): Promise<ResolvedEntity[]> {
   const scope = identityFiltersForContract(contract)
   const resolutions: ResolvedEntity[] = []
@@ -165,11 +258,12 @@ export async function resolveContractPlayers(service: Pick<ChatQueryService, 'se
       scopeToEvidence: datedTeam, dictionaryOnly: true, searchDomain: 'all', includeEvents: false, limit: 51,
     })
     let candidates = raw.filter((candidate) => candidate.player_id)
-    const aliasMatches = candidates.filter((candidate) => candidate.matched_aliases?.some((alias) => compact(alias) === compact(input)))
+    const aliasMatches = candidates.filter((candidate) => candidate.matched_aliases?.some((alias) => compact(alias).startsWith(compact(input))))
     const nonPrefixAliases = aliasMatches.filter((candidate) => !compact(candidate.name).startsWith(compact(input)))
+    const exactNonPrefixAliases = nonPrefixAliases.filter((candidate) => candidate.matched_aliases?.some((alias) => compact(alias) === compact(input)))
     const surname = candidates.filter((candidate) => candidate.name.normalize('NFKC').trim().split(/[\s\u3000]+/u)[0] === input.normalize('NFKC'))
     const exact = candidates.filter((candidate) => compact(candidate.name) === compact(input))
-    if (exact.length) candidates = [...new Map([...exact, ...nonPrefixAliases].map((candidate) => [candidate.player_id, candidate])).values()]
+    if (exact.length) candidates = [...new Map([...exact, ...exactNonPrefixAliases].map((candidate) => [candidate.player_id, candidate])).values()]
     else if (surname.length) candidates = [...new Map([...surname, ...nonPrefixAliases].map((candidate) => [candidate.player_id, candidate])).values()]
     else candidates = candidates.filter((candidate) => compact(candidate.name).startsWith(compact(input)) || aliasMatches.includes(candidate))
     if (datedTeam) candidates = candidates.filter((candidate) => candidate.years.some((year) =>

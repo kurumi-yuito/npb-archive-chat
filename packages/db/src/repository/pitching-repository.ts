@@ -1,3 +1,4 @@
+import { appendDateBounds } from './date-scope'
 import { searchPitchingLinesFiltersSchema } from '@npb/schemas'
 import type { QueryDatabase } from '../query-driver'
 import type { SearchPitchingLinesFilters } from '@npb/schemas'
@@ -31,7 +32,7 @@ export async function searchPitchingLines(
   const normalized = searchPitchingLinesFiltersSchema.parse(filters)
   const limit = normalized.limit ?? 50
 
-  const currentRows = normalized.game_date || normalized.game_id || normalized.recent || normalized.sort_by === 'pitchCount' || normalized.sort_by === 'inningsPitched'
+  const currentRows = normalized.game_date || normalized.date_from || normalized.date_to || normalized.game_id || normalized.recent || normalized.sort_by === 'pitchCount' || normalized.sort_by === 'inningsPitched'
     ? []
     : await searchCurrentPitchingStats(database, normalized, limit)
   if (currentRows.length > 0) {
@@ -48,6 +49,7 @@ export async function searchPitchingLines(
   const clauses: string[] = []
   const values: Array<string | number> = []
 
+  appendDateBounds(clauses, values, normalized, 'games.date')
   if (normalized.game_date) {
     clauses.push('games.date = ?')
     values.push(normalized.game_date)
@@ -138,6 +140,7 @@ async function searchNormalizedPitchingLines(
     clauses.push(prefixMatchesCompactNameSql('?', 'person_names.name', filters.team ? 1 : 2))
     values.push(filters.pitcher_name)
   }
+  appendDateBounds(clauses, values, filters, 'game_facts.game_date')
   if (filters.game_date) {
     clauses.push('game_facts.game_date = ?')
     values.push(filters.game_date)

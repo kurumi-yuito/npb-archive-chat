@@ -11,6 +11,53 @@ const meaning = queryContractSchema.parse(oracle.meaning)
 const request = (contract: QueryContract) => ({ domain: 'npb' as const, policy: 'execute' as const, query_contract: contract, clarification_reason: null, subject: null })
 
 describe('semantic-only compilation and execution', () => {
+  it('preserves a league expressed in competition scope as verified team-set filtering', async () => {
+    const contract: QueryContract = { ...meaning, requested_output: [{ kind: 'batting_statistics', fields: ['home_runs'] }],
+      entities: [], predicates: [], competition_scope: { level: 'unspecified', competitions: ['セ・リーグ'] },
+      ordering: [{ field: 'home_runs', direction: 'desc' }], completeness: { mode: 'top_n', limit: 5 } }
+    const query = { aggregateBattingLines: vi.fn().mockResolvedValue([]) }
+    const chat = createContractChatService(query as unknown as ChatQueryService, async () => request(contract))
+    const answer = await chat.answerQuestion('指定リーグの本塁打上位')
+    expect(query.aggregateBattingLines).toHaveBeenCalledWith(expect.objectContaining({ team: 'セ・リーグ', level: 'first', limit: 5 }))
+    expect(answer.answer.query_contract).toEqual(contract)
+    expect(() => compileQueryContract({ ...contract, entities: [{ kind: 'team', role: 'subject', mention: 'ロッテ' }] })).toThrow('contradictory_league_team')
+    expect(() => compileQueryContract({ ...contract, competition_scope: { ...contract.competition_scope, level: 'farm' } })).toThrow('contradictory_league_level')
+  })
+  it.each([{ fields: ['name'] }, { fields: [] as string[] }])('projects the requested winner identity ($fields) from a statistic row without compiling an unbound player lookup', async ({ fields }) => {
+    const contract: QueryContract = { ...meaning, requested_output: [{ kind: 'batting_statistics', fields: ['home_runs'] }, { kind: 'player_information', fields }],
+      entities: [], predicates: [], aggregation: [], grouping: [], ordering: [{ field: 'home_runs', direction: 'desc' }],
+      completeness: { mode: 'top_n', limit: 1 } }
+    const operations = compileQueryContract(contract)
+    expect(operations).toHaveLength(1)
+    expect(operations[0]!.query.query_contract?.requested_output).toEqual(contract.requested_output)
+    const query = { aggregateBattingLines: vi.fn().mockResolvedValue([{ kind: 'batting', label: '検証 太郎', total: 10, stats: { homeRuns: 5 } }]), searchPlayerInformation: vi.fn() }
+    const answer = await createContractChatService(query as unknown as ChatQueryService, async () => request(contract)).answerQuestion('対象年度の本塁打最多選手')
+    expect(answer.answer.summary).toContain('1位: 検証 太郎：本塁打5')
+    expect(query.aggregateBattingLines).toHaveBeenCalledWith(expect.objectContaining({ sort_by: 'homeRuns', limit: 1 }))
+    expect(query.searchPlayerInformation).not.toHaveBeenCalled()
+  })
+  it('preserves both bounds of a period through normalization, planning and repository execution', async () => {
+    const contract: QueryContract = { ...meaning, requested_output: [{ kind: 'game_results', fields: [] }], entities: [], predicates: [],
+      temporal_scope: { ...meaning.temporal_scope, years: [], date_from: '2025-05-01', date_to: '2025-05-31' } }
+    const query = { searchGames: vi.fn().mockResolvedValue([]) }
+    const service = createContractChatService(query as unknown as ChatQueryService, async () => request(contract))
+    const answer = await service.answerQuestion('指定期間の試合結果')
+    expect(query.searchGames).toHaveBeenCalledWith(expect.objectContaining({ date_from: '2025-05-01', date_to: '2025-05-31', year_from: 2025, year_to: 2025 }))
+    expect(answer.answer.query_contract?.temporal_scope).toEqual(contract.temporal_scope)
+  })
+  it('compiles a semantic metric into the repository vocabulary without changing its ordering meaning', async () => {
+    const contract: QueryContract = { ...meaning, requested_output: [{ kind: 'batting_statistics', fields: ['home_runs'] }],
+      entities: [{ kind: 'team', role: 'subject', mention: 'ヤクルト' }], predicates: [],
+      aggregation: [{ operation: 'sum', field: 'home_runs' }], grouping: ['player'],
+      ordering: [{ field: 'home_runs', direction: 'desc' }], completeness: { mode: 'top_n', limit: 5 } }
+    const [operation] = compileQueryContract(contract)
+    expect(operation!.query.filters).toMatchObject({ sort_by: 'homeRuns', group_by: 'player', limit: 5, year: 2025 })
+    expect(operation!.query.query_contract).toEqual(contract)
+    const query = { aggregateBattingLines: vi.fn().mockResolvedValue([]) }
+    const service = createContractChatService(query as unknown as ChatQueryService, async () => request(contract))
+    await service.answerQuestion('対象球団の年度本塁打ランキング')
+    expect(query.aggregateBattingLines).toHaveBeenCalledWith(expect.objectContaining({ sort_by: 'homeRuns', limit: 5 }))
+  })
   it('fetches player information without silently requesting career batting or pitching totals', async () => {
     const contract: QueryContract = { ...meaning, requested_output: [{ kind: 'player_information', fields: ['name', 'position'] }],
       entities: [{ kind: 'player', role: 'subject', mention: '検証太郎' }], predicates: [], temporal_scope: { ...meaning.temporal_scope, years: [] } }

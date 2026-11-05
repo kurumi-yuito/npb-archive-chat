@@ -1,3 +1,4 @@
+import { appendDateBounds } from './date-scope'
 import {
   searchRosterEntriesFiltersSchema,
   type SearchRosterEntriesFilters,
@@ -37,6 +38,7 @@ export async function searchRosterEntries(
     clauses.push('roster_entries.game_id = ?')
     values.push(normalized.game_id)
   }
+  appendDateBounds(clauses, values, normalized, 'games.date')
   if (normalized.game_date) {
     clauses.push('games.date = ?')
     values.push(normalized.game_date)
@@ -123,6 +125,7 @@ async function searchNormalizedRosterEntries(
     clauses.push('roster_entry_facts.game_id = ?')
     values.push(filters.game_id)
   }
+  appendDateBounds(clauses, values, filters, 'game_facts.game_date')
   if (filters.game_date) {
     clauses.push('game_facts.game_date = ?')
     values.push(filters.game_date)

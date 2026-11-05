@@ -91,6 +91,12 @@ export function canonicalTeamName(team: string): string {
   return aliasToCanonical[normalized] ?? normalized
 }
 
+export function canonicalLeagueTeamNames(team?: string): string[] {
+  if (!team) return Object.keys(japaneseToEnglishMap)
+  const aliases = japaneseTeamAliasMap[team] ?? [team]
+  return [...new Set(aliases.map(canonicalTeamName))].filter((name) => name in japaneseToEnglishMap)
+}
+
 /** Apply the same team/league alias expansion to returned evidence as to SQL filters. */
 export function matchesGameTeamFilter(team: string, filter: string): boolean {
   const aliases = toEnglishLeagueTeams(filter) ?? toGameTeamAliases(filter)

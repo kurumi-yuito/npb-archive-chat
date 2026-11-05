@@ -185,7 +185,7 @@ type ParsedRow = {
   cells: ReturnType<typeof parseCell>[]
 }
 
-function parseDataTables(html: string): Array<{ headers: string[]; rows: ParsedRow[] }> {
+function parseDataTables(html: string, includeSummaryRows = false): Array<{ headers: string[]; rows: ParsedRow[] }> {
   return extractTopLevelElements(html, 'table').map((tableHtml) => {
     const rawRows = extractTopLevelElements(tableHtml, 'tr')
       .map((rowHtml) => extractTopLevelCells(rowHtml).map((cellHtml) => ({ ...parseCell(cellHtml), isHeader: /^<th\b/iu.test(cellHtml.trim()) })))
@@ -196,7 +196,8 @@ function parseDataTables(html: string): Array<{ headers: string[]; rows: ParsedR
     let activeHeaders = headers
     const bodyRows: ParsedRow[] = []
     for (const cells of rawRows.slice(headerIndex >= 0 ? headerIndex + 1 : 1)) {
-      if (cells.every((cell) => cell.isHeader)) {
+      const summary = includeSummaryRows && cells.slice(0, 2).some((cell) => /^(?:通算|計)$/u.test(cell.text.replace(/\s+/gu, '')))
+      if (cells.every((cell) => cell.isHeader) && !summary) {
         activeHeaders = cells.map((cell, index) => cell.text || `col${index + 1}`)
       } else if (cells.some((cell) => cell.text || cell.links.length > 0)) bodyRows.push({ headers: activeHeaders, cells })
     }
@@ -251,6 +252,37 @@ export type BisPlayerProfile = {
   sourceUrl: string
 }
 
+export type BisPlayerStatisticHistoryRow = {
+  kind: 'batting' | 'pitching'
+  scope: 'team_season' | 'season_total' | 'career'
+  year: number | null
+  seasonLabel?: string | null
+  team: string | null
+  metrics: Record<string, string>
+}
+
+/** Profile footers use th cells for numeric career totals, unlike column headers. */
+export function parseBisPlayerStatisticHistoryHtml(html: string): BisPlayerStatisticHistoryRow[] {
+  const result: BisPlayerStatisticHistoryRow[] = []
+  for (const table of parseDataTables(html, true)) for (const row of table.rows) {
+    const values = rowToValues(row)
+    const yearText = values.年度?.replace(/\s+/gu, '') ?? ''
+    const team = values.所属球団 ?? values.球団 ?? null
+    const teamKey = team?.replace(/\s+/gu, '')
+    const career = teamKey === '通算' || yearText === '通算'
+    const yearMatch = yearText.match(/^(\d{4})(?:[春夏秋冬]+|前期|後期)?$/u)
+    const year = yearMatch ? Number(yearMatch[1]) : null
+    if (!career && year === null) continue
+    const kind = '防御率' in values && '勝利' in values ? 'pitching'
+      : '打数' in values && '安打' in values && '本塁打' in values ? 'batting' : null
+    if (!kind) continue
+    result.push({ kind, scope: career ? 'career' : teamKey === '計' ? 'season_total' : 'team_season',
+      year, seasonLabel: career ? null : yearText, team: career || teamKey === '計' ? null : team,
+      metrics: Object.fromEntries(Object.entries(values).filter(([key]) => !['年度', '所属球団', '球団'].includes(key))) })
+  }
+  return result
+}
+
 export function parseBisPlayerProfileHtml(html: string, playerId: string, sourceUrl: string): BisPlayerProfile | null {
   const titleMatch = html.match(/<title>([^<]+)<\/title>/i)
   if (!titleMatch) return null
@@ -271,12 +303,14 @@ export function parseBisPlayerProfileHtml(html: string, playerId: string, source
     for (const row of table.rows) {
       const year = row.cells[yearIdx]?.text
       const team = row.cells[teamIdx]?.text
-      if (year && /^\d{4}$/u.test(year) && team && team !== '計') {
-        const previous = yearTeams[year]
-        if (!previous) yearTeams[year] = team
+      const yearMatch = year?.match(/^(\d{4})(?:[春夏秋冬]+|前期|後期)?$/u)
+      if (yearMatch && team && team !== '計') {
+        const yearKey = yearMatch[1]!
+        const previous = yearTeams[yearKey]
+        if (!previous) yearTeams[yearKey] = team
         else {
           const teams = [...new Set([...(Array.isArray(previous) ? previous : [previous]), team])]
-          yearTeams[year] = teams.length === 1 ? teams[0]! : teams
+          yearTeams[yearKey] = teams.length === 1 ? teams[0]! : teams
         }
       }
     }

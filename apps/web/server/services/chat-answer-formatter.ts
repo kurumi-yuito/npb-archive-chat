@@ -924,7 +924,7 @@ function formatGameSummaryLine(row: GameSummaryRow): string {
     homeTeamName: row.homeTeamName,
     matchupText: row.matchupText,
     linescoreJson: rowWithLinescore.linescoreJson ?? '',
-  }, linescore) : `${row.awayTeamName} vs ${row.homeTeamName}`
+  }, linescore) : `${row.awayTeamName} vs ${row.homeTeamName}（スコア未取得）`
   return `${row.date}（${formatDateJa(row.date)}） ${displayVenueName(row.venue)}、${result}`
 }
 
@@ -1347,7 +1347,7 @@ function formatGameDetailSummary(
       return [
         pitchingEvidence,
         eventEvidence,
-        `${displayTeamName(winningSide.team)}が${scoringDescription}を挙げ、${losingTeam}は${losingSide.totals.hits}安打に抑えられたため、攻撃面で差がつきました。`,
+        `${displayTeamName(winningSide.team)}が${scoringDescription}を挙げました。${losingTeam}の安打数は${losingSide.totals.hits ?? '未取得'}です。`,
       ].filter(Boolean).join('\n')
     }
   }
@@ -1412,8 +1412,8 @@ function formatSingleGameDetail(
     '### 主な得点シーン',
     ...describeEventHighlightsForMobile(gameEvents),
     '',
-    `安打: ${displayTeamName(linescore.away.team)} ${linescore.away.totals.hits} / ${displayTeamName(linescore.home.team)} ${linescore.home.totals.hits}`,
-    `失策: ${displayTeamName(linescore.away.team)} ${linescore.away.totals.errors} / ${displayTeamName(linescore.home.team)} ${linescore.home.totals.errors}`,
+    `安打: ${displayTeamName(linescore.away.team)} ${linescore.away.totals.hits ?? '未取得'} / ${displayTeamName(linescore.home.team)} ${linescore.home.totals.hits ?? '未取得'}`,
+    `失策: ${displayTeamName(linescore.away.team)} ${linescore.away.totals.errors ?? '未取得'} / ${displayTeamName(linescore.home.team)} ${linescore.home.totals.errors ?? '未取得'}`,
   ].join('\n')
 }
 
@@ -1687,8 +1687,8 @@ type LinescoreSide = {
   innings: string[]
   totals: {
     runs: number
-    hits: number
-    errors: number
+    hits: number | null
+    errors: number | null
   }
 }
 
@@ -1735,6 +1735,8 @@ function parseLinescore(value: string | null | undefined): ParsedLinescore | nul
     const runs = parsed.runs as Record<string, unknown>
     const hits = (parsed.hits ?? {}) as Record<string, unknown>
     const errors = (parsed.errors ?? {}) as Record<string, unknown>
+    const awayRuns = toScoreNumber(runs.away), homeRuns = toScoreNumber(runs.home)
+    if (awayRuns === null || homeRuns === null) return null
     const awayScores = Array.isArray(inningScores.away) ? inningScores.away.map(String) : []
     const homeScores = Array.isArray(inningScores.home) ? inningScores.home.map(String) : []
     const awayTeam = typeof parsed.away_team === 'string' ? parsed.away_team : ''
@@ -1744,18 +1746,18 @@ function parseLinescore(value: string | null | undefined): ParsedLinescore | nul
         team: awayTeam,
         innings: awayScores,
         totals: {
-          runs: Number(runs.away ?? 0),
-          hits: Number(hits.away ?? 0),
-          errors: Number(errors.away ?? 0),
+          runs: awayRuns,
+          hits: toScoreNumber(hits.away),
+          errors: toScoreNumber(errors.away),
         },
       },
       home: {
         team: homeTeam,
         innings: homeScores,
         totals: {
-          runs: Number(runs.home ?? 0),
-          hits: Number(hits.home ?? 0),
-          errors: Number(errors.home ?? 0),
+          runs: homeRuns,
+          hits: toScoreNumber(hits.home),
+          errors: toScoreNumber(errors.home),
         },
       },
     }
@@ -1798,10 +1800,10 @@ function parseLinescoreSide(value: unknown): LinescoreSide | null {
     return null
   }
   const totalsRecord = totals as Record<string, unknown>
-  const runs = toNumber(totalsRecord.runs)
-  const hits = toNumber(totalsRecord.hits)
-  const errors = toNumber(totalsRecord.errors)
-  if (runs === null || hits === null || errors === null) {
+  const runs = toScoreNumber(totalsRecord.runs)
+  const hits = toScoreNumber(totalsRecord.hits)
+  const errors = toScoreNumber(totalsRecord.errors)
+  if (runs === null) {
     return null
   }
   return {
@@ -2372,6 +2374,11 @@ function toNumber(value: unknown): number | null {
     return Number.isFinite(parsed) ? parsed : null
   }
   return null
+}
+
+function toScoreNumber(value: unknown): number | null {
+  const number = toNumber(value)
+  return number !== null && Number.isInteger(number) && number >= 0 ? number : null
 }
 
 function formatDateJa(date: string): string {

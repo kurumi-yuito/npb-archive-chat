@@ -3,7 +3,8 @@ import { parseBisPlayerStatsHtml, type BisPlayerStatsRow } from '@npb/parser'
 import type { SqliteDatabase } from './sqlite'
 import { withTransaction } from './sqlite'
 import type { ObjectStorage } from './object-storage'
-import { matchesGameTeamFilter } from './repository/team-name-utils'
+import { officialStatisticIdentityIndex } from './official-statistic-identities'
+import { verifiedOfficialRosterIdentities } from './official-roster-identities'
 
 export type OfficialStatisticPage = {
   url: string; year: number; teamId: string; teamName: string
@@ -67,6 +68,7 @@ export async function collectOfficialStatistics(input: {
   database: SqliteDatabase; storage: ObjectStorage; pages: OfficialStatisticPage[]; fetch?: typeof fetch; now?: () => Date
 }): Promise<{ snapshots: number; rows: number }> {
   const fetchFn = input.fetch ?? fetch
+  const identities = officialStatisticIdentityIndex(input.database, await verifiedOfficialRosterIdentities(input.database, input.storage))
   let count = 0
   for (const page of input.pages) {
     const response = await fetchFn(officialUrl(page.url), { headers: { 'user-agent': 'npb-archive-chat/0.1 (+https://npb.jp/)' }, signal: AbortSignal.timeout(30_000) })
@@ -96,16 +98,7 @@ export async function collectOfficialStatistics(input: {
       for (const row of rows) {
         // Exact names require dated official membership proof too. Current-team
         // information alone cannot identify a historical namesake.
-        const profiles = input.database.prepare(`SELECT player_id,full_name,source_url,year_teams_json FROM player_profiles
-          WHERE REPLACE(REPLACE(full_name,' ',''),char(12288),'') = ?`).all(normalize(row.playerName)) as Array<{ player_id: string; full_name: string; source_url: string; year_teams_json: string | null }>
-        const verified = profiles.filter((profile) => {
-          if (normalize(profile.full_name) !== normalize(row.playerName) || profile.source_url !== `https://npb.jp/bis/players/${profile.player_id}.html`) return false
-          try {
-            const membership = JSON.parse(profile.year_teams_json ?? '{}')[String(page.year)]
-            return (Array.isArray(membership) ? membership : [membership]).some((team: unknown) => typeof team === 'string' && matchesGameTeamFilter(team, page.teamName))
-          } catch { return false }
-        })
-        const playerId = row.playerId ?? (verified.length === 1 ? verified[0]!.player_id : null)
+        const playerId = row.playerId ?? identities.resolve(row.playerName, page)
         insert.run(snapshotId, row.rowIndex, playerId, row.playerName, normalize(row.playerName), JSON.stringify(row.values))
       }
     })

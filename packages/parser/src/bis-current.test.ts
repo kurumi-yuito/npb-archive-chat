@@ -3,6 +3,7 @@ import {
   parseBisPlayerStatsHtml,
   parseBisTeamRosterHtml,
   parseBisPlayerProfileHtml,
+  parseBisPlayerStatisticHistoryHtml,
 } from './bis-current'
 
 const rosterHtml = `
@@ -37,6 +38,27 @@ const pitchingHtml = `
 `
 
 describe('BIS current parsers', () => {
+  it('preserves historical split seasons as separate periods within the same membership year', () => {
+    const html = `<title>検証 選手（検証球団） | 個人年度別成績</title><table><tr><th>年度</th><th>所属球団</th><th>試合</th><th>打数</th><th>安打</th><th>本塁打</th></tr>
+      <tr><td>1937春</td><td>検証球団</td><td>10</td><td>20</td><td>5</td><td>1</td></tr>
+      <tr><td>1937秋</td><td>検証球団</td><td>11</td><td>21</td><td>6</td><td>2</td></tr>
+      <tr><th></th><th>通 算</th><th>21</th><th>41</th><th>11</th><th>3</th></tr></table>`
+    const rows = parseBisPlayerStatisticHistoryHtml(html)
+    expect(rows.map((row) => [row.year, row.seasonLabel])).toEqual([[1937, '1937春'], [1937, '1937秋'], [null, null]])
+    expect(JSON.parse(parseBisPlayerProfileHtml(html, 'proof-id', 'https://npb.jp/bis/players/proof-id.html')!.yearTeamsJson)).toEqual({ '1937': '検証球団' })
+  })
+  it('preserves official career footer totals as data while keeping annual transfer subtotals distinct', () => {
+    const html = `<table><thead><tr><th>年度</th><th>所属球団</th><th>登板</th><th>勝利</th><th>投球回</th><th>防御率</th></tr></thead>
+      <tbody><tr><td>2024</td><td>ヤクルト</td><td>2</td><td>1</td><td>10 .1</td><td>1.74</td></tr>
+      <tr><td>2024</td><td>阪 神</td><td>3</td><td>2</td><td>12 .2</td><td>2.13</td></tr>
+      <tr><td>2024</td><td>計</td><td>5</td><td>3</td><td>23</td><td>1.96</td></tr></tbody>
+      <tfoot><tr><th></th><th>通\u3000算</th><th>5</th><th>3</th><th>23</th><th>1.96</th></tr></tfoot></table>`
+    const rows = parseBisPlayerStatisticHistoryHtml(html)
+    expect(rows).toHaveLength(4)
+    expect(rows[0]).toMatchObject({ kind: 'pitching', scope: 'team_season', year: 2024, team: 'ヤクルト', metrics: { 勝利: '1' } })
+    expect(rows[2]).toMatchObject({ scope: 'season_total', year: 2024, team: null, metrics: { 勝利: '3' } })
+    expect(rows[3]).toMatchObject({ scope: 'career', year: null, team: null, metrics: { 勝利: '3', 投球回: '23' } })
+  })
   it('tracks repeated roster headers, excludes staff and preserves release remarks without asserting active status', () => {
     const html = `<table>
       <tr><th>No.</th><th>監督</th><th>生年月日</th><th>備考</th></tr><tr><td>99</td><td>監督 氏名</td><td>1970.01.01</td><td></td></tr>

@@ -184,7 +184,10 @@ export default defineEventHandler(async (event) => withD1ReadAudit(async () => {
               allowFallback: allowHeuristicFallback,
             })
       const service = !fixtureMode.enabled && !allowHeuristicFallback
-        ? createContractChatService(queryService, createSemanticQueryLlm(chatQueryLlmConfig, { onRequest: () => { openAiCalls.planner += 1 } }))
+        ? createContractChatService(queryService, createSemanticQueryLlm(chatQueryLlmConfig, {
+          onRequest: () => { openAiCalls.planner += 1 },
+          onParsed: (request) => console.info('[chat-semantic-contract]', JSON.stringify({ caseId: getHeader(event, 'user-agent'), ...request })),
+        }))
         : createChatService(queryService, {
         parseStructuredQueryFromMessage: async (...args) => {
           if (!fixtureMode.enabled) openAiCalls.planner += 1

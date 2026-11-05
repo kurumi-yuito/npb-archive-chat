@@ -38,6 +38,7 @@
     "update:bis-current": "node --import tsx ./src/cli.ts update:bis-current",
     "update:official-statistics": "node --import tsx ./src/cli.ts update:official-statistics",
     "update:official-roster": "node --import tsx ./src/cli.ts update:official-roster",
+    "update:official-profiles": "node --import tsx ./src/cli.ts update:official-profiles",
     "update:daily": "node --import tsx ./src/cli.ts update:daily",
     "update:year": "node --import tsx ./src/cli.ts update-year",
     "typecheck": "tsc -p tsconfig.json --noEmit",

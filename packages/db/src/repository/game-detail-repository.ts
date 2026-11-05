@@ -1,3 +1,4 @@
+import { appendDateBounds } from './date-scope'
 import { gameDetailFiltersSchema, type GameDetailFilters } from '@npb/schemas'
 import type { QueryDatabase } from '../query-driver'
 import { venueSearchValues } from './venue-aliases'
@@ -26,6 +27,7 @@ export async function searchGameDetails(
     clauses.push('games.game_id = ?')
     values.push(normalized.game_id)
   }
+  appendDateBounds(clauses, values, normalized, 'games.date')
   if (normalized.game_date) {
     clauses.push('games.date = ?')
     values.push(normalized.game_date)

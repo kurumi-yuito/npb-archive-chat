@@ -117,6 +117,8 @@ const coercedId = z.union([
 ])
 
 export const searchEventsFiltersSchema = z.object({
+  date_from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  date_to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   after: z.object({
     game_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
     game_id: z.string().min(1),
@@ -158,6 +160,8 @@ export type PlayerCandidate = z.infer<typeof playerCandidateSchema>
 
 /** games テーブル向けの一覧検索 */
 export const searchGamesFiltersSchema = z.object({
+  date_from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  date_to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   year: z.number().int().min(1936).optional(),
   year_from: z.number().int().min(1936).optional(),
   year_to: z.number().int().min(1936).optional(),
@@ -173,6 +177,8 @@ export const searchGamesFiltersSchema = z.object({
 
 /** pitching_lines 向け検索（名前・チームは完全一致） */
 export const searchPitchingLinesFiltersSchema = z.object({
+  date_from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  date_to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   year: z.number().int().min(1936).optional(),
   year_from: z.number().int().min(1936).optional(),
   year_to: z.number().int().min(1936).optional(),
@@ -190,6 +196,9 @@ export const searchPitchingLinesFiltersSchema = z.object({
 })
 
 export const searchBattingLinesFiltersSchema = z.object({
+  level: z.enum(['first', 'farm']).optional(),
+  date_from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  date_to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   year: z.number().int().min(1936).optional(),
   year_from: z.number().int().min(1936).optional(),
   year_to: z.number().int().min(1936).optional(),
@@ -208,6 +217,8 @@ export const searchBattingLinesFiltersSchema = z.object({
 })
 
 export const searchRosterEntriesFiltersSchema = z.object({
+  date_from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  date_to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   year: z.number().int().min(1936).optional(),
   year_from: z.number().int().min(1936).optional(),
   year_to: z.number().int().min(1936).optional(),
@@ -233,6 +244,8 @@ export const playerAffiliationFiltersSchema = z.object({
 })
 
 export const gameDetailFiltersSchema = z.object({
+  date_from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  date_to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   year: z.number().int().min(1936).optional(),
   year_from: z.number().int().min(1936).optional(),
   year_to: z.number().int().min(1936).optional(),
@@ -272,6 +285,9 @@ export const aggregateEventsFiltersSchema = searchEventsFiltersSchema.omit({
 })
 
 export const aggregateGamesFiltersSchema = z.object({
+  date_from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  date_to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  game_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   year: z.number().int().min(1936).max(2099).optional(),
   year_from: z.number().int().min(1936).max(2099).optional(),
   year_to: z.number().int().min(1936).max(2099).optional(),
@@ -472,6 +488,8 @@ export const chatResponseSchema = z.object({
   structured_query: chatStructuredQuerySchema.nullable(),
   answer: z.object({
     query_contract: queryContractSchema.optional(),
+    scope_fallback: z.object({ requested_year: z.number().int(), evidence_year: z.number().int(),
+      reason: z.literal('latest_verified_npb_season'), effective_contract: queryContractSchema }).optional(),
     summary: z.string().min(1),
     result_count: z.number().int().nonnegative(),
     remaining_count: z.number().int().nonnegative().optional(),
@@ -644,6 +662,7 @@ export const chatResponseSchema = z.object({
         homeTeamName: z.string().min(1),
         matchupText: z.string().min(1),
         venue: z.string(),
+        linescoreJson: z.string().nullable().optional(),
       }),
     ),
     pitching: z.array(
@@ -715,6 +734,10 @@ export const chatResponseSchema = z.object({
       registrations: z.array(z.object({ year: z.number().int(), team: z.string(), position: z.string().nullable(),
         uniformNumber: z.string().nullable(), bats: z.string().nullable(), throws: z.string().nullable() })),
       statistics: z.array(z.object({ year: z.number().int(), team: z.string(), kind: z.enum(['batting', 'pitching']),
+        metrics: z.record(z.string()), sourceUrl: z.string().url(), fetchedAt: z.string() })).optional(),
+      careerStatistics: z.array(z.object({ kind: z.enum(['batting', 'pitching']), metrics: z.record(z.string()), sourceUrl: z.string().url(),
+        fetchedAt: z.string(), basisText: z.string().nullable(), yearFrom: z.number().int(), yearTo: z.number().int() })).optional(),
+      annualStatistics: z.array(z.object({ kind: z.enum(['batting', 'pitching']), year: z.number().int(), team: z.string().nullable(),
         metrics: z.record(z.string()), sourceUrl: z.string().url(), fetchedAt: z.string() })).optional(),
     })).optional(),
     awards: z.array(z.object({
@@ -1048,3 +1071,5 @@ export type PublicApiErrorResponse = z.infer<typeof publicApiErrorResponseSchema
 export type ChatApiResponse = z.infer<typeof chatApiResponseSchema>
 export type RichGame = z.infer<typeof richGameSchema>
 export { normalizePlayerNameKey } from './identity-text'
+export { officialPlayerHistoryEvidenceSchema, verifiedPlayerCareerRows, annualPlayerHistoryRows, officialInningsOuts,
+  type OfficialPlayerHistoryEvidence, type OfficialPlayerHistoryRow } from './official-player-history'

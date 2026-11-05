@@ -23,6 +23,17 @@ const rainCancelledPlayByPlayPath = path.join(
 )
 
 describe('scores parser modules', () => {
+  it('reads score tables from both id wrappers and the archived class wrapper without selecting unrelated tables', () => {
+    const table = `<table><thead><tr><th></th><th>1</th><th>2</th><td>計</td><td>H</td><td>E</td></tr></thead>
+      <tbody><tr><th>検証A</th><td>1</td><td>0</td><td>1</td><td>3</td><td>0</td></tr>
+      <tr><th>検証B</th><td>2</td><td>1</td><td>3</td><td>4</td><td>1</td></tr></tbody></table>`
+    for (const attribute of ['id="table_linescore"', 'class="extra line-score archived"']) {
+      const html = `<table><tr><td>無関係な表</td></tr></table><div ${attribute}><div class="scroll_wrapper">${table}</div></div>`
+      const linescore = parseScoresIndexHtml(html).linescore
+      expect(linescore.runs).toEqual({ away: 1, home: 3 })
+      expect(linescore.inning_scores).toMatchObject({ away: ['1', '0'], home: ['2', '1'] })
+    }
+  })
   it('extracts multiple game urls from scores calendar html', async () => {
     const html = await readFile(path.join(fixtureRoot, 'scores-calendar-2025-0328.html'), 'utf8')
     const games = parseScoresCalendarHtml(html, 2025, '0328')

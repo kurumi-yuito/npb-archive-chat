@@ -1,5 +1,5 @@
 import fs from 'node:fs'
-import { searchPlayerInformation, type PlayerInformationRow } from './repository/player-information-repository'
+import { searchPlayerInformation, type PlayerInformationRow, type PlayerInformationFilters } from './repository/player-information-repository'
 import path from 'node:path'
 import {
   aggregateBattingLines,
@@ -67,7 +67,7 @@ export type ChatQueryService = {
   searchPitchingLines: (filters: SearchPitchingLinesFilters) => Promise<PitchingLineRow[]>
   searchRosterEntries: (filters: SearchRosterEntriesFilters) => Promise<RosterEntryRow[]>
   searchPlayerAffiliations: (filters: PlayerAffiliationFilters & { dictionaryOnly?: boolean }) => Promise<PlayerAffiliationRow[]>
-  searchPlayerInformation: (filters: PlayerAffiliationFilters) => Promise<PlayerInformationRow[]>
+  searchPlayerInformation: (filters: PlayerInformationFilters) => Promise<PlayerInformationRow[]>
   searchGameDetails: (filters: GameDetailFilters) => Promise<GameDetailRow[]>
   aggregateBattingLines: (filters: AggregateBattingFilters) => Promise<AggregateRow[]>
   aggregatePitchingLines: (filters: AggregatePitchingFilters) => Promise<AggregateRow[]>

@@ -28,7 +28,7 @@ export async function verifyOfficialHomeRunTotal(
     official_total_status: 'not_applicable', source_urls: [],
   }
   const playerId = filters.batter_player_id
-  const extraConstraints = filters.game_date || filters.game_id || filters.inning || filters.half ||
+  const extraConstraints = filters.game_date || filters.date_from || filters.date_to || filters.game_id || filters.inning || filters.half ||
     filters.pitcher_name || filters.pitcher_player_id || filters.runner_name || filters.runner_player_id || filters.event_subtype
   if (!filters.year || !filters.team || !playerId || extraConstraints ||
     !['ホームラン', '本塁打'].includes(filters.result_text_contains ?? '')) return evidence
@@ -96,6 +96,8 @@ export function validateEventEvidence(row: EventRow, filters: SearchEventsFilter
   if (filters.year_from && year < filters.year_from) issues.push('year_from_mismatch')
   if (filters.year_to && year > filters.year_to) issues.push('year_to_mismatch')
   if (filters.game_date && row.gameDate !== filters.game_date) issues.push('date_mismatch')
+  if (filters.date_from && row.gameDate < filters.date_from) issues.push('date_from_mismatch')
+  if (filters.date_to && row.gameDate > filters.date_to) issues.push('date_to_mismatch')
   if (filters.game_id && row.gameId !== filters.game_id) issues.push('game_mismatch')
   if (filters.team && !matchesGameTeamFilter(row.offenseTeam, filters.team)) issues.push('team_mismatch')
   if (row.gameId.startsWith('f')) issues.push('competition_level_mismatch')

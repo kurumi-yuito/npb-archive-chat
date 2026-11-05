@@ -1,4 +1,4 @@
-import type { PlayerAffiliationFilters } from '@npb/schemas'
+import { annualPlayerHistoryRows, officialPlayerHistoryEvidenceSchema, verifiedPlayerCareerRows, type PlayerAffiliationFilters } from '@npb/schemas'
 import type { QueryDatabase } from '../query-driver'
 import { matchesGameTeamFilter } from './team-name-utils'
 import { searchOfficialStatisticRows } from './official-statistics-repository'
@@ -8,13 +8,16 @@ export type PlayerInformationRow = {
   affiliations: Array<{ year: number; team: string }>
   registrations: Array<{ year: number; team: string; position: string | null; uniformNumber: string | null; bats: string | null; throws: string | null }>
   statistics?: Array<{ year: number; team: string; kind: 'batting' | 'pitching'; metrics: Record<string, string>; sourceUrl: string; fetchedAt: string }>
+  careerStatistics?: Array<{ kind: 'batting' | 'pitching'; metrics: Record<string, string>; sourceUrl: string; fetchedAt: string; basisText: string | null; yearFrom: number; yearTo: number }>
+  annualStatistics?: Array<{ kind: 'batting' | 'pitching'; year: number; team: string | null; metrics: Record<string, string>; sourceUrl: string; fetchedAt: string }>
 }
+export type PlayerInformationFilters = PlayerAffiliationFilters & { includeCareer?: boolean }
 
 /** A player introduction requires identity/registration facts, not every batting or pitching appearance. */
-export async function searchPlayerInformation(database: QueryDatabase, filters: PlayerAffiliationFilters): Promise<PlayerInformationRow[]> {
+export async function searchPlayerInformation(database: QueryDatabase, filters: PlayerInformationFilters): Promise<PlayerInformationRow[]> {
   if (!filters.player_id) return []
-  const profile = await database.prepare('SELECT player_id,full_name,year_teams_json,source_url,fetched_at FROM player_profiles WHERE player_id=?')
-    .get(filters.player_id) as { player_id: string; full_name: string; year_teams_json: string | null; source_url: string; fetched_at: string } | null
+  const profile = await database.prepare('SELECT player_id,full_name,year_teams_json,source_url,fetched_at,metadata FROM player_profiles WHERE player_id=?')
+    .get(filters.player_id) as { player_id: string; full_name: string; year_teams_json: string | null; source_url: string; fetched_at: string; metadata: string } | null
   if (!profile || profile.source_url !== `https://npb.jp/bis/players/${profile.player_id}.html`) return []
   const affiliations: PlayerInformationRow['affiliations'] = []
   try {
@@ -46,11 +49,29 @@ export async function searchPlayerInformation(database: QueryDatabase, filters: 
       } catch { /* Invalid metrics cannot support an introduction. */ }
     }
   }
+  const careerStatistics: NonNullable<PlayerInformationRow['careerStatistics']> = []
+  const annualStatistics: NonNullable<PlayerInformationRow['annualStatistics']> = []
+  if (filters.includeCareer) {
+    try {
+      const metadata = JSON.parse(profile.metadata ?? '{}') as { official_profile_evidence?: unknown }
+      const evidence = officialPlayerHistoryEvidenceSchema.parse(metadata.official_profile_evidence)
+      if (evidence.playerId === profile.player_id && evidence.sourceUrl === profile.source_url && evidence.fetchedAt === profile.fetched_at && evidence.fullName === profile.full_name) {
+        for (const row of verifiedPlayerCareerRows(evidence)) {
+          for (const annual of annualPlayerHistoryRows(evidence.rows, row.kind)) annualStatistics.push({ kind: row.kind, year: annual.year!, team: annual.team,
+            metrics: annual.metrics, sourceUrl: evidence.sourceUrl, fetchedAt: evidence.fetchedAt })
+          const years = evidence.rows.filter((entry) => entry.kind === row.kind && entry.year !== null).map((entry) => entry.year!)
+          careerStatistics.push({ kind: row.kind, metrics: row.metrics, sourceUrl: evidence.sourceUrl, fetchedAt: evidence.fetchedAt,
+            basisText: evidence.basisText, yearFrom: Math.min(...years), yearTo: Math.max(...years) })
+        }
+      }
+    } catch { /* A missing, inconsistent or stale evidence block cannot certify a career. */ }
+  }
   return [{ playerId: profile.player_id, name: profile.full_name, fetchedAt: profile.fetched_at,
     sourceUrls: [...new Set([profile.source_url, ...verified.map((row) => row.sourceUrl), ...statistics.map((row) => row.sourceUrl)])],
     affiliations: affiliations.sort((a, b) => b.year - a.year),
     registrations: verified.map((row) => ({ year: row.year, team: row.team, position: row.position,
       uniformNumber: row.uniformNumber, bats: row.bats, throws: row.throws })),
     statistics,
+    ...(filters.includeCareer ? { careerStatistics, annualStatistics } : {}),
   }]
 }

@@ -29,7 +29,7 @@ describe('official dictionary identity planning', () => {
       migrateDatabase(database)
       const insert = database.prepare(`INSERT INTO player_profiles(player_id,full_name,canonical_name,team_name,year_teams_json,source_url)
         VALUES (?,?,?,?,?,?)`)
-      insert.run('one', '検証 太郎', '検証 太郎', '阪神', '{"2024":"ヤクルト","2025":["ヤクルト","阪神"]}', 'https://npb.jp/bis/players/one.html')
+      insert.run('one', '検証 太郎', '検証 太郎', '阪神', '{"2024":"ヤクルト","2025":["ヤクルト","阪 神"]}', 'https://npb.jp/bis/players/one.html')
       insert.run('two', '検証 次郎', '検証 次郎', 'ヤクルト', '{"2020":"ヤクルト"}', 'https://npb.jp/bis/players/two.html')
       insert.run('unverified', '検証 三郎', '検証 三郎', 'ヤクルト', '{"2025":"ヤクルト"}', 'https://example.test/')
       const driver = sqliteDatabaseToQuery(database)
@@ -40,7 +40,7 @@ describe('official dictionary identity planning', () => {
       const filters = { name: '検証', year: 2025, team: 'ヤクルト', dictionaryOnly: true }
       expect(await searchPlayerCandidates(query, filters)).toMatchObject([{ player_id: 'one', teams: ['ヤクルト'], years: [2025] }])
       expect(await searchPlayerCandidates(query, { ...filters, year: 2024, team: '阪神' })).toEqual([])
-      expect(await searchPlayerCandidates(query, { ...filters, team: '阪神' })).toMatchObject([{ player_id: 'one', teams: ['阪神'] }])
+      expect(await searchPlayerCandidates(query, { ...filters, team: '阪神' })).toMatchObject([{ player_id: 'one', teams: ['阪 神'], years: [2025] }])
       expect(await searchPlayerCandidates(query, { name: '検証', dictionaryOnly: true })).toHaveLength(2)
     } finally { database.close() }
   })

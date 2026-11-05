@@ -1,3 +1,4 @@
+import { appendDateBounds, appendCompetitionLevel } from './date-scope'
 import {
   searchBattingLinesFiltersSchema,
   type SearchBattingLinesFilters,
@@ -37,12 +38,12 @@ export async function searchBattingLines(
   const limit = normalized.limit ?? 50
   // batting_order / position are box-score-only fields; BIS stats don't have them.
   // Skip BIS entirely when either is specified to avoid returning unfiltered season stats.
-  const skipBis = normalized.game_date || normalized.game_id || normalized.recent
+  const skipBis = normalized.game_date || normalized.date_from || normalized.date_to || normalized.game_id || normalized.recent
     || normalized.batting_order !== undefined || normalized.position !== undefined
   // This compatibility adapter certifies one complete published team-season.
   // A partially collected league must not replace wider legacy search results.
   if (!skipBis && normalized.year && normalized.team && normalized.player_id && !normalized.result_text_contains && !normalized.player_names && !normalized.player_ids) {
-    const official = await searchOfficialStatisticRows(database, { ...normalized, kind: 'batting', level: 'first', limit })
+    const official = await searchOfficialStatisticRows(database, { ...normalized, kind: 'batting', level: normalized.level ?? 'first', limit })
     if (official.length) return official.map((row) => {
       const stats = JSON.parse(row.statsJson) as Record<string, string>
       const number = (key: string) => Number(stats[key] ?? 0)
@@ -69,6 +70,8 @@ export async function searchBattingLines(
   const clauses: string[] = []
   const values: Array<string | number> = []
 
+  appendDateBounds(clauses, values, normalized, 'games.date')
+  appendCompetitionLevel(clauses, normalized.level, 'games.game_id')
   if (normalized.game_date) {
     clauses.push('games.date = ?')
     values.push(normalized.game_date)
@@ -164,6 +167,8 @@ async function searchNormalizedBattingLines(
     clauses.push(prefixMatchesCompactNameSql('?', 'person_names.name', filters.team ? 1 : 2))
     values.push(filters.player_name)
   }
+  appendDateBounds(clauses, values, filters, 'game_facts.game_date')
+  appendCompetitionLevel(clauses, filters.level, 'game_facts.game_id')
   if (filters.game_date) {
     clauses.push('game_facts.game_date = ?')
     values.push(filters.game_date)
@@ -238,6 +243,7 @@ async function searchCurrentBattingStats(
 ): Promise<BattingLineRow[]> {
   const baseClauses: string[] = []
   const baseValues: Array<string | number> = []
+  if (filters.level) baseClauses.push(`player_batting_stats.source_url LIKE '%/idb${filters.level === 'farm' ? '2' : '1'}_%'`)
 
   if (filters.year) {
     baseClauses.push('player_batting_stats.year = ?')

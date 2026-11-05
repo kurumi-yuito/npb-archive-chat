@@ -77,6 +77,28 @@ export function extractTopLevelElements(html: string, tagName: string): string[]
   return results
 }
 
+export function extractElementById(html: string, tagName: string, id: string): string | null {
+  return extractElementByAttribute(html, tagName, 'id', id)
+}
+
+export function extractElementByClass(html: string, tagName: string, className: string): string | null {
+  return extractElementByAttribute(html, tagName, 'class', className)
+}
+
+function extractElementByAttribute(html: string, tagName: string, attribute: 'id' | 'class', value: string): string | null {
+  const matcher = new RegExp(`<(/?)${tagName}\\b([^>]*)>`, 'gi')
+  let start = -1, depth = 0
+  let match: RegExpExecArray | null
+  while ((match = matcher.exec(html)) !== null) {
+    if (match[1] !== '/') {
+      const text = (match[2] ?? '').match(new RegExp(`\\b${attribute}\\s*=\\s*["']([^"']*)["']`, 'i'))?.[1]
+      if (start < 0 && text !== undefined && (attribute === 'class' ? text.split(/\s+/u).includes(value) : text === value)) start = match.index
+      if (start >= 0) depth++
+    } else if (start >= 0 && --depth === 0) return html.slice(start, matcher.lastIndex)
+  }
+  return null
+}
+
 export function extractTopLevelCells(rowHtml: string): string[] {
   const matcher = /<(\/?)(td|th)\b[^>]*>/gi
   const results: string[] = []

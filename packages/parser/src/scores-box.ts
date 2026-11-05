@@ -9,6 +9,8 @@ import {
   cleanText,
   extractTopLevelCells,
   extractTopLevelElements,
+  extractElementById,
+  extractElementByClass,
   normalizeNumber,
   normalizeNullableText,
   parseCell,
@@ -152,75 +154,6 @@ function parsePitchingInnings(html: string): string | null {
   const partial = cleanText(capture(html, /<td>([\s\S]*?)<\/td>/i))
   const value = `${full}${partial}`.trim()
   return value || normalizeNullableText(stripTags(html))
-}
-
-function extractElementById(html: string, tagName: string, id: string): string | null {
-  const matcher = new RegExp(`<(/?)${tagName}\\b([^>]*)>`, 'gi')
-  let start = -1
-  let depth = 0
-  let found = false
-  let match: RegExpExecArray | null
-
-  while ((match = matcher.exec(html)) !== null) {
-    const isClosing = match[1] === '/'
-    if (!isClosing) {
-      const attributes = match[2] ?? ''
-      if (depth === 0 && new RegExp(`\\bid=["']${id}["']`, 'i').test(attributes)) {
-        start = match.index
-        found = true
-      }
-      if (found) {
-        depth += 1
-      }
-      continue
-    }
-
-    if (found) {
-      depth -= 1
-      if (depth === 0 && start >= 0) {
-        return html.slice(start, matcher.lastIndex)
-      }
-    }
-  }
-
-  return null
-}
-
-function extractElementByClass(html: string, tagName: string, className: string): string | null {
-  const matcher = new RegExp(`<(/?)${tagName}\\b([^>]*)>`, 'gi')
-  let start = -1
-  let depth = 0
-  let found = false
-  let match: RegExpExecArray | null
-
-  while ((match = matcher.exec(html)) !== null) {
-    const isClosing = match[1] === '/'
-    if (!isClosing) {
-      const attributes = match[2] ?? ''
-      if (depth === 0 && hasClass(attributes, className)) {
-        start = match.index
-        found = true
-      }
-      if (found) {
-        depth += 1
-      }
-      continue
-    }
-
-    if (found) {
-      depth -= 1
-      if (depth === 0 && start >= 0) {
-        return html.slice(start, matcher.lastIndex)
-      }
-    }
-  }
-
-  return null
-}
-
-function hasClass(attributes: string, className: string): boolean {
-  const classAttr = attributes.match(/\bclass=["']([^"']+)["']/i)?.[1] ?? ''
-  return classAttr.split(/\s+/).includes(className)
 }
 
 function countInningResults(values: string[], pattern: RegExp): number | null {

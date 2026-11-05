@@ -5,6 +5,18 @@ import { formatChatAnswer } from '../server/services/chat-answer-formatter'
 import type { ChatExecutionMetadata } from '../server/services/chat-query-plan'
 
 describe('chat-answer-formatter', () => {
+  it('does not turn unknown archived scores into a zero-zero draw', () => {
+    const results = emptyResults()
+    results.games = [{ gameId: 'sample', date: '2016-04-01', awayTeamName: '検証A', homeTeamName: '検証B', venue: '検証球場', matchupText: '検証A 対 検証B',
+      linescoreJson: JSON.stringify({ inning_scores: { away: [], home: [] }, runs: { away: null, home: null } }) }]
+    const input = { question: '対象試合の結果', structuredQuery: { intent: 'search_games', filters: { game_date: '2016-04-01' } } as ChatStructuredQuery, results, sources: [] }
+    const answer = formatChatAnswer(input)
+    expect(answer.summary).not.toContain('0-0')
+    expect(answer.summary).not.toContain('引き分け')
+    expect(answer.summary).toContain('スコア未取得')
+    results.games[0]!.linescoreJson = JSON.stringify({ inning_scores: { away: ['0'], home: ['0'] }, runs: { away: 0, home: 0 } })
+    expect(formatChatAnswer(input).summary).toContain('0-0で引き分け')
+  })
   it('lists all starters in batting order for a specified game without ranking appearances', () => {
     const results = emptyResults()
     results.roster = Array.from({ length: 9 }, (_, index) => ({

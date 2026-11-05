@@ -1,3 +1,4 @@
+import { appendDateBounds } from './date-scope'
 import { searchGamesFiltersSchema, type SearchGamesFilters } from '@npb/schemas'
 import type { QueryDatabase } from '../query-driver'
 import { toGameTeamAliases } from './team-name-utils'
@@ -38,6 +39,7 @@ export async function searchGames(
   const clauses: string[] = normalized.include_farm ? [] : ["games.game_id NOT LIKE 'f%'"]
   const values: Array<string | number> = []
 
+  appendDateBounds(clauses, values, normalized, 'games.date')
   if (normalized.game_date) {
     clauses.push('games.date = ?')
     values.push(normalized.game_date)

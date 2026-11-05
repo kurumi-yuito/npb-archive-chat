@@ -38,7 +38,7 @@ const systemPrompt = [
   'For policy clarify use clarification_reason. subject is an optional literal phrase copied from the user message, never a generated fact. For execution query_contract must be present and domain npb.',
 ].join('\n')
 
-export function createSemanticQueryLlm(config: ChatQueryLlmConfig, dependencies: { fetch?: typeof fetch; timeoutMs?: number; onRequest?: () => void } = {}) {
+export function createSemanticQueryLlm(config: ChatQueryLlmConfig, dependencies: { fetch?: typeof fetch; timeoutMs?: number; onRequest?: () => void; onParsed?: (request: SemanticRequest) => void } = {}) {
   const fetchFn = dependencies.fetch ?? fetch
   return async (message: string, context: ChatQueryParserContext = {}): Promise<SemanticRequest> => {
     const signal = AbortSignal.timeout(dependencies.timeoutMs ?? 15_000)
@@ -79,6 +79,7 @@ export function createSemanticQueryLlm(config: ChatQueryLlmConfig, dependencies:
         if (parsed.policy === 'clarify' && !parsed.clarification_reason) throw new Error('Clarification requires a reason')
         if (parsed.policy === 'clarify' && !parsed.query_contract?.unresolved_constraints.length) throw new Error('Clarification requires a semantic contract preserving known entities and output, with specific missing constraints. A named-player statistics request is executable; missing year/team and surname ambiguity are handled by product defaults and the official identity resolver.')
         if (parsed.subject && ![message, ...(context.history ?? []).map((item) => item.content)].some((text) => text.includes(parsed.subject!))) throw new Error('Subject must be copied from the conversation')
+        dependencies.onParsed?.(parsed)
         return parsed
       } catch (error) { feedback = String(error).slice(0, 1200) }
     }

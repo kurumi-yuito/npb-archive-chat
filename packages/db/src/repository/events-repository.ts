@@ -1,3 +1,4 @@
+import { appendDateBounds } from './date-scope'
 import {
   searchEventsFiltersSchema,
   type InningHalf,
@@ -89,6 +90,7 @@ export async function searchEvents(
   if (normalizedFilters.after) {
     addEventCursor(clauses, values, normalizedFilters.after, 'games.date', 'events.game_id', 'events.sequence')
   }
+  appendDateBounds(clauses, values, normalizedFilters, 'games.date')
   if (normalizedFilters.game_date) {
     clauses.push('games.date = ?')
     values.push(normalizedFilters.game_date)
@@ -270,6 +272,7 @@ async function searchNormalizedEvents(
     addEventCursor(clauses, values, normalizedFilters.after, 'game_facts.game_date', 'event_facts.game_id', 'event_facts.sequence')
   }
 
+  appendDateBounds(clauses, values, normalizedFilters, 'game_facts.game_date')
   if (normalizedFilters.game_date) {
     clauses.push('game_facts.game_date = ?')
     values.push(normalizedFilters.game_date)
