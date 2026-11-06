@@ -236,6 +236,20 @@ describe('@npb/parser', () => {
     expect(validated.roster).toHaveLength(0)
   })
 
+  it('preserves an official rain cancellation without inventing a scoreless draw', async () => {
+    const root = await mkdtemp(path.join(tmpdir(), 'npb-parser-cancelled-'))
+    const gameDir = path.join(root, '2023', '0405', 'r20230405c-t-01')
+    await mkdir(gameDir, { recursive: true })
+    await writeFile(path.join(gameDir, 'index.html'), await readFile(new URL('./__fixtures__/bis-eng-rained-out.html', import.meta.url), 'utf8'))
+    const parsed = richGameSchema.parse(await parseRawGameFromDir(gameDir))
+    expect(parsed.game_meta.status).toBe('cancelled')
+    expect(parsed.top_summary.linescore.away.totals.runs).toBeNull()
+    expect(parsed.top_summary.linescore.home.totals.runs).toBeNull()
+    expect(parsed.top_summary.linescore.away.innings).toHaveLength(0)
+    expect(parsed.batting_box).toHaveLength(0)
+    expect(parsed.pitching_box).toHaveLength(0)
+  })
+
   it('parses scores playbyplay fixture into a large event set', async () => {
     const html = await readFile(scoresPlayByPlayFixture, 'utf8')
     const events = parseScoresPlayByPlayHtml(html)

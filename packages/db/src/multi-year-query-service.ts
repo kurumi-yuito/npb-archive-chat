@@ -93,20 +93,13 @@ export function createSingleDatabaseQueryService(database: QueryDatabase): ChatQ
     searchPitchingLines: async (filters) => {
       const gameRows = await searchPitchingLines(database, filters)
       const needsBis = (filters.pitcher_player_id || filters.pitcher_name) &&
-        !filters.game_date && !filters.game_id && filters.sort_by !== 'pitchCount'
+        !filters.game_date && !filters.game_id && !filters.date_from && !filters.date_to && !filters.recent && filters.sort_by !== 'pitchCount'
       if (!needsBis) return gameRows
       const bisRows = await searchCurrentPitchingStats(database, filters, 15)
       const nonBisGameRows = gameRows.filter(
         (r) => r.sourceKind !== 'bis_pitching' && r.sourceKind !== 'bis_pitching_farm',
       )
       if (bisRows.length === 0) return nonBisGameRows
-      if (filters.recent) {
-        const bisYear = Math.max(...bisRows.map((r) => Number(r.gameDate.slice(0, 4))))
-        const recentGameRows = nonBisGameRows.filter(
-          (r) => r.sourceKind !== 'bis_pitching' && r.sourceKind !== 'bis_pitching_farm' && Number(r.gameDate.slice(0, 4)) >= bisYear - 1,
-        )
-        return [...bisRows, ...recentGameRows]
-      }
       return [...bisRows, ...nonBisGameRows]
     },
     searchRosterEntries: (filters) => searchRosterEntries(database, filters),
@@ -153,12 +146,17 @@ export function createMultiYearQueryService({
     query: (database: QueryDatabase, filters: F) => Promise<T[]>,
     sortKey: (row: T) => string,
     limit: number,
+    newestFirst = false,
   ): Promise<T[]> {
     const rows: T[] = []
     for (const year of availableYears(filters)) {
       rows.push(...await query(openYear(year), filters))
     }
-    return rows.sort((a, b) => sortKey(a).localeCompare(sortKey(b), 'ja')).slice(0, limit)
+    return rows.sort((a, b) => {
+      const left = sortKey(a), right = sortKey(b)
+      const dateOrder = newestFirst ? right.slice(0, 10).localeCompare(left.slice(0, 10)) : 0
+      return dateOrder || left.localeCompare(right, 'ja')
+    }).slice(0, limit)
   }
 
   return {
@@ -182,15 +180,17 @@ export function createMultiYearQueryService({
         searchBattingLines,
         (row) => `${row.gameDate}:${row.gameId}:${row.team}:${row.playerName}`,
         filters.limit ?? 50,
+        filters.recent === true,
       ),
     searchPitchingLines: async (filters) => {
-      const needsBis = filters.pitcher_name && !filters.game_date && !filters.year && !filters.year_from && !filters.year_to
+      const needsBis = filters.pitcher_name && !filters.recent && !filters.game_id && !filters.game_date && !filters.date_from && !filters.date_to && !filters.year && !filters.year_from && !filters.year_to
       if (!needsBis) {
         return runAcrossYears(
           filters,
           searchPitchingLines,
           (row) => `${row.gameDate}:${row.gameId}:${row.team}:${row.pitcherName}`,
           filters.limit ?? 50,
+          filters.recent === true,
         )
       }
       // Fetch BIS season stats from the most recent years first.
@@ -219,11 +219,6 @@ export function createMultiYearQueryService({
         (r) => r.sourceKind !== 'bis_pitching' && r.sourceKind !== 'bis_pitching_farm',
       )
       if (dedupedBis.length === 0) return gameRows
-      if (filters.recent) {
-        const bisYear = Math.max(...dedupedBis.map((r) => Number(r.gameDate.slice(0, 4))))
-        const recentGameRows = gameRows.filter((r) => Number(r.gameDate.slice(0, 4)) >= bisYear - 1)
-        return [...dedupedBis, ...recentGameRows]
-      }
       // BIS（最新シーズン）を先頭に置き、box score 行を続ける。
       return [...dedupedBis, ...gameRows]
     },

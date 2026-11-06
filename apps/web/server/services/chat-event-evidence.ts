@@ -1,6 +1,7 @@
 import type { SearchEventsFilters } from '@npb/schemas'
 import type { ChatQueryService, EventRow } from '@npb/db'
 import { matchesGameTeamFilter } from '@npb/db'
+import { verifyProfileHomeRunPeriod } from './chat-period-completeness'
 
 export class EventEvidenceError extends Error {
   constructor(public readonly issues: string[]) {
@@ -13,13 +14,18 @@ export type EventCompletenessEvidence = {
   database_exhausted: true
   observed_count: number
   official_total: number | null
-  official_total_status: 'verified' | 'unavailable' | 'not_applicable'
+  official_total_status: 'verified' | 'unavailable' | 'not_applicable' | 'incomplete'
   source_urls: string[]
+  official_scope?: 'first_regular_season'
+  official_observed_count?: number
+  other_competitions_count?: number
+  unclassified_count?: number
+  discrepancies?: Array<{ year: number; observed: number; official_total: number }>
 }
 
 /** Compare a whole-season HR list with an independent BIS season row only. */
 export async function verifyOfficialHomeRunTotal(
-  service: Pick<ChatQueryService, 'searchBattingLines'>,
+  service: Pick<ChatQueryService, 'searchBattingLines'> & Partial<Pick<ChatQueryService, 'searchPlayerInformation'>>,
   filters: SearchEventsFilters,
   events: EventRow[],
 ): Promise<EventCompletenessEvidence> {
@@ -30,6 +36,10 @@ export async function verifyOfficialHomeRunTotal(
   const playerId = filters.batter_player_id
   const extraConstraints = filters.game_date || filters.date_from || filters.date_to || filters.game_id || filters.inning || filters.half ||
     filters.pitcher_name || filters.pitcher_player_id || filters.runner_name || filters.runner_player_id || filters.event_subtype
+  if (filters.year_from && filters.year_to && playerId && !extraConstraints &&
+    ['ホームラン', '本塁打'].includes(filters.result_text_contains ?? '') && service.searchPlayerInformation) {
+    return verifyProfileHomeRunPeriod({ searchPlayerInformation: service.searchPlayerInformation }, filters, events)
+  }
   if (!filters.year || !filters.team || !playerId || extraConstraints ||
     !['ホームラン', '本塁打'].includes(filters.result_text_contains ?? '')) return evidence
   evidence.official_total_status = 'unavailable'

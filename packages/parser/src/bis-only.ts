@@ -1,6 +1,6 @@
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { richGameSchema, type RichGame } from '@npb/schemas'
+import { parseScoreTotal, richGameSchema, type RichGame } from '@npb/schemas'
 
 const moduleDir = path.dirname(fileURLToPath(import.meta.url))
 const defaultWorkspaceRoot = path.resolve(moduleDir, '../../..')
@@ -165,8 +165,8 @@ function extractTopTeamNames(html: string): { away: string; home: string } | nul
 
 function parseGmdivResultLinescore(html: string): {
   innings: string[]
-  away: { team: string; innings: string[]; totals: { runs: number; hits: number; errors: number } }
-  home: { team: string; innings: string[]; totals: { runs: number; hits: number; errors: number } }
+  away: { team: string; innings: string[]; totals: { runs: number | null; hits: number | null; errors: number | null } }
+  home: { team: string; innings: string[]; totals: { runs: number | null; hits: number | null; errors: number | null } }
 } | null {
   const table = html.match(/<div[^>]*id="gmdivresult"[^>]*>[\s\S]*?<table[^>]*>([\s\S]*?)<\/table>/i)
   if (!table?.[1]) {
@@ -197,9 +197,9 @@ function parseGmdivResultLinescore(html: string): {
       team,
       innings: inningValues,
       totals: {
-        runs: Number.parseInt(tail[0] ?? '0', 10) || 0,
-        hits: Number.parseInt(tail[1] ?? '0', 10) || 0,
-        errors: Number.parseInt(tail[2] ?? '0', 10) || 0,
+        runs: parseScoreTotal(tail[0]),
+        hits: parseScoreTotal(tail[1]),
+        errors: parseScoreTotal(tail[2]),
       },
     }
   }
@@ -342,6 +342,13 @@ export function isBisEnglishGameHtml(html: string): boolean {
   return false
 }
 
+export function inspectBisGameOutcome(html: string) {
+  const cancellation = cleanText(stripTags(extractGmdivInfoRow(html) ?? ''))
+  if (/\b(?:rained out|cancelled|canceled|postponed|no game)\b/iu.test(cancellation)) return { status: 'cancelled' as const, linescore: null }
+  const linescore = parseGmdivResultLinescore(html)
+  return { status: linescore && linescore.away.totals.runs !== null && linescore.home.totals.runs !== null ? 'completed' as const : 'unconfirmed' as const, linescore }
+}
+
 export function buildRichGameFromBisEngIndex(
   context: ParseContext,
   raw: LoadedBisRawGame,
@@ -356,7 +363,8 @@ export function buildRichGameFromBisEngIndex(
   const dateLabel = extractDateLabel(html)
   const venueMeta = parseVenueAndMeta(html)
   const topNames = extractTopTeamNames(html)
-  const linescore = parseGmdivResultLinescore(html)
+  const outcome = inspectBisGameOutcome(html)
+  const linescore = outcome.linescore
   const winPitch = parseWinPitcherBlock(html)
   const homeRuns = parseHomeRunsBlock(html)
   const gameNumber = extractGameNumber(html)
@@ -369,12 +377,12 @@ export function buildRichGameFromBisEngIndex(
     away: {
       team: awayName,
       innings: [],
-      totals: { runs: 0, hits: 0, errors: 0 },
+      totals: { runs: null, hits: null, errors: null },
     },
     home: {
       team: homeName,
       innings: [],
-      totals: { runs: 0, hits: 0, errors: 0 },
+      totals: { runs: null, hits: null, errors: null },
     },
   }
 
@@ -394,7 +402,7 @@ export function buildRichGameFromBisEngIndex(
       competition: null,
       matchup_text: `${awayName} vs ${homeName}`,
       game_number: gameNumber,
-      status: null,
+      status: outcome.status === 'cancelled' ? 'cancelled' : null,
       start_time: venueMeta.startTime,
       end_time: venueMeta.endTime,
       duration_text: venueMeta.durationText,

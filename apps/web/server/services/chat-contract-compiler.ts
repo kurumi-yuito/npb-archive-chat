@@ -19,9 +19,12 @@ export function identityFiltersForContract(contract: QueryContract) {
   const time = contract.temporal_scope
   const implicitSeason = contract.requested_output.some((output) => ['batting_statistics', 'pitching_statistics', 'fielding_statistics'].includes(output.kind))
     && time.years.length === 0 && time.year_from === null && time.year_to === null && time.date_from === null && time.date_to === null && time.relative === null
+  const relativeSeason = ['current_season', 'previous_season'].includes(time.relative ?? '') &&
+    time.years.length === 0 && time.year_from === null && time.year_to === null && time.date_from === null && time.date_to === null
   const team = contract.entities.find((entity) => entity.kind === 'team' && entity.role === 'subject')?.mention
   return {
     ...(implicitSeason ? { year: Number(new Intl.DateTimeFormat('en', { timeZone: 'Asia/Tokyo', year: 'numeric' }).format(new Date())) } : {}),
+    ...(relativeSeason ? { year: Number(new Intl.DateTimeFormat('en', { timeZone: 'Asia/Tokyo', year: 'numeric' }).format(new Date())) - (time.relative === 'previous_season' ? 1 : 0) } : {}),
     ...(time.years.length === 1 ? { year: time.years[0] } : {}),
     ...(time.years.length > 1 ? { year_from: Math.min(...time.years), year_to: Math.max(...time.years) } : {}),
     ...(time.year_from !== null ? { year_from: time.year_from } : {}),
@@ -40,6 +43,7 @@ export function operationIntent(output: QueryContract['requested_output'][number
     case 'game_details': return 'game_detail'
     case 'batting_records': return 'search_batting'
     case 'pitching_records': return 'search_pitching'
+    case 'appearance_records': throw new QueryContractCompileError(['appearance_domain_resolution_required'])
     case 'batting_statistics': return 'aggregate_batting'
     case 'pitching_statistics': return 'aggregate_pitching'
     case 'affiliations': return 'player_affiliation'
@@ -56,6 +60,12 @@ export function subjectNameField(intent: ChatStructuredQuery['intent']): string 
 /** The semantic contract is the only input. No natural-language keyword routing. */
 export function compileQueryContract(contract: QueryContract): ContractOperation[] {
   if (contract.unresolved_constraints.length) throw new QueryContractCompileError(['unresolved_constraints'])
+  const appearanceRelative = ['recent_appearances', 'latest_appearance'].includes(contract.temporal_scope.relative ?? '')
+  const subjectPlayers = contract.entities.filter((entity) => entity.kind === 'player')
+  if (appearanceRelative && subjectPlayers.length > 1) {
+    return subjectPlayers.flatMap((player) => compileQueryContract({ ...contract,
+      entities: contract.entities.filter((entity) => entity.kind !== 'player' || entity === player) }))
+  }
   const subjectTeams = contract.entities.filter((entity) => entity.kind === 'team' && entity.role === 'subject')
   if (subjectTeams.length > 1 && contract.requested_output.every((output) => output.kind === 'batting_statistics') &&
     !contract.entities.some((entity) => entity.kind === 'player')) {
@@ -63,7 +73,7 @@ export function compileQueryContract(contract: QueryContract): ContractOperation
     return subjectTeams.flatMap((team) => compileQueryContract({ ...contract,
       entities: contract.entities.filter((entity) => !subjectTeams.includes(entity) || entity === team), grouping: ['team'] }))
   }
-  if (contract.temporal_scope.relative && contract.temporal_scope.relative !== 'career' && !contract.temporal_scope.years.length && contract.temporal_scope.year_from === null && contract.temporal_scope.date_from === null) {
+  if (contract.temporal_scope.relative && !appearanceRelative && !['career', 'current_season', 'previous_season'].includes(contract.temporal_scope.relative) && !contract.temporal_scope.years.length && contract.temporal_scope.year_from === null && contract.temporal_scope.date_from === null) {
     throw new QueryContractCompileError(['relative_time_not_resolved'])
   }
   const discreteYears = [...new Set(contract.temporal_scope.years)].sort((a, b) => a - b)
@@ -75,6 +85,14 @@ export function compileQueryContract(contract: QueryContract): ContractOperation
     const intent = operationIntent(output, contract)
     const filters: Record<string, unknown> = { ...identityFiltersForContract(contract) }
     const issues: string[] = []
+    if (appearanceRelative) {
+      if (!['search_batting', 'search_pitching'].includes(intent)) issues.push('appearance_records_required')
+      if (subjectPlayers.length !== 1) issues.push('appearance_player_required')
+      if (contract.completeness.mode === 'all') issues.push('contradictory_appearance_completeness')
+      if (contract.temporal_scope.relative === 'latest_appearance' && contract.completeness.limit !== null && contract.completeness.limit !== 1) issues.push('contradictory_latest_appearance_limit')
+      filters.recent = true
+      filters.limit = contract.completeness.limit ?? (contract.temporal_scope.relative === 'latest_appearance' ? 1 : 5)
+    }
     const time = contract.temporal_scope
     if (time.years.length > 1) {
       const years = [...new Set(time.years)].sort((a, b) => a - b)
@@ -120,12 +138,16 @@ export function compileQueryContract(contract: QueryContract): ContractOperation
         issues.push(`contradictory_predicate:${field}`)
       } else filters[field] = predicate.value
     }
-    if (contract.grouping.length === 1) filters.group_by = contract.grouping[0]
+    if (contract.grouping.length === 1 && appearanceRelative && contract.grouping[0] === 'player') {
+      // Each player has a separate bounded operation, so no SQL grouping may
+      // collapse the appearance lines before the per-player window is applied.
+    } else if (contract.grouping.length === 1) filters.group_by = contract.grouping[0]
     else if (contract.grouping.length > 1) issues.push('multi_group_plan_required')
     if (contract.ordering.length === 1) {
       const order = contract.ordering[0]!
       const naturalEventOrder = intent === 'search_events' && ['gameDate', 'game_date', 'date'].includes(order.field) && order.direction === 'asc'
-      if (!naturalEventOrder) {
+      const naturalAppearanceOrder = appearanceRelative && ['gameDate', 'game_date', 'date'].includes(order.field) && order.direction === 'desc'
+      if (!naturalEventOrder && !naturalAppearanceOrder) {
         if (order.direction !== 'desc') issues.push('ordering_plan_required')
         filters.sort_by = statisticSortField(intent, order.field)
       }

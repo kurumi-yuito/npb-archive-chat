@@ -13,6 +13,7 @@ import type { PlayerResolution } from './player-resolution'
 import type { SemanticRequest } from './chat-semantic-llm'
 import { formatContractStatistics, formatTeamStatisticComparison } from './chat-statistic-answer'
 import { officialProfileMetricStats, searchOfficialCareerEvidence } from './chat-career-evidence'
+import { searchOpponentStarters } from './chat-appearance-context'
 
 type SemanticParser = (message: string, context: { history?: ChatRequest['history'] }) => Promise<SemanticRequest>
 type ResolvedEntity = { entity: QueryContract['entities'][number]; resolution: PlayerResolution }
@@ -46,15 +47,26 @@ export function createContractChatService(databaseService: ChatQueryService, par
         results: emptyResults(), sources: [],
       })
     }
-    const operations = compileQueryContract(contract)
+    let operations
+    try {
+      operations = contract.requested_output.some((output) => output.kind === 'appearance_records')
+        ? await planGenericAppearances(queryService, contract, identities) : compileQueryContract(contract)
+    } catch (error) {
+      if (!(error instanceof QueryContractCompileError) || !error.issues.some((issue) => ['appearance_role_ambiguous', 'appearance_role_evidence_required'].includes(issue))) throw error
+      return chatResponseCoreSchema.parse({ message, structured_query: null, results: emptyResults(), sources: [], answer: {
+        summary: `${identities.map(({ resolution }) => resolution.name ?? resolution.input).join('・')}について、打撃成績と投手成績のどちらを確認しますか。公式の守備位置・年度記録だけでは、要求する成績の種類を一意に確定できません。`,
+        query_contract: { ...contract, unresolved_constraints: [...contract.unresolved_constraints, 'appearance_statistic_domain'] }, result_count: 0, source_urls: [],
+      } })
+    }
     const responses: ChatResponseCore[] = []
     for (const operation of operations) {
       const query = applyResolvedIds(normalizeChatStructuredQuery(operation.query), identities)
       const operationContract = query.query_contract!
+      const opponentStarterRequested = operation.output.kind === 'pitching_records' && operation.output.fields.includes('opponentStarter')
       // Identity IDs are additional proof; the original mention and scopes remain unchanged.
       const available = operation.output.kind === 'player_information'
         ? ['player_profiles', 'source_snapshots'] as const : inferDataRequirements(query)
-      const issues = validateQueryContractExecution(operationContract, query, [...available])
+      const issues = validateQueryContractExecution(operationContract, query, [...available, ...(opponentStarterRequested ? ['game_details', 'events'] as const : [])])
       if (issues.length) throw new QueryContractCompileError(issues)
       const results = emptyResults()
       let completeness
@@ -90,6 +102,11 @@ export function createContractChatService(databaseService: ChatQueryService, par
         case 'award_winners': results.awards = await queryService.searchAwardWinners({ year: query.filters.year!, award_type: query.filters.award_type ?? 'rookie_of_the_year' }); break
         case 'off_topic': throw new QueryContractCompileError(['unexpected_off_topic_execution'])
       }
+      const appearanceContext = opponentStarterRequested ? await searchOpponentStarters(queryService, results.pitching) : null
+      if (appearanceContext) {
+        results.events.push(...appearanceContext.events)
+        results.gameDetails.push(...appearanceContext.games)
+      }
       if (results.aggregates.some((row) => row.stats.evidenceStatus === 'official_identity_incomplete')) throw new QueryContractCompileError(['official_statistics_identity_incomplete'])
       const gameIds = [...new Set([
         ...results.events.map((row) => row.gameId), ...results.games.map((row) => row.gameId),
@@ -100,8 +117,11 @@ export function createContractChatService(databaseService: ChatQueryService, par
       for (let start = 0; start < gameIds.length; start += 100) {
         sources.push(...await queryService.listSourceSnapshotsByGameIds(gameIds.slice(start, start + 100)))
       }
-      const player = identities.length === 1 ? identities[0]!.resolution : null
+      const operationIdentities = identities.filter(({ entity }) => operationContract.entities.some((candidate) => candidate.kind === 'player' && candidate.role === entity.role && candidate.mention === entity.mention))
+      const player = operationIdentities.length === 1 ? operationIdentities[0]!.resolution : null
       const metadata = buildChatExecutionMetadata(query, player, buildPlannerOutput(query, false), identities.map(({ resolution }) => resolution))
+      if (opponentStarterRequested) metadata.dataRequirements = requirementsForContract(operationContract)
+      if (contract.requested_output.some((output) => output.kind === 'appearance_records')) metadata.dataRequirements = [...new Set([...metadata.dataRequirements, 'player_profiles' as const])]
       metadata.repositories = [...executedRepositories].flatMap((name) => {
         const parsed = chatExecutionRepositorySchema.safeParse(name)
         return parsed.success ? [parsed.data] : []
@@ -127,6 +147,13 @@ export function createContractChatService(databaseService: ChatQueryService, par
         resolved_player: player, execution_metadata: publicExecutionMetadata(metadata),
       } : formatChatAnswer({ question: message, structuredQuery: query, results, sources, playerResolution: player, executionMetadata: metadata })
       answer.query_contract = contract
+      if (player?.name && ['recent_appearances', 'latest_appearance'].includes(operationContract.temporal_scope.relative ?? '')) {
+        answer.summary = `${player.name.replace(/\s+/gu, '')}：${answer.summary}`
+      }
+      if (appearanceContext?.description) {
+        answer.summary += `\n${appearanceContext.description}`
+        answer.source_urls = [...new Set([...answer.source_urls, ...appearanceContext.events.flatMap((row) => row.sourceUrl ? [row.sourceUrl] : [])])]
+      }
       if (statisticSummary !== null) {
         if (operationContract.temporal_scope.relative === 'career' && !career?.verified) {
           // Partial appearance archives cannot establish an NPB career total.
@@ -162,6 +189,9 @@ export function createContractChatService(databaseService: ChatQueryService, par
         answer.evidence_validation = completeness
         answer.source_urls = [...new Set([...answer.source_urls, ...completeness.source_urls])]
         if (completeness.official_total_status === 'unavailable') answer.summary += '\n収録済みの該当記録は全件取得しました。公式年度集計との件数照合は未確認です。'
+        if (completeness.official_total_status === 'incomplete') answer.summary += `\n公式戦の確認記録は${completeness.official_observed_count}件、公式年度集計は${completeness.official_total}本です。${(completeness.discrepancies ?? []).map((row) => `${row.year}年は${row.observed}件／公式${row.official_total}本`).join('、')}。完全な一覧とは確認できません。`
+        if (completeness.other_competitions_count) answer.summary += `\n別の試合種別の確認記録を${completeness.other_competitions_count}件含みます。これらは公式戦の年度集計の照合対象外です。`
+        if (completeness.unclassified_count) answer.summary += `\n${completeness.unclassified_count}件の試合種別が未確認のため、完全性は確定していません。`
       }
       responses.push(chatResponseCoreSchema.parse({ message, structured_query: query, answer, results, sources }))
     }
@@ -179,12 +209,46 @@ export function createContractChatService(databaseService: ChatQueryService, par
       structured_query: { ...first.structured_query, query_contract: contract }, results: merged,
       sources: responses.flatMap((response) => response.sources),
       answer: { ...first.answer, summary: formatTeamStatisticComparison(contract, merged.aggregates, responses.map((response) => response.answer.summary)) ?? responses.map((response) => response.answer.summary).join('\n\n'),
+        resolved_player: identities.length === 1 ? identities[0]!.resolution : null,
         result_count: responses.reduce((sum, response) => sum + response.answer.result_count, 0),
         source_urls: [...new Set(responses.flatMap((response) => response.answer.source_urls))],
-        execution_metadata: first.answer.execution_metadata ? { ...first.answer.execution_metadata, query_contract: contract, data_requirements: requirementsForContract(contract) } : undefined,
+        execution_metadata: first.answer.execution_metadata ? { ...first.answer.execution_metadata, query_contract: contract,
+          data_requirements: [...new Set(responses.flatMap((response) => response.answer.execution_metadata?.data_requirements ?? []))] } : undefined,
       },
     })
   } }
+}
+
+/** Generic form requests retain an unspecified domain until official identity/position evidence is available. */
+async function planGenericAppearances(service: ChatQueryService, contract: QueryContract, identities: ResolvedEntity[]) {
+  if (!identities.length || !['recent_appearances', 'latest_appearance'].includes(contract.temporal_scope.relative ?? '')) {
+    throw new QueryContractCompileError(['appearance_player_scope_required'])
+  }
+  const operations = []
+  for (const identity of identities) {
+    const profiles = await service.searchPlayerInformation({ ...identityFiltersForContract(contract), player_id: identity.resolution.player_id!, includeCareer: true })
+    if (profiles.length !== 1 || profiles[0]!.playerId !== identity.resolution.player_id) throw new QueryContractCompileError(['appearance_role_evidence_required'])
+    const profile = profiles[0]!
+    const latestYear = Math.max(...profile.registrations.map((row) => row.year))
+    const positions = [...new Set(profile.registrations.filter((row) => row.year === latestYear).map((row) => row.position).filter(Boolean))]
+    let kind: 'batting_records' | 'pitching_records' | null = null
+    if (positions.length === 1) {
+      if (positions[0] === '投手') kind = 'pitching_records'
+      else if (['捕手', '内野手', '外野手'].includes(positions[0]!)) kind = 'batting_records'
+    }
+    if (!positions.length) {
+      const domains = [...new Set((profile.annualStatistics ?? []).filter((row) => row.sourceUrl === `https://npb.jp/bis/players/${profile.playerId}.html` &&
+        Number(row.metrics[row.kind === 'batting' ? '試合' : '登板']) > 0).map((row) => row.kind))]
+      if (domains.length === 1) kind = domains[0] === 'batting' ? 'batting_records' : 'pitching_records'
+    }
+    if (!kind) throw new QueryContractCompileError(['appearance_role_ambiguous'])
+    const resolvedKind = kind
+    const effective: QueryContract = { ...contract,
+      entities: contract.entities.filter((entity) => entity.kind !== 'player' || entity === identity.entity),
+      requested_output: contract.requested_output.map((output) => output.kind === 'appearance_records' ? { ...output, kind: resolvedKind } : output) }
+    operations.push(...compileQueryContract(effective))
+  }
+  return operations
 }
 
 /** Preserve the requested scope, and label a verified earlier NPB season as supplemental evidence. */

@@ -17,7 +17,8 @@ export function requirementsForContract(contract: QueryContract): ChatDataRequir
       case 'game_results': return [aggregate ? 'aggregate_games' : 'games']
       case 'game_details': return ['game_details', 'events', 'batting_lines', 'pitching_lines']
       case 'batting_records': return ['batting_lines']
-      case 'pitching_records': return ['pitching_lines']
+      case 'pitching_records': return output.fields.includes('opponentStarter') ? ['pitching_lines', 'game_details', 'events'] : ['pitching_lines']
+      case 'appearance_records': return ['player_profiles'] // Position evidence selects the concrete record plan after identity resolution.
       case 'batting_statistics': return ['aggregate_batting']
       case 'pitching_statistics': return ['aggregate_pitching']
       case 'affiliations': return ['player_affiliations']
@@ -43,11 +44,19 @@ export function validateQueryContractExecution(
     if (!available.includes(requirement)) issues.push(`missing_data:${requirement}`)
   }
   const filters = query.filters as Record<string, unknown>
-  if (contract.grouping.length > 0 && (contract.grouping.length !== 1 || filters.group_by !== contract.grouping[0])) issues.push('grouping_not_preserved')
+  const partitionedAppearances = ['recent_appearances', 'latest_appearance'].includes(contract.temporal_scope.relative ?? '') &&
+    ['search_batting', 'search_pitching'].includes(query.intent) && filters.recent === true &&
+    contract.entities.filter((entity) => entity.kind === 'player').length === 1 && contract.grouping.length === 1 && contract.grouping[0] === 'player'
+  if (contract.grouping.length > 0 && !partitionedAppearances && (contract.grouping.length !== 1 || filters.group_by !== contract.grouping[0])) issues.push('grouping_not_preserved')
   if (contract.ordering.length > 0) {
     const [order] = contract.ordering
     const naturalEventOrder = query.intent === 'search_events' && ['gameDate', 'game_date', 'date'].includes(order?.field ?? '') && order?.direction === 'asc'
-    if (contract.ordering.length !== 1 || (!naturalEventOrder && (filters.sort_by !== statisticSortField(query.intent, order?.field ?? '') || order?.direction !== 'desc'))) issues.push('ordering_not_preserved')
+    const naturalAppearanceOrder = ['search_batting', 'search_pitching'].includes(query.intent) && filters.recent === true && ['gameDate', 'game_date', 'date'].includes(order?.field ?? '') && order?.direction === 'desc'
+    if (contract.ordering.length !== 1 || (!naturalEventOrder && !naturalAppearanceOrder && (filters.sort_by !== statisticSortField(query.intent, order?.field ?? '') || order?.direction !== 'desc'))) issues.push('ordering_not_preserved')
+  }
+  if (['recent_appearances', 'latest_appearance'].includes(contract.temporal_scope.relative ?? '')) {
+    const limit = contract.completeness.limit ?? (contract.temporal_scope.relative === 'latest_appearance' ? 1 : 5)
+    if (!['search_batting', 'search_pitching'].includes(query.intent) || filters.recent !== true || filters.limit !== limit) issues.push('appearance_scope_not_preserved')
   }
   // Non-standard reductions cannot be represented by the legacy aggregators.
   if (contract.aggregation.some(({ operation }) => !['count', 'sum', 'rate'].includes(operation))) issues.push('aggregation_not_supported')

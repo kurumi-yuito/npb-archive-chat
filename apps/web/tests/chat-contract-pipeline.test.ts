@@ -11,6 +11,78 @@ const meaning = queryContractSchema.parse(oracle.meaning)
 const request = (contract: QueryContract) => ({ domain: 'npb' as const, policy: 'execute' as const, query_contract: contract, clarification_reason: null, subject: null })
 
 describe('semantic-only compilation and execution', () => {
+  it('resolves unspecified recent performance from official positions for each identified player', async () => {
+    const contract: QueryContract = { ...meaning, requested_output: [{ kind: 'appearance_records', fields: [] }], predicates: [],
+      entities: [{ kind: 'player', role: 'subject', mention: '検証甲' }, { kind: 'player', role: 'subject', mention: '検証乙' }],
+      temporal_scope: { ...meaning.temporal_scope, years: [], relative: 'recent_appearances' }, grouping: ['player'],
+      completeness: { mode: 'bounded', limit: 3 } }
+    const query = {
+      searchPlayerCandidates: vi.fn(async ({ name }: { name: string }) => [{ player_id: name, name, primary_team: '阪神', teams: ['阪神'], years: [2026], roles: ['profile'] }]),
+      searchPlayerInformation: vi.fn(async ({ player_id }: { player_id: string }) => [{ playerId: player_id, name: player_id,
+        fetchedAt: '2026-11-06T00:00:00Z', sourceUrls: [`https://npb.jp/bis/players/${player_id}.html`], affiliations: [],
+        registrations: [{ year: 2026, team: '阪神', position: '投手', uniformNumber: null, bats: null, throws: null }] }]),
+      searchPitchingLines: vi.fn().mockResolvedValue([]), searchBattingLines: vi.fn(),
+    }
+    const answer = await createContractChatService(query as unknown as ChatQueryService, async () => request(contract)).answerQuestion('両選手の直近3試合の成績比較')
+    expect(query.searchPitchingLines).toHaveBeenCalledTimes(2)
+    expect(query.searchBattingLines).not.toHaveBeenCalled()
+    for (const pitcher_player_id of ['検証甲', '検証乙']) expect(query.searchPitchingLines).toHaveBeenCalledWith(expect.objectContaining({ pitcher_player_id, recent: true, limit: 3 }))
+    expect(answer.answer.query_contract).toEqual(contract)
+    expect(answer.answer.execution_metadata?.data_requirements).toEqual(expect.arrayContaining(['pitching_lines', 'player_profiles']))
+    expect(answer.answer.resolved_player).toBeNull()
+  })
+  it('asks for the statistic domain when no official position or unique statistic domain supports a choice', async () => {
+    const contract: QueryContract = { ...meaning, requested_output: [{ kind: 'appearance_records', fields: [] }], predicates: [],
+      entities: [{ kind: 'player', role: 'subject', mention: '検証甲' }],
+      temporal_scope: { ...meaning.temporal_scope, years: [], relative: 'recent_appearances' }, completeness: { mode: 'unspecified', limit: null } }
+    const query = {
+      searchPlayerCandidates: vi.fn().mockResolvedValue([{ player_id: 'official-id', name: '検証甲', primary_team: '阪神', teams: ['阪神'], years: [2026], roles: ['profile'] }]),
+      searchPlayerInformation: vi.fn().mockResolvedValue([{ playerId: 'official-id', registrations: [], annualStatistics: [] }]),
+      searchPitchingLines: vi.fn(), searchBattingLines: vi.fn(),
+    }
+    const answer = await createContractChatService(query as unknown as ChatQueryService, async () => request(contract)).answerQuestion('検証甲の最近の成績')
+    expect(answer.answer.summary).toContain('打撃成績と投手成績のどちら')
+    expect(answer.answer.query_contract?.unresolved_constraints).toContain('appearance_statistic_domain')
+    expect(query.searchPitchingLines).not.toHaveBeenCalled()
+    expect(query.searchBattingLines).not.toHaveBeenCalled()
+  })
+  it.each([['recent_appearances', null, 5], ['latest_appearance', null, 1], ['recent_appearances', 7, 7]] as const)('plans the exact appearance window %s/%s without inventing a season', (relative, limit, expected) => {
+    const contract: QueryContract = { ...meaning, requested_output: [{ kind: 'batting_records', fields: ['hits'] }], predicates: [],
+      entities: [{ kind: 'player', role: 'subject', mention: '検証太郎' }],
+      temporal_scope: { ...meaning.temporal_scope, years: [], relative },
+      completeness: { mode: limit === null ? 'unspecified' : 'bounded', limit }, ordering: [{ field: 'gameDate', direction: 'desc' }] }
+    expect(compileQueryContract(contract)[0]!.query.filters).toEqual({ player_name: '検証太郎', recent: true, limit: expected })
+    expect(() => compileQueryContract({ ...contract, requested_output: [{ kind: 'batting_statistics', fields: ['hits'] }] })).toThrow('appearance_records_required')
+  })
+  it('bounds each compared player separately and preserves an explicitly requested seven appearances in the answer', async () => {
+    const contract: QueryContract = { ...meaning, requested_output: [{ kind: 'batting_records', fields: ['hits'] }], predicates: [],
+      entities: [{ kind: 'player', role: 'subject', mention: '検証甲' }, { kind: 'player', role: 'subject', mention: '検証乙' }],
+      temporal_scope: { ...meaning.temporal_scope, years: [], relative: 'recent_appearances' },
+      completeness: { mode: 'bounded', limit: 7 }, grouping: ['player'], ordering: [{ field: 'gameDate', direction: 'desc' }] }
+    const query = {
+      searchPlayerCandidates: vi.fn(async ({ name }: { name: string }) => [{ player_id: name, name, primary_team: '阪神', teams: ['阪神'], years: [2025], roles: ['batter'] }]),
+      searchBattingLines: vi.fn(async ({ player_id }: { player_id: string }) => Array.from({ length: 7 }, (_, index) => ({
+        playerId: player_id, gameId: `${player_id}-${index}`, gameDate: `2025-10-${String(20 - index).padStart(2, '0')}`, team: '阪神',
+        playerName: player_id, battingOrder: 1, position: '外野手', atBats: 4, runs: 0, hits: 1, runsBattedIn: 0, stolenBases: 0,
+        strikeouts: 0, walks: 0, rawText: null, sourceKind: 'box' as const,
+      }))), listSourceSnapshotsByGameIds: vi.fn().mockResolvedValue([]),
+    }
+    const answer = await createContractChatService(query as unknown as ChatQueryService, async () => request(contract)).answerQuestion('両選手の直近7試合を比較')
+    expect(query.searchBattingLines).toHaveBeenCalledTimes(2)
+    for (const player_id of ['検証甲', '検証乙']) expect(query.searchBattingLines).toHaveBeenCalledWith(expect.objectContaining({ player_id, recent: true, limit: 7 }))
+    expect(answer.results.batting).toHaveLength(14)
+    expect(answer.answer.summary.match(/直近7試合で7安打/gu)).toHaveLength(2)
+    expect(answer.answer.query_contract).toEqual(contract)
+  })
+  it.each([['current_season', 2027], ['previous_season', 2026]] as const)('resolves the canonical relative season %s using Japan time', (relative, year) => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-12-31T15:05:00Z'))
+    try {
+      const contract: QueryContract = { ...meaning, requested_output: [{ kind: 'batting_statistics', fields: ['home_runs'] }], predicates: [],
+        entities: [], temporal_scope: { ...meaning.temporal_scope, years: [], relative } }
+      expect(compileQueryContract(contract)[0]!.query.filters).toMatchObject({ year })
+    } finally { vi.useRealTimers() }
+  })
   it('plans a separate team aggregate for each subject club and retains both subjects in the answer contract', async () => {
     const contract: QueryContract = { ...meaning, requested_output: [{ kind: 'batting_statistics', fields: ['batting_average'] }], predicates: [],
       entities: [{ kind: 'team', role: 'subject', mention: '巨人' }, { kind: 'team', role: 'subject', mention: '阪神' }], completeness: { mode: 'all', limit: null } }

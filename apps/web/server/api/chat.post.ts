@@ -66,9 +66,11 @@ export default defineEventHandler(async (event) => withD1ReadAudit(async () => {
       modeHeader: getHeader(event, 'x-npb-qa-mode'),
       tokenHeader: getHeader(event, 'x-npb-qa-token'),
       expectedToken:
-        typeof cloudflareEnv?.NPB_QA_REPLAY_TOKEN === 'string'
-          ? cloudflareEnv.NPB_QA_REPLAY_TOKEN
-          : config.npbQaReplayToken,
+        import.meta.dev || process.env.NODE_ENV === 'test'
+          ? typeof cloudflareEnv?.NPB_QA_REPLAY_TOKEN === 'string'
+            ? cloudflareEnv.NPB_QA_REPLAY_TOKEN
+            : config.npbQaReplayToken
+          : undefined,
     })
     if (fixtureMode.error === 'disabled') {
       throw createPublicApiError(403, 'qa_fixture_disabled', 'QA fixture mode is not enabled')

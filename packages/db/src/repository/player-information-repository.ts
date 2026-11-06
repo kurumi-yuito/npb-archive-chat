@@ -11,7 +11,7 @@ export type PlayerInformationRow = {
   careerStatistics?: Array<{ kind: 'batting' | 'pitching'; metrics: Record<string, string>; sourceUrl: string; fetchedAt: string; basisText: string | null; yearFrom: number; yearTo: number }>
   annualStatistics?: Array<{ kind: 'batting' | 'pitching'; year: number; team: string | null; metrics: Record<string, string>; sourceUrl: string; fetchedAt: string }>
 }
-export type PlayerInformationFilters = PlayerAffiliationFilters & { includeCareer?: boolean }
+export type PlayerInformationFilters = Omit<PlayerAffiliationFilters, 'player_name'> & { player_name?: string; includeCareer?: boolean }
 
 /** A player introduction requires identity/registration facts, not every batting or pitching appearance. */
 export async function searchPlayerInformation(database: QueryDatabase, filters: PlayerInformationFilters): Promise<PlayerInformationRow[]> {

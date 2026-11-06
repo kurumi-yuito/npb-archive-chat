@@ -499,8 +499,13 @@ export const chatResponseSchema = z.object({
       database_exhausted: z.literal(true),
       observed_count: z.number().int().nonnegative(),
       official_total: z.number().int().nonnegative().nullable(),
-      official_total_status: z.enum(['verified', 'unavailable', 'not_applicable']),
+      official_total_status: z.enum(['verified', 'unavailable', 'not_applicable', 'incomplete']),
       source_urls: z.array(z.string().url()),
+      official_scope: z.literal('first_regular_season').optional(),
+      official_observed_count: z.number().int().nonnegative().optional(),
+      other_competitions_count: z.number().int().nonnegative().optional(),
+      unclassified_count: z.number().int().nonnegative().optional(),
+      discrepancies: z.array(z.object({ year: z.number().int(), observed: z.number().int().nonnegative(), official_total: z.number().int().nonnegative() })).optional(),
     }).optional(),
     resolved_player: z.object({
       input: z.string().min(1),
@@ -788,9 +793,9 @@ const lineScoreTeamSchema = z.object({
   team: z.string().min(1),
   innings: z.array(z.string().min(1)),
   totals: z.object({
-    runs: z.number().int().nonnegative(),
-    hits: z.number().int().nonnegative(),
-    errors: z.number().int().nonnegative(),
+    runs: z.number().int().nonnegative().nullable(),
+    hits: z.number().int().nonnegative().nullable(),
+    errors: z.number().int().nonnegative().nullable(),
   }),
 })
 
@@ -1071,5 +1076,6 @@ export type PublicApiErrorResponse = z.infer<typeof publicApiErrorResponseSchema
 export type ChatApiResponse = z.infer<typeof chatApiResponseSchema>
 export type RichGame = z.infer<typeof richGameSchema>
 export { normalizePlayerNameKey } from './identity-text'
+export { parseScoreTotal, readKnownGameScore } from './score-evidence'
 export { officialPlayerHistoryEvidenceSchema, verifiedPlayerCareerRows, annualPlayerHistoryRows, officialInningsOuts,
   type OfficialPlayerHistoryEvidence, type OfficialPlayerHistoryRow } from './official-player-history'

@@ -408,21 +408,21 @@ describe('@npb/db', () => {
       expect(rows[2].sourceKind).toBe('box')
       expect(rows[2].gameDate.slice(0, 4)).toBe('2025')
 
-      // recent=true: BIS（今シーズン）が先頭、box は BIS年-1（2025）のみ。2022 は含まれない
+      // 出場相対期間は年度集計を混ぜず、全収録年度の個別登板を新しい順に選ぶ。
       const recentRows = await service.searchPitchingLines({ pitcher_name: '藤浪 晋太郎', recent: true })
       expect(recentRows).toHaveLength(2)
-      expect(recentRows[0].sourceKind).toBe('bis_pitching_farm')
-      expect(recentRows[0].gameDate.slice(0, 4)).toBe('2026')
+      expect(recentRows[0].sourceKind).toBe('box')
+      expect(recentRows[0].gameDate.slice(0, 4)).toBe('2025')
       expect(recentRows[1].sourceKind).toBe('box')
-      expect(recentRows[1].gameDate.slice(0, 4)).toBe('2025')
-      expect(recentRows.every((r) => r.gameDate.slice(0, 4) !== '2022')).toBe(true)
+      expect(recentRows[1].gameDate.slice(0, 4)).toBe('2022')
+      expect(await service.searchPitchingLines({ pitcher_name: '藤浪 晋太郎', recent: true, limit: 1 })).toEqual([recentRows[0]])
     } finally {
       service.close()
       rmSync(sqliteDir, { recursive: true, force: true })
     }
   })
 
-  it('single database searchPitchingLines returns BIS rows for year-filtered player_id recent lookups', async () => {
+  it('single database searchPitchingLines keeps season evidence separate from an appearance-relative lookup', async () => {
     const db = openDatabase(':memory:')
     migrateDatabase(db)
     db.prepare(
@@ -450,6 +450,7 @@ describe('@npb/db', () => {
       expect(rows[0].gameDate.slice(0, 4)).toBe('2026')
       expect(rows[0].pitcherName).toBe('藤浪 晋太郎')
       expect(rows[0].strikeouts).toBe(19)
+      expect(await service.searchPitchingLines({ year: 2026, pitcher_name: '藤浪 晋太郎', pitcher_player_id: '41045137', recent: true, limit: 1 })).toEqual([])
     } finally {
       service.close()
     }

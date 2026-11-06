@@ -4,6 +4,7 @@ import type {
   ChatStructuredQuery,
   PlayerCandidate,
 } from '@npb/schemas'
+import { parseScoreTotal } from '@npb/schemas'
 import type { ChatClarificationPolicy } from './chat-query-plan'
 import type {
   AggregateRow,
@@ -614,15 +615,16 @@ function buildSummary(
       return `${yearShiftPrefix}${multiBattingSummary}`
     }
     if (isEvaluationQuestion(question, structuredQuery.filters, executionMetadata)) {
+      const requestedLimit = typeof structuredQuery.filters.limit === 'number' ? structuredQuery.filters.limit : 5
       const boxGameDates = (results.batting as BattingLineRow[])
         .filter((r) => r.sourceKind !== 'bis_batting')
-        .slice(0, 5)
+        .slice(0, requestedLimit)
         .map((r) => r.gameDate)
       const gapNote = buildRecentGapNote(
         boxGameDates,
         structuredQuery.filters,
       )
-      const summary = formatBattingEvaluationSummary(results.batting as BattingLineRow[], resultCount)
+      const summary = formatBattingEvaluationSummary(results.batting as BattingLineRow[], resultCount, requestedLimit)
       return `${yearShiftPrefix}${appendContinuityGapNote(summary, boxGameDates)}${gapNote}`
     }
     if (first.sourceKind === 'bis_batting') {
@@ -1879,11 +1881,11 @@ function inningRuns(value: string | undefined): number {
   return Number.isFinite(parsed) ? parsed : 0
 }
 
-function formatBattingEvaluationSummary(rows: BattingLineRow[], resultCount: number): string {
+function formatBattingEvaluationSummary(rows: BattingLineRow[], resultCount: number, limit = 5): string {
   const first = rows[0]!
   const playerName = first.playerName ?? '対象選手'
   const teamPrefix = first.team ? `${first.team} ` : ''
-  const gameRows = rows.filter((row) => row.sourceKind !== 'bis_batting').slice(0, 5)
+  const gameRows = rows.filter((row) => row.sourceKind !== 'bis_batting').slice(0, limit)
   if (gameRows.length === 0) {
     return formatBisBattingEvaluationSummary(rows[0]!, resultCount)
   }
@@ -2365,20 +2367,8 @@ function parseJsonObject(value: string | null | undefined): Record<string, unkno
   }
 }
 
-function toNumber(value: unknown): number | null {
-  if (typeof value === 'number' && Number.isFinite(value)) {
-    return value
-  }
-  if (typeof value === 'string' && value.trim()) {
-    const parsed = Number(value)
-    return Number.isFinite(parsed) ? parsed : null
-  }
-  return null
-}
-
 function toScoreNumber(value: unknown): number | null {
-  const number = toNumber(value)
-  return number !== null && Number.isInteger(number) && number >= 0 ? number : null
+  return parseScoreTotal(value)
 }
 
 function formatDateJa(date: string): string {

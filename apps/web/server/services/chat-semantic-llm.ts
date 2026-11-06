@@ -20,6 +20,8 @@ const systemPrompt = [
   'You do not select database intents, tables, repository functions, or filters. A deterministic compiler does that afterwards. Never emit physical executor fields or resolved player IDs.',
   'Preserve player mentions as written. Do not expand a surname into a full name. Identity and ambiguity are resolved from official records afterwards; an ambiguous surname still uses policy execute.',
   'An entity mention is the name span only: exclude honorifics and role nouns such as 選手, 投手, さん, 氏. Preserve the actual name text and do not infer missing given names.',
+  'Entities identify named people, named clubs/leagues and named venues. Counts, universal quantifiers and output/group labels are not named entities. An all-club request leaves club entities empty and groups by team; an all-player request leaves player entities empty and groups by player.',
+  'Club-level statistics must group by team. Do not substitute a list of individual players for club totals or club rates. Club batting average is the club hit total divided by the club at-bat total, not a mean of player averages.',
   'For individual plays assign the stated actor role: batter for a player hitting, pitcher for a player pitching, runner for a player running. subject means participation in any role and must not replace a stated action role.',
   'Only explicit constraints and conditions actually inherited from history belong in the contract. An unspecified level is unspecified, NOT both. Use both only when the user explicitly requests both first-team and farm records.',
   'Do not repeat entities or temporal constraints in predicates. Predicates describe additional requested conditions. A text condition uses field result_text and operator contains. Do not add an implicit event_type predicate.',
@@ -27,8 +29,12 @@ const systemPrompt = [
   'Event records describe individual plays. Their play classification is a result_text contains predicate with the record term as written by the user. Season totals such as home_runs, hits or wins are statistical metrics, not predicates of an individual play. Do not translate a requested play classification into a season-metric comparison.',
   'For a single year use years=[year] and null year_from/year_to. For a continuous range use years=[] and range bounds. Resolve relative dates against the supplied Japan date, retaining their relative description.',
   'For an entire NPB career use temporal_scope.relative="career" and no date/year bounds. A current-season request must resolve to the current Japan year. Never leave a stated relative period unresolved or replace a season request with a career total.',
+  'Relative periods use the canonical enum supplied by the schema: current_season/previous_season for seasons, recent_appearances/latest_appearance for appearance-relative requests, and the calendar tokens for calendar-relative requests. Calendar tokens must also carry resolved date bounds. Do not emit an unstructured description instead of one of these tokens.',
   'For an exact date use equal date_from/date_to. A continuous date range uses its actual bounds. Do not silently replace a date range with one date.',
   'Season and career totals are batting_statistics or pitching_statistics; individual game/appearance lines are batting_records or pitching_records. Requests for both require both outputs.',
+  'Recorded recent form or condition is executable historical performance, not news: request batting_records or pitching_records with relative recent_appearances. A singular latest/last appearance uses latest_appearance. Preserve an explicit last N in completeness bounded/limit=N; without an explicit N leave completeness unspecified/limit=null so the product default can be applied. Never fabricate calendar bounds or a current season for appearance-relative requests. A comparison preserves every player, each with the same appearance window.',
+  'An opposing starting pitcher requested for a selected pitching appearance is the field opponentStarter on that pitching_records output. It is not another pitching_records output for the subject, not an opponent-team field, and not a conversation reference when its anchor is in this same question.',
+  'When a recent-form/performance question does not specify batting or pitching, use appearance_records, not both batting_records and pitching_records. Do not choose a domain from knowledge of a player name: official position evidence selects the record domain after identity resolution. Explicit batting or pitching requests use the concrete corresponding record kind; both are requested only when both domains were actually asked for.',
   'A basic player introduction requests player_information (official identity and registration/profile facts). It does not request career batting/pitching totals. Add statistic outputs only when the user actually requests those statistics.',
   'An unspecified player-statistic season follows the existing product default of the current NPB season; keep the actual request unspecified in the contract. Do not invent a league, competition, role, current team or last N games.',
   'List/all requests use completeness all with null limit. Top N uses top_n with N. Only explicitly requested ordering/grouping goes in ordering/grouping.',
@@ -45,6 +51,7 @@ export function createSemanticQueryLlm(config: ChatQueryLlmConfig, dependencies:
     const signal = AbortSignal.timeout(dependencies.timeoutMs ?? 15_000)
     const currentDate = japanDate()
     let feedback: string | undefined
+    let previousCandidate: SemanticRequest | undefined
     for (let attempt = 0; attempt < 2; attempt++) {
       dependencies.onRequest?.()
       const response = await fetchFn(`${config.baseUrl.replace(/\/$/u, '')}/chat/completions`, {
@@ -64,7 +71,8 @@ export function createSemanticQueryLlm(config: ChatQueryLlmConfig, dependencies:
           messages: [
             { role: 'system', content: systemPrompt },
             { role: 'user', content: JSON.stringify({ current_date_jst: currentDate, history: context.history ?? [], message }) },
-            ...(feedback ? [{ role: 'user', content: `The prior output failed schema or semantic alignment validation: ${feedback}. Preserve the meaning of the original question and history; correct the representation and policy without inventing facts.` }] : []),
+            ...(feedback && previousCandidate ? [{ role: 'assistant', content: JSON.stringify(previousCandidate) }] : []),
+            ...(feedback ? [{ role: 'user', content: `The prior output failed schema or semantic alignment validation: ${feedback}. Correct the identified mismatches against the original question and history. Preserve unaffected output fields, entities and constraints from the prior candidate; do not replace a specific requested metric with empty/default fields or invent facts.` }] : []),
           ],
         }),
       }).catch((error) => { throw new ChatQueryParserUnavailableError(`Semantic parsing unavailable: ${String(error)}`) })
@@ -72,7 +80,12 @@ export function createSemanticQueryLlm(config: ChatQueryLlmConfig, dependencies:
       const payload = await response.json() as { choices?: Array<{ message?: { content?: string } }> }
       try {
         const parsed = semanticRequestSchema.parse(JSON.parse(payload.choices?.[0]?.message?.content ?? ''))
+        previousCandidate = parsed
         if (parsed.policy === 'execute' && (parsed.domain !== 'npb' || !parsed.query_contract)) throw new Error('Execution requires an NPB semantic contract')
+        const compact = (text: string) => text.normalize('NFKC').replace(/\s+/gu, '')
+        const conversation = [message, ...(context.history ?? []).map((item) => item.content)].map(compact)
+        const ungrounded = parsed.query_contract?.entities.filter((entity) => !conversation.some((text) => text.includes(compact(entity.mention)))) ?? []
+        if (ungrounded.length) throw new Error(`Entity mentions must be literal name spans from the question or history, without invented characters, punctuation, expanded names or annotations: ${ungrounded.map((entity) => entity.mention).join(', ')}. Universal/count phrases belong to scope and grouping, not named entities.`)
         if (parsed.query_contract?.requested_output.some((output) => output.kind === 'event_records')) {
           const eventFields = new Set(['result_text', 'inning', 'half', 'event_type', 'event_subtype', 'outs', 'balls', 'strikes', 'score_difference'])
           const incompatible = parsed.query_contract.predicates.filter((predicate) => !eventFields.has(predicate.field))

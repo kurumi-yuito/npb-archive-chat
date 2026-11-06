@@ -10,6 +10,14 @@ const accepted = () => completion({ equivalent: true, issues: [] })
 const rejected = () => completion({ equivalent: false, issues: [{ field: 'policy', reason: 'An event list is historical data, not external news.' }] })
 
 describe('semantic meaning verification (Q-183)', () => {
+  it.each(['/山田/', '山田哲人'])('rejects an invented name span %s before official identity resolution', async (mention) => {
+    const changed = { ...candidate, query_contract: { ...oracle.meaning, entities: oracle.meaning.entities.map((entity: { kind: string }) => entity.kind === 'player' ? { ...entity, mention } : entity) } }
+    const fetch = vi.fn().mockResolvedValueOnce(completion(changed)).mockResolvedValueOnce(completion(candidate)).mockResolvedValueOnce(accepted())
+    const result = await createSemanticQueryLlm(config, { fetch })(oracle.question)
+    expect(result.query_contract?.entities.find((entity) => entity.kind === 'player')?.mention).toBe('山田')
+    expect(fetch).toHaveBeenCalledTimes(3)
+    expect(JSON.parse(fetch.mock.calls[1]![1].body).messages.at(-1).content).toContain('literal name spans')
+  })
   it('repairs a syntactically valid but semantically wrong policy before accepting a contract', async () => {
     const fetch = vi.fn().mockResolvedValueOnce(completion({ ...candidate, policy: 'news', query_contract: null }))
       .mockResolvedValueOnce(rejected()).mockResolvedValueOnce(completion(candidate)).mockResolvedValueOnce(accepted())
@@ -28,6 +36,7 @@ describe('semantic meaning verification (Q-183)', () => {
     expect(reviewInput.candidate.policy).toBe('news')
     expect(reviewRequest.response_format.json_schema.strict).toBe(true)
     expect(JSON.parse(fetch.mock.calls[2]![1].body).messages.at(-1).content).toContain('historical data')
+    expect(JSON.parse(JSON.parse(fetch.mock.calls[2]![1].body).messages.at(-2).content).policy).toBe('news')
   })
 
   it('stops after two rejected candidates rather than returning the last failed interpretation', async () => {

@@ -1,6 +1,6 @@
 import { z } from 'zod'
 
-const outputKinds = ['player_information', 'event_records', 'game_results', 'game_details', 'batting_records', 'pitching_records', 'batting_statistics', 'pitching_statistics', 'fielding_statistics', 'affiliations', 'roster', 'awards'] as const
+const outputKinds = ['player_information', 'event_records', 'game_results', 'game_details', 'appearance_records', 'batting_records', 'pitching_records', 'batting_statistics', 'pitching_statistics', 'fielding_statistics', 'affiliations', 'roster', 'awards'] as const
 const scalar = z.union([z.string(), z.number(), z.boolean()])
 const year = z.number().int().min(1936).max(2200)
 const date = z.string().regex(/^\d{4}-\d{2}-\d{2}$/)
@@ -60,11 +60,13 @@ const object = (properties: Record<string, unknown>) => ({
 const array = (items: unknown) => ({ type: 'array', items })
 const enumeration = (values: readonly string[]) => ({ type: 'string', enum: values })
 const nullableYear = { type: ['integer', 'null'], minimum: 1936, maximum: 2200 }
+const relativeTemporalKinds = ['career', 'current_season', 'previous_season', 'recent_appearances', 'latest_appearance',
+  'today', 'yesterday', 'tomorrow', 'current_month', 'previous_month', 'current_week', 'previous_week'] as const
 export const queryContractJsonSchema = object({
   version: { type: 'integer', enum: [1] },
   requested_output: { ...array(object({ kind: enumeration(outputKinds), fields: strings })), minItems: 1 },
   entities: array(object({ kind: enumeration(['player', 'team', 'venue']), role: enumeration(['subject', 'batter', 'pitcher', 'runner', 'opponent']), mention: text })),
-  temporal_scope: object({ years: array({ type: 'integer', minimum: 1936, maximum: 2200 }), year_from: nullableYear, year_to: nullableYear, date_from: nullableText, date_to: nullableText, relative: nullableText }),
+  temporal_scope: object({ years: array({ type: 'integer', minimum: 1936, maximum: 2200 }), year_from: nullableYear, year_to: nullableYear, date_from: nullableText, date_to: nullableText, relative: { type: ['string', 'null'], enum: [...relativeTemporalKinds, null] } }),
   competition_scope: object({ level: enumeration(['first', 'farm', 'both', 'unspecified']), competitions: strings }),
   predicates: array(object({ field: text, operator: enumeration(['eq', 'ne', 'gt', 'gte', 'lt', 'lte', 'contains', 'in']), value: { anyOf: [{ type: ['string', 'number', 'boolean'] }, array({ type: ['string', 'number', 'boolean'] })] } })),
   aggregation: array(object({ operation: enumeration(['count', 'sum', 'average', 'min', 'max', 'rate']), field: text })),

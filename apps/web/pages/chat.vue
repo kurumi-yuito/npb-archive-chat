@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { ChatPlan, ChatResponse, ChatStructuredQuery, PlayerCandidate } from '@npb/schemas'
+import { readKnownGameScore } from '@npb/schemas'
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { formatRemainingDuration, useChat } from '~/composables/useChat'
 
@@ -101,22 +102,8 @@ function gameDetailCardTitle(response: ChatResponse): string | null {
 }
 
 function scoreLineFromLinescore(value: string | null | undefined): string | null {
-  if (!value) return null
-  try {
-    const parsed = JSON.parse(value) as Record<string, unknown>
-    const away = parsed.away as Record<string, unknown> | undefined
-    const home = parsed.home as Record<string, unknown> | undefined
-    const awayTotals = away?.totals as Record<string, unknown> | undefined
-    const homeTotals = home?.totals as Record<string, unknown> | undefined
-    const awayTeam = typeof away?.team === 'string' ? away.team : ''
-    const homeTeam = typeof home?.team === 'string' ? home.team : ''
-    const awayRuns = Number(awayTotals?.runs)
-    const homeRuns = Number(homeTotals?.runs)
-    if (!Number.isFinite(awayRuns) || !Number.isFinite(homeRuns)) return null
-    return `${displayTeamLabel(awayTeam)} ${awayRuns}-${homeRuns} ${displayTeamLabel(homeTeam)}`
-  } catch {
-    return null
-  }
+  const score = readKnownGameScore(value)
+  return score ? `${displayTeamLabel(score.awayTeam)} ${score.awayRuns}-${score.homeRuns} ${displayTeamLabel(score.homeTeam)}` : null
 }
 
 function displayTeamLabel(team: string): string {
@@ -159,8 +146,12 @@ async function selectPlayerCandidate(response: ChatResponse, question: string, c
   await sendMessage(clarifiedQuestion)
 }
 
+const sourceDisplayLimits = reactive(new WeakMap<ChatResponse, number>())
 function visibleSources(response: ChatResponse): string[] {
-  return response.answer.source_urls.slice(0, 8)
+  return response.answer.source_urls.slice(0, sourceDisplayLimits.get(response) ?? 8)
+}
+function showMoreSources(response: ChatResponse) {
+  sourceDisplayLimits.set(response, (sourceDisplayLimits.get(response) ?? 8) + 8)
 }
 
 function visibleSuggestedQuestions(response: ChatResponse): string[] {
@@ -512,7 +503,7 @@ function toggleSidebar() {
               <div v-if="visibleSources(turn.assistant).length" class="result-section">
                 <details class="source-details">
                   <summary class="source-details__toggle">
-                    ソース ({{ visibleSources(turn.assistant).length }}件)
+                    ソース (全{{ turn.assistant.answer.source_urls.length }}件)
                   </summary>
                   <ul class="source-list">
                     <li v-for="url in visibleSources(turn.assistant)" :key="url">
@@ -522,6 +513,12 @@ function toggleSidebar() {
                       </a>
                     </li>
                   </ul>
+                  <button
+                    v-if="visibleSources(turn.assistant).length < turn.assistant.answer.source_urls.length"
+                    type="button"
+                    class="text-button source-more"
+                    @click="showMoreSources(turn.assistant)"
+                  >出典をさらに表示（残り{{ turn.assistant.answer.source_urls.length - visibleSources(turn.assistant).length }}件）</button>
                 </details>
               </div>
 
