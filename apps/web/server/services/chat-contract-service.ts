@@ -11,7 +11,7 @@ import { inferDataRequirements, chatExecutionRepositorySchema } from './chat-que
 import { searchCompleteEventEvidence, validateEventEvidence, verifyOfficialHomeRunTotal, EventEvidenceError } from './chat-event-evidence'
 import type { PlayerResolution } from './player-resolution'
 import type { SemanticRequest } from './chat-semantic-llm'
-import { formatContractStatistics } from './chat-statistic-answer'
+import { formatContractStatistics, formatTeamStatisticComparison } from './chat-statistic-answer'
 import { officialProfileMetricStats, searchOfficialCareerEvidence } from './chat-career-evidence'
 
 type SemanticParser = (message: string, context: { history?: ChatRequest['history'] }) => Promise<SemanticRequest>
@@ -178,7 +178,7 @@ export function createContractChatService(databaseService: ChatQueryService, par
     return chatResponseCoreSchema.parse({ ...first,
       structured_query: { ...first.structured_query, query_contract: contract }, results: merged,
       sources: responses.flatMap((response) => response.sources),
-      answer: { ...first.answer, summary: responses.map((response) => response.answer.summary).join('\n\n'),
+      answer: { ...first.answer, summary: formatTeamStatisticComparison(contract, merged.aggregates, responses.map((response) => response.answer.summary)) ?? responses.map((response) => response.answer.summary).join('\n\n'),
         result_count: responses.reduce((sum, response) => sum + response.answer.result_count, 0),
         source_urls: [...new Set(responses.flatMap((response) => response.answer.source_urls))],
         execution_metadata: first.answer.execution_metadata ? { ...first.answer.execution_metadata, query_contract: contract, data_requirements: requirementsForContract(contract) } : undefined,
@@ -243,7 +243,7 @@ async function latestVerifiedSeasonResponse(service: ChatQueryService, contract:
   if (!summary) return null
   return chatResponseCoreSchema.parse({ message, structured_query: null, results, sources: [], answer: {
     query_contract: contract, scope_fallback: { requested_year: requestedYear, evidence_year: latestYear, reason: 'latest_verified_npb_season', effective_contract: effective },
-    summary: `${profile.name.replace(/\s+/gu, '')}の${requestedYear}年度のNPB成績は確認できません。参考として、公式プロフィールで確認できる最終在籍年度（${latestYear}年）の記録です。\n${summary}`,
+    summary: `${profile.name.replace(/\s+/gu, '')}の${requestedYear}年度のNPB成績は確認できません。参考として、公式プロフィールで確認できる最終在籍年度（${latestYear}年）の記録です。${summary.replaceAll('\n', ' ')}`,
     result_count: 1, source_urls: [record.sourceUrl], resolved_player: player,
   } })
 }

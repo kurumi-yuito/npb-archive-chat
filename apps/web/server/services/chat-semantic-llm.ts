@@ -2,6 +2,7 @@ import { queryContractJsonSchema, queryContractSchema, z } from '@npb/schemas'
 import type { ChatQueryLlmConfig } from './chat-query-llm'
 import { ChatQueryParserUnavailableError } from './chat-query-parser'
 import type { ChatQueryParserContext } from './chat-query-parser-prompt'
+import { verifySemanticAlignment } from './chat-semantic-alignment'
 
 const policies = ['execute', 'clarify', 'news', 'realtime', 'prediction', 'capabilities', 'outside_npb', 'staff_information'] as const
 const reasons = ['missing_history', 'history_target_unavailable', 'insufficient_context', 'missing_year'] as const
@@ -38,10 +39,11 @@ const systemPrompt = [
   'For policy clarify use clarification_reason. subject is an optional literal phrase copied from the user message, never a generated fact. For execution query_contract must be present and domain npb.',
 ].join('\n')
 
-export function createSemanticQueryLlm(config: ChatQueryLlmConfig, dependencies: { fetch?: typeof fetch; timeoutMs?: number; onRequest?: () => void; onParsed?: (request: SemanticRequest) => void } = {}) {
+export function createSemanticQueryLlm(config: ChatQueryLlmConfig, dependencies: { fetch?: typeof fetch; timeoutMs?: number; onRequest?: () => void; onParsed?: (request: SemanticRequest) => void; onReview?: (review: { attempt: number; issues: string[] }) => void } = {}) {
   const fetchFn = dependencies.fetch ?? fetch
   return async (message: string, context: ChatQueryParserContext = {}): Promise<SemanticRequest> => {
     const signal = AbortSignal.timeout(dependencies.timeoutMs ?? 15_000)
+    const currentDate = japanDate()
     let feedback: string | undefined
     for (let attempt = 0; attempt < 2; attempt++) {
       dependencies.onRequest?.()
@@ -49,7 +51,7 @@ export function createSemanticQueryLlm(config: ChatQueryLlmConfig, dependencies:
         method: 'POST', signal,
         headers: { 'content-type': 'application/json', authorization: `Bearer ${config.apiKey}` },
         body: JSON.stringify({ model: config.model, temperature: 0, max_completion_tokens: 2500,
-          response_format: { type: 'json_schema', json_schema: { name: 'npb_semantic_request', strict: false, schema: {
+          response_format: { type: 'json_schema', json_schema: { name: 'npb_semantic_request', strict: true, schema: {
             type: 'object', additionalProperties: false,
             properties: {
               domain: { type: 'string', enum: ['npb', 'non_npb', 'undetermined'] },
@@ -61,8 +63,8 @@ export function createSemanticQueryLlm(config: ChatQueryLlmConfig, dependencies:
           } } },
           messages: [
             { role: 'system', content: systemPrompt },
-            { role: 'user', content: JSON.stringify({ current_date_jst: japanDate(), history: context.history ?? [], message }) },
-            ...(feedback ? [{ role: 'user', content: `The prior output did not satisfy the schema: ${feedback}. Preserve all meaning; correct only its representation.` }] : []),
+            { role: 'user', content: JSON.stringify({ current_date_jst: currentDate, history: context.history ?? [], message }) },
+            ...(feedback ? [{ role: 'user', content: `The prior output failed schema or semantic alignment validation: ${feedback}. Preserve the meaning of the original question and history; correct the representation and policy without inventing facts.` }] : []),
           ],
         }),
       }).catch((error) => { throw new ChatQueryParserUnavailableError(`Semantic parsing unavailable: ${String(error)}`) })
@@ -79,9 +81,16 @@ export function createSemanticQueryLlm(config: ChatQueryLlmConfig, dependencies:
         if (parsed.policy === 'clarify' && !parsed.clarification_reason) throw new Error('Clarification requires a reason')
         if (parsed.policy === 'clarify' && !parsed.query_contract?.unresolved_constraints.length) throw new Error('Clarification requires a semantic contract preserving known entities and output, with specific missing constraints. A named-player statistics request is executable; missing year/team and surname ambiguity are handled by product defaults and the official identity resolver.')
         if (parsed.subject && ![message, ...(context.history ?? []).map((item) => item.content)].some((text) => text.includes(parsed.subject!))) throw new Error('Subject must be copied from the conversation')
+        const alignmentIssues = await verifySemanticAlignment(config, { message, context, candidate: parsed, currentDate,
+          fetch: fetchFn, signal, onRequest: dependencies.onRequest })
+        dependencies.onReview?.({ attempt: attempt + 1, issues: alignmentIssues })
+        if (alignmentIssues.length) throw new Error(`Meaning does not match the question: ${alignmentIssues.join('; ')}`)
         dependencies.onParsed?.(parsed)
         return parsed
-      } catch (error) { feedback = String(error).slice(0, 1200) }
+      } catch (error) {
+        if (error instanceof ChatQueryParserUnavailableError) throw error
+        feedback = String(error).slice(0, 1200)
+      }
     }
     throw new ChatQueryParserUnavailableError(`Invalid semantic output: ${feedback}`)
   }

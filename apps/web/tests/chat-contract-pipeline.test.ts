@@ -11,6 +11,21 @@ const meaning = queryContractSchema.parse(oracle.meaning)
 const request = (contract: QueryContract) => ({ domain: 'npb' as const, policy: 'execute' as const, query_contract: contract, clarification_reason: null, subject: null })
 
 describe('semantic-only compilation and execution', () => {
+  it('plans a separate team aggregate for each subject club and retains both subjects in the answer contract', async () => {
+    const contract: QueryContract = { ...meaning, requested_output: [{ kind: 'batting_statistics', fields: ['batting_average'] }], predicates: [],
+      entities: [{ kind: 'team', role: 'subject', mention: '巨人' }, { kind: 'team', role: 'subject', mention: '阪神' }], completeness: { mode: 'all', limit: null } }
+    const query = { aggregateBattingLines: vi.fn(async (filters: { team: string }) => [{ kind: 'batting', label: filters.team, total: 2,
+      stats: { team: filters.team, subjectType: 'team', battingAverage: filters.team === '巨人' ? 0.3 : 0.2 } }]) }
+    const chat = createContractChatService(query as unknown as ChatQueryService, async () => request(contract))
+    const answer = await chat.answerQuestion('指定した2球団の打率比較')
+    expect(query.aggregateBattingLines).toHaveBeenCalledTimes(2)
+    expect(query.aggregateBattingLines).toHaveBeenCalledWith(expect.objectContaining({ team: '巨人', group_by: 'team' }))
+    expect(query.aggregateBattingLines).toHaveBeenCalledWith(expect.objectContaining({ team: '阪神', group_by: 'team' }))
+    expect(answer.answer.summary).toContain('巨人：チーム打率0.300')
+    expect(answer.answer.summary).toContain('阪神：チーム打率0.200')
+    expect(answer.answer.query_contract).toEqual(contract)
+    expect(answer.results.aggregates).toHaveLength(2)
+  })
   it('preserves a league expressed in competition scope as verified team-set filtering', async () => {
     const contract: QueryContract = { ...meaning, requested_output: [{ kind: 'batting_statistics', fields: ['home_runs'] }],
       entities: [], predicates: [], competition_scope: { level: 'unspecified', competitions: ['セ・リーグ'] },
@@ -141,22 +156,27 @@ describe('semantic-only compilation and execution', () => {
   })
 
   it('asks the provider only for semantic meaning, never a second physical filter interpretation', async () => {
-    const fetch = vi.fn().mockResolvedValue(new Response(JSON.stringify({ choices: [{ message: { content: JSON.stringify(request(meaning)) } }] })))
+    const fetch = vi.fn().mockResolvedValueOnce(new Response(JSON.stringify({ choices: [{ message: { content: JSON.stringify(request(meaning)) } }] })))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ choices: [{ message: { content: JSON.stringify({ equivalent: true, issues: [] }) } }] })))
     const parse = createSemanticQueryLlm({ baseUrl: 'https://example.test/v1', apiKey: 'test', model: 'test' }, { fetch })
     expect((await parse(oracle.question)).query_contract).toEqual(oracle.meaning)
     const body = JSON.parse(fetch.mock.calls[0]![1].body)
     expect(body.response_format.json_schema.schema.properties).not.toHaveProperty('filters')
     expect(body.response_format.json_schema.schema.properties).not.toHaveProperty('intent')
+    expect(body.response_format.json_schema.strict).toBe(true)
+    expect(fetch).toHaveBeenCalledTimes(2)
+    expect(JSON.parse(fetch.mock.calls[1]![1].body).response_format.json_schema.name).toBe('npb_semantic_alignment')
   })
 
   it('retries an incompatible metric predicate without executing or silently rewriting its meaning', async () => {
     const invalid = { ...meaning, predicates: [{ field: 'home_runs', operator: 'gt', value: 0 }] }
     const response = (value: unknown) => new Response(JSON.stringify({ choices: [{ message: { content: JSON.stringify(request(value as QueryContract)) } }] }))
     const fetch = vi.fn().mockResolvedValueOnce(response(invalid)).mockResolvedValueOnce(response(meaning))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ choices: [{ message: { content: JSON.stringify({ equivalent: true, issues: [] }) } }] })))
     const onRequest = vi.fn()
     const parse = createSemanticQueryLlm({ baseUrl: 'https://example.test/v1', apiKey: 'test', model: 'test' }, { fetch, onRequest })
     expect((await parse(oracle.question)).query_contract).toEqual(oracle.meaning)
-    expect(onRequest).toHaveBeenCalledTimes(2)
+    expect(onRequest).toHaveBeenCalledTimes(3)
     expect(JSON.parse(fetch.mock.calls[1]![1].body).messages.at(-1).content).toContain('individual play')
   })
 })

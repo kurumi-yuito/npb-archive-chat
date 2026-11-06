@@ -263,7 +263,7 @@ export const aggregateBattingFiltersSchema = searchBattingLinesFiltersSchema.omi
   limit: true,
 }).extend({
   limit: z.number().int().positive().max(100).optional(),
-  group_by: z.enum(['player', 'year']).optional(),
+  group_by: z.enum(['player', 'team', 'year']).optional(),
   sort_by: z.enum(['hits', 'atBats', 'homeRuns', 'runsBattedIn', 'stolenBases', 'walks', 'strikeouts', 'battingAverage', 'ops', 'isoP', 'bbRate', 'games']).optional(),
 })
 

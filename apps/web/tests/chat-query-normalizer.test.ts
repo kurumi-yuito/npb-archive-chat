@@ -1,4 +1,6 @@
 import { describe, expect, it } from 'vitest'
+import { readFileSync } from 'node:fs'
+import { queryContractSchema } from '@npb/schemas'
 import {
   normalizeChatStructuredQuery,
   normalizeFreeText,
@@ -7,6 +9,14 @@ import {
 } from '../server/services/chat-query-normalizer'
 
 describe('chat-query-normalizer', () => {
+  it('keeps all-record completeness separate from a legacy default display limit', () => {
+    const contract = queryContractSchema.parse(JSON.parse(readFileSync(new URL('../../../docs/eval-query-contracts.json', import.meta.url), 'utf8')).cases[0].meaning)
+    const query = { intent: 'aggregate_batting' as const, filters: { player_name: '検証太郎', year: 2025 } }
+    expect(normalizeChatStructuredQuery(query).filters).toHaveProperty('limit', 10)
+    const all = normalizeChatStructuredQuery({ ...query, query_contract: contract })
+    expect(all.filters).not.toHaveProperty('limit')
+    expect(all.query_contract).toEqual(contract)
+  })
   it('does not perform semantic team alias resolution during text normalization', () => {
     expect(normalizeTeamName('千葉ロッテマリーンズ')).toBe('千葉ロッテマリーンズ')
     expect(normalizeTeamName('オリックス・バッファローズ')).toBe('オリックス・バッファローズ')

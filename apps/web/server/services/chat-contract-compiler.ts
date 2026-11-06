@@ -56,6 +56,13 @@ export function subjectNameField(intent: ChatStructuredQuery['intent']): string 
 /** The semantic contract is the only input. No natural-language keyword routing. */
 export function compileQueryContract(contract: QueryContract): ContractOperation[] {
   if (contract.unresolved_constraints.length) throw new QueryContractCompileError(['unresolved_constraints'])
+  const subjectTeams = contract.entities.filter((entity) => entity.kind === 'team' && entity.role === 'subject')
+  if (subjectTeams.length > 1 && contract.requested_output.every((output) => output.kind === 'batting_statistics') &&
+    !contract.entities.some((entity) => entity.kind === 'player')) {
+    if (contract.grouping.length && (contract.grouping.length !== 1 || contract.grouping[0] !== 'team')) throw new QueryContractCompileError(['conflicting_team_comparison_grouping'])
+    return subjectTeams.flatMap((team) => compileQueryContract({ ...contract,
+      entities: contract.entities.filter((entity) => !subjectTeams.includes(entity) || entity === team), grouping: ['team'] }))
+  }
   if (contract.temporal_scope.relative && contract.temporal_scope.relative !== 'career' && !contract.temporal_scope.years.length && contract.temporal_scope.year_from === null && contract.temporal_scope.date_from === null) {
     throw new QueryContractCompileError(['relative_time_not_resolved'])
   }

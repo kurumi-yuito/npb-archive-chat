@@ -287,6 +287,8 @@ function normalizeLookupKey(value: string): string {
 /** Preserve semantic intent independently of normalization of repository filters. */
 export function normalizeChatStructuredQuery(structuredQuery: ChatStructuredQuery): ChatStructuredQuery {
   const normalized = normalizeLegacyStructuredQuery(structuredQuery)
+  if (structuredQuery.query_contract?.completeness.mode === 'all' &&
+    !('limit' in structuredQuery.filters) && 'limit' in normalized.filters) delete normalized.filters.limit
   return structuredQuery.query_contract
     ? chatStructuredQuerySchema.parse({ ...normalized, query_contract: structuredQuery.query_contract })
     : normalized

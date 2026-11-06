@@ -31,6 +31,7 @@ export async function aggregateBattingLines(
   const normalized = aggregateBattingFiltersSchema.parse(filters)
   const official = await aggregateOfficialBattingSeason(database, normalized)
   if (official !== null) return official
+  if (normalized.group_by === 'team') return []
   const groupByYear = normalized.group_by === 'year'
   const careerPlayerQuery = (normalized.player_name || normalized.player_id) &&
     !normalized.year && !normalized.year_from && !normalized.year_to

@@ -47,5 +47,5 @@ export async function aggregateOfficialPitchingSeason(database: QueryDatabase, f
     if (typeof right !== 'number') return -1
     return direction * (left - right) || a.label.localeCompare(b.label, 'ja')
   })
-  return result.slice(0, filters.limit ?? 10)
+  return filters.limit === undefined ? result : result.slice(0, filters.limit)
 }

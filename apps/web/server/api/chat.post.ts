@@ -187,6 +187,7 @@ export default defineEventHandler(async (event) => withD1ReadAudit(async () => {
         ? createContractChatService(queryService, createSemanticQueryLlm(chatQueryLlmConfig, {
           onRequest: () => { openAiCalls.planner += 1 },
           onParsed: (request) => console.info('[chat-semantic-contract]', JSON.stringify({ caseId: getHeader(event, 'user-agent'), ...request })),
+          onReview: (review) => console.info('[chat-semantic-alignment]', JSON.stringify({ caseId: getHeader(event, 'user-agent'), ...review })),
         }))
         : createChatService(queryService, {
         parseStructuredQueryFromMessage: async (...args) => {
@@ -266,7 +267,7 @@ export default defineEventHandler(async (event) => withD1ReadAudit(async () => {
       })
     }
     if (error instanceof ChatQueryParserUnavailableError) {
-      throw createPublicApiError(503, 'chat_llm_unavailable', error.message)
+      throw createPublicApiError(503, 'chat_llm_unavailable', '質問の意味を確認できませんでした。時間をおいて再度お試しください。')
     }
     if (error instanceof Error && error.message.includes('not set')) {
       throw createPublicApiError(503, 'missing_env', error.message)

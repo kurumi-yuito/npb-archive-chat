@@ -13,19 +13,20 @@ export async function aggregateOfficialBattingSeason(database: QueryDatabase, fi
   if (filters.level === 'farm' && !filters.team) return null
   if (!year || filters.game_date || filters.date_from || filters.date_to || filters.game_id || filters.batting_order || filters.position || filters.result_text_contains || filters.recent || filters.group_by === 'year') return null
   if ((filters.player_name || filters.player_names?.length) && !filters.player_id && !filters.player_ids?.length) return null
-  if (!filters.player_id && !filters.player_ids?.length && ['battingAverage', 'ops'].includes(filters.sort_by ?? '')) return null
+  if (filters.group_by !== 'team' && !filters.player_id && !filters.player_ids?.length && ['battingAverage', 'ops'].includes(filters.sort_by ?? '')) return null
   const evidence = await readOfficialStatisticSeason(database, filters, 'batting')
   if (!evidence) return null
   const { byId, rows } = evidence
   const playerIds = new Set([...(filters.player_ids ?? []), ...(filters.player_id ? [filters.player_id] : [])])
-  type Group = { name: string; playerId: string | null; teams: Set<string>; urls: Set<string>; stats: Record<string, number | null> }
+  type Group = { name: string; playerId: string | null; teams: Set<string>; urls: Set<string>; stats: Record<string, number | null>; records: number }
   const groups = new Map<string, Group>()
   for (const row of rows) {
     if (playerIds.size && (!row.player_id || !playerIds.has(row.player_id))) continue
     const source = byId.get(row.snapshot_id)!
-    const key = row.player_id ?? `${row.snapshot_id}:${row.row_index}`
+    const key = filters.group_by === 'team' ? `team:${source.team_name}` : row.player_id ?? `${row.snapshot_id}:${row.row_index}`
     let group = groups.get(key)
-    if (!group) { group = { name: row.player_name, playerId: row.player_id, teams: new Set(), urls: new Set(), stats: {} }; groups.set(key, group) }
+    if (!group) { group = { name: filters.group_by === 'team' ? source.team_name : row.player_name, playerId: filters.group_by === 'team' ? null : row.player_id, teams: new Set(), urls: new Set(), stats: {}, records: 0 }; groups.set(key, group) }
+    group.records += 1
     group.teams.add(source.team_name)
     group.urls.add(source.source_url)
     const metrics: unknown = JSON.parse(row.metrics_json)
@@ -49,9 +50,16 @@ export async function aggregateOfficialBattingSeason(database: QueryDatabase, fi
     stats.ops = typeof stats.onBasePercentage === 'number' && typeof stats.sluggingPercentage === 'number' ? stats.onBasePercentage + stats.sluggingPercentage : null
     stats.isoP = typeof stats.sluggingPercentage === 'number' && typeof stats.battingAverage === 'number' ? stats.sluggingPercentage - stats.battingAverage : null
     stats.bbRate = divide(group.stats.walks, group.stats.plateAppearances)
-    return { kind: 'batting', label: group.name, total: group.stats.games!, stats }
+    if (filters.group_by === 'team') {
+      // Summed player appearances do not establish the number of team games.
+      stats.games = null
+      stats.subjectType = 'team'
+      stats.playerName = null
+      stats.playerRecords = group.records
+    }
+    return { kind: 'batting', label: group.name, total: filters.group_by === 'team' ? group.records : group.stats.games!, stats }
   })
   const field = filters.sort_by ?? 'hits'
   result.sort((a, b) => Number(b.stats[field] ?? -Infinity) - Number(a.stats[field] ?? -Infinity) || a.label.localeCompare(b.label, 'ja'))
-  return result.slice(0, filters.limit ?? 10)
+  return filters.limit === undefined ? result : result.slice(0, filters.limit)
 }
