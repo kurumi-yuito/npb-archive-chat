@@ -6,6 +6,7 @@ import type { ChatCapabilityIntent, ChatCapabilityRoute } from './chat-capabilit
 export const chatDataRequirementSchema = z.enum([
   'player_profiles',
   'official_statistics',
+  'official_team_statistics',
   'events',
   'games',
   'batting_lines',

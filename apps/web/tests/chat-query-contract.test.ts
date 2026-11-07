@@ -30,6 +30,15 @@ describe('independent semantic contract', () => {
     expect(validateQueryContractExecution(meaning, { ...query, filters: { ...query.filters, result_text_contains: undefined } }, requirementsForContract(meaning))).toContain('predicate_not_preserved:result_text')
   })
 
+  it('preserves the original 本塁打 predicate while checking its canonical search vocabulary', () => {
+    const contract = { ...meaning, predicates: [{ field: 'result_text', operator: 'contains' as const, value: '本塁打' }] }
+    const normalized = normalizeChatStructuredQuery({ ...query, query_contract: contract, filters: { ...query.filters, result_text_contains: '本塁打' } })
+    expect(normalized.query_contract?.predicates[0]?.value).toBe('本塁打')
+    expect(normalized.filters).toMatchObject({ result_text_contains: 'ホームラン' })
+    expect(validateQueryContractExecution(contract, normalized, requirementsForContract(contract))).toEqual([])
+    expect(validateQueryContractExecution(contract, { ...query, filters: { ...query.filters, result_text_contains: '二塁打' } }, requirementsForContract(contract))).toContain('predicate_not_preserved:result_text')
+  })
+
   it('accepts equivalent single-year bounds and date ordering without discarding constraints', () => {
     const equivalent = {
       ...meaning,

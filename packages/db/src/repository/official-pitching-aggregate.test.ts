@@ -33,6 +33,10 @@ describe('official season pitching evidence', () => {
       expect(await aggregateOfficialPitchingSeason(query, { year: 2026, team: 'ソフトバンク', pitcher_player_id: 'pitcher-a', date_from: '2026-05-01' })).toBeNull()
       const ordered = await aggregateOfficialPitchingSeason(query, { year: 2026, team: 'ソフトバンク', pitcher_player_ids: ['pitcher-a', 'pitcher-b'], sort_by: 'inningsPitched' })
       expect(ordered!.map((entry) => entry.stats.playerId)).toEqual(['pitcher-a', 'pitcher-b'])
+      const wins = await aggregateOfficialPitchingSeason(query, { year: 2026, team: 'ソフトバンク', sort_by: 'wins' })
+      expect(wins).toHaveLength(2)
+      expect(wins!.every((entry) => entry.stats.wins === 1 && entry.stats.evidenceStatus === 'official_complete_scope')).toBe(true)
+      expect(await aggregateOfficialPitchingSeason(query, { year: 2026, team: 'ソフトバンク', sort_by: 'era' })).toBeNull()
     } finally { database.close() }
   })
 })

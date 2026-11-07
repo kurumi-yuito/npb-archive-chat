@@ -14,6 +14,7 @@ import type { SemanticRequest } from './chat-semantic-llm'
 import { formatContractStatistics, formatTeamStatisticComparison } from './chat-statistic-answer'
 import { officialProfileMetricStats, searchOfficialCareerEvidence } from './chat-career-evidence'
 import { searchOpponentStarters } from './chat-appearance-context'
+import { formatContractTeamStatistics } from './chat-team-statistic-answer'
 
 type SemanticParser = (message: string, context: { history?: ChatRequest['history'] }) => Promise<SemanticRequest>
 type ResolvedEntity = { entity: QueryContract['entities'][number]; resolution: PlayerResolution }
@@ -65,7 +66,8 @@ export function createContractChatService(databaseService: ChatQueryService, par
       const opponentStarterRequested = operation.output.kind === 'pitching_records' && operation.output.fields.includes('opponentStarter')
       // Identity IDs are additional proof; the original mention and scopes remain unchanged.
       const available = operation.output.kind === 'player_information'
-        ? ['player_profiles', 'source_snapshots'] as const : inferDataRequirements(query)
+        ? ['player_profiles', 'source_snapshots'] as const : operation.output.kind === 'team_statistics'
+          ? ['official_team_statistics', 'source_snapshots'] as const : inferDataRequirements(query)
       const issues = validateQueryContractExecution(operationContract, query, [...available, ...(opponentStarterRequested ? ['game_details', 'events'] as const : [])])
       if (issues.length) throw new QueryContractCompileError(issues)
       const results = emptyResults()
@@ -112,6 +114,12 @@ export function createContractChatService(databaseService: ChatQueryService, par
         ...results.events.map((row) => row.gameId), ...results.games.map((row) => row.gameId),
         ...results.batting.map((row) => row.gameId), ...results.pitching.map((row) => row.gameId),
         ...results.roster.map((row) => row.gameId), ...results.affiliations.map((row) => row.gameId), ...results.gameDetails.map((row) => row.gameId),
+        ...results.aggregates.flatMap((row) => {
+          if (typeof row.stats.evidenceGameIds !== 'string') return []
+          const ids: unknown = JSON.parse(row.stats.evidenceGameIds)
+          if (!Array.isArray(ids) || !ids.every((id) => typeof id === 'string')) throw new QueryContractCompileError(['invalid_game_aggregate_evidence'])
+          return ids as string[]
+        }),
       ])].filter((id): id is string => typeof id === 'string' && !id.startsWith('bis:'))
       const sources: ChatResponseCore['sources'] = []
       for (let start = 0; start < gameIds.length; start += 100) {
@@ -127,10 +135,11 @@ export function createContractChatService(databaseService: ChatQueryService, par
         return parsed.success ? [parsed.data] : []
       })
       if (operation.output.kind === 'player_information') metadata.dataRequirements = ['player_profiles', 'official_statistics', 'source_snapshots']
+      if (operation.output.kind === 'team_statistics') metadata.dataRequirements = ['official_team_statistics', 'source_snapshots']
       if (career) metadata.dataRequirements = ['player_profiles', 'official_statistics', 'source_snapshots']
       if (results.aggregates.some((row) => row.stats.evidenceStatus === 'official_complete_scope')) metadata.dataRequirements = ['official_statistics', 'source_snapshots']
       const profileAffiliation = results.affiliations.some((row) => row.sourceKind === 'official_profile')
-      const statisticSummary = formatContractStatistics({ contract: operationContract, query, rows: results.aggregates, playerName: player?.name ?? undefined,
+      const statisticSummary = operation.output.kind === 'team_statistics' ? formatContractTeamStatistics(operationContract, results.aggregates) : formatContractStatistics({ contract: operationContract, query, rows: results.aggregates, playerName: player?.name ?? undefined,
         careerVerified: career?.verified, asOf: career?.basisText })
       const answer: ChatResponseCore['answer'] = statisticSummary !== null ? {
         summary: statisticSummary, result_count: results.aggregates.length,
@@ -208,7 +217,9 @@ export function createContractChatService(databaseService: ChatQueryService, par
     return chatResponseCoreSchema.parse({ ...first,
       structured_query: { ...first.structured_query, query_contract: contract }, results: merged,
       sources: responses.flatMap((response) => response.sources),
-      answer: { ...first.answer, summary: formatTeamStatisticComparison(contract, merged.aggregates, responses.map((response) => response.answer.summary)) ?? responses.map((response) => response.answer.summary).join('\n\n'),
+      answer: { ...first.answer, summary: contract.requested_output.every((output) => output.kind === 'team_statistics')
+        ? formatContractTeamStatistics(contract, merged.aggregates)
+        : formatTeamStatisticComparison(contract, merged.aggregates, responses.map((response) => response.answer.summary)) ?? responses.map((response) => response.answer.summary).join('\n\n'),
         resolved_player: identities.length === 1 ? identities[0]!.resolution : null,
         result_count: responses.reduce((sum, response) => sum + response.answer.result_count, 0),
         source_urls: [...new Set(responses.flatMap((response) => response.answer.source_urls))],
@@ -277,10 +288,10 @@ async function latestVerifiedSeasonResponse(service: ChatQueryService, contract:
   if (unresolved.resolution.status !== 'not_found' || requestedYear !== currentYear || contract.entities.filter((entity) => entity.kind === 'player').length !== 1 ||
     contract.entities.some((entity) => entity.kind !== 'player' && !(entity.kind === 'team' && entity.role === 'subject')) ||
     contract.requested_output.length !== 1 || !output || !['batting_statistics', 'pitching_statistics'].includes(output.kind) ||
-    time.date_from !== null || time.date_to !== null || time.relative !== null || contract.predicates.length ||
+    time.date_from !== null || time.date_to !== null || (time.relative !== null && time.relative !== 'current_season') || contract.predicates.length ||
     contract.competition_scope.level === 'farm' || contract.competition_scope.competitions.length) return null
   const historicalContract: QueryContract = { ...contract, requested_output: [{ kind: 'player_information', fields: ['name'] }],
-    temporal_scope: { ...time, years: [], year_from: null, year_to: null } }
+    temporal_scope: { ...time, years: [], year_from: null, year_to: null, relative: null } }
   const historical = (await resolveContractPlayers(service, historicalContract))[0]
   if (!historical || historical.resolution.status !== 'resolved' || !historical.resolution.player_id) return null
   const player = historical.resolution
@@ -297,7 +308,7 @@ async function latestVerifiedSeasonResponse(service: ChatQueryService, contract:
   const team = identityFiltersForContract(contract).team
   if (team && (!record.team || !matchesGameTeamFilter(record.team, team))) return null
   if (!Number.isInteger(stats.games) || stats.games! < 0) return null
-  const effective: QueryContract = { ...contract, temporal_scope: { ...time, years: [latestYear], year_from: null, year_to: null } }
+  const effective: QueryContract = { ...contract, temporal_scope: { ...time, years: [latestYear], year_from: null, year_to: null, relative: null } }
   const operations = compileQueryContract(effective)
   if (operations.length !== 1) return null
   const query = applyResolvedIds(operations[0]!.query, [historical])

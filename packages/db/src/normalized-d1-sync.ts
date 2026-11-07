@@ -22,6 +22,8 @@ const DEFAULT_NORMALIZED_MIGRATIONS_DIR = path.resolve(
 )
 
 const LEGACY_MERGE_TABLES = [
+  'official_team_history_snapshots',
+  'official_team_seasons',
   'official_statistic_snapshots',
   'official_player_statistics',
   'games',
@@ -44,6 +46,8 @@ const LEGACY_MERGE_TABLES = [
 ] as const
 
 const NORMALIZED_IMPORT_TABLES = [
+  'official_team_history_snapshots',
+  'official_team_seasons',
   'official_statistic_snapshots',
   'official_player_statistics',
   'teams',

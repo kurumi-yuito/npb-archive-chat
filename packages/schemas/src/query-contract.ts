@@ -1,6 +1,6 @@
 import { z } from 'zod'
 
-const outputKinds = ['player_information', 'event_records', 'game_results', 'game_details', 'appearance_records', 'batting_records', 'pitching_records', 'batting_statistics', 'pitching_statistics', 'fielding_statistics', 'affiliations', 'roster', 'awards'] as const
+const outputKinds = ['player_information', 'event_records', 'game_results', 'game_details', 'team_statistics', 'appearance_records', 'batting_records', 'pitching_records', 'batting_statistics', 'pitching_statistics', 'fielding_statistics', 'affiliations', 'roster', 'awards'] as const
 const scalar = z.union([z.string(), z.number(), z.boolean()])
 const year = z.number().int().min(1936).max(2200)
 const date = z.string().regex(/^\d{4}-\d{2}-\d{2}$/)

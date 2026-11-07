@@ -117,6 +117,6 @@ function canonicalSurnameWithSeasonTeamSql(factName: string, factYearColumn: str
   )`
 }
 
-function normalizedIdentitySql(column: string): string {
+export function normalizedIdentitySql(column: string): string {
   return `LOWER(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(COALESCE(${column}, ''), ' ', ''), char(12288), ''), '*', ''), '＊', ''), '+', ''), '＋', ''), '﨑', '崎'), '髙', '高'), '濵', '浜'))`
 }

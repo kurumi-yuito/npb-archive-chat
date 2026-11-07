@@ -270,6 +270,7 @@ export const aggregateBattingFiltersSchema = searchBattingLinesFiltersSchema.omi
 export const aggregatePitchingFiltersSchema = searchPitchingLinesFiltersSchema.omit({
   limit: true,
 }).extend({
+  group_by: z.literal('player').optional(),
   limit: z.number().int().positive().max(100).optional(),
   sort_by: z.enum(['era', 'whip', 'strikeouts', 'wins', 'saves', 'games', 'inningsPitched', 'hitsAllowed', 'walks', 'earnedRuns']).optional(),
   min_innings_per_start: z.number().nonnegative().optional(),
@@ -285,6 +286,10 @@ export const aggregateEventsFiltersSchema = searchEventsFiltersSchema.omit({
 })
 
 export const aggregateGamesFiltersSchema = z.object({
+  official_season: z.boolean().optional(),
+  group_by: z.enum(['team', 'year']).optional(),
+  sort_by: z.enum(['games', 'wins', 'losses', 'draws', 'winRate', 'rank', 'battingAverage', 'homeRuns', 'era']).optional(),
+  sort_direction: z.enum(['asc', 'desc']).optional(),
   date_from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   date_to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   game_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),

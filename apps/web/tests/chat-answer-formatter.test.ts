@@ -5,6 +5,19 @@ import { formatChatAnswer } from '../server/services/chat-answer-formatter'
 import type { ChatExecutionMetadata } from '../server/services/chat-query-plan'
 
 describe('chat-answer-formatter', () => {
+  it('keeps the requested date and matchup when game evidence is missing, without claiming cancellation or nonexistence', () => {
+    for (const intent of ['search_games', 'game_detail'] as const) {
+      const answer = formatChatAnswer({ question: '対象試合を確認して',
+        structuredQuery: { intent, filters: { game_date: '2025-06-10', team: '巨人', opponent: '阪神' } },
+        results: emptyResults(), sources: [] })
+      expect(answer.summary).toContain('2025年6月10日')
+      expect(answer.summary).toContain('巨人対阪神')
+      expect(answer.summary).toContain('収録データから確認できません')
+      expect(answer.summary).toContain('試合がなかったとは断定できません')
+      expect(answer.source_urls).toEqual([])
+      expect(answer.result_count).toBe(0)
+    }
+  })
   it('does not turn unknown archived scores into a zero-zero draw', () => {
     const results = emptyResults()
     results.games = [{ gameId: 'sample', date: '2016-04-01', awayTeamName: '検証A', homeTeamName: '検証B', venue: '検証球場', matchupText: '検証A 対 検証B',

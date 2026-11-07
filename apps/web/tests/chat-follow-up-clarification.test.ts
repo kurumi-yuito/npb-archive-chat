@@ -6,6 +6,9 @@ import { createChatPlanner } from '../server/services/chat-planner'
 import { validateChatPlannerOutput } from '../server/services/chat-planner-validator'
 
 describe('follow-up clarification contract', () => {
+  it.each(['5月の本塁打ランキング', 'オリックス対ロッテの8月の対戦成績', '１１月３日の結果'])('does not require a year solely because the calendar question omits one: %s', (message) => {
+    expect(clarificationForUnresolvedFollowUp(message)).toBeNull()
+  })
   it.each([
     ['調べなおして', undefined, 'missing_history'],
     ['違う、その前のやつ', undefined, 'missing_history'],

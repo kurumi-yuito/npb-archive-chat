@@ -44,9 +44,11 @@ describe('inclusive date scope across source adapters', () => {
           const batting = await aggregateBattingLines(query, filters)
           expect(batting.length).toBeGreaterThan(0)
           expect(batting.every((row) => row.total === 1)).toBe(true)
+          expect(batting.every((row) => JSON.stringify(JSON.parse(String(row.stats.evidenceGameIds))) === JSON.stringify(['r20250815b-l-17']))).toBe(true)
           const gamesTotal = await aggregateGameResults(query, filters)
           expect(gamesTotal.length).toBeGreaterThan(0)
           expect(gamesTotal.every((row) => row.total === 1)).toBe(true)
+          expect(gamesTotal.every((row) => JSON.stringify(JSON.parse(String(row.stats.evidenceGameIds))) === JSON.stringify(['r20250815b-l-17']))).toBe(true)
           expect(await searchGames(query, { date_from: '2025-08-16', date_to: '2025-08-31' })).toEqual([])
           expect(await searchGames(query, { date_from: '2025-08-15', date_to: '2025-08-15' })).toHaveLength(1)
         } finally { database.close() }

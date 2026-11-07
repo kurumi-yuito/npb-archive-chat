@@ -6,16 +6,16 @@ import { readOfficialStatisticSeason } from './official-statistic-scope'
 const counts = { games: '登板', wins: '勝利', losses: '敗北', saves: 'セーブ', strikeouts: '三振', hitsAllowed: '安打', homeRunsAllowed: '本塁打', walks: '四球', hitBatters: '死球', earnedRuns: '自責点', runsAllowed: '失点', battersFaced: '打者' } as const
 
 export async function aggregateOfficialPitchingSeason(database: QueryDatabase, filters: AggregatePitchingFilters): Promise<AggregateRow[] | null> {
-  // A named player's season has no league qualification ambiguity. League ERA
-  // leaderboards require separately verified qualification rules/sources.
+  // Counting-stat leaderboards need no innings qualification. League ERA/WHIP
+  // leaderboards still require separately verified qualification rules.
   const ids = new Set([...(filters.pitcher_player_ids ?? []), ...(filters.pitcher_player_id ? [filters.pitcher_player_id] : [])])
-  if (!ids.size || filters.game_date || filters.date_from || filters.date_to || filters.game_id || filters.recent || filters.min_innings_per_start !== undefined || filters.max_earned_runs_per_start !== undefined || filters.max_runs_per_start !== undefined) return null
+  if ((!ids.size && ['era', 'whip'].includes(filters.sort_by ?? '')) || filters.game_date || filters.date_from || filters.date_to || filters.game_id || filters.recent || filters.min_innings_per_start !== undefined || filters.max_earned_runs_per_start !== undefined || filters.max_runs_per_start !== undefined) return null
   const evidence = await readOfficialStatisticSeason(database, filters, 'pitching')
   if (!evidence) return null
   type Group = { name: string; playerId: string; teams: Set<string>; urls: Set<string>; outs: number; stats: Record<string, number | null> }
   const groups = new Map<string, Group>()
   for (const row of evidence.rows) {
-    if (!row.player_id || !ids.has(row.player_id)) continue
+    if (!row.player_id || (ids.size && !ids.has(row.player_id))) continue
     const source = evidence.byId.get(row.snapshot_id)!
     let group = groups.get(row.player_id)
     if (!group) { group = { name: row.player_name, playerId: row.player_id, teams: new Set(), urls: new Set(), outs: 0, stats: {} }; groups.set(row.player_id, group) }

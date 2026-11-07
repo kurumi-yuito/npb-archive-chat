@@ -1,0 +1,4 @@
+# Captured official pages retain the exact bytes hashed in their source sidecars.
+packages/parser/src/__fixtures__/bis-player-nested-innings.html -text whitespace=-blank-at-eol,cr-at-eol
+packages/parser/src/__fixtures__/bis-team-yearly-giants.html -text whitespace=-blank-at-eol,cr-at-eol
+packages/parser/src/__fixtures__/bis-team-yearly-hawks.html -text whitespace=-blank-at-eol,cr-at-eol

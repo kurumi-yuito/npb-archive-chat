@@ -185,3 +185,76 @@
 - 既存team_yearly_statsの24行は外側のレイアウト表を1行に平坦化しておりstat_yearがnullだった。球団勝敗・順位の検索基盤として採用できず、表解析・検証済み取得/更新・公開と検索への接続を今後修正する。
 - 最新の型チェック成功、lint 0 errors / 148 warnings。Cloudflareビルドと全体テストは進行中。最初の全体実行は626 Pass / 3 Fail / 65 Skippedで、評価用サーバーのlistenがサンドボックスでEPERMになったため、同じ全体テストを許可された制限外環境で再実行している。失敗をPassへ算入していない。
 - 制限外での同じ全体テストは629 Pass / 65 Skipped、83ファイルPass / 2ファイルSkippedで完了。`/tmp/npb-appearance-final-full-tests-unsandboxed.log`。最新の型チェックもexit 0、lintは0 errors / 148 warnings。ビルドは進行中で、完成後にWorker APIとUIの版を揃えて検証する。
+
+## 2026-11-06 球団公式成績・表の回帰・検索量の継続修正
+
+- 再開用コミット `1dbb1400a` を作成。その版のビルドは成功し、隔離APIのB09/B11は2 Pass。`qa-acceptance-B09_B11-1793946736497.json`。ただし全47ターンは15 Pass / 32 Fail / 0未実行、`qa-acceptance-all-1793946931032.json`。公開・Release Readyの条件は満たさない。
+- 同版のUI全件表示試験はFail。12球団の出典を展開できた後、本塁打一覧のAPIが503になった。元の契約の「本塁打」を検索用の「ホームラン」に正規化した後、同義語を許さない比較で拒否していたため。元の語は契約に保持し、同じ正規化関数を用いて実行条件を照合するよう修正した。別の記録への変更は引き続き拒否する。
+- 「今季」のcanonical relativeを導入した際、最終NPB年度の補足処理がrelative=nullしか受け付けず、大谷・山本・村上等で回帰していた。current_seasonも同じ既存補足仕様に通し、補足先の契約ではrelativeを消して明示年を保持する。元の要求はscope_fallbackで保存する。関連30テストPass。
+- 受入判定は運用ルールが許す空白・改行差を共通正規化してから照合する。期待する選手・数値・相手先発は変更していない。別選手や相手先発の欠落はFailとなる負例も追加した。受入runnerの開発用user-idヘッダーを削除した。
+- 公式球団履歴に専用のスナップショット・年度行を追加（legacy migration 0013、normalized 0005）。原本、実リンクによる発見、元の取得日時、基準時点、ハッシュ、春秋等の期名を保持する。更新CLIは明示したローカルstaging DBへ取得し、公開とは分離する。未確認の旧勝率計算に合わせて数字を変更しない。
+- `team_statistics`契約を追加。球団勝敗・勝率・順位を、個別投手や部分的な試合一覧へ代替しない。公式年度ソースを選ぶ検索計画と、数値・球団・年度・重複・出典を確認する決定的な回答を接続した。表全体の収録確認ができない場合、部分試合から年度値を回答しない。球団間・年度間比較と順位昇順を扱う。
+- 12球団・948期を独立した表解析と照合し、`team-history-source-import.json`へ保存。公開差分は `049c4da0-9739-4381-83f0-d597c63fa6ce` → `56b62852-4987-4d64-aa98-6e26a5a47da6`、12スナップショット・948行の追加のみ、更新・削除0件、SQL適用と外部キー/内容照合のリハーサルPass。`data/staging/redesign-20261104/team-history/`へSQL・manifest・source DB・rehearsal DBとハッシュを保存した。本番未反映。
+- 共通HTML解析の「内側の表だけを選ぶ」初案は、投球回の分数表示用テーブルを含む外側の投手表まで落とす回帰があり、全プロフィール原本監査で検出した。表の列構造からレイアウト表とデータ表を区別するよう修正。実際の公式ページをfixtureにし、Q188も追加した。Q188のAは未実行のまま。
+- 修正後の全原本再監査は4,428プロフィール、38,060年度行、6,222通算欄、72公式成績ソース、12ロスターでPass。`source-audit-after-nested-table-fix/receipt.json`。監査用に作成した別分岐の世代 `0d4da37e-4a33-426e-b0ee-a801b56dfef5` は公開チェーンに採用しない。現在の候補は56b62852のまま。12球団・948期もverify-onlyで再監査Pass。
+- この段階の全体640 Pass / 65 Skipped、型チェック成功、lint 0 errors / 148 warnings。`/tmp/npb-team-history-nested-fix-full-tests.log`等。その後、複合groupingと検索量の修正があるため、この件数をさらに後の版の全体結果とはしない。
+- 保存した実モデルの6解釈をread-only候補DBで実行したところ、球団別・年度別の複合groupingが失敗した。公式ソースの各行が元々球団・期を保持することを検索計画で表現し、同じ保存解釈で6件とも実行可能になった。単なる返答成功を独立8工程評価のPassと数えない。`team-history-before-multi-group-fix.json`と`team-history-captured-local-replay.json`。
+- 旧隔離APIのB09は1,845,546行、B11は653,243行を読み取っていた。個別出場検索にも既存の候補辞書prefilterを適用し、年度・球団・曖昧性の完全な照合は後段に残した。native SQLiteでは返却行が修正前と完全一致し、事実表の全走査からID/名前index検索へ移ることを確認。`appearance-candidate-query-plan.json`。修正後D1実行時の読み取り量はまだ未測定。
+- ビルド中の追加変更を避けるため、前のビルドを明示的に中断し、上記2修正後の全体テスト・型・lint・ビルドを `/tmp/npb-team-scope-candidate-final-*` で実行中。隔離Workerは停止中。次回起動時のローカル検索DBには56b62852世代・12球団履歴・948行を反映済み。正式本番QAは未実施。
+- 2026年度は公式年度集計と試合/詳細データの収録範囲も別途監査中。`/tmp/npb-official-coverage-2026/`、ログ`/tmp/npb-official-coverage-2026.log`。差分や欠損を確認せず、年度の勝敗・順位・月間ランキングを部分データで確定しない。
+
+
+## 2026-11-06 最新隔離環境の検証と2026年度追加差分
+
+- 最新ソースは全体642 Pass / 65 Skipped（85ファイルPass、2ファイルSkipped）。型チェック成功、lint 0 errors / 148 warnings、Cloudflareビルド成功。`data/logs/redesign-20261102/metric-clean-e2e-final-tests.log`、`metric-clean-e2e-final-build.log`。SkippedはPassに含めない。
+- 同一ビルドの隔離Workerで正式受入全47ターンを実行し、20 Pass / 27 Fail / 0未実行。`data/logs/qa-acceptance-all-1793954548376.json`。読み取り総量857,158行、不明0。HTTP成功だけではPassとしない。本番未配信・正式本番QA未実施であり、Release Readyではない。
+- Q188の隔離APIは579登板・1746回1/3を公式プロフィールと照合できた。`isolated-Q188.json`。QA正本のAは本番未実行のまま。最新UIはPC・スマートフォンとも12球団の出典を8件から全件へ、242イベントを20件から40件・全件へ展開でき、横方向のはみ出し・ブラウザ例外0。`ui-pagination-local/report.json`。本番E2Eの証拠とはしない。
+- 候補絞り込み後の実D1互換APIではB09が131,187行、B11が227,169行となり、両ケースPass。`qa-acceptance-B09_B11-1793952602483.json`。旧版の1,845,546行・653,243行から減少したが、本番アカウントの残予算確認と公開世代一致なしに本番全件評価を実行しない。
+- `normalize:d1`が引数省略時にlegacy migrationを使いevent_factsを生成しない問題を修正。正規化用migrationを既定にし、新規変換DBで回帰確認。失敗した変換DBを正常な成果物として再利用しない。
+- 2026年度の公式リンク監査から未収録の完了153試合を取得。一軍76試合は詳細まで取得、ファーム77試合はスコアのみ。差分は56b62852→3739fbed-87f6-45d6-84ad-8f0713219c6e、追加のみ・既存更新削除0。685原本オブジェクトとSQL、manifest、リハーサルDBを `data/staging/redesign-20261104/gap-2026/` に保存。本番未反映。最終DB SHA256は6e6d2e8c7391f3fb31d079b01459fd5882fe3713484039e2457b9ea7b757dee5。
+- 新規メタDBを持つ隔離Workerに3739fbed世代を反映して上記API/UIを確認。旧メタDBの利用量をリセットして制限を回避したものではない。アプリ本番Versionと公開D1世代d133e7afは変更していない。
+- 原本監査 `captured-2026-detail-coverage.json` では、この追加後も一軍66試合・ファーム829試合の詳細不足、中止試合の誤状態（一軍40・ファーム131）、未追加中止8試合、同じ公式URLを持つファーム重複候補が残る。一軍という発見ラベルはCS等も含むため、公式戦集計と混同しない。未確認の値を0で補完せず、原本と試合種別の確認後に修復する。
+- Wrangler認証は再確認してもNot logged in。本人OAuth承認待ちのため本番反映は未実施。球団の「最近」の省略期間は確定仕様が見つからず、本人へ確認中。どちらも他の実装可能な作業を停止する理由にはしない。
+
+
+## 2026-11-06 年度省略についてのユーザー訂正
+
+- ユーザーが「年度指定していなければ普通は今シーズン」と確定したため、月だけの質問に年確認を要求する方針を撤回。直前に作成したcalendar-year clarificationモジュールとそのテストは削除し、採用しない。`temporal-grounding-live-smoke.json`は撤回した方針の試行ログであり、現行仕様の成功証拠にしない。
+- 質問解析・独立意味照合の双方を、年度省略は今シーズン、会話で確定した別年度は引継ぎ、という共通仕様へ変更。legacy follow-up判定の月文字列だけによるmissing_yearも削除。Q189/Q190を追加し、本番Aは未実行のまま。従来のB22/B29年確認期待を訂正する理由を正式受入正本とquery-normalizationへ記録した。
+- この仕様訂正で直前の20 Pass / 27 Failログを遡って書き換えない。次の版を同じ条件で検証して評価する。
+
+
+## 2026-11-07 月別集計・公式IDの混在・独立した数値照合
+
+- 年度省略の仕様訂正後、今季の5月・8月と明示2025年5月の実モデル解析が各2呼び出しで成功。`current-season-month-live-smoke.json`。会話で2025年7月を指定した後の「では8月」は2025年8月とcontext_referencesを保持した。`month-year-context-live-smoke.json`。この意味仕様はユーザーの年度省略指示に基づく。
+- 試合が見つからない回答に検索した日付・対戦カードを保持し、未収録と試合不存在を混同しない。対戦勝敗集計は期間・両球団を表示し、集計に用いたgameIdから実際の出典を取得する。打撃の個別試合集計も同じ証拠IDを保持する。
+- 初版の全体648 Pass / 65 Skipped、型修正後の型チェック成功、lint 0 errors / 148 warnings、Cloudflareビルド成功。`month-default-full-tests.log`、`month-default-build.log`。同版・旧候補DBのB22/B29はscope/sourceの判定で2 Passとなった（`qa-acceptance-B22_B29-1793974869640.json`）が、B22の6本は後の独立数値照合に失敗する。この2 Passを最終的な事実性の合格とは採用しない。
+- 公式リンクから発見した2026年5月の153試合を独立したPython HTML解析で監査。151完了・2中止。英文公式ページのHR欄から11本のKurihara、9本のNevinを確認。アプリの出力やSQL集計は正解作成に使っていない。`scripts/audit-captured-month-home-runs.py`、`may-home-runs-independent-source-audit.json`。名前は公式英字名＋球団のまま保持し、未確認の名前統合をしない。人間確認済みの全カテゴリ評価コーパスの代わりとはしない。
+- 既存の完了66試合は打撃・投手・出場の詳細がなく、公式原本のスコアだけがあった。別DBへ公式詳細を取得し66/66成功。差分作成は、旧データがプレー未取得の注記1件のみ・旧実打撃/投手/出場0件・元の公式ページのハッシュ/取得日時・球団/日付/最終得点の一致を必須とする。JSONのスコア形式差は共通の既知スコア読取で対応し、未知を0へ変換しない。
+- 公開候補は3739fbed→85cae58b-9cec-41d1-85ca-e75966d3b7fe。66試合・264出典更新、イベント5,415追加/66未取得注記置換、打撃1,797・投手537・出場3,425追加、削除0。原本594オブジェクト、SQL適用/外部キー照合Pass、詳細不足0。`data/staging/redesign-20261104/may-2026-details/`。rehearsal SHA256は56ae7d266422db57279d458215c6c6b57cec7b49110e8329979ca402e267fc87、328,216,576 bytes、published:false。
+- 詳細を追加しただけでは検索はNevin9本を返した。栗原の25打撃行が既存IDあり21件と未設定4件に分かれ、別集団へ分断されていたため。公式プロフィールの証拠と当該年度・球団で候補が一意の場合だけ未設定行をIDへ集約する共通処理を追加。同姓の複数候補・別年度/球団・未検証プロフィールを統合しない。独立した小さいDBの回帰を追加しPass。生データに名前ベースのIDを書き戻さない。
+- 最新の保存解釈再実行は栗原11本で独立原本集計と一致。`month-after-identity-grouping-replay.json`、`month-materialized-dictionary-replay.json`。大きなプロフィールJSONを各行で繰り返し検証しないよう辞書をmaterializeした後のnative実行は約2.2秒。D1実行時の読み取り量は未測定。
+- 最新アプリソースの全体649 Pass / 65 Skipped（86ファイルPass、2ファイルSkipped）、型チェック成功、lint 0 errors / 148 warnings。`month-identity-final-tests.log`。Cloudflareビルドも成功。ビルド中はWorkerを停止し、隔離検索DBだけを85cae58b候補へ進めた。利用制限メタDBは変更していない。ビルド完成後のAPI検証は未実施。
+- 8月の公式原本3試合の独立集計はオリックス1勝2敗。`august-head-to-head-independent-source-audit.json`。表示順をホーム/ビジターと仮定せず、各チーム名と得点を対応付ける。受入runnerは対象月・球団・集計種別・出典に加えて、この独立数値との照合を必須に変更。参照する年度の独立正解がなければFailとして理由を残し、無条件Passにしない。runner変更後の関連3試験はPass。`/tmp/npb-month-independent-oracle-runner-tests.log`。
+- 本番アプリ、公開D1世代d133e7af、定期更新の有効状態は変更していない。正式な本番182+47の評価・課金/ログイン完了・運用E2Eは未達。Release Readyではない。
+
+
+## 2026-11-07 読み取り量の失敗検出と追加修正（進行中）
+
+- 85cae58b候補DB＋649試験段階のWorker APIでB22/B29が独立した数値と一致し2 Pass。`qa-acceptance-B22_B29-1794018442450.json`。栗原陵矢11本、オリックス1勝2敗。ただしB22が1,331,929行を読んだため、この版は本番へ出さない。正しい返答だけで運用可能とは判定しない。
+- Workerを停止した上で、未設定行の相関辞書走査を廃止。対象日のgame indexから対象の未設定名・年度・球団を先に取得し、公式辞書は30名以下のバッチで照合する。最大92パラメータ、橋渡しは1個のJSON辞書として渡し、各事実行に対して対応表全体をJOIN走査しない。
+- 所属照合は公式プロフィールの年度別球団行を参照し、同一年の複数球団を保持する。現在の所属や単一のyear_teams値だけで移籍前の行を排除しない。元の非NULLのIDと矛盾する別IDへ名前を付け替えない。
+- 保存解釈のnative再実行では栗原陵矢11本と1勝2敗を維持。`month-bounded-identity-final-replay.json`、SQL traceは `/tmp/npb-month-sql-trace.json`。対象日先行の検索計画と、辞書JSONの1行読み取りを確認した。これはD1互換APIのコスト実測の代わりではない。
+- 追加修正版の全体試験・ビルドは `/tmp/npb-bounded-identity-final-*` で実行中。最初の型チェックは受入runnerのJS引数oracleがnull型へ推論されるため失敗し、JSDocでoracle構造を明示した。型チェックを `/tmp/npb-bounded-identity-typecheck-fixed.log` で再実行中。lintは0 errors / 148 warnings。
+- 数値オラクルは無視対象のdata/logsだけに置かず、`docs/eval-source-oracles/` に保存。受入runnerは現在の日本年に対応する原本集計を選び、別年度の値を流用しない。独立した正解データの欠落はFail。生成手順と人間未レビューをREADMEへ明記した。
+- 一軍/二軍を省略した成績・ランキングの既定範囲は、既存仕様に明確な定義が見つからなかったため本人へ非同期確認中。現時点で勝手に新しい既定値を実装しない。以前の「球団の最近」の試合数も未回答。年度省略については回答済みのユーザー指示を適用済み。
+- 2026-11-07のWrangler再確認もNot logged in。OAuth承認なしに本番作業を進めず、実装可能なローカル作業を継続する。再開用の最新アプリコミットはまだ1dbb1400aで、後続差分は未コミット。次のD1互換APIコスト検証が通ったら差分をコミットして継続する。
+
+
+- まとめて照合する最終修正の全体回帰は649 Pass / 65 Skipped（86ファイルPass・2ファイルSkipped）、修正後の型チェックexit 0。`/tmp/npb-bounded-identity-final-tests.log`、`/tmp/npb-bounded-identity-typecheck-fixed.log`。日付先行の未設定行取得と、各事実行に対するJSON辞書参照のnative検索計画は `month-bounded-identity-query-plan.json` に保存した。Cloudflareビルドと実D1互換の読み取り量の確認は引き続き未完。
+- 次の段階のデータ整備として、既存の検証済み取得CLIで2025年度の12球団×一軍/二軍×打撃/投手/守備を取得中。`/tmp/npb-official-historical-statistics/npb-2025.sqlite`、`/tmp/npb-official-statistics-2025-capture.log`。空の取得用DBでは選手IDが未確定であり、取得後に別途公式プロフィールの年度付き辞書を照合する。値の合成や現在所属による確定はしない。まだ本番公開差分ではない。
+
+
+- まとめて照合する修正版のCloudflareビルドも成功。同じ85cae58b候補DBの隔離WorkerでB22/B29が独立数値と一致し2 Pass。`qa-acceptance-B22_B29-1794021378317.json`。B22は135,689行（旧1,331,929行）、B29は651行、不明0。全体47ターンはこの版ではまだ未再実行。本番への適用・本番予算を確認しない評価は行っていない。
+- raw fixtureの原本ハッシュを保持するため `.gitattributes` は追加した公式HTML3ファイルだけを改行変換対象外とし、公式原本由来の末尾空白を保持する。原本を整形してハッシュを変えない。staged diffの空白確認もPass。
+- 2025年の取得は72ソース・4,673行で完了。選手IDはこれから公式辞書で別途照合する。今の取得DBの未確定IDを確定済みとして公開しない。

@@ -454,6 +454,18 @@ function arrayStringFilter(value: unknown): string[] | null {
   return values.length > 0 ? values : null
 }
 
+function formatUnconfirmedGameScope(query: ChatStructuredQuery): string {
+  if (query.intent !== 'search_games' && query.intent !== 'game_detail') throw new Error('Game scope requires a game query')
+  const filters = query.filters
+  const period = filters.game_date ? formatDateJa(filters.game_date)
+    : filters.date_from || filters.date_to ? `${filters.date_from ?? '開始日未指定'}〜${filters.date_to ?? '終了日未指定'}`
+      : filters.year ? `${filters.year}年`
+        : filters.year_from || filters.year_to ? `${filters.year_from ?? '開始年未指定'}〜${filters.year_to ?? '終了年未指定'}年` : ''
+  const matchup = [filters.team, filters.opponent].filter(Boolean).join('対')
+  const scope = [period, matchup, filters.venue].filter(Boolean).join('・')
+  return `${scope ? `${scope}の` : '指定条件の'}試合${query.intent === 'game_detail' ? '詳細' : '結果'}は、収録データから確認できませんでした。未収録や更新の遅れも考えられるため、試合がなかったとは断定できません。`
+}
+
 function buildSummary(
   question: string,
   structuredQuery: ChatStructuredQuery,
@@ -496,7 +508,7 @@ function buildSummary(
   if (resultCount === 0) {
     let notFoundMsg: string
     if (structuredQuery.intent === 'search_games') {
-      notFoundMsg = '条件に一致する試合は見つかりませんでした。'
+      notFoundMsg = formatUnconfirmedGameScope(structuredQuery)
     } else if (structuredQuery.intent === 'search_batting' || structuredQuery.intent === 'aggregate_batting') {
       notFoundMsg = '条件に一致する打撃成績は見つかりませんでした。記録にない内容は推測せずにお答えします。'
     } else if (structuredQuery.intent === 'search_pitching') {
@@ -508,7 +520,7 @@ function buildSummary(
     } else if (structuredQuery.intent === 'player_affiliation') {
       notFoundMsg = '条件に一致する所属チーム情報は見つかりませんでした。'
     } else if (structuredQuery.intent === 'game_detail') {
-      notFoundMsg = '条件に一致する試合は見つかりませんでした。'
+      notFoundMsg = formatUnconfirmedGameScope(structuredQuery)
     } else if (structuredQuery.intent === 'aggregate_events') {
       notFoundMsg = '条件に一致するプレーはありませんでした。'
     } else if (structuredQuery.intent === 'aggregate_games') {
@@ -658,14 +670,16 @@ function buildSummary(
 
   if (structuredQuery.intent === 'aggregate_games') {
     const rows = results.aggregates as AggregateRow[]
-    const filters = structuredQuery.filters as { year?: number; year_from?: number; year_to?: number }
-    const yearLabel = filters.year
+    const filters = structuredQuery.filters
+    const yearLabel = filters.game_date ? formatDateJa(filters.game_date)
+      : filters.date_from || filters.date_to ? `${filters.date_from ?? '開始日未指定'}〜${filters.date_to ?? '終了日未指定'}`
+      : filters.year
       ? `${filters.year}年`
       : filters.year_from && filters.year_to
         ? `${filters.year_from}〜${filters.year_to}年`
         : '対象期間'
     return [
-      `${yearShiftPrefix}${yearLabel}の勝敗集計です。`,
+      `${yearShiftPrefix}${yearLabel}${filters.team ? `・${filters.team}${filters.opponent ? `対${filters.opponent}` : ''}` : ''}の勝敗集計です。`,
       ...rows.map((row) => {
         const wins = Number(row.stats.wins ?? 0)
         const losses = Number(row.stats.losses ?? 0)

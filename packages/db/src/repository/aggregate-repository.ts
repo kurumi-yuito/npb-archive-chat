@@ -16,6 +16,8 @@ import { appendDateBounds, appendCompetitionLevel, type DateBounds } from './dat
 import { aggregateOfficialBattingSeason } from './official-batting-aggregate'
 import { aggregateOfficialPitchingSeason } from './official-pitching-aggregate'
 import { canonicalPlayerFactCandidateSql, canonicalPlayerFactMatchSql, canonicalPlayerNameMatchSql } from './player-identity-link'
+import { searchOfficialTeamSeasons } from './official-team-history-repository'
+import { resolveSeasonFactIdentities } from './resolve-season-fact-identities'
 
 export type AggregateRow = {
   kind: 'batting' | 'pitching' | 'events' | 'games'
@@ -86,6 +88,7 @@ export async function aggregateBattingLines(
         MAX(batting_lines.player_name) AS playerName,
         ${groupByYear ? 'MAX(batting_lines.team)' : 'batting_lines.team'} AS team,
         COUNT(*) AS games,
+        json_group_array(DISTINCT batting_lines.game_id) AS evidence_game_ids,
         SUM(batting_lines.at_bats) AS atBats,
         SUM(batting_lines.runs) AS runs,
         SUM(batting_lines.hits) AS hits,
@@ -133,6 +136,7 @@ export async function aggregateBattingLines(
       label: String(row.label ?? ''),
       total: Number(row.games ?? 0),
       stats: {
+        evidenceGameIds: String(row.evidence_game_ids ?? '[]'),
         team: row.team ?? null,
         playerName: row.playerName ?? null,
         games: Number(row.games ?? 0),
@@ -252,9 +256,9 @@ async function aggregateNormalizedBattingLines(
 ): Promise<AggregateRow[]> {
   const groupByYear = normalized.group_by === 'year'
   const playerGroup = `CASE
-    WHEN batting_line_facts.player_id IS NOT NULL AND batting_line_facts.player_id <> ''
-      THEN 'id:' || batting_line_facts.player_id
-    ELSE 'name:' || ${compactNameSql('person_names.name')}
+    WHEN COALESCE(NULLIF(batting_line_facts.player_id,''), json_extract(batting_line_facts.resolved_identity,'$.player_id')) IS NOT NULL
+      THEN 'id:' || COALESCE(NULLIF(batting_line_facts.player_id,''), json_extract(batting_line_facts.resolved_identity,'$.player_id'))
+    ELSE 'unresolved:' || batting_line_facts.player_name_id || ':' || batting_line_facts.team_id || ':' || game_facts.year
   END`
   const clauses: string[] = []
   const values: Array<string | number> = []
@@ -350,14 +354,24 @@ async function aggregateNormalizedBattingLines(
       ? 'HAVING SUM(batting_line_facts.at_bats) >= 10 AND COUNT(*) >= 3'
       : 'HAVING SUM(batting_line_facts.at_bats) >= 10'
     : ''
+  const unlinkedScopes = await database.prepare(`SELECT DISTINCT batting_line_facts.player_name_id,batting_line_facts.team_id,game_facts.year,person_names.name,teams.team_name AS team
+    FROM game_facts${normalized.date_from || normalized.date_to || normalized.game_date ? ' INDEXED BY idx_games_date CROSS' : ' INNER'} JOIN batting_line_facts ON game_facts.game_id=batting_line_facts.game_id
+    INNER JOIN teams ON teams.team_id=batting_line_facts.team_id
+    INNER JOIN person_names ON person_names.name_id=batting_line_facts.player_name_id
+    LEFT JOIN positions ON positions.position_id=batting_line_facts.position_id
+    ${whereClause ? `${whereClause} AND` : 'WHERE'} (batting_line_facts.player_id IS NULL OR batting_line_facts.player_id='')`).all(...values) as Array<{ player_name_id: number; team_id: number; year: number; name: string; team: string }>
+  const identityBridge = await resolveSeasonFactIdentities(database, unlinkedScopes)
+  const identityDictionary = Object.fromEntries(identityBridge.map((row) => [`${row.player_name_id}_${row.team_id}_${row.year}`, row]))
   // Materialize the requested batting rows once. The event primary key starts
   // with game_id, so extra-base totals can read only their games instead of
   // scanning the batter index across every season before applying the filters.
   const rows = await database
     .prepare(
-      `WITH selected_batting AS MATERIALIZED (
-        SELECT batting_line_facts.*
+      `WITH identity_dictionary AS MATERIALIZED (SELECT ? value), selected_batting AS MATERIALIZED (
+        SELECT batting_line_facts.*,json_extract(identity_dictionary.value,
+          '$."' || batting_line_facts.player_name_id || '_' || batting_line_facts.team_id || '_' || game_facts.year || '"') resolved_identity
         FROM batting_line_facts${normalized.player_name && !normalized.player_id ? ' INDEXED BY idx_batting_name_game' : ''}
+        CROSS JOIN identity_dictionary
         INNER JOIN game_facts ON game_facts.game_id = batting_line_facts.game_id
         INNER JOIN teams ON teams.team_id = batting_line_facts.team_id
         INNER JOIN person_names ON person_names.name_id = batting_line_facts.player_name_id
@@ -365,10 +379,12 @@ async function aggregateNormalizedBattingLines(
         ${whereClause}
       )
       SELECT
-        ${groupByYear ? 'CAST(game_facts.year AS TEXT)' : 'MAX(person_names.name)'} AS label,
+        ${groupByYear ? 'CAST(game_facts.year AS TEXT)' : "COALESCE(MAX(CASE WHEN batting_line_facts.player_id IS NULL OR batting_line_facts.player_id='' OR batting_line_facts.player_id=json_extract(batting_line_facts.resolved_identity,'$.player_id') THEN json_extract(batting_line_facts.resolved_identity,'$.canonical_name') END), MAX(person_names.name))"} AS label,
         MAX(person_names.name) AS playerName,
+        ${groupByYear ? 'NULL' : "COALESCE(MAX(NULLIF(batting_line_facts.player_id,'')),MAX(json_extract(batting_line_facts.resolved_identity,'$.player_id')))"} AS playerId,
         MAX(teams.team_name) AS team,
         COUNT(*) AS games,
+        json_group_array(DISTINCT batting_line_facts.game_id) AS evidence_game_ids,
         SUM(batting_line_facts.at_bats) AS atBats,
         SUM(batting_line_facts.runs) AS runs,
         SUM(batting_line_facts.hits) AS hits,
@@ -416,7 +432,7 @@ async function aggregateNormalizedBattingLines(
       ORDER BY ${groupByYear ? 'CAST(label AS INTEGER) ASC' : `${normalizedBattingSortClause(normalized.sort_by)}, label ASC`}
       LIMIT ?`,
     )
-    .all(...values, ...homeRunScopeValues, normalized.limit ?? 50)
+    .all(JSON.stringify(identityDictionary), ...values, ...homeRunScopeValues, normalized.limit ?? 50)
 
   return (rows as Array<Record<string, string | number | null>>).map((row) => {
     const atBats = Number(row.atBats ?? 0)
@@ -431,8 +447,10 @@ async function aggregateNormalizedBattingLines(
       label: String(row.label ?? ''),
       total: Number(row.games ?? 0),
       stats: {
+        evidenceGameIds: String(row.evidence_game_ids ?? '[]'),
         team: row.team ?? null,
         playerName: row.playerName ?? null,
+        playerId: row.playerId ?? null,
         games: Number(row.games ?? 0),
         atBats,
         runs: Number(row.runs ?? 0),
@@ -801,6 +819,7 @@ export async function aggregateGameResults(
   filters: AggregateGamesFilters = {},
 ): Promise<AggregateRow[]> {
   const normalized = aggregateGamesFiltersSchema.parse(filters)
+  if (normalized.official_season) return searchOfficialTeamSeasons(database, normalized)
   const leagueTeams = leagueTeamList(normalized.team)
   if (leagueTeams) {
     const rows = (await Promise.all(
@@ -871,6 +890,7 @@ export async function aggregateGameResults(
       `SELECT
         ${teamSelect} AS label,
         COUNT(*) AS total_games,
+        json_group_array(DISTINCT games.game_id) AS evidence_game_ids,
         SUM(CASE
           WHEN (${teamSideWinSql('home', teamNames)} OR ${teamSideWinSql('away', teamNames)})
           THEN 1 ELSE 0 END) AS wins,
@@ -901,6 +921,7 @@ export async function aggregateGameResults(
       losses: Number(row.losses ?? 0),
       draws: Number(row.draws ?? 0),
       total_games: Number(row.total_games ?? 0),
+      evidenceGameIds: String(row.evidence_game_ids ?? '[]'),
     },
   }))
 }

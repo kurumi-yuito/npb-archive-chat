@@ -243,7 +243,7 @@ export function normalizePosition(value: string | undefined): string | undefined
   return positionAliasMap.get(normalizeLookupKey(normalized)) ?? normalized
 }
 
-function normalizeResultTextContains(value: string | undefined): string | undefined {
+export function normalizeResultTextContains(value: string | undefined): string | undefined {
   const normalized = normalizeFreeText(value)
   if (!normalized) {
     return undefined

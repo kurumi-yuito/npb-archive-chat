@@ -1,0 +1,145 @@
+{
+  "environment": "independent_python_html_audit",
+  "production": false,
+  "humanReviewed": false,
+  "scope": {
+    "year": 2026,
+    "month": 8,
+    "level": "first",
+    "competition": "unspecified"
+  },
+  "discoveredGames": 3,
+  "completedGames": 3,
+  "cancelledGames": 0,
+  "leaderboard": [
+    {
+      "club": "B",
+      "officialName": "Yamanaka",
+      "homeRuns": 1
+    },
+    {
+      "club": "B",
+      "officialName": "Nishikawa",
+      "homeRuns": 1
+    },
+    {
+      "club": "B",
+      "officialName": "Kita",
+      "homeRuns": 1
+    },
+    {
+      "club": "M",
+      "officialName": "Yasuda",
+      "homeRuns": 1
+    },
+    {
+      "club": "M",
+      "officialName": "Soto",
+      "homeRuns": 1
+    },
+    {
+      "club": "M",
+      "officialName": "Yamaguchi",
+      "homeRuns": 1
+    }
+  ],
+  "observations": [
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026080701706.html",
+      "fetchedAt": "2026-11-06T07:51:37.413Z",
+      "sha256": "12d89e424832cca07575d96faf4d3d30aeff808a26f1bae371d2696996dd8b5f",
+      "club": "B",
+      "officialName": "Yamanaka",
+      "count": 1,
+      "literal": "[B] Yamanaka ( 2, 1st inn. off Hiroike, 0 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026080701706.html",
+      "fetchedAt": "2026-11-06T07:51:37.413Z",
+      "sha256": "12d89e424832cca07575d96faf4d3d30aeff808a26f1bae371d2696996dd8b5f",
+      "club": "B",
+      "officialName": "Nishikawa",
+      "count": 1,
+      "literal": "[B] Nishikawa ( 8, 5th inn. off Hiroike, 1 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026080701706.html",
+      "fetchedAt": "2026-11-06T07:51:37.413Z",
+      "sha256": "12d89e424832cca07575d96faf4d3d30aeff808a26f1bae371d2696996dd8b5f",
+      "club": "B",
+      "officialName": "Kita",
+      "count": 1,
+      "literal": "[B] Kita ( 5, 5th inn. off Hiroike, 0 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026080701706.html",
+      "fetchedAt": "2026-11-06T07:51:37.413Z",
+      "sha256": "12d89e424832cca07575d96faf4d3d30aeff808a26f1bae371d2696996dd8b5f",
+      "club": "M",
+      "officialName": "Yasuda",
+      "count": 1,
+      "literal": "[M] Yasuda ( 4, 1st inn. off Teranishi, 1 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026080801709.html",
+      "fetchedAt": "2026-11-06T07:51:38.298Z",
+      "sha256": "7794a966d03543e9a5e9d18f57314a310cd34090f3a930dda59707f3f56e9561",
+      "club": "M",
+      "officialName": "Soto",
+      "count": 1,
+      "literal": "[M] Soto ( 15, 1st inn. off Sotani, 1 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026080901712.html",
+      "fetchedAt": "2026-11-06T07:51:39.193Z",
+      "sha256": "f8c7239a5197a06dc3999e65a9b7d13dd5fba5dafa651fb562ff5cbe5f07d21d",
+      "club": "M",
+      "officialName": "Yamaguchi",
+      "count": 1,
+      "literal": "[M] Yamaguchi ( 19, 1st inn. off Hjelle, 1 on )"
+    }
+  ],
+  "note": "Names remain official English labels plus club, not resolved player IDs. No aliases are merged. This is source reconciliation, not a human-reviewed evaluation oracle.",
+  "headToHead": {
+    "subjectTeam": "b",
+    "opponentTeam": "m",
+    "wins": 1,
+    "losses": 2,
+    "draws": 0,
+    "evidence": [
+      {
+        "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026080701706.html",
+        "fetchedAt": "2026-11-06T07:51:37.413Z",
+        "sha256": "12d89e424832cca07575d96faf4d3d30aeff808a26f1bae371d2696996dd8b5f",
+        "date": "2026-08-07",
+        "homeTeam": "m",
+        "awayTeam": "b",
+        "homeRuns": 2,
+        "awayRuns": 6,
+        "subjectResult": "wins"
+      },
+      {
+        "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026080801709.html",
+        "fetchedAt": "2026-11-06T07:51:38.298Z",
+        "sha256": "7794a966d03543e9a5e9d18f57314a310cd34090f3a930dda59707f3f56e9561",
+        "date": "2026-08-08",
+        "homeTeam": "m",
+        "awayTeam": "b",
+        "homeRuns": 4,
+        "awayRuns": 1,
+        "subjectResult": "losses"
+      },
+      {
+        "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026080901712.html",
+        "fetchedAt": "2026-11-06T07:51:39.193Z",
+        "sha256": "f8c7239a5197a06dc3999e65a9b7d13dd5fba5dafa651fb562ff5cbe5f07d21d",
+        "date": "2026-08-09",
+        "homeTeam": "m",
+        "awayTeam": "b",
+        "homeRuns": 7,
+        "awayRuns": 2,
+        "subjectResult": "losses"
+      }
+    ]
+  }
+}

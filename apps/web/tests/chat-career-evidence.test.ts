@@ -20,6 +20,24 @@ const html = `<title>検証 太郎（阪神） | 個人年度別成績</title><m
 <tr><th></th><th>通 算</th><th>21</th><th>5</th><th>71</th><th>2.00</th></tr></table>`
 
 describe('official career source to answer', () => {
+  it('Q188 renders appearance counts and fractional career innings from the complete real official table', async () => {
+    const database = openDatabase()
+    try {
+      migrateDatabase(database)
+      const html = readFileSync(new URL('../../../packages/parser/src/__fixtures__/bis-player-nested-innings.html', import.meta.url), 'utf8')
+      await captureOfficialPlayerProfile({ playerId: '01003821', database,
+        storage: { putText: vi.fn().mockResolvedValue('stored') } as unknown as ObjectStorage,
+        fetch: vi.fn(async () => new Response(html)) as unknown as typeof fetch })
+      const requested: QueryContract = { ...contract, entities: [{ kind: 'player', role: 'subject', mention: '板東里視' }],
+        requested_output: [{ kind: 'pitching_statistics', fields: ['games_pitched', 'innings_pitched'] }], aggregation: [] }
+      const result = await createContractChatService(createSingleDatabaseQueryService(sqliteDatabaseToQuery(database)), async () => ({
+        domain: 'npb', policy: 'execute', query_contract: requested, clarification_reason: null, subject: null,
+      })).answerQuestion('板東里視のNPB通算の登板数と投球回を教えて')
+      expect(result.answer.summary).toContain('登板579')
+      expect(result.answer.summary).toContain('投球回1746回 1/3')
+      expect(result.answer.source_urls).toEqual(['https://npb.jp/bis/players/01003821.html'])
+    } finally { database.close() }
+  })
   it('retains both verified batting and pitching requests in a last-season supplement', async () => {
     const database = openDatabase()
     try {
@@ -46,7 +64,7 @@ describe('official career source to answer', () => {
       expect(result.results.aggregates.every((row) => row.stats.year === 2024)).toBe(true)
     } finally { database.close() }
   })
-  it.each([true, false])('labels the last verified NPB season separately while retaining the requested scope (explicit year: %s)', async (explicitYear) => {
+  it.each([[true, null], [false, null], [false, 'current_season'], [true, 'current_season']] as const)('labels the last verified NPB season separately while retaining the requested scope (explicit year: %s, relative: %s)', async (explicitYear, relative) => {
     const database = openDatabase()
     try {
       migrateDatabase(database)
@@ -55,7 +73,7 @@ describe('official career source to answer', () => {
         storage: { putText: vi.fn().mockResolvedValue('stored') } as unknown as ObjectStorage,
         fetch: vi.fn(async () => new Response(earlier)) as unknown as typeof fetch, now: () => new Date('2026-11-04T00:00:00Z') })
       const year = Number(new Intl.DateTimeFormat('en', { timeZone: 'Asia/Tokyo', year: 'numeric' }).format(new Date()))
-      const requested: QueryContract = { ...contract, temporal_scope: { ...contract.temporal_scope, years: explicitYear ? [year] : [], relative: null } }
+      const requested: QueryContract = { ...contract, temporal_scope: { ...contract.temporal_scope, years: explicitYear ? [year] : [], relative } }
       const service = createSingleDatabaseQueryService(sqliteDatabaseToQuery(database))
       const chat = createContractChatService(service, async () => ({ domain: 'npb', policy: 'execute', query_contract: requested, clarification_reason: null, subject: null }))
       const result = await chat.answerQuestion('検証太郎の今季の勝利数')
@@ -65,6 +83,7 @@ describe('official career source to answer', () => {
       expect(result.answer.summary).toContain('最終在籍年度（2024年）')
       expect(result.results.aggregates[0]!.stats).toMatchObject({ wins: 3, year: 2024 })
       expect(result.answer.source_urls).toEqual(['https://npb.jp/bis/players/proof-id.html'])
+      expect(result.answer.scope_fallback?.effective_contract.temporal_scope.relative).toBeNull()
       const scoped = { ...requested, entities: [...requested.entities, { kind: 'team' as const, role: 'subject' as const, mention: 'DeNA' }] }
       const teamChat = createContractChatService(service, async () => ({ domain: 'npb', policy: 'execute', query_contract: scoped, clarification_reason: null, subject: null }))
       const rejected = await teamChat.answerQuestion('DeNAの検証太郎の今季の勝利数')

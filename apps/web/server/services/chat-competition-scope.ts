@@ -5,3 +5,7 @@ export function competitionLeague(value: string): 'セ・リーグ' | 'パ・リ
   if (['パリーグ', 'パシフィックリーグ', 'pacificleague'].includes(key)) return 'パ・リーグ'
   return null
 }
+
+export function isRegularSeasonScope(value: string): boolean {
+  return ['公式戦', '一軍公式戦', 'レギュラーシーズン', 'regularseason', 'regular'].includes(value.normalize('NFKC').replace(/[\s_-]+/gu, '').toLowerCase())
+}

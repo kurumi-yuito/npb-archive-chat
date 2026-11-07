@@ -12,9 +12,6 @@ export function clarificationForUnresolvedFollowUp(
   history?: ChatRequest['history'],
 ): ChatClarificationPolicy | null {
   const normalized = message.trim().replace(/\s+/gu, '')
-  if (/\d{1,2}月/u.test(normalized) && !/(?:19|20)\d{2}年/u.test(normalized)) {
-    return { action: 'clarify', reason: 'missing_year' }
-  }
   const isRecheck = recheckPattern.test(normalized)
   const isPriorReference = priorReferencePattern.test(normalized)
   const isContextReference = contextReferencePattern.test(normalized)

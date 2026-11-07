@@ -1,4 +1,5 @@
 import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { migrateDatabase } from './migrations'
 import { openDatabase, type SqliteDatabase, withTransaction } from './sqlite'
 
@@ -26,6 +27,8 @@ export type NormalizeParityResult = {
 }
 
 const NORMALIZED_TABLES = [
+  'official_team_seasons',
+  'official_team_history_snapshots',
   'official_player_statistics',
   'official_statistic_snapshots',
   'event_facts',
@@ -104,7 +107,7 @@ export function runNormalizeDatabase(options: NormalizeDatabaseArgs): NormalizeD
   const target = path.resolve(options.target)
   const database = openDatabase(target)
   try {
-    migrateDatabase(database, options.migrationsDir)
+    migrateDatabase(database, options.migrationsDir ?? fileURLToPath(new URL('../migrations-normalized', import.meta.url)))
     database.exec(`ATTACH DATABASE '${source.replaceAll("'", "''")}' AS legacy`)
     normalizeDatabase(database)
     const rowCounts = Object.fromEntries(
@@ -601,7 +604,7 @@ function identityNameSql(expression: string): string {
 }
 
 function insertBisCurrentTables(database: SqliteDatabase): void {
-  for (const table of ['official_statistic_snapshots', 'official_player_statistics']) {
+  for (const table of ['official_statistic_snapshots', 'official_player_statistics', 'official_team_history_snapshots', 'official_team_seasons']) {
     if (database.prepare("SELECT 1 FROM legacy.sqlite_master WHERE type='table' AND name=?").get(table)) {
       database.exec(`INSERT INTO ${table} SELECT * FROM legacy.${table}`)
     }

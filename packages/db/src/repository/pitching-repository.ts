@@ -4,7 +4,7 @@ import type { QueryDatabase } from '../query-driver'
 import type { SearchPitchingLinesFilters } from '@npb/schemas'
 import { toJapaneseTeamAliases } from './team-name-utils'
 import { isNormalizedFactsSchema } from './schema-detection'
-import { canonicalPlayerFactMatchSql, canonicalPlayerNameMatchSql } from './player-identity-link'
+import { canonicalPlayerFactCandidateSql, canonicalPlayerFactMatchSql, canonicalPlayerNameMatchSql } from './player-identity-link'
 
 /** 投手成績の検索向け最小列 */
 export type PitchingLineRow = {
@@ -134,6 +134,8 @@ async function searchNormalizedPitchingLines(
   const clauses: string[] = []
   const values: Array<string | number> = []
   if (filters.pitcher_player_id) {
+    clauses.push(canonicalPlayerFactCandidateSql('pitching_line_facts.pitcher_id', 'pitching_line_facts.pitcher_name_id'))
+    values.push(filters.pitcher_player_id, filters.pitcher_player_id)
     clauses.push(canonicalPlayerFactMatchSql('pitching_line_facts.pitcher_id', 'person_names.name', 'game_facts.year', 'teams.team_name'))
     values.push(filters.pitcher_player_id, filters.pitcher_player_id)
   } else if (filters.pitcher_name) {

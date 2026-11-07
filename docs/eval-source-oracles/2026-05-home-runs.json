@@ -1,0 +1,2674 @@
+{
+  "environment": "independent_python_html_audit",
+  "production": false,
+  "humanReviewed": false,
+  "scope": {
+    "year": 2026,
+    "month": 5,
+    "level": "first",
+    "competition": "unspecified"
+  },
+  "discoveredGames": 153,
+  "completedGames": 151,
+  "cancelledGames": 2,
+  "leaderboard": [
+    {
+      "club": "H",
+      "officialName": "Kurihara",
+      "homeRuns": 11
+    },
+    {
+      "club": "L",
+      "officialName": "Nevin",
+      "homeRuns": 9
+    },
+    {
+      "club": "T",
+      "officialName": "Sato",
+      "homeRuns": 7
+    },
+    {
+      "club": "T",
+      "officialName": "Morishita",
+      "homeRuns": 7
+    },
+    {
+      "club": "L",
+      "officialName": "Canario",
+      "homeRuns": 6
+    },
+    {
+      "club": "E",
+      "officialName": "Taira",
+      "homeRuns": 6
+    },
+    {
+      "club": "F",
+      "officialName": "Reyes",
+      "homeRuns": 6
+    },
+    {
+      "club": "M",
+      "officialName": "Yamaguchi",
+      "homeRuns": 6
+    },
+    {
+      "club": "S",
+      "officialName": "Santana",
+      "homeRuns": 5
+    },
+    {
+      "club": "L",
+      "officialName": "Hasegawa",
+      "homeRuns": 5
+    },
+    {
+      "club": "F",
+      "officialName": "Castro",
+      "homeRuns": 4
+    },
+    {
+      "club": "F",
+      "officialName": "Mannami",
+      "homeRuns": 4
+    },
+    {
+      "club": "B",
+      "officialName": "T.Mori",
+      "homeRuns": 4
+    },
+    {
+      "club": "H",
+      "officialName": "Yamakawa",
+      "homeRuns": 4
+    },
+    {
+      "club": "M",
+      "officialName": "Satoh",
+      "homeRuns": 4
+    },
+    {
+      "club": "G",
+      "officialName": "Cabbage",
+      "homeRuns": 4
+    },
+    {
+      "club": "M",
+      "officialName": "Nishikawa",
+      "homeRuns": 4
+    },
+    {
+      "club": "H",
+      "officialName": "Yanagita",
+      "homeRuns": 4
+    },
+    {
+      "club": "F",
+      "officialName": "Kiyomiya",
+      "homeRuns": 3
+    },
+    {
+      "club": "DB",
+      "officialName": "Miyazaki",
+      "homeRuns": 3
+    },
+    {
+      "club": "C",
+      "officialName": "Sakakura",
+      "homeRuns": 3
+    },
+    {
+      "club": "D",
+      "officialName": "Hosokawa",
+      "homeRuns": 3
+    },
+    {
+      "club": "E",
+      "officialName": "Tatsumi",
+      "homeRuns": 3
+    },
+    {
+      "club": "C",
+      "officialName": "Mochimaru",
+      "homeRuns": 3
+    },
+    {
+      "club": "H",
+      "officialName": "Kondoh",
+      "homeRuns": 3
+    },
+    {
+      "club": "E",
+      "officialName": "Sato",
+      "homeRuns": 3
+    },
+    {
+      "club": "F",
+      "officialName": "Nomura",
+      "homeRuns": 3
+    },
+    {
+      "club": "D",
+      "officialName": "Ukai",
+      "homeRuns": 3
+    },
+    {
+      "club": "H",
+      "officialName": "Masaki",
+      "homeRuns": 3
+    },
+    {
+      "club": "D",
+      "officialName": "Tak.Ishikawa",
+      "homeRuns": 3
+    },
+    {
+      "club": "DB",
+      "officialName": "Sano",
+      "homeRuns": 2
+    },
+    {
+      "club": "G",
+      "officialName": "Dalbec",
+      "homeRuns": 2
+    },
+    {
+      "club": "D",
+      "officialName": "Tsuchida",
+      "homeRuns": 2
+    },
+    {
+      "club": "G",
+      "officialName": "Sasaki",
+      "homeRuns": 2
+    },
+    {
+      "club": "G",
+      "officialName": "Kishida",
+      "homeRuns": 2
+    },
+    {
+      "club": "L",
+      "officialName": "Ishii",
+      "homeRuns": 2
+    },
+    {
+      "club": "DB",
+      "officialName": "Watarai",
+      "homeRuns": 2
+    },
+    {
+      "club": "C",
+      "officialName": "Montero",
+      "homeRuns": 2
+    },
+    {
+      "club": "D",
+      "officialName": "Ishii",
+      "homeRuns": 2
+    },
+    {
+      "club": "G",
+      "officialName": "Ohshiro",
+      "homeRuns": 2
+    },
+    {
+      "club": "D",
+      "officialName": "Vosler",
+      "homeRuns": 2
+    },
+    {
+      "club": "E",
+      "officialName": "Asamura",
+      "homeRuns": 2
+    },
+    {
+      "club": "L",
+      "officialName": "Y.Koga",
+      "homeRuns": 2
+    },
+    {
+      "club": "S",
+      "officialName": "Uchiyama",
+      "homeRuns": 2
+    },
+    {
+      "club": "C",
+      "officialName": "R.Kikuchi",
+      "homeRuns": 2
+    },
+    {
+      "club": "T",
+      "officialName": "Takatera",
+      "homeRuns": 2
+    },
+    {
+      "club": "F",
+      "officialName": "Hosokawa",
+      "homeRuns": 2
+    },
+    {
+      "club": "E",
+      "officialName": "Murabayashi",
+      "homeRuns": 2
+    },
+    {
+      "club": "M",
+      "officialName": "K.Ueda",
+      "homeRuns": 2
+    },
+    {
+      "club": "M",
+      "officialName": "Polanco",
+      "homeRuns": 2
+    },
+    {
+      "club": "L",
+      "officialName": "Nishikawa",
+      "homeRuns": 2
+    },
+    {
+      "club": "M",
+      "officialName": "Inoue",
+      "homeRuns": 2
+    },
+    {
+      "club": "T",
+      "officialName": "Ohyama",
+      "homeRuns": 2
+    },
+    {
+      "club": "C",
+      "officialName": "Ohmori",
+      "homeRuns": 2
+    },
+    {
+      "club": "D",
+      "officialName": "Itayama",
+      "homeRuns": 2
+    },
+    {
+      "club": "D",
+      "officialName": "Muramatsu",
+      "homeRuns": 2
+    },
+    {
+      "club": "M",
+      "officialName": "Soto",
+      "homeRuns": 2
+    },
+    {
+      "club": "F",
+      "officialName": "Gunji",
+      "homeRuns": 2
+    },
+    {
+      "club": "H",
+      "officialName": "Y.Yamamoto",
+      "homeRuns": 2
+    },
+    {
+      "club": "B",
+      "officialName": "Kurebayashi",
+      "homeRuns": 2
+    },
+    {
+      "club": "E",
+      "officialName": "McCusker",
+      "homeRuns": 2
+    },
+    {
+      "club": "S",
+      "officialName": "Iwata",
+      "homeRuns": 1
+    },
+    {
+      "club": "S",
+      "officialName": "K.Maruyama",
+      "homeRuns": 1
+    },
+    {
+      "club": "S",
+      "officialName": "Miyamoto",
+      "homeRuns": 1
+    },
+    {
+      "club": "C",
+      "officialName": "Futamata",
+      "homeRuns": 1
+    },
+    {
+      "club": "DB",
+      "officialName": "Hummel",
+      "homeRuns": 1
+    },
+    {
+      "club": "B",
+      "officialName": "Seymour",
+      "homeRuns": 1
+    },
+    {
+      "club": "B",
+      "officialName": "Mune",
+      "homeRuns": 1
+    },
+    {
+      "club": "F",
+      "officialName": "Ohtsuka",
+      "homeRuns": 1
+    },
+    {
+      "club": "DB",
+      "officialName": "Viciedo",
+      "homeRuns": 1
+    },
+    {
+      "club": "S",
+      "officialName": "Takeoka",
+      "homeRuns": 1
+    },
+    {
+      "club": "M",
+      "officialName": "Fujiwara",
+      "homeRuns": 1
+    },
+    {
+      "club": "S",
+      "officialName": "K.Suzuki",
+      "homeRuns": 1
+    },
+    {
+      "club": "C",
+      "officialName": "Akiyama",
+      "homeRuns": 1
+    },
+    {
+      "club": "DB",
+      "officialName": "Ebina",
+      "homeRuns": 1
+    },
+    {
+      "club": "DB",
+      "officialName": "Hayashi",
+      "homeRuns": 1
+    },
+    {
+      "club": "T",
+      "officialName": "Maegawa",
+      "homeRuns": 1
+    },
+    {
+      "club": "S",
+      "officialName": "Namiki",
+      "homeRuns": 1
+    },
+    {
+      "club": "F",
+      "officialName": "Yazawa",
+      "homeRuns": 1
+    },
+    {
+      "club": "L",
+      "officialName": "S.Watanabe",
+      "homeRuns": 1
+    },
+    {
+      "club": "F",
+      "officialName": "Mizuno",
+      "homeRuns": 1
+    },
+    {
+      "club": "G",
+      "officialName": "Maru",
+      "homeRuns": 1
+    },
+    {
+      "club": "S",
+      "officialName": "Sawai",
+      "homeRuns": 1
+    },
+    {
+      "club": "L",
+      "officialName": "Hirasawa",
+      "homeRuns": 1
+    },
+    {
+      "club": "D",
+      "officialName": "Calixte",
+      "homeRuns": 1
+    },
+    {
+      "club": "T",
+      "officialName": "Shimamura",
+      "homeRuns": 1
+    },
+    {
+      "club": "G",
+      "officialName": "H.Sakamoto",
+      "homeRuns": 1
+    },
+    {
+      "club": "F",
+      "officialName": "Shintoh",
+      "homeRuns": 1
+    },
+    {
+      "club": "F",
+      "officialName": "Asama",
+      "homeRuns": 1
+    },
+    {
+      "club": "S",
+      "officialName": "Masuda",
+      "homeRuns": 1
+    },
+    {
+      "club": "DB",
+      "officialName": "Tsutsugoh",
+      "homeRuns": 1
+    },
+    {
+      "club": "L",
+      "officialName": "Takizawa",
+      "homeRuns": 1
+    },
+    {
+      "club": "L",
+      "officialName": "Kishi",
+      "homeRuns": 1
+    },
+    {
+      "club": "B",
+      "officialName": "Ohta",
+      "homeRuns": 1
+    },
+    {
+      "club": "G",
+      "officialName": "Hirayama",
+      "homeRuns": 1
+    },
+    {
+      "club": "D",
+      "officialName": "Yamamoto",
+      "homeRuns": 1
+    },
+    {
+      "club": "D",
+      "officialName": "Muller",
+      "homeRuns": 1
+    },
+    {
+      "club": "B",
+      "officialName": "Noguchi",
+      "homeRuns": 1
+    },
+    {
+      "club": "C",
+      "officialName": "Ishihara",
+      "homeRuns": 1
+    },
+    {
+      "club": "T",
+      "officialName": "Umeno",
+      "homeRuns": 1
+    },
+    {
+      "club": "T",
+      "officialName": "Tateishi",
+      "homeRuns": 1
+    },
+    {
+      "club": "G",
+      "officialName": "Yoshikawa",
+      "homeRuns": 1
+    },
+    {
+      "club": "H",
+      "officialName": "K.Yamamoto",
+      "homeRuns": 1
+    },
+    {
+      "club": "S",
+      "officialName": "Higuma",
+      "homeRuns": 1
+    },
+    {
+      "club": "C",
+      "officialName": "Nabara",
+      "homeRuns": 1
+    },
+    {
+      "club": "DB",
+      "officialName": "Kyoda",
+      "homeRuns": 1
+    },
+    {
+      "club": "E",
+      "officialName": "Y.Watanabe",
+      "homeRuns": 1
+    },
+    {
+      "club": "M",
+      "officialName": "Yasuda",
+      "homeRuns": 1
+    }
+  ],
+  "observations": [
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026050101170.html",
+      "fetchedAt": "2026-11-06T07:50:26.900Z",
+      "sha256": "4c10d6703659bb84cfb786b547fce512291c48257071cbcb503f4510894c4829",
+      "club": "DB",
+      "officialName": "Sano",
+      "count": 2,
+      "literal": "[DB] Sano 2 ( 4, 2nd inn. off K.Matsumoto, 0 on ; 5th inn. off K.Matsumoto, 1 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026050101170.html",
+      "fetchedAt": "2026-11-06T07:50:26.900Z",
+      "sha256": "4c10d6703659bb84cfb786b547fce512291c48257071cbcb503f4510894c4829",
+      "club": "S",
+      "officialName": "Iwata",
+      "count": 1,
+      "literal": "[S] Iwata ( 1, 2nd inn. off Taira, 1 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026050101170.html",
+      "fetchedAt": "2026-11-06T07:50:26.900Z",
+      "sha256": "4c10d6703659bb84cfb786b547fce512291c48257071cbcb503f4510894c4829",
+      "club": "S",
+      "officialName": "Santana",
+      "count": 1,
+      "literal": "[S] Santana ( 7, 4th inn. off H.Nakagawa, 1 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026050101170.html",
+      "fetchedAt": "2026-11-06T07:50:26.900Z",
+      "sha256": "4c10d6703659bb84cfb786b547fce512291c48257071cbcb503f4510894c4829",
+      "club": "S",
+      "officialName": "K.Maruyama",
+      "count": 1,
+      "literal": "[S] K.Maruyama ( 2, 5th inn. off Horioka, 0 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026050101170.html",
+      "fetchedAt": "2026-11-06T07:50:26.900Z",
+      "sha256": "4c10d6703659bb84cfb786b547fce512291c48257071cbcb503f4510894c4829",
+      "club": "S",
+      "officialName": "Miyamoto",
+      "count": 1,
+      "literal": "[S] Miyamoto ( 1, 7th inn. off Marcelino, 2 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026050101171.html",
+      "fetchedAt": "2026-11-06T07:50:27.023Z",
+      "sha256": "888247b8164ae717457619478597cdb83b1dacf11a1c3f783c1aeba9ee456ff2",
+      "club": "G",
+      "officialName": "Dalbec",
+      "count": 1,
+      "literal": "[G] Dalbec ( 7, 3rd inn. off Murakami, 2 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026050101172.html",
+      "fetchedAt": "2026-11-06T07:50:27.150Z",
+      "sha256": "4bdb45675846c26c4551fb3f6fc36dd8d47752891a7e8f902884487c9864a3eb",
+      "club": "D",
+      "officialName": "Tsuchida",
+      "count": 1,
+      "literal": "[D] Tsuchida ( 1, 8th inn. off T.Saito, 1 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026050101172.html",
+      "fetchedAt": "2026-11-06T07:50:27.150Z",
+      "sha256": "4bdb45675846c26c4551fb3f6fc36dd8d47752891a7e8f902884487c9864a3eb",
+      "club": "C",
+      "officialName": "Futamata",
+      "count": 1,
+      "literal": "[C] Futamata ( 1, 8th inn. off Neo, 0 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026050101539.html",
+      "fetchedAt": "2026-11-06T07:50:27.274Z",
+      "sha256": "01099e749222e7d96ec0d4d655831cde734e4ebcba1e0ad6a6baf9917ee0afa1",
+      "club": "F",
+      "officialName": "Castro",
+      "count": 1,
+      "literal": "[F] Castro ( 4, 3rd inn. off Sotani, 2 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026050101539.html",
+      "fetchedAt": "2026-11-06T07:50:27.274Z",
+      "sha256": "01099e749222e7d96ec0d4d655831cde734e4ebcba1e0ad6a6baf9917ee0afa1",
+      "club": "F",
+      "officialName": "Mannami",
+      "count": 1,
+      "literal": "[F] Mannami ( 9, 6th inn. off Sotani, 0 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026050101540.html",
+      "fetchedAt": "2026-11-06T07:50:27.407Z",
+      "sha256": "fb89fe8ad80ae56315e08d007772377aeccc3a1c320715fc74858b85d42e61b3",
+      "club": "L",
+      "officialName": "Nevin",
+      "count": 1,
+      "literal": "[L] Nevin ( 1, 3rd inn. off Hiroike, 0 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026050101541.html",
+      "fetchedAt": "2026-11-06T07:50:27.543Z",
+      "sha256": "dcd1558abab4411b222e17b4e29a47c1b538333f068b84e78b68c5c05cef71b7",
+      "club": "H",
+      "officialName": "Kurihara",
+      "count": 1,
+      "literal": "[H] Kurihara ( 6, 6th inn. off Koja, 0 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026050201173.html",
+      "fetchedAt": "2026-11-06T07:50:27.802Z",
+      "sha256": "f7246d063e395f8211fdfc72980d7a242172d508e745c3806da5309dbed1354e",
+      "club": "DB",
+      "officialName": "Hummel",
+      "count": 1,
+      "literal": "[DB] Hummel ( 3, 6th inn. off Taguchi, 2 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026050201174.html",
+      "fetchedAt": "2026-11-06T07:50:27.932Z",
+      "sha256": "e3da34ffc4bfa9278c917150be046e1f1bc42d720a62a013992653432ec12997",
+      "club": "G",
+      "officialName": "Sasaki",
+      "count": 1,
+      "literal": "[G] Sasaki ( 3, 9th inn. off Moreta, 2 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026050201174.html",
+      "fetchedAt": "2026-11-06T07:50:27.932Z",
+      "sha256": "e3da34ffc4bfa9278c917150be046e1f1bc42d720a62a013992653432ec12997",
+      "club": "G",
+      "officialName": "Kishida",
+      "count": 1,
+      "literal": "[G] Kishida ( 1, 9th inn. off Moreta, 0 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026050201174.html",
+      "fetchedAt": "2026-11-06T07:50:27.932Z",
+      "sha256": "e3da34ffc4bfa9278c917150be046e1f1bc42d720a62a013992653432ec12997",
+      "club": "T",
+      "officialName": "Sato",
+      "count": 1,
+      "literal": "[T] Sato ( 8, 8th inn. off Luciano, 0 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026050201542.html",
+      "fetchedAt": "2026-11-06T07:50:28.190Z",
+      "sha256": "d2114bde59ac6990ea2f49d00ef87e7f9ddd56396a68297722d8ec78fd8a1b18",
+      "club": "B",
+      "officialName": "Seymour",
+      "count": 1,
+      "literal": "[B] Seymour ( 3, 2nd inn. off RY.Gu Lin, 1 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026050201542.html",
+      "fetchedAt": "2026-11-06T07:50:28.190Z",
+      "sha256": "d2114bde59ac6990ea2f49d00ef87e7f9ddd56396a68297722d8ec78fd8a1b18",
+      "club": "B",
+      "officialName": "T.Mori",
+      "count": 1,
+      "literal": "[B] T.Mori ( 2, 5th inn. off Fukutani, 1 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026050201542.html",
+      "fetchedAt": "2026-11-06T07:50:28.190Z",
+      "sha256": "d2114bde59ac6990ea2f49d00ef87e7f9ddd56396a68297722d8ec78fd8a1b18",
+      "club": "B",
+      "officialName": "Mune",
+      "count": 1,
+      "literal": "[B] Mune ( 5, 6th inn. off Saito, 2 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026050201542.html",
+      "fetchedAt": "2026-11-06T07:50:28.190Z",
+      "sha256": "d2114bde59ac6990ea2f49d00ef87e7f9ddd56396a68297722d8ec78fd8a1b18",
+      "club": "F",
+      "officialName": "Kiyomiya",
+      "count": 1,
+      "literal": "[F] Kiyomiya ( 6, 1st inn. off Espinoza, 1 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026050201542.html",
+      "fetchedAt": "2026-11-06T07:50:28.190Z",
+      "sha256": "d2114bde59ac6990ea2f49d00ef87e7f9ddd56396a68297722d8ec78fd8a1b18",
+      "club": "F",
+      "officialName": "Ohtsuka",
+      "count": 1,
+      "literal": "[F] Ohtsuka ( 1, 9th inn. off Machado, 0 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026050201543.html",
+      "fetchedAt": "2026-11-06T07:50:28.317Z",
+      "sha256": "f914ca7d2e300d8b7a4956f974ea45533b71fa43fce1ed2e1b37c213bed12630",
+      "club": "L",
+      "officialName": "Canario",
+      "count": 1,
+      "literal": "[L] Canario ( 1, 4th inn. off H.Tanaka, 1 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026050201543.html",
+      "fetchedAt": "2026-11-06T07:50:28.317Z",
+      "sha256": "f914ca7d2e300d8b7a4956f974ea45533b71fa43fce1ed2e1b37c213bed12630",
+      "club": "L",
+      "officialName": "Ishii",
+      "count": 1,
+      "literal": "[L] Ishii ( 1, 6th inn. off H.Tanaka, 0 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026050201544.html",
+      "fetchedAt": "2026-11-06T07:50:28.451Z",
+      "sha256": "079f6353c3ed2ae3432172471a39622860501e2247216875ab39666ad0788b87",
+      "club": "H",
+      "officialName": "Kurihara",
+      "count": 1,
+      "literal": "[H] Kurihara ( 7, 3rd inn. off Urena, 3 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026050201544.html",
+      "fetchedAt": "2026-11-06T07:50:28.451Z",
+      "sha256": "079f6353c3ed2ae3432172471a39622860501e2247216875ab39666ad0788b87",
+      "club": "H",
+      "officialName": "Yamakawa",
+      "count": 1,
+      "literal": "[H] Yamakawa ( 6, 4th inn. off Urena, 0 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026050301176.html",
+      "fetchedAt": "2026-11-06T07:50:28.710Z",
+      "sha256": "421275777515352e02250ffa8d4a8db78f91db298f9422fd9349b94195d0c203",
+      "club": "DB",
+      "officialName": "Miyazaki",
+      "count": 1,
+      "literal": "[DB] Miyazaki ( 2, 5th inn. off Walters, 0 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026050301176.html",
+      "fetchedAt": "2026-11-06T07:50:28.710Z",
+      "sha256": "421275777515352e02250ffa8d4a8db78f91db298f9422fd9349b94195d0c203",
+      "club": "DB",
+      "officialName": "Viciedo",
+      "count": 1,
+      "literal": "[DB] Viciedo ( 1, 8th inn. off Taguchi, 1 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026050301176.html",
+      "fetchedAt": "2026-11-06T07:50:28.710Z",
+      "sha256": "421275777515352e02250ffa8d4a8db78f91db298f9422fd9349b94195d0c203",
+      "club": "DB",
+      "officialName": "Watarai",
+      "count": 1,
+      "literal": "[DB] Watarai ( 3, 9th inn. off S.Maruyama, 2 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026050301176.html",
+      "fetchedAt": "2026-11-06T07:50:28.710Z",
+      "sha256": "421275777515352e02250ffa8d4a8db78f91db298f9422fd9349b94195d0c203",
+      "club": "S",
+      "officialName": "Takeoka",
+      "count": 1,
+      "literal": "[S] Takeoka ( 3, 9th inn. off K.Ishida, 0 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026050301545.html",
+      "fetchedAt": "2026-11-06T07:50:29.096Z",
+      "sha256": "c4ee63abff40181b51734f47881246e4a6be8f40b3918e457d67d013c61639ab",
+      "club": "F",
+      "officialName": "Mannami",
+      "count": 1,
+      "literal": "[F] Mannami ( 10, 6th inn. off Kuri, 0 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026050301546.html",
+      "fetchedAt": "2026-11-06T07:50:29.226Z",
+      "sha256": "735f40864f684cded8e01ab8c727e3ac56d7c90fe0da88a89e2315dab4fd68f8",
+      "club": "M",
+      "officialName": "Fujiwara",
+      "count": 1,
+      "literal": "[M] Fujiwara ( 2, 2nd inn. off Itogawa, 1 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026050401179.html",
+      "fetchedAt": "2026-11-06T07:50:29.644Z",
+      "sha256": "8b6a97c710af83aa1a6f7f018a07f04d314eac86b514e68cad8aa3f8afc5a3ea",
+      "club": "S",
+      "officialName": "K.Suzuki",
+      "count": 1,
+      "literal": "[S] K.Suzuki ( 1, 3rd inn. off Togo, 2 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026050401180.html",
+      "fetchedAt": "2026-11-06T07:50:29.788Z",
+      "sha256": "1ff48c918e43748f101e7e61bba16e68cdbcf9048ee8c8938061c9231a9a66de",
+      "club": "C",
+      "officialName": "Sakakura",
+      "count": 1,
+      "literal": "[C] Sakakura ( 4, 1st inn. off Y.Takeda, 3 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026050401180.html",
+      "fetchedAt": "2026-11-06T07:50:29.788Z",
+      "sha256": "1ff48c918e43748f101e7e61bba16e68cdbcf9048ee8c8938061c9231a9a66de",
+      "club": "C",
+      "officialName": "Akiyama",
+      "count": 1,
+      "literal": "[C] Akiyama ( 2, 5th inn. off Y.Takeda, 0 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026050401180.html",
+      "fetchedAt": "2026-11-06T07:50:29.788Z",
+      "sha256": "1ff48c918e43748f101e7e61bba16e68cdbcf9048ee8c8938061c9231a9a66de",
+      "club": "C",
+      "officialName": "Montero",
+      "count": 1,
+      "literal": "[C] Montero ( 4, 9th inn. off Miyagi, 1 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026050401180.html",
+      "fetchedAt": "2026-11-06T07:50:29.788Z",
+      "sha256": "1ff48c918e43748f101e7e61bba16e68cdbcf9048ee8c8938061c9231a9a66de",
+      "club": "DB",
+      "officialName": "Ebina",
+      "count": 1,
+      "literal": "[DB] Ebina ( 1, 4th inn. off Tsuji, 1 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026050401181.html",
+      "fetchedAt": "2026-11-06T07:50:30.007Z",
+      "sha256": "7a8847a0a27bf6d73fbd16ce56ba57c78087b04227c39d86559aff4035860e44",
+      "club": "D",
+      "officialName": "Hosokawa",
+      "count": 1,
+      "literal": "[D] Hosokawa ( 4, 1st inn. off Mombetsu, 2 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026050401181.html",
+      "fetchedAt": "2026-11-06T07:50:30.007Z",
+      "sha256": "7a8847a0a27bf6d73fbd16ce56ba57c78087b04227c39d86559aff4035860e44",
+      "club": "D",
+      "officialName": "Ishii",
+      "count": 1,
+      "literal": "[D] Ishii ( 3, 5th inn. off Mombetsu, 0 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026050401548.html",
+      "fetchedAt": "2026-11-06T07:50:30.135Z",
+      "sha256": "b95802eecb1c623b08ee1ed26e3a54f5b26f44f1b5bceb51f2736e1c506a3ec4",
+      "club": "E",
+      "officialName": "Taira",
+      "count": 1,
+      "literal": "[E] Taira ( 2, 8th inn. off Fukushima, 0 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026050401548.html",
+      "fetchedAt": "2026-11-06T07:50:30.135Z",
+      "sha256": "b95802eecb1c623b08ee1ed26e3a54f5b26f44f1b5bceb51f2736e1c506a3ec4",
+      "club": "E",
+      "officialName": "Tatsumi",
+      "count": 1,
+      "literal": "[E] Tatsumi ( 3, 8th inn. off Fukushima, 0 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026050401549.html",
+      "fetchedAt": "2026-11-06T07:50:30.262Z",
+      "sha256": "9a785564b65a5460ec5fda013edd93960983bad65afa1bbb524fdb5d74c58a39",
+      "club": "H",
+      "officialName": "Kurihara",
+      "count": 1,
+      "literal": "[H] Kurihara ( 8, 6th inn. off Sugai, 1 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026050401549.html",
+      "fetchedAt": "2026-11-06T07:50:30.262Z",
+      "sha256": "9a785564b65a5460ec5fda013edd93960983bad65afa1bbb524fdb5d74c58a39",
+      "club": "L",
+      "officialName": "Nevin",
+      "count": 2,
+      "literal": "[L] Nevin 2 ( 3, 1st inn. off JH.Hsu, 1 on ; 2nd inn. off JH.Hsu, 1 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026050501182.html",
+      "fetchedAt": "2026-11-06T07:50:30.638Z",
+      "sha256": "58326a114945d2a8e2286c5015feccef9c7bbc6554f0a35cfc8d2382896d4503",
+      "club": "S",
+      "officialName": "Santana",
+      "count": 1,
+      "literal": "[S] Santana ( 8, 6th inn. off Funabasama, 0 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026050501182.html",
+      "fetchedAt": "2026-11-06T07:50:30.638Z",
+      "sha256": "58326a114945d2a8e2286c5015feccef9c7bbc6554f0a35cfc8d2382896d4503",
+      "club": "G",
+      "officialName": "Ohshiro",
+      "count": 1,
+      "literal": "[G] Ohshiro ( 3, 4th inn. off Yoshimura, 2 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026050501183.html",
+      "fetchedAt": "2026-11-06T07:50:30.776Z",
+      "sha256": "f82150de6e0809a3c47ecd9baa8cbe93796a8ef8d00a42bbe8c7e9a2438a0118",
+      "club": "C",
+      "officialName": "Mochimaru",
+      "count": 1,
+      "literal": "[C] Mochimaru ( 1, 9th inn. off Yamasaki, 0 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026050501183.html",
+      "fetchedAt": "2026-11-06T07:50:30.776Z",
+      "sha256": "f82150de6e0809a3c47ecd9baa8cbe93796a8ef8d00a42bbe8c7e9a2438a0118",
+      "club": "DB",
+      "officialName": "Hayashi",
+      "count": 1,
+      "literal": "[DB] Hayashi ( 1, 6th inn. off Tokoda, 1 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026050501184.html",
+      "fetchedAt": "2026-11-06T07:50:30.912Z",
+      "sha256": "f146d266f4e4a7e828bf1cbc5d7ed751d640823d6635ddb6aa0ef676625688f8",
+      "club": "T",
+      "officialName": "Morishita",
+      "count": 1,
+      "literal": "[T] Morishita ( 8, 1st inn. off Kanemaru, 0 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026050501184.html",
+      "fetchedAt": "2026-11-06T07:50:30.912Z",
+      "sha256": "f146d266f4e4a7e828bf1cbc5d7ed751d640823d6635ddb6aa0ef676625688f8",
+      "club": "T",
+      "officialName": "Maegawa",
+      "count": 1,
+      "literal": "[T] Maegawa ( 1, 7th inn. off Kanemaru, 0 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026050501184.html",
+      "fetchedAt": "2026-11-06T07:50:30.912Z",
+      "sha256": "f146d266f4e4a7e828bf1cbc5d7ed751d640823d6635ddb6aa0ef676625688f8",
+      "club": "T",
+      "officialName": "Sato",
+      "count": 1,
+      "literal": "[T] Sato ( 9, 9th inn. off Fuku, 0 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026050501184.html",
+      "fetchedAt": "2026-11-06T07:50:30.912Z",
+      "sha256": "f146d266f4e4a7e828bf1cbc5d7ed751d640823d6635ddb6aa0ef676625688f8",
+      "club": "D",
+      "officialName": "Vosler",
+      "count": 1,
+      "literal": "[D] Vosler ( 2, 2nd inn. off Hayakawa, 0 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026050501184.html",
+      "fetchedAt": "2026-11-06T07:50:30.912Z",
+      "sha256": "f146d266f4e4a7e828bf1cbc5d7ed751d640823d6635ddb6aa0ef676625688f8",
+      "club": "D",
+      "officialName": "Tsuchida",
+      "count": 1,
+      "literal": "[D] Tsuchida ( 2, 4th inn. off Hayakawa, 0 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026050501551.html",
+      "fetchedAt": "2026-11-06T07:50:31.042Z",
+      "sha256": "f6f718a8586c50913fef4c5cfb9fa902eac44da42153b474026836802f1a3fff",
+      "club": "F",
+      "officialName": "Castro",
+      "count": 1,
+      "literal": "[F] Castro ( 5, 4th inn. off Shoji, 0 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026050501551.html",
+      "fetchedAt": "2026-11-06T07:50:31.042Z",
+      "sha256": "f6f718a8586c50913fef4c5cfb9fa902eac44da42153b474026836802f1a3fff",
+      "club": "F",
+      "officialName": "Kiyomiya",
+      "count": 1,
+      "literal": "[F] Kiyomiya ( 7, 5th inn. off Shoji, 0 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026050501551.html",
+      "fetchedAt": "2026-11-06T07:50:31.042Z",
+      "sha256": "f6f718a8586c50913fef4c5cfb9fa902eac44da42153b474026836802f1a3fff",
+      "club": "E",
+      "officialName": "Taira",
+      "count": 1,
+      "literal": "[E] Taira ( 3, 5th inn. off Hosono, 0 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026050501551.html",
+      "fetchedAt": "2026-11-06T07:50:31.042Z",
+      "sha256": "f6f718a8586c50913fef4c5cfb9fa902eac44da42153b474026836802f1a3fff",
+      "club": "E",
+      "officialName": "Asamura",
+      "count": 1,
+      "literal": "[E] Asamura ( 4, 7th inn. off Hosono, 1 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026050501552.html",
+      "fetchedAt": "2026-11-06T07:50:31.180Z",
+      "sha256": "9e1707f3fa2d85b5ddbb0441770cbcc2e9e01a3fd26c6bc5ee5033fa81050c48",
+      "club": "H",
+      "officialName": "Kondoh",
+      "count": 1,
+      "literal": "[H] Kondoh ( 7, 3rd inn. off Y.Watanabe, 1 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026050501552.html",
+      "fetchedAt": "2026-11-06T07:50:31.180Z",
+      "sha256": "9e1707f3fa2d85b5ddbb0441770cbcc2e9e01a3fd26c6bc5ee5033fa81050c48",
+      "club": "L",
+      "officialName": "Y.Koga",
+      "count": 1,
+      "literal": "[L] Y.Koga ( 1, 2nd inn. off H.Matsumoto, 2 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026050601185.html",
+      "fetchedAt": "2026-11-06T07:50:31.575Z",
+      "sha256": "d10397f27795a190f158b2630349df2b38a2eacdd710523d8439903c18275490",
+      "club": "S",
+      "officialName": "Namiki",
+      "count": 1,
+      "literal": "[S] Namiki ( 1, 1st inn. off Takemaru, 0 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026050601185.html",
+      "fetchedAt": "2026-11-06T07:50:31.575Z",
+      "sha256": "d10397f27795a190f158b2630349df2b38a2eacdd710523d8439903c18275490",
+      "club": "S",
+      "officialName": "Uchiyama",
+      "count": 1,
+      "literal": "[S] Uchiyama ( 2, 6th inn. off Takemaru, 0 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026050601186.html",
+      "fetchedAt": "2026-11-06T07:50:31.708Z",
+      "sha256": "39873b02379dd54147ce987034caf5e216120a4c0098bda5053a3effd287857b",
+      "club": "C",
+      "officialName": "R.Kikuchi",
+      "count": 1,
+      "literal": "[C] R.Kikuchi ( 1, 3rd inn. off Fukazawa, 2 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026050601186.html",
+      "fetchedAt": "2026-11-06T07:50:31.708Z",
+      "sha256": "39873b02379dd54147ce987034caf5e216120a4c0098bda5053a3effd287857b",
+      "club": "C",
+      "officialName": "Mochimaru",
+      "count": 1,
+      "literal": "[C] Mochimaru ( 2, 6th inn. off K.Ishida, 0 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026050601187.html",
+      "fetchedAt": "2026-11-06T07:50:31.844Z",
+      "sha256": "f610b38b9e79c6de347d464066bd245d3a36c82ef915d7d084ce17d244830fd7",
+      "club": "T",
+      "officialName": "Takatera",
+      "count": 1,
+      "literal": "[T] Takatera ( 1, 6th inn. off H.Takahashi, 1 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026050601554.html",
+      "fetchedAt": "2026-11-06T07:50:31.979Z",
+      "sha256": "0760849be96f491317c46b339f106c7e4139a4bb528e7724ed563efed6cd0e8a",
+      "club": "F",
+      "officialName": "Hosokawa",
+      "count": 1,
+      "literal": "[F] Hosokawa ( 1, 8th inn. off Nakagomi, 2 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026050601554.html",
+      "fetchedAt": "2026-11-06T07:50:31.979Z",
+      "sha256": "0760849be96f491317c46b339f106c7e4139a4bb528e7724ed563efed6cd0e8a",
+      "club": "F",
+      "officialName": "Yazawa",
+      "count": 1,
+      "literal": "[F] Yazawa ( 3, 9th inn. off Nakagomi, 1 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026050601554.html",
+      "fetchedAt": "2026-11-06T07:50:31.979Z",
+      "sha256": "0760849be96f491317c46b339f106c7e4139a4bb528e7724ed563efed6cd0e8a",
+      "club": "E",
+      "officialName": "Taira",
+      "count": 1,
+      "literal": "[E] Taira ( 4, 3rd inn. off Itoh, 0 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026050601554.html",
+      "fetchedAt": "2026-11-06T07:50:31.979Z",
+      "sha256": "0760849be96f491317c46b339f106c7e4139a4bb528e7724ed563efed6cd0e8a",
+      "club": "E",
+      "officialName": "Murabayashi",
+      "count": 1,
+      "literal": "[E] Murabayashi ( 3, 9th inn. off Hori, 0 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026050601555.html",
+      "fetchedAt": "2026-11-06T07:50:32.108Z",
+      "sha256": "8c37f5d5b7169903d723441c210c3b17a0d7f31bad87b6d58b351c528d6935e9",
+      "club": "L",
+      "officialName": "S.Watanabe",
+      "count": 1,
+      "literal": "[L] S.Watanabe ( 4, 2nd inn. off Ohzeki, 3 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026050801188.html",
+      "fetchedAt": "2026-11-06T07:50:32.487Z",
+      "sha256": "10060f49d05bbbd1dec620aa0309ae604c5943c2cf889dae55eca3ffc4a589f3",
+      "club": "D",
+      "officialName": "Vosler",
+      "count": 1,
+      "literal": "[D] Vosler ( 3, 2nd inn. off Whitley, 1 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026050801188.html",
+      "fetchedAt": "2026-11-06T07:50:32.487Z",
+      "sha256": "10060f49d05bbbd1dec620aa0309ae604c5943c2cf889dae55eca3ffc4a589f3",
+      "club": "D",
+      "officialName": "Hosokawa",
+      "count": 1,
+      "literal": "[D] Hosokawa ( 5, 7th inn. off Ishikawa, 2 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026050801189.html",
+      "fetchedAt": "2026-11-06T07:50:32.618Z",
+      "sha256": "92806727fe6423b959e7563b1e79c67e6006ec9cfaed0c8562a86bedf259a94c",
+      "club": "DB",
+      "officialName": "Miyazaki",
+      "count": 1,
+      "literal": "[DB] Miyazaki ( 3, 9th inn. off Hatake, 2 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026050801189.html",
+      "fetchedAt": "2026-11-06T07:50:32.618Z",
+      "sha256": "92806727fe6423b959e7563b1e79c67e6006ec9cfaed0c8562a86bedf259a94c",
+      "club": "T",
+      "officialName": "Morishita",
+      "count": 1,
+      "literal": "[T] Morishita ( 9, 6th inn. off Taira, 0 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026050801190.html",
+      "fetchedAt": "2026-11-06T07:50:32.749Z",
+      "sha256": "67d62af8a13e21744cf4db3b17a209f7933491f064524b019fc0bba7cdcb1f7a",
+      "club": "C",
+      "officialName": "Sakakura",
+      "count": 1,
+      "literal": "[C] Sakakura ( 5, 4th inn. off Takanashi, 0 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026050801557.html",
+      "fetchedAt": "2026-11-06T07:50:32.876Z",
+      "sha256": "8c3598ec4d790e6d7dc7ca73cb8b55bbebf5191bc364488cd3694cef57afc98b",
+      "club": "L",
+      "officialName": "Hasegawa",
+      "count": 1,
+      "literal": "[L] Hasegawa ( 3, 8th inn. off S.Suzuki, 0 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026050801558.html",
+      "fetchedAt": "2026-11-06T07:50:33.007Z",
+      "sha256": "79bebfa5bb64f8b3eebea48a3f5af4480f14e13bcaab672dda2e5f94028788de",
+      "club": "F",
+      "officialName": "Mizuno",
+      "count": 1,
+      "literal": "[F] Mizuno ( 1, 9th inn. off Machado, 0 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026050801558.html",
+      "fetchedAt": "2026-11-06T07:50:33.007Z",
+      "sha256": "79bebfa5bb64f8b3eebea48a3f5af4480f14e13bcaab672dda2e5f94028788de",
+      "club": "B",
+      "officialName": "T.Mori",
+      "count": 2,
+      "literal": "[B] T.Mori 2 ( 4, 4th inn. off Tatsu, 1 on ; 8th inn. off Tamai, 0 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026050801559.html",
+      "fetchedAt": "2026-11-06T07:50:33.139Z",
+      "sha256": "1e877b6bb89926c20370a0519940e7d28514fdbba4a2342ab08c3271aad520da",
+      "club": "H",
+      "officialName": "Kondoh",
+      "count": 1,
+      "literal": "[H] Kondoh ( 8, 3rd inn. off Hiroike, 1 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026050801559.html",
+      "fetchedAt": "2026-11-06T07:50:33.139Z",
+      "sha256": "1e877b6bb89926c20370a0519940e7d28514fdbba4a2342ab08c3271aad520da",
+      "club": "H",
+      "officialName": "Kurihara",
+      "count": 1,
+      "literal": "[H] Kurihara ( 9, 9th inn. off Yokoyama, 0 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026050901191.html",
+      "fetchedAt": "2026-11-06T07:50:33.404Z",
+      "sha256": "699aa5737ef31c807e86266a5cbe2d22707dec22749bf3cefdc77b2070e7027d",
+      "club": "G",
+      "officialName": "Maru",
+      "count": 1,
+      "literal": "[G] Maru ( 1, 8th inn. off Sugiura, 1 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026050901193.html",
+      "fetchedAt": "2026-11-06T07:50:33.670Z",
+      "sha256": "14911e73d0c97d25efa2d74a16d92b8930e692e46c2ccbb3657ef86ab30339cb",
+      "club": "S",
+      "officialName": "Sawai",
+      "count": 1,
+      "literal": "[S] Sawai ( 1, 4th inn. off Okamoto, 1 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026050901560.html",
+      "fetchedAt": "2026-11-06T07:50:33.807Z",
+      "sha256": "253f7a71609dfadf9ee33dd478e530f881faf52265aa8aca7f351d6ebd2dfcdf",
+      "club": "E",
+      "officialName": "Sato",
+      "count": 1,
+      "literal": "[E] Sato ( 2, 6th inn. off So.Satoh, 0 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026050901560.html",
+      "fetchedAt": "2026-11-06T07:50:33.807Z",
+      "sha256": "253f7a71609dfadf9ee33dd478e530f881faf52265aa8aca7f351d6ebd2dfcdf",
+      "club": "L",
+      "officialName": "Hirasawa",
+      "count": 1,
+      "literal": "[L] Hirasawa ( 2, 6th inn. off Koja, 2 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026050901560.html",
+      "fetchedAt": "2026-11-06T07:50:33.807Z",
+      "sha256": "253f7a71609dfadf9ee33dd478e530f881faf52265aa8aca7f351d6ebd2dfcdf",
+      "club": "L",
+      "officialName": "Hasegawa",
+      "count": 1,
+      "literal": "[L] Hasegawa ( 4, 7th inn. off Koja, 1 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026050901561.html",
+      "fetchedAt": "2026-11-06T07:50:33.933Z",
+      "sha256": "b8d1844383b51beef9b48f40f56e41c7dcd4024b1e7876b213d532c20562bc85",
+      "club": "F",
+      "officialName": "Nomura",
+      "count": 1,
+      "literal": "[F] Nomura ( 5, 5th inn. off Sotani, 1 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026050901562.html",
+      "fetchedAt": "2026-11-06T07:50:34.068Z",
+      "sha256": "ae54d3b364a89abbf2c2cb56ea5a0d30099a65bee3d94788292f5e15caf1073c",
+      "club": "M",
+      "officialName": "K.Ueda",
+      "count": 1,
+      "literal": "[M] K.Ueda ( 1, 2nd inn. off Ohtsu, 0 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026050901562.html",
+      "fetchedAt": "2026-11-06T07:50:34.068Z",
+      "sha256": "ae54d3b364a89abbf2c2cb56ea5a0d30099a65bee3d94788292f5e15caf1073c",
+      "club": "M",
+      "officialName": "Satoh",
+      "count": 2,
+      "literal": "[M] Satoh 2 ( 4, 7th inn. off Ohtsu, 0 on ; 8th inn. off H.Kimura, 0 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026050901562.html",
+      "fetchedAt": "2026-11-06T07:50:34.068Z",
+      "sha256": "ae54d3b364a89abbf2c2cb56ea5a0d30099a65bee3d94788292f5e15caf1073c",
+      "club": "M",
+      "officialName": "Polanco",
+      "count": 1,
+      "literal": "[M] Polanco ( 3, 9th inn. off Y.Matsumoto, 0 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026050901562.html",
+      "fetchedAt": "2026-11-06T07:50:34.068Z",
+      "sha256": "ae54d3b364a89abbf2c2cb56ea5a0d30099a65bee3d94788292f5e15caf1073c",
+      "club": "H",
+      "officialName": "Yamakawa",
+      "count": 2,
+      "literal": "[H] Yamakawa 2 ( 8, 2nd inn. off H.Tanaka, 0 on ; 4th inn. off H.Tanaka, 2 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026051001194.html",
+      "fetchedAt": "2026-11-06T07:50:34.322Z",
+      "sha256": "2e9264d9a99794532df3198d82d6af8b19e1a4d51f49385ab86e9a85d32e9ad2",
+      "club": "G",
+      "officialName": "Dalbec",
+      "count": 1,
+      "literal": "[G] Dalbec ( 8, 4th inn. off Sakurai, 1 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026051001194.html",
+      "fetchedAt": "2026-11-06T07:50:34.322Z",
+      "sha256": "2e9264d9a99794532df3198d82d6af8b19e1a4d51f49385ab86e9a85d32e9ad2",
+      "club": "D",
+      "officialName": "Calixte",
+      "count": 1,
+      "literal": "[D] Calixte ( 1, 3rd inn. off Morita, 0 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026051001194.html",
+      "fetchedAt": "2026-11-06T07:50:34.322Z",
+      "sha256": "2e9264d9a99794532df3198d82d6af8b19e1a4d51f49385ab86e9a85d32e9ad2",
+      "club": "D",
+      "officialName": "Ukai",
+      "count": 1,
+      "literal": "[D] Ukai ( 2, 4th inn. off Morita, 1 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026051001195.html",
+      "fetchedAt": "2026-11-06T07:50:34.451Z",
+      "sha256": "c583ff2cfd4e00f302a8b75f403a6be1004caa7b864107af85b1624390216a55",
+      "club": "T",
+      "officialName": "Sato",
+      "count": 1,
+      "literal": "[T] Sato ( 10, 6th inn. off Y.Ishida, 0 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026051001563.html",
+      "fetchedAt": "2026-11-06T07:50:34.721Z",
+      "sha256": "8b38c706e53a4263021cd4abdede83b3b9520f655990f7b518de8061678ab8aa",
+      "club": "L",
+      "officialName": "Nevin",
+      "count": 1,
+      "literal": "[L] Nevin ( 4, 3rd inn. off Fujii, 0 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026051001563.html",
+      "fetchedAt": "2026-11-06T07:50:34.721Z",
+      "sha256": "8b38c706e53a4263021cd4abdede83b3b9520f655990f7b518de8061678ab8aa",
+      "club": "L",
+      "officialName": "Nishikawa",
+      "count": 1,
+      "literal": "[L] Nishikawa ( 1, 4th inn. off Fujii, 1 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026051001564.html",
+      "fetchedAt": "2026-11-06T07:50:34.859Z",
+      "sha256": "7a15a253e9e9ea51e0280dd9ada1e6a53f835f2d05ed467ba317fb8bbff6e1ec",
+      "club": "F",
+      "officialName": "Reyes",
+      "count": 1,
+      "literal": "[F] Reyes ( 4, 1st inn. off Espinoza, 1 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026051001565.html",
+      "fetchedAt": "2026-11-06T07:50:34.992Z",
+      "sha256": "78d8dca80bf163186d904ba00e7f5058c771718db662ca540fa8136d9eb366c3",
+      "club": "M",
+      "officialName": "Inoue",
+      "count": 1,
+      "literal": "[M] Inoue ( 2, 2nd inn. off Y.Maeda, 1 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026051001565.html",
+      "fetchedAt": "2026-11-06T07:50:34.992Z",
+      "sha256": "78d8dca80bf163186d904ba00e7f5058c771718db662ca540fa8136d9eb366c3",
+      "club": "M",
+      "officialName": "Polanco",
+      "count": 1,
+      "literal": "[M] Polanco ( 4, 9th inn. off Tsumori, 0 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026051001565.html",
+      "fetchedAt": "2026-11-06T07:50:34.992Z",
+      "sha256": "78d8dca80bf163186d904ba00e7f5058c771718db662ca540fa8136d9eb366c3",
+      "club": "H",
+      "officialName": "Kurihara",
+      "count": 1,
+      "literal": "[H] Kurihara ( 10, 4th inn. off Mouri, 0 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026051001565.html",
+      "fetchedAt": "2026-11-06T07:50:34.992Z",
+      "sha256": "78d8dca80bf163186d904ba00e7f5058c771718db662ca540fa8136d9eb366c3",
+      "club": "H",
+      "officialName": "Yamakawa",
+      "count": 1,
+      "literal": "[H] Yamakawa ( 9, 7th inn. off Masuda, 2 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026051201197.html",
+      "fetchedAt": "2026-11-06T07:50:35.261Z",
+      "sha256": "4e18f6b753043b7896dc8ca3e3807d835750eb24f31a6f18bfeab6a9b84ce06c",
+      "club": "C",
+      "officialName": "Sakakura",
+      "count": 1,
+      "literal": "[C] Sakakura ( 6, 5th inn. off Togo, 0 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026051201197.html",
+      "fetchedAt": "2026-11-06T07:50:35.261Z",
+      "sha256": "4e18f6b753043b7896dc8ca3e3807d835750eb24f31a6f18bfeab6a9b84ce06c",
+      "club": "G",
+      "officialName": "Ohshiro",
+      "count": 1,
+      "literal": "[G] Ohshiro ( 4, 2nd inn. off Tokoda, 0 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026051201197.html",
+      "fetchedAt": "2026-11-06T07:50:35.261Z",
+      "sha256": "4e18f6b753043b7896dc8ca3e3807d835750eb24f31a6f18bfeab6a9b84ce06c",
+      "club": "G",
+      "officialName": "Sasaki",
+      "count": 1,
+      "literal": "[G] Sasaki ( 4, 9th inn. off Nakazaki, 1 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026051201198.html",
+      "fetchedAt": "2026-11-06T07:50:35.394Z",
+      "sha256": "fd14f2afb685029114ab6acac6866aba11526b5195978fe895ad0ba307b3e304",
+      "club": "T",
+      "officialName": "Takatera",
+      "count": 1,
+      "literal": "[T] Takatera ( 2, 1st inn. off Yoshimura, 0 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026051201198.html",
+      "fetchedAt": "2026-11-06T07:50:35.394Z",
+      "sha256": "fd14f2afb685029114ab6acac6866aba11526b5195978fe895ad0ba307b3e304",
+      "club": "T",
+      "officialName": "Shimamura",
+      "count": 1,
+      "literal": "[T] Shimamura ( 1, 7th inn. off Hirosawa, 1 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026051201198.html",
+      "fetchedAt": "2026-11-06T07:50:35.394Z",
+      "sha256": "fd14f2afb685029114ab6acac6866aba11526b5195978fe895ad0ba307b3e304",
+      "club": "T",
+      "officialName": "Ohyama",
+      "count": 1,
+      "literal": "[T] Ohyama ( 5, 8th inn. off Yasaki, 0 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026051201198.html",
+      "fetchedAt": "2026-11-06T07:50:35.394Z",
+      "sha256": "fd14f2afb685029114ab6acac6866aba11526b5195978fe895ad0ba307b3e304",
+      "club": "T",
+      "officialName": "Morishita",
+      "count": 1,
+      "literal": "[T] Morishita ( 10, 9th inn. off Yasaki, 3 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026051201567.html",
+      "fetchedAt": "2026-11-06T07:50:35.785Z",
+      "sha256": "1a01ae1f12e7bd0a4a1b10f6ddd65034843c6b620f0a58f1945ec7e53759754e",
+      "club": "F",
+      "officialName": "Reyes",
+      "count": 1,
+      "literal": "[F] Reyes ( 5, 4th inn. off Jackson, 0 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026051201567.html",
+      "fetchedAt": "2026-11-06T07:50:35.785Z",
+      "sha256": "1a01ae1f12e7bd0a4a1b10f6ddd65034843c6b620f0a58f1945ec7e53759754e",
+      "club": "M",
+      "officialName": "K.Ueda",
+      "count": 1,
+      "literal": "[M] K.Ueda ( 2, 7th inn. off Itoh, 0 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026051201568.html",
+      "fetchedAt": "2026-11-06T07:50:35.922Z",
+      "sha256": "c08d0493e5151bb5bf2f30efb542b233403ed5b7046ef07974a3f4cbdf7c7ca8",
+      "club": "L",
+      "officialName": "Ishii",
+      "count": 1,
+      "literal": "[L] Ishii ( 2, 5th inn. off H.Matsumoto, 1 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026051301200.html",
+      "fetchedAt": "2026-11-06T07:50:36.188Z",
+      "sha256": "aafa44c793bd79876811747ceebd70d7259fa028636424db4d2640170dc3b288",
+      "club": "C",
+      "officialName": "Ohmori",
+      "count": 1,
+      "literal": "[C] Ohmori ( 2, 8th inn. off Ota, 0 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026051301200.html",
+      "fetchedAt": "2026-11-06T07:50:36.188Z",
+      "sha256": "aafa44c793bd79876811747ceebd70d7259fa028636424db4d2640170dc3b288",
+      "club": "G",
+      "officialName": "Cabbage",
+      "count": 1,
+      "literal": "[G] Cabbage ( 6, 5th inn. off Tamamura, 0 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026051301200.html",
+      "fetchedAt": "2026-11-06T07:50:36.188Z",
+      "sha256": "aafa44c793bd79876811747ceebd70d7259fa028636424db4d2640170dc3b288",
+      "club": "G",
+      "officialName": "H.Sakamoto",
+      "count": 1,
+      "literal": "[G] H.Sakamoto ( 2, 12th inn. off Endoh, 2 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026051301569.html",
+      "fetchedAt": "2026-11-06T07:50:36.577Z",
+      "sha256": "a6d8f310ea6b4eee5f4a5896b4f9309122713600b3ef504075dd1dd631f5290c",
+      "club": "F",
+      "officialName": "Reyes",
+      "count": 1,
+      "literal": "[F] Reyes ( 6, 3rd inn. off Ojima, 1 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026051301569.html",
+      "fetchedAt": "2026-11-06T07:50:36.577Z",
+      "sha256": "a6d8f310ea6b4eee5f4a5896b4f9309122713600b3ef504075dd1dd631f5290c",
+      "club": "F",
+      "officialName": "Shintoh",
+      "count": 1,
+      "literal": "[F] Shintoh ( 1, 9th inn. off Sawada, 1 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026051301569.html",
+      "fetchedAt": "2026-11-06T07:50:36.577Z",
+      "sha256": "a6d8f310ea6b4eee5f4a5896b4f9309122713600b3ef504075dd1dd631f5290c",
+      "club": "M",
+      "officialName": "Yamaguchi",
+      "count": 1,
+      "literal": "[M] Yamaguchi ( 1, 7th inn. off Fukushima, 1 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026051301570.html",
+      "fetchedAt": "2026-11-06T07:50:36.709Z",
+      "sha256": "a3f92d2a74f64cd42a10f6bd3ee3ff71b07b4dd77f13c28441cef2d4e6f25577",
+      "club": "H",
+      "officialName": "Kondoh",
+      "count": 1,
+      "literal": "[H] Kondoh ( 9, 2nd inn. off K.Takahashi, 0 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026051401572.html",
+      "fetchedAt": "2026-11-06T07:50:37.237Z",
+      "sha256": "438d8a60c98ab26e02c595d8ba993debc0970325f9d0b9e7ab12166f8c22bc9a",
+      "club": "F",
+      "officialName": "Asama",
+      "count": 1,
+      "literal": "[F] Asama ( 2, 9th inn. off Nishino, 0 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026051401572.html",
+      "fetchedAt": "2026-11-06T07:50:37.237Z",
+      "sha256": "438d8a60c98ab26e02c595d8ba993debc0970325f9d0b9e7ab12166f8c22bc9a",
+      "club": "F",
+      "officialName": "Kiyomiya",
+      "count": 1,
+      "literal": "[F] Kiyomiya ( 8, 9th inn. off Yokoyama, 0 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026051401572.html",
+      "fetchedAt": "2026-11-06T07:50:37.237Z",
+      "sha256": "438d8a60c98ab26e02c595d8ba993debc0970325f9d0b9e7ab12166f8c22bc9a",
+      "club": "M",
+      "officialName": "Satoh",
+      "count": 1,
+      "literal": "[M] Satoh ( 5, 1st inn. off Hosono, 1 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026051401572.html",
+      "fetchedAt": "2026-11-06T07:50:37.237Z",
+      "sha256": "438d8a60c98ab26e02c595d8ba993debc0970325f9d0b9e7ab12166f8c22bc9a",
+      "club": "M",
+      "officialName": "Nishikawa",
+      "count": 1,
+      "literal": "[M] Nishikawa ( 2, 6th inn. off Hosono, 0 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026051501204.html",
+      "fetchedAt": "2026-11-06T07:50:37.501Z",
+      "sha256": "0fa382ad427838316e24013132c2066fca6301d57441eb4e8b857370429d1f8d",
+      "club": "G",
+      "officialName": "Cabbage",
+      "count": 1,
+      "literal": "[G] Cabbage ( 7, 5th inn. off Taira, 0 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026051501205.html",
+      "fetchedAt": "2026-11-06T07:50:37.629Z",
+      "sha256": "e22d2cccd9931c240f6f214941470040ca02b48488db788fa188f4f7b852dac0",
+      "club": "S",
+      "officialName": "Santana",
+      "count": 1,
+      "literal": "[S] Santana ( 9, 1st inn. off Yanagi, 0 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026051501205.html",
+      "fetchedAt": "2026-11-06T07:50:37.629Z",
+      "sha256": "e22d2cccd9931c240f6f214941470040ca02b48488db788fa188f4f7b852dac0",
+      "club": "S",
+      "officialName": "Masuda",
+      "count": 1,
+      "literal": "[S] Masuda ( 3, 9th inn. off Shimizu, 1 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026051501205.html",
+      "fetchedAt": "2026-11-06T07:50:37.629Z",
+      "sha256": "e22d2cccd9931c240f6f214941470040ca02b48488db788fa188f4f7b852dac0",
+      "club": "D",
+      "officialName": "Itayama",
+      "count": 2,
+      "literal": "[D] Itayama 2 ( 4, 6th inn. off Takanashi, 0 on ; 7th inn. off Shoji, 3 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026051501206.html",
+      "fetchedAt": "2026-11-06T07:50:37.755Z",
+      "sha256": "6c2b54b3c127a2369b59a936c50d2b0bdefd5de581b11714f5cce6907e607cc5",
+      "club": "C",
+      "officialName": "Montero",
+      "count": 1,
+      "literal": "[C] Montero ( 5, 4th inn. off Ohtake, 0 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026051501574.html",
+      "fetchedAt": "2026-11-06T07:50:38.042Z",
+      "sha256": "b088ee48403a0e4649b4fe0fd8d444b84c5d2cbe58c70bc5e216ba12e1772015",
+      "club": "H",
+      "officialName": "Yanagita",
+      "count": 1,
+      "literal": "[H] Yanagita ( 4, 7th inn. off Hayakawa, 0 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026051501574.html",
+      "fetchedAt": "2026-11-06T07:50:38.042Z",
+      "sha256": "b088ee48403a0e4649b4fe0fd8d444b84c5d2cbe58c70bc5e216ba12e1772015",
+      "club": "H",
+      "officialName": "Masaki",
+      "count": 1,
+      "literal": "[H] Masaki ( 1, 7th inn. off Hayakawa, 0 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026051501574.html",
+      "fetchedAt": "2026-11-06T07:50:38.042Z",
+      "sha256": "b088ee48403a0e4649b4fe0fd8d444b84c5d2cbe58c70bc5e216ba12e1772015",
+      "club": "H",
+      "officialName": "Kurihara",
+      "count": 1,
+      "literal": "[H] Kurihara ( 11, 9th inn. off Nishigaki, 0 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026051501574.html",
+      "fetchedAt": "2026-11-06T07:50:38.042Z",
+      "sha256": "b088ee48403a0e4649b4fe0fd8d444b84c5d2cbe58c70bc5e216ba12e1772015",
+      "club": "E",
+      "officialName": "Sato",
+      "count": 1,
+      "literal": "[E] Sato ( 3, 2nd inn. off Uwasawa, 2 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026051501575.html",
+      "fetchedAt": "2026-11-06T07:50:38.196Z",
+      "sha256": "c5015f93d28b5004b970fc571fa11a68f0dfa82a04488293eb26e81523e89a2d",
+      "club": "M",
+      "officialName": "Satoh",
+      "count": 1,
+      "literal": "[M] Satoh ( 6, 3rd inn. off Takashima, 1 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026051501575.html",
+      "fetchedAt": "2026-11-06T07:50:38.196Z",
+      "sha256": "c5015f93d28b5004b970fc571fa11a68f0dfa82a04488293eb26e81523e89a2d",
+      "club": "M",
+      "officialName": "Nishikawa",
+      "count": 1,
+      "literal": "[M] Nishikawa ( 3, 7th inn. off Yamazaki, 2 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026051601207.html",
+      "fetchedAt": "2026-11-06T07:50:38.487Z",
+      "sha256": "d0cf014800f1d13d28912edff71281de5b0e510933691dcca32125129c997a23",
+      "club": "DB",
+      "officialName": "Tsutsugoh",
+      "count": 1,
+      "literal": "[DB] Tsutsugoh ( 3, 1st inn. off Whitley, 0 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026051601208.html",
+      "fetchedAt": "2026-11-06T07:50:38.630Z",
+      "sha256": "23f60b76aa116693861862f18841243861439dffcfc846aff9d08a6081a122fe",
+      "club": "D",
+      "officialName": "Muramatsu",
+      "count": 1,
+      "literal": "[D] Muramatsu ( 2, 3rd inn. off Okugawa, 1 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026051601208.html",
+      "fetchedAt": "2026-11-06T07:50:38.630Z",
+      "sha256": "23f60b76aa116693861862f18841243861439dffcfc846aff9d08a6081a122fe",
+      "club": "D",
+      "officialName": "Tak.Ishikawa",
+      "count": 1,
+      "literal": "[D] Tak.Ishikawa ( 1, 3rd inn. off Okugawa, 1 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026051601209.html",
+      "fetchedAt": "2026-11-06T07:50:38.774Z",
+      "sha256": "d62c398d93170620e7f49a1c70cc3fc8e0ea88ab173b7c0b029d4ad1f56a240d",
+      "club": "T",
+      "officialName": "Sato",
+      "count": 1,
+      "literal": "[T] Sato ( 11, 4th inn. off Morishita, 0 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026051601576.html",
+      "fetchedAt": "2026-11-06T07:50:38.920Z",
+      "sha256": "aabea66d9ab89950e20fa4c7f5a6ca95c729b8735ccac7df787c52e9941f9e85",
+      "club": "L",
+      "officialName": "Nevin",
+      "count": 2,
+      "literal": "[L] Nevin 2 ( 6, 2nd inn. off T.Katoh, 0 on ; 4th inn. off T.Katoh, 0 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026051601576.html",
+      "fetchedAt": "2026-11-06T07:50:38.920Z",
+      "sha256": "aabea66d9ab89950e20fa4c7f5a6ca95c729b8735ccac7df787c52e9941f9e85",
+      "club": "L",
+      "officialName": "Takizawa",
+      "count": 1,
+      "literal": "[L] Takizawa ( 1, 3rd inn. off T.Katoh, 0 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026051601576.html",
+      "fetchedAt": "2026-11-06T07:50:38.920Z",
+      "sha256": "aabea66d9ab89950e20fa4c7f5a6ca95c729b8735ccac7df787c52e9941f9e85",
+      "club": "L",
+      "officialName": "Canario",
+      "count": 1,
+      "literal": "[L] Canario ( 2, 3rd inn. off T.Katoh, 0 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026051601576.html",
+      "fetchedAt": "2026-11-06T07:50:38.920Z",
+      "sha256": "aabea66d9ab89950e20fa4c7f5a6ca95c729b8735ccac7df787c52e9941f9e85",
+      "club": "F",
+      "officialName": "Nomura",
+      "count": 1,
+      "literal": "[F] Nomura ( 6, 1st inn. off So.Satoh, 1 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026051601576.html",
+      "fetchedAt": "2026-11-06T07:50:38.920Z",
+      "sha256": "aabea66d9ab89950e20fa4c7f5a6ca95c729b8735ccac7df787c52e9941f9e85",
+      "club": "F",
+      "officialName": "Reyes",
+      "count": 1,
+      "literal": "[F] Reyes ( 7, 8th inn. off Kaino, 0 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026051601577.html",
+      "fetchedAt": "2026-11-06T07:50:39.064Z",
+      "sha256": "a25a03473a00a0857a3b3c5c302c4217295ee9b25b821f4f5bd84c2dace6da0a",
+      "club": "E",
+      "officialName": "Murabayashi",
+      "count": 1,
+      "literal": "[E] Murabayashi ( 4, 5th inn. off Stewart, Jr., 0 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026051701211.html",
+      "fetchedAt": "2026-11-06T07:50:39.609Z",
+      "sha256": "dcc5065508fe76ccc9f7a513b1989efcfa9c679efa50a58725ba58e8d61ffea5",
+      "club": "D",
+      "officialName": "Muramatsu",
+      "count": 1,
+      "literal": "[D] Muramatsu ( 3, 4th inn. off K.Matsumoto, 0 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026051701579.html",
+      "fetchedAt": "2026-11-06T07:50:39.878Z",
+      "sha256": "261b5aaf557b0a6662bf5d6632246ffc972efe835e3db1a29b176b3fe346bca8",
+      "club": "L",
+      "officialName": "Kishi",
+      "count": 1,
+      "literal": "[L] Kishi ( 1, 7th inn. off Uehara, 1 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026051701579.html",
+      "fetchedAt": "2026-11-06T07:50:39.878Z",
+      "sha256": "261b5aaf557b0a6662bf5d6632246ffc972efe835e3db1a29b176b3fe346bca8",
+      "club": "L",
+      "officialName": "Nevin",
+      "count": 1,
+      "literal": "[L] Nevin ( 7, 7th inn. off Uehara, 1 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026051701580.html",
+      "fetchedAt": "2026-11-06T07:50:40.012Z",
+      "sha256": "1d18e0f9e4151ec3bd7b454ddd6f0f78f162dac02800ee03693fde77022244b7",
+      "club": "H",
+      "officialName": "Kurihara",
+      "count": 1,
+      "literal": "[H] Kurihara ( 12, 1st inn. off Fujii, 1 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026051701580.html",
+      "fetchedAt": "2026-11-06T07:50:40.012Z",
+      "sha256": "1d18e0f9e4151ec3bd7b454ddd6f0f78f162dac02800ee03693fde77022244b7",
+      "club": "E",
+      "officialName": "Taira",
+      "count": 1,
+      "literal": "[E] Taira ( 5, 5th inn. off Y.Maeda, 0 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026051701581.html",
+      "fetchedAt": "2026-11-06T07:50:40.145Z",
+      "sha256": "96cec1ce9fb3773b6fb852befcd05230006d1479218cd1a234a3317a3b8184d7",
+      "club": "B",
+      "officialName": "Ohta",
+      "count": 1,
+      "literal": "[B] Ohta ( 3, 3rd inn. off Hiroike, 0 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026051701581.html",
+      "fetchedAt": "2026-11-06T07:50:40.145Z",
+      "sha256": "96cec1ce9fb3773b6fb852befcd05230006d1479218cd1a234a3317a3b8184d7",
+      "club": "M",
+      "officialName": "Soto",
+      "count": 1,
+      "literal": "[M] Soto ( 3, 6th inn. off Sotani, 2 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026051901213.html",
+      "fetchedAt": "2026-11-06T07:50:40.410Z",
+      "sha256": "ca1067700cf342b8cd0881503540eb47151bdff4d9c51ece7dc244fb8e26be54",
+      "club": "G",
+      "officialName": "Hirayama",
+      "count": 1,
+      "literal": "[G] Hirayama ( 2, 1st inn. off K.Takahashi, 0 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026051901214.html",
+      "fetchedAt": "2026-11-06T07:50:40.547Z",
+      "sha256": "2578743d21668fffb587fb9c4d11e8206045ea2a1a1633c9f24aec36393defe4",
+      "club": "T",
+      "officialName": "Sato",
+      "count": 1,
+      "literal": "[T] Sato ( 12, 3rd inn. off Kanemaru, 1 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026051901582.html",
+      "fetchedAt": "2026-11-06T07:50:40.821Z",
+      "sha256": "9bc56cc2c1d5f36a804e2ae38060bc44a1ce04ce7a312a1fe9fc5aef43460982",
+      "club": "E",
+      "officialName": "Tatsumi",
+      "count": 1,
+      "literal": "[E] Tatsumi ( 4, 1st inn. off Itoh, 0 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026051901582.html",
+      "fetchedAt": "2026-11-06T07:50:40.821Z",
+      "sha256": "9bc56cc2c1d5f36a804e2ae38060bc44a1ce04ce7a312a1fe9fc5aef43460982",
+      "club": "F",
+      "officialName": "Gunji",
+      "count": 1,
+      "literal": "[F] Gunji ( 3, 2nd inn. off Shoji, 1 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026051901582.html",
+      "fetchedAt": "2026-11-06T07:50:40.821Z",
+      "sha256": "9bc56cc2c1d5f36a804e2ae38060bc44a1ce04ce7a312a1fe9fc5aef43460982",
+      "club": "F",
+      "officialName": "Mannami",
+      "count": 1,
+      "literal": "[F] Mannami ( 11, 3rd inn. off Shoji, 1 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026051901583.html",
+      "fetchedAt": "2026-11-06T07:50:40.953Z",
+      "sha256": "ee8bf7f078d38b4ed2872083b0f4cde4c06a565419ba69c963341f5aadb39fd9",
+      "club": "M",
+      "officialName": "Soto",
+      "count": 1,
+      "literal": "[M] Soto ( 4, 9th inn. off Iwaki, 0 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026051901583.html",
+      "fetchedAt": "2026-11-06T07:50:40.953Z",
+      "sha256": "ee8bf7f078d38b4ed2872083b0f4cde4c06a565419ba69c963341f5aadb39fd9",
+      "club": "L",
+      "officialName": "Nishikawa",
+      "count": 1,
+      "literal": "[L] Nishikawa ( 2, 3rd inn. off Jackson, 0 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026051901583.html",
+      "fetchedAt": "2026-11-06T07:50:40.953Z",
+      "sha256": "ee8bf7f078d38b4ed2872083b0f4cde4c06a565419ba69c963341f5aadb39fd9",
+      "club": "L",
+      "officialName": "Hasegawa",
+      "count": 1,
+      "literal": "[L] Hasegawa ( 5, 4th inn. off Jackson, 1 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026052001216.html",
+      "fetchedAt": "2026-11-06T07:50:41.387Z",
+      "sha256": "4a2860c0930335eaf4761021a4860256c8be7050b175372e61431da914ee455c",
+      "club": "D",
+      "officialName": "Yamamoto",
+      "count": 1,
+      "literal": "[D] Yamamoto ( 1, 2nd inn. off Ibaragi, 2 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026052001216.html",
+      "fetchedAt": "2026-11-06T07:50:41.387Z",
+      "sha256": "4a2860c0930335eaf4761021a4860256c8be7050b175372e61431da914ee455c",
+      "club": "D",
+      "officialName": "Muller",
+      "count": 1,
+      "literal": "[D] Muller ( 1, 6th inn. off Ishiguro, 1 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026052001216.html",
+      "fetchedAt": "2026-11-06T07:50:41.387Z",
+      "sha256": "4a2860c0930335eaf4761021a4860256c8be7050b175372e61431da914ee455c",
+      "club": "T",
+      "officialName": "Morishita",
+      "count": 1,
+      "literal": "[T] Morishita ( 11, 9th inn. off Makino, 0 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026052001585.html",
+      "fetchedAt": "2026-11-06T07:50:41.678Z",
+      "sha256": "5bd54d226d078082f6280fb9e1c3319feef27683c90c4ae459d0ddff8a332a8e",
+      "club": "F",
+      "officialName": "Hosokawa",
+      "count": 1,
+      "literal": "[F] Hosokawa ( 2, 6th inn. off S.Suzuki, 1 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026052001586.html",
+      "fetchedAt": "2026-11-06T07:50:41.814Z",
+      "sha256": "b2fdecdfac671228f15e02a37173c8e39ef5d7c0f490e4717b2dae2c943522e7",
+      "club": "M",
+      "officialName": "Yamaguchi",
+      "count": 1,
+      "literal": "[M] Yamaguchi ( 2, 2nd inn. off Sugai, 0 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026052001587.html",
+      "fetchedAt": "2026-11-06T07:50:41.948Z",
+      "sha256": "3c64e2b1d8ab9fd53d31196e02250ab3890c9f7e4303d8dad01cfbbb8a694244",
+      "club": "H",
+      "officialName": "Yanagita",
+      "count": 1,
+      "literal": "[H] Yanagita ( 5, 9th inn. off Kawase, 0 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026052001587.html",
+      "fetchedAt": "2026-11-06T07:50:41.948Z",
+      "sha256": "3c64e2b1d8ab9fd53d31196e02250ab3890c9f7e4303d8dad01cfbbb8a694244",
+      "club": "B",
+      "officialName": "Noguchi",
+      "count": 1,
+      "literal": "[B] Noguchi ( 1, 6th inn. off Ohno, 2 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026052201221.html",
+      "fetchedAt": "2026-11-06T07:50:42.740Z",
+      "sha256": "d3e0fb2602f6b0a6261eff5d038e867f30f5c2d34630bb946fb77d63ec77e884",
+      "club": "T",
+      "officialName": "Ohyama",
+      "count": 1,
+      "literal": "[T] Ohyama ( 6, 1st inn. off Inoue, 1 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026052201221.html",
+      "fetchedAt": "2026-11-06T07:50:42.740Z",
+      "sha256": "d3e0fb2602f6b0a6261eff5d038e867f30f5c2d34630bb946fb77d63ec77e884",
+      "club": "G",
+      "officialName": "Cabbage",
+      "count": 1,
+      "literal": "[G] Cabbage ( 8, 7th inn. off Takahashi, 1 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026052201588.html",
+      "fetchedAt": "2026-11-06T07:50:42.999Z",
+      "sha256": "7fac6c2ee0cae29e46b76c227af1d6cf7b0ce4e3c4264ffb00cbbbf46320729b",
+      "club": "M",
+      "officialName": "Nishikawa",
+      "count": 1,
+      "literal": "[M] Nishikawa ( 4, 1st inn. off Urena, 0 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026052201588.html",
+      "fetchedAt": "2026-11-06T07:50:42.999Z",
+      "sha256": "7fac6c2ee0cae29e46b76c227af1d6cf7b0ce4e3c4264ffb00cbbbf46320729b",
+      "club": "M",
+      "officialName": "Yamaguchi",
+      "count": 1,
+      "literal": "[M] Yamaguchi ( 3, 5th inn. off Shibata, 0 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026052201588.html",
+      "fetchedAt": "2026-11-06T07:50:42.999Z",
+      "sha256": "7fac6c2ee0cae29e46b76c227af1d6cf7b0ce4e3c4264ffb00cbbbf46320729b",
+      "club": "E",
+      "officialName": "Sato",
+      "count": 1,
+      "literal": "[E] Sato ( 4, 3rd inn. off Ojima, 0 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026052201589.html",
+      "fetchedAt": "2026-11-06T07:50:43.130Z",
+      "sha256": "730ab5686eb7fcb2da36da756ff127f021421819d4eddd526c1d97819338c8ff",
+      "club": "L",
+      "officialName": "Hasegawa",
+      "count": 1,
+      "literal": "[L] Hasegawa ( 6, 9th inn. off Iriyama, 0 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026052201590.html",
+      "fetchedAt": "2026-11-06T07:50:43.253Z",
+      "sha256": "80f9a1d491374eb4aa85389f32290938f1f7ef4a70bc7f25ab0a831c94186edb",
+      "club": "H",
+      "officialName": "Y.Yamamoto",
+      "count": 1,
+      "literal": "[H] Y.Yamamoto ( 1, 7th inn. off Tatsu, 0 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026052301225.html",
+      "fetchedAt": "2026-11-06T07:50:43.844Z",
+      "sha256": "0fcde022675d5b981ff700a99becb3d2536943af4ca67ae5c5486e6aedf9fc92",
+      "club": "C",
+      "officialName": "Ishihara",
+      "count": 1,
+      "literal": "[C] Ishihara ( 1, 4th inn. off Ohno, 0 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026052301225.html",
+      "fetchedAt": "2026-11-06T07:50:43.844Z",
+      "sha256": "0fcde022675d5b981ff700a99becb3d2536943af4ca67ae5c5486e6aedf9fc92",
+      "club": "D",
+      "officialName": "Ukai",
+      "count": 1,
+      "literal": "[D] Ukai ( 3, 2nd inn. off Morishita, 0 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026052301591.html",
+      "fetchedAt": "2026-11-06T07:50:43.973Z",
+      "sha256": "57af875ac3df4889f90fb52bf3d8238f16b5eb1e11b0b8e7f00afe3484883799",
+      "club": "M",
+      "officialName": "Inoue",
+      "count": 1,
+      "literal": "[M] Inoue ( 3, 3rd inn. off Hayakawa, 0 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026052301591.html",
+      "fetchedAt": "2026-11-06T07:50:43.973Z",
+      "sha256": "57af875ac3df4889f90fb52bf3d8238f16b5eb1e11b0b8e7f00afe3484883799",
+      "club": "M",
+      "officialName": "Yamaguchi",
+      "count": 1,
+      "literal": "[M] Yamaguchi ( 4, 6th inn. off Hayakawa, 0 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026052301591.html",
+      "fetchedAt": "2026-11-06T07:50:43.973Z",
+      "sha256": "57af875ac3df4889f90fb52bf3d8238f16b5eb1e11b0b8e7f00afe3484883799",
+      "club": "E",
+      "officialName": "Asamura",
+      "count": 1,
+      "literal": "[E] Asamura ( 5, 4th inn. off Nishino, 0 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026052401226.html",
+      "fetchedAt": "2026-11-06T07:50:44.501Z",
+      "sha256": "ef9a247da61eb205e5f614d02c69e1db8ce530926a753bce515e10bf4a53b9cf",
+      "club": "T",
+      "officialName": "Umeno",
+      "count": 1,
+      "literal": "[T] Umeno ( 1, 5th inn. off Takemaru, 0 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026052401226.html",
+      "fetchedAt": "2026-11-06T07:50:44.501Z",
+      "sha256": "ef9a247da61eb205e5f614d02c69e1db8ce530926a753bce515e10bf4a53b9cf",
+      "club": "T",
+      "officialName": "Tateishi",
+      "count": 1,
+      "literal": "[T] Tateishi ( 1, 5th inn. off Takemaru, 1 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026052401226.html",
+      "fetchedAt": "2026-11-06T07:50:44.501Z",
+      "sha256": "ef9a247da61eb205e5f614d02c69e1db8ce530926a753bce515e10bf4a53b9cf",
+      "club": "G",
+      "officialName": "Yoshikawa",
+      "count": 1,
+      "literal": "[G] Yoshikawa ( 1, 7th inn. off Saiki, 1 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026052401228.html",
+      "fetchedAt": "2026-11-06T07:50:44.766Z",
+      "sha256": "1f73d0dc053359d8a1417edc57b8bc80afd3782f6fa690e68831bbe7ba07f9b9",
+      "club": "C",
+      "officialName": "R.Kikuchi",
+      "count": 1,
+      "literal": "[C] R.Kikuchi ( 2, 6th inn. off H.Takahashi, 1 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026052401594.html",
+      "fetchedAt": "2026-11-06T07:50:44.894Z",
+      "sha256": "25b23d11ba45af93ead44287fd067be603d512222d538cedb66feadf62188f28",
+      "club": "M",
+      "officialName": "Yamaguchi",
+      "count": 1,
+      "literal": "[M] Yamaguchi ( 5, 9th inn. off Fujihira, 0 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026052401594.html",
+      "fetchedAt": "2026-11-06T07:50:44.894Z",
+      "sha256": "25b23d11ba45af93ead44287fd067be603d512222d538cedb66feadf62188f28",
+      "club": "E",
+      "officialName": "Taira",
+      "count": 1,
+      "literal": "[E] Taira ( 6, 1st inn. off Long, 2 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026052401595.html",
+      "fetchedAt": "2026-11-06T07:50:45.034Z",
+      "sha256": "15f65f2ca5b4ef43b1b7e6ccd709a0628da55b699b03d498114815b20aea25c6",
+      "club": "B",
+      "officialName": "T.Mori",
+      "count": 1,
+      "literal": "[B] T.Mori ( 5, 1st inn. off Winans, 0 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026052401595.html",
+      "fetchedAt": "2026-11-06T07:50:45.034Z",
+      "sha256": "15f65f2ca5b4ef43b1b7e6ccd709a0628da55b699b03d498114815b20aea25c6",
+      "club": "B",
+      "officialName": "Kurebayashi",
+      "count": 1,
+      "literal": "[B] Kurebayashi ( 5, 9th inn. off Iwaki, 0 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026052401595.html",
+      "fetchedAt": "2026-11-06T07:50:45.034Z",
+      "sha256": "15f65f2ca5b4ef43b1b7e6ccd709a0628da55b699b03d498114815b20aea25c6",
+      "club": "L",
+      "officialName": "Canario",
+      "count": 2,
+      "literal": "[L] Canario 2 ( 4, 1st inn. off Yamaoka, 0 on ; 6th inn. off Yoshida, 1 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026052401596.html",
+      "fetchedAt": "2026-11-06T07:50:45.161Z",
+      "sha256": "1196e2846635b5a94e291eef95d71f7ecc7bf14bb70cfccdc0be4134138351dc",
+      "club": "F",
+      "officialName": "Nomura",
+      "count": 1,
+      "literal": "[F] Nomura ( 7, 1st inn. off Y.Maeda, 3 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026052401596.html",
+      "fetchedAt": "2026-11-06T07:50:45.161Z",
+      "sha256": "1196e2846635b5a94e291eef95d71f7ecc7bf14bb70cfccdc0be4134138351dc",
+      "club": "F",
+      "officialName": "Reyes",
+      "count": 1,
+      "literal": "[F] Reyes ( 8, 5th inn. off Kamichatani, 0 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026052401596.html",
+      "fetchedAt": "2026-11-06T07:50:45.161Z",
+      "sha256": "1196e2846635b5a94e291eef95d71f7ecc7bf14bb70cfccdc0be4134138351dc",
+      "club": "F",
+      "officialName": "Castro",
+      "count": 1,
+      "literal": "[F] Castro ( 6, 7th inn. off H.Kimura, 0 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026052401596.html",
+      "fetchedAt": "2026-11-06T07:50:45.161Z",
+      "sha256": "1196e2846635b5a94e291eef95d71f7ecc7bf14bb70cfccdc0be4134138351dc",
+      "club": "H",
+      "officialName": "Yanagita",
+      "count": 1,
+      "literal": "[H] Yanagita ( 6, 3rd inn. off Kitayama, 1 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026052601829.html",
+      "fetchedAt": "2026-11-06T07:50:45.416Z",
+      "sha256": "5f55af5a77b3cd3123911ff50d65ccdd81074512573da7c81620188dff45a4be",
+      "club": "H",
+      "officialName": "Masaki",
+      "count": 1,
+      "literal": "[H] Masaki ( 2, 3rd inn. off Norimoto, 0 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026052601829.html",
+      "fetchedAt": "2026-11-06T07:50:45.416Z",
+      "sha256": "5f55af5a77b3cd3123911ff50d65ccdd81074512573da7c81620188dff45a4be",
+      "club": "H",
+      "officialName": "Kurihara",
+      "count": 1,
+      "literal": "[H] Kurihara ( 13, 3rd inn. off Norimoto, 2 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026052601829.html",
+      "fetchedAt": "2026-11-06T07:50:45.416Z",
+      "sha256": "5f55af5a77b3cd3123911ff50d65ccdd81074512573da7c81620188dff45a4be",
+      "club": "H",
+      "officialName": "K.Yamamoto",
+      "count": 1,
+      "literal": "[H] K.Yamamoto ( 1, 3rd inn. off Norimoto, 0 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026052601830.html",
+      "fetchedAt": "2026-11-06T07:50:45.552Z",
+      "sha256": "1c59c09229280de554a565250683d588c87650c8397f66d4ca07d9ceb3288735",
+      "club": "S",
+      "officialName": "Higuma",
+      "count": 1,
+      "literal": "[S] Higuma ( 1, 9th inn. off Kaino, 0 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026052601832.html",
+      "fetchedAt": "2026-11-06T07:50:45.808Z",
+      "sha256": "d706154b2d5deaf7029d63cb0c80546240709e993b375a5bd9bf7d60eebd6f50",
+      "club": "D",
+      "officialName": "Hosokawa",
+      "count": 1,
+      "literal": "[D] Hosokawa ( 6, 2nd inn. off Shoji, 0 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026052601833.html",
+      "fetchedAt": "2026-11-06T07:50:45.938Z",
+      "sha256": "95c98193d26b8b887a13141f8c7a9acad5e6400377f67bc243e2ebf311b67dd4",
+      "club": "F",
+      "officialName": "Reyes",
+      "count": 1,
+      "literal": "[F] Reyes ( 9, 6th inn. off Y.Nishi, 0 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026052601834.html",
+      "fetchedAt": "2026-11-06T07:50:46.073Z",
+      "sha256": "7bf51d2187c6e5b031d7f928f5ae2ba0583868fc2e577ee820a6615dfa8740d0",
+      "club": "C",
+      "officialName": "Ohmori",
+      "count": 1,
+      "literal": "[C] Ohmori ( 3, 1st inn. off Jackson, 0 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026052701836.html",
+      "fetchedAt": "2026-11-06T07:50:46.466Z",
+      "sha256": "8502a91c98c23b4f3bf32027be84f11c82b2cfafe1efc30c4e145d8eb1b75722",
+      "club": "L",
+      "officialName": "Nevin",
+      "count": 1,
+      "literal": "[L] Nevin ( 8, 6th inn. off K.Takahashi, 0 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026052701836.html",
+      "fetchedAt": "2026-11-06T07:50:46.466Z",
+      "sha256": "8502a91c98c23b4f3bf32027be84f11c82b2cfafe1efc30c4e145d8eb1b75722",
+      "club": "S",
+      "officialName": "Santana",
+      "count": 1,
+      "literal": "[S] Santana ( 10, 8th inn. off Shinohara, 1 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026052701838.html",
+      "fetchedAt": "2026-11-06T07:50:46.728Z",
+      "sha256": "07549d1d0a3bf198de6ae50ecd81aba65946e8b814c056f49b63d799ba46208c",
+      "club": "E",
+      "officialName": "Tatsumi",
+      "count": 1,
+      "literal": "[E] Tatsumi ( 5, 1st inn. off Sakurai, 1 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026052701838.html",
+      "fetchedAt": "2026-11-06T07:50:46.728Z",
+      "sha256": "07549d1d0a3bf198de6ae50ecd81aba65946e8b814c056f49b63d799ba46208c",
+      "club": "D",
+      "officialName": "Ukai",
+      "count": 1,
+      "literal": "[D] Ukai ( 4, 3rd inn. off Koja, 0 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026052701838.html",
+      "fetchedAt": "2026-11-06T07:50:46.728Z",
+      "sha256": "07549d1d0a3bf198de6ae50ecd81aba65946e8b814c056f49b63d799ba46208c",
+      "club": "D",
+      "officialName": "Tak.Ishikawa",
+      "count": 1,
+      "literal": "[D] Tak.Ishikawa ( 2, 4th inn. off Koja, 0 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026052701839.html",
+      "fetchedAt": "2026-11-06T07:50:46.861Z",
+      "sha256": "0719a4f8140a9b1a221e8a2699a8ca712add902e518b0585423f730b20e8ac16",
+      "club": "T",
+      "officialName": "Morishita",
+      "count": 1,
+      "literal": "[T] Morishita ( 12, 5th inn. off T.Katoh, 0 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026052701840.html",
+      "fetchedAt": "2026-11-06T07:50:46.987Z",
+      "sha256": "1dbb6505989e3ff692d495ce8b1c82c6f1573c0cf79260180c7a945de3fa3783",
+      "club": "M",
+      "officialName": "Yamaguchi",
+      "count": 1,
+      "literal": "[M] Yamaguchi ( 6, 6th inn. off Mori, 0 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026052701840.html",
+      "fetchedAt": "2026-11-06T07:50:46.987Z",
+      "sha256": "1dbb6505989e3ff692d495ce8b1c82c6f1573c0cf79260180c7a945de3fa3783",
+      "club": "C",
+      "officialName": "Mochimaru",
+      "count": 1,
+      "literal": "[C] Mochimaru ( 3, 2nd inn. off Mouri, 0 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026052701840.html",
+      "fetchedAt": "2026-11-06T07:50:46.987Z",
+      "sha256": "1dbb6505989e3ff692d495ce8b1c82c6f1573c0cf79260180c7a945de3fa3783",
+      "club": "C",
+      "officialName": "Nabara",
+      "count": 1,
+      "literal": "[C] Nabara ( 1, 8th inn. off Suzuki, 0 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026052801841.html",
+      "fetchedAt": "2026-11-06T07:50:47.244Z",
+      "sha256": "e5cab43c4472796006422a7942ebd374e226000ebcb30c513ca69f2a2b929b89",
+      "club": "H",
+      "officialName": "Kurihara",
+      "count": 2,
+      "literal": "[H] Kurihara 2 ( 15, 2nd inn. off M.Tanaka, 0 on ; 7th inn. off Nakagawa, 0 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026052801841.html",
+      "fetchedAt": "2026-11-06T07:50:47.244Z",
+      "sha256": "e5cab43c4472796006422a7942ebd374e226000ebcb30c513ca69f2a2b929b89",
+      "club": "H",
+      "officialName": "Y.Yamamoto",
+      "count": 1,
+      "literal": "[H] Y.Yamamoto ( 2, 7th inn. off Nakagawa, 1 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026052801842.html",
+      "fetchedAt": "2026-11-06T07:50:47.383Z",
+      "sha256": "702f28717cde0c68fb86ed116433c15a26ad91a033f69efb6881ecea605f6e30",
+      "club": "L",
+      "officialName": "Canario",
+      "count": 1,
+      "literal": "[L] Canario ( 5, 1st inn. off Ogawa, 0 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026052801842.html",
+      "fetchedAt": "2026-11-06T07:50:47.383Z",
+      "sha256": "702f28717cde0c68fb86ed116433c15a26ad91a033f69efb6881ecea605f6e30",
+      "club": "L",
+      "officialName": "Hasegawa",
+      "count": 1,
+      "literal": "[L] Hasegawa ( 7, 4th inn. off Ogawa, 0 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026052801843.html",
+      "fetchedAt": "2026-11-06T07:50:47.515Z",
+      "sha256": "8c769313c0500675b3c615d467b91d9a8d73a97f4088008dcf7ff73f2db50506",
+      "club": "DB",
+      "officialName": "Kyoda",
+      "count": 1,
+      "literal": "[DB] Kyoda ( 1, 7th inn. off Yoshida, 2 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026052801845.html",
+      "fetchedAt": "2026-11-06T07:50:47.776Z",
+      "sha256": "5bf0323485da106bd1e51e5464d51dfa84d4b4a3ca601125f56ae9adc172d03a",
+      "club": "T",
+      "officialName": "Sato",
+      "count": 1,
+      "literal": "[T] Sato ( 13, 9th inn. off Yanagawa, 0 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026052901848.html",
+      "fetchedAt": "2026-11-06T07:50:48.286Z",
+      "sha256": "b5ee7c238ebcff2acc30fcc4f8408050708846bf149d0e5f7b4a733b3ea00a7c",
+      "club": "S",
+      "officialName": "Uchiyama",
+      "count": 1,
+      "literal": "[S] Uchiyama ( 3, 4th inn. off Kishi, 1 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026052901848.html",
+      "fetchedAt": "2026-11-06T07:50:48.286Z",
+      "sha256": "b5ee7c238ebcff2acc30fcc4f8408050708846bf149d0e5f7b4a733b3ea00a7c",
+      "club": "E",
+      "officialName": "McCusker",
+      "count": 1,
+      "literal": "[E] McCusker ( 1, 9th inn. off Hirosawa, 0 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026052901849.html",
+      "fetchedAt": "2026-11-06T07:50:48.413Z",
+      "sha256": "0f11d96cd84875e9480b9bf81a851417392201f3022d137c31e2ed32eec91163",
+      "club": "DB",
+      "officialName": "Watarai",
+      "count": 1,
+      "literal": "[DB] Watarai ( 4, 3rd inn. off K.Takahashi, 1 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026052901849.html",
+      "fetchedAt": "2026-11-06T07:50:48.413Z",
+      "sha256": "0f11d96cd84875e9480b9bf81a851417392201f3022d137c31e2ed32eec91163",
+      "club": "L",
+      "officialName": "Canario",
+      "count": 1,
+      "literal": "[L] Canario ( 6, 4th inn. off Shimada, 0 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026052901849.html",
+      "fetchedAt": "2026-11-06T07:50:48.413Z",
+      "sha256": "0f11d96cd84875e9480b9bf81a851417392201f3022d137c31e2ed32eec91163",
+      "club": "L",
+      "officialName": "Nevin",
+      "count": 1,
+      "literal": "[L] Nevin ( 9, 7th inn. off Yoshino, 0 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026052901849.html",
+      "fetchedAt": "2026-11-06T07:50:48.413Z",
+      "sha256": "0f11d96cd84875e9480b9bf81a851417392201f3022d137c31e2ed32eec91163",
+      "club": "L",
+      "officialName": "Y.Koga",
+      "count": 1,
+      "literal": "[L] Y.Koga ( 2, 7th inn. off Yoshino, 1 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026052901851.html",
+      "fetchedAt": "2026-11-06T07:50:48.669Z",
+      "sha256": "ace552c1c73b867181e2f2a8277722cad97f0e341e59fb9ce925c768ca3b5ae4",
+      "club": "D",
+      "officialName": "Ishii",
+      "count": 1,
+      "literal": "[D] Ishii ( 4, 4th inn. off Hjelle, 0 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026052901852.html",
+      "fetchedAt": "2026-11-06T07:50:48.800Z",
+      "sha256": "892b9201a8f13e34f5b73104e149997ca4b7616904db762530b533b33959446b",
+      "club": "H",
+      "officialName": "Masaki",
+      "count": 1,
+      "literal": "[H] Masaki ( 3, 3rd inn. off Tamamura, 0 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026053001853.html",
+      "fetchedAt": "2026-11-06T07:50:49.060Z",
+      "sha256": "62c6d4714acb0089f25ade363f925f6d10abdb9527dead914e89c8fa772640ad",
+      "club": "G",
+      "officialName": "Cabbage",
+      "count": 1,
+      "literal": "[G] Cabbage ( 9, 2nd inn. off Arihara, 0 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026053001853.html",
+      "fetchedAt": "2026-11-06T07:50:49.060Z",
+      "sha256": "62c6d4714acb0089f25ade363f925f6d10abdb9527dead914e89c8fa772640ad",
+      "club": "G",
+      "officialName": "Kishida",
+      "count": 1,
+      "literal": "[G] Kishida ( 2, 2nd inn. off Arihara, 0 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026053001853.html",
+      "fetchedAt": "2026-11-06T07:50:49.060Z",
+      "sha256": "62c6d4714acb0089f25ade363f925f6d10abdb9527dead914e89c8fa772640ad",
+      "club": "F",
+      "officialName": "Castro",
+      "count": 1,
+      "literal": "[F] Castro ( 7, 7th inn. off Takanashi, 0 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026053001853.html",
+      "fetchedAt": "2026-11-06T07:50:49.060Z",
+      "sha256": "62c6d4714acb0089f25ade363f925f6d10abdb9527dead914e89c8fa772640ad",
+      "club": "F",
+      "officialName": "Gunji",
+      "count": 1,
+      "literal": "[F] Gunji ( 4, 8th inn. off Ota, 0 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026053001854.html",
+      "fetchedAt": "2026-11-06T07:50:49.202Z",
+      "sha256": "24cef76f67a2da4329ae6b97437db90696357adfb967b2183b5d86b08fe6fa85",
+      "club": "S",
+      "officialName": "Santana",
+      "count": 1,
+      "literal": "[S] Santana ( 11, 7th inn. off S.Suzuki, 1 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026053001854.html",
+      "fetchedAt": "2026-11-06T07:50:49.202Z",
+      "sha256": "24cef76f67a2da4329ae6b97437db90696357adfb967b2183b5d86b08fe6fa85",
+      "club": "E",
+      "officialName": "Y.Watanabe",
+      "count": 1,
+      "literal": "[E] Y.Watanabe ( 1, 6th inn. off Takanashi, 1 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026053001854.html",
+      "fetchedAt": "2026-11-06T07:50:49.202Z",
+      "sha256": "24cef76f67a2da4329ae6b97437db90696357adfb967b2183b5d86b08fe6fa85",
+      "club": "E",
+      "officialName": "McCusker",
+      "count": 1,
+      "literal": "[E] McCusker ( 2, 7th inn. off Takanashi, 0 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026053001854.html",
+      "fetchedAt": "2026-11-06T07:50:49.202Z",
+      "sha256": "24cef76f67a2da4329ae6b97437db90696357adfb967b2183b5d86b08fe6fa85",
+      "club": "E",
+      "officialName": "Taira",
+      "count": 1,
+      "literal": "[E] Taira ( 7, 7th inn. off Takanashi, 0 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026053001856.html",
+      "fetchedAt": "2026-11-06T07:50:49.469Z",
+      "sha256": "4033e005ed1eba4e3c8981e614876487db371314ede18c05b4b888c8ba6bafaa",
+      "club": "T",
+      "officialName": "Sato",
+      "count": 1,
+      "literal": "[T] Sato ( 14, 1st inn. off Karakawa, 0 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026053001856.html",
+      "fetchedAt": "2026-11-06T07:50:49.469Z",
+      "sha256": "4033e005ed1eba4e3c8981e614876487db371314ede18c05b4b888c8ba6bafaa",
+      "club": "T",
+      "officialName": "Morishita",
+      "count": 2,
+      "literal": "[T] Morishita 2 ( 14, 3rd inn. off Karakawa, 1 on ; 5th inn. off Karakawa, 0 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026053001856.html",
+      "fetchedAt": "2026-11-06T07:50:49.469Z",
+      "sha256": "4033e005ed1eba4e3c8981e614876487db371314ede18c05b4b888c8ba6bafaa",
+      "club": "M",
+      "officialName": "Yasuda",
+      "count": 1,
+      "literal": "[M] Yasuda ( 1, 2nd inn. off Murakami, 0 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026053001856.html",
+      "fetchedAt": "2026-11-06T07:50:49.469Z",
+      "sha256": "4033e005ed1eba4e3c8981e614876487db371314ede18c05b4b888c8ba6bafaa",
+      "club": "M",
+      "officialName": "Nishikawa",
+      "count": 1,
+      "literal": "[M] Nishikawa ( 5, 8th inn. off Murakami, 0 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026053001857.html",
+      "fetchedAt": "2026-11-06T07:50:49.604Z",
+      "sha256": "d84d15c391340b86835554a5e10c31af5cac520548087538bf38d074a357daa4",
+      "club": "D",
+      "officialName": "Tak.Ishikawa",
+      "count": 1,
+      "literal": "[D] Tak.Ishikawa ( 3, 2nd inn. off D.Tajima, 0 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026053001857.html",
+      "fetchedAt": "2026-11-06T07:50:49.604Z",
+      "sha256": "d84d15c391340b86835554a5e10c31af5cac520548087538bf38d074a357daa4",
+      "club": "B",
+      "officialName": "Kurebayashi",
+      "count": 1,
+      "literal": "[B] Kurebayashi ( 6, 1st inn. off Ohno, 1 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026053001858.html",
+      "fetchedAt": "2026-11-06T07:50:49.737Z",
+      "sha256": "84ef436d970af0ca16939308e9c2eb6cc0a082950d96c65d19e553f34fcf6ed5",
+      "club": "H",
+      "officialName": "Yanagita",
+      "count": 1,
+      "literal": "[H] Yanagita ( 7, 3rd inn. off Morishita, 0 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026053101859.html",
+      "fetchedAt": "2026-11-06T07:50:49.997Z",
+      "sha256": "defdc0c28c3361df4b0c5c54dcdcea05fe7ddc82abc6b9f9dda25f2f486c9c0a",
+      "club": "F",
+      "officialName": "Mannami",
+      "count": 1,
+      "literal": "[F] Mannami ( 12, 7th inn. off Takemaru, 0 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026053101861.html",
+      "fetchedAt": "2026-11-06T07:50:50.252Z",
+      "sha256": "784741153ea5cbd108ac394d421ef136c5e511658fd724f65da9f6c414ad2eb7",
+      "club": "DB",
+      "officialName": "Miyazaki",
+      "count": 1,
+      "literal": "[DB] Miyazaki ( 4, 5th inn. off Winans, 0 on )"
+    },
+    {
+      "sourceUrl": "https://npb.jp/bis/eng/2026/games/s2026053101864.html",
+      "fetchedAt": "2026-11-06T07:50:50.643Z",
+      "sha256": "cc57b0e7a5f3d2c456018c7e6299af7ff28631caf7c49432fb3b6283ae36ca18",
+      "club": "H",
+      "officialName": "Kurihara",
+      "count": 1,
+      "literal": "[H] Kurihara ( 16, 6th inn. off Okamoto, 1 on )"
+    }
+  ],
+  "note": "Names remain official English labels plus club, not resolved player IDs. No aliases are merged. This is source reconciliation, not a human-reviewed evaluation oracle."
+}

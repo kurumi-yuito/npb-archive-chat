@@ -11,6 +11,22 @@ const meaning = queryContractSchema.parse(oracle.meaning)
 const request = (contract: QueryContract) => ({ domain: 'npb' as const, policy: 'execute' as const, query_contract: contract, clarification_reason: null, subject: null })
 
 describe('semantic-only compilation and execution', () => {
+  it('cites only the games used in a date-bounded head-to-head aggregate and displays both clubs and dates', async () => {
+    const contract: QueryContract = { ...meaning, requested_output: [{ kind: 'game_results', fields: ['wins', 'losses', 'draws'] }],
+      entities: [{ kind: 'team', role: 'subject', mention: 'オリックス' }, { kind: 'team', role: 'opponent', mention: 'ロッテ' }], predicates: [],
+      temporal_scope: { years: [], year_from: null, year_to: null, date_from: '2026-08-01', date_to: '2026-08-31', relative: null },
+      aggregation: [{ operation: 'count', field: 'games' }], grouping: [], ordering: [], completeness: { mode: 'unspecified', limit: null } }
+    const source = { game_id: 'sample-a', source_key: 'index', source_url: 'https://npb.jp/scores/sample-a/score.html' }
+    const query = { aggregateGameResults: vi.fn().mockResolvedValue([{ kind: 'games', label: 'オリックス', total: 3,
+      stats: { wins: 2, losses: 1, draws: 0, total_games: 3, evidenceGameIds: '["sample-a","sample-b","sample-c"]' } }]),
+    listSourceSnapshotsByGameIds: vi.fn().mockResolvedValue([source]) }
+    const response = await createContractChatService(query as unknown as ChatQueryService, async () => request(contract)).answerQuestion('8月の対戦成績')
+    expect(query.aggregateGameResults).toHaveBeenCalledWith(expect.objectContaining({ team: 'オリックス', opponent: 'ロッテ', date_from: '2026-08-01', date_to: '2026-08-31' }))
+    expect(query.listSourceSnapshotsByGameIds).toHaveBeenCalledWith(['sample-a', 'sample-b', 'sample-c'])
+    expect(response.answer.summary).toContain('2026-08-01〜2026-08-31・オリックス対ロッテ')
+    expect(response.answer.summary).toContain('2勝1敗')
+    expect(response.answer.source_urls).toEqual([source.source_url])
+  })
   it('resolves unspecified recent performance from official positions for each identified player', async () => {
     const contract: QueryContract = { ...meaning, requested_output: [{ kind: 'appearance_records', fields: [] }], predicates: [],
       entities: [{ kind: 'player', role: 'subject', mention: '検証甲' }, { kind: 'player', role: 'subject', mention: '検証乙' }],

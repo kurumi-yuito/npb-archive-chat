@@ -5,6 +5,8 @@ import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { afterEach, describe, expect, it } from 'vitest'
+import { matchesAcceptanceSummary } from '../../../scripts/acceptance-summary.mjs'
+import { calendarAcceptanceIssues } from '../../../scripts/acceptance-calendar.mjs'
 
 const root = fileURLToPath(new URL('../../..', import.meta.url))
 const temporaryDirectories: string[] = []
@@ -16,6 +18,31 @@ afterEach(async () => {
 })
 
 describe('Acceptance runner fail-fast contract', () => {
+  it('checks the owner-confirmed current-season month without accepting wrong years, opponents or a bare score list', () => {
+    const body = { structured_query: { intent: 'aggregate_games', filters: { date_from: '2026-08-01', date_to: '2026-08-31', team: 'オリックス', opponent: 'ロッテ' } },
+      answer: { summary: '2026年8月のオリックス対ロッテは2勝1敗です。', source_urls: ['https://npb.jp/bis/2026/games/example.html'] },
+      results: { aggregates: [{ kind: 'games', label: 'オリックス', stats: { wins: 2, losses: 1, draws: 0 } }] } }
+    const oracle = { environment: 'independent_python_html_audit', scope: { year: 2026, month: 8 }, headToHead: { subjectTeam: 'b', opponentTeam: 'm', wins: 2, losses: 1, draws: 0 } }
+    expect(calendarAcceptanceIssues('B29', body, 2026, oracle)).toEqual([])
+    expect(calendarAcceptanceIssues('B29', body, 2026)).toContain('independent_numeric_oracle_missing')
+    expect(calendarAcceptanceIssues('B29', body, 2026, { ...oracle, headToHead: { ...oracle.headToHead, wins: 1, losses: 2 } })).toContain('independent_head_to_head_total_mismatch')
+    expect(calendarAcceptanceIssues('B29', body, 2025)).toContain('calendar_scope_mismatch')
+    expect(calendarAcceptanceIssues('B29', { ...body, structured_query: { ...body.structured_query, filters: { ...body.structured_query.filters, opponent: '阪神' } } }, 2026)).toContain('head_to_head_plan_missing')
+    expect(calendarAcceptanceIssues('B29', { ...body, results: { games: [] } }, 2026)).toContain('head_to_head_evidence_missing')
+    expect(calendarAcceptanceIssues('B29', { ...body, answer: { ...body.answer, source_urls: [] } }, 2026)).toContain('official_source_missing')
+    const leader = { structured_query: { intent: 'aggregate_batting', filters: { date_from: '2026-05-01', date_to: '2026-05-31', sort_by: 'homeRuns', limit: 1 } },
+      answer: { summary: '2026年5月の本塁打11本', source_urls: ['https://npb.jp/scores/sample/box.html'] },
+      results: { aggregates: [{ kind: 'batting', label: '検証選手', stats: { homeRuns: 11 } }] } }
+    const leaderOracle = { environment: 'independent_python_html_audit', scope: { year: 2026, month: 5 }, leaderboard: [{ homeRuns: 11 }] }
+    expect(calendarAcceptanceIssues('B22', leader, 2026, leaderOracle)).toEqual([])
+    expect(calendarAcceptanceIssues('B22', { ...leader, results: { aggregates: [{ ...leader.results.aggregates[0], stats: { homeRuns: 6 } }] } }, 2026, leaderOracle)).toContain('independent_home_run_total_mismatch')
+  })
+  it('B09/B11 keep their subject and requested fact assertions across the allowed newline difference', () => {
+    const condition = /佐々木朗希.*加藤貴/u
+    expect(matchesAcceptanceSummary(condition, '佐々木朗希の登板です。\n相手先発は加藤貴です。')).toBe(true)
+    expect(matchesAcceptanceSummary(condition, '増井の登板です。\n相手先発は加藤貴です。')).toBe(false)
+    expect(matchesAcceptanceSummary(condition, '佐々木朗希の登板です。\n相手先発は未確認です。')).toBe(false)
+  })
   it('stops at B01 and saves a resumable partial log', async () => {
     const requestedMessages: string[] = []
     const requestedUserAgents: string[] = []

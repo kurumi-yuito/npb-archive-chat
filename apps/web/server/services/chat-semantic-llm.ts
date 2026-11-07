@@ -3,6 +3,7 @@ import type { ChatQueryLlmConfig } from './chat-query-llm'
 import { ChatQueryParserUnavailableError } from './chat-query-parser'
 import type { ChatQueryParserContext } from './chat-query-parser-prompt'
 import { verifySemanticAlignment } from './chat-semantic-alignment'
+import { allStatisticMetrics } from './chat-statistic-metrics'
 
 const policies = ['execute', 'clarify', 'news', 'realtime', 'prediction', 'capabilities', 'outside_npb', 'staff_information'] as const
 const reasons = ['missing_history', 'history_target_unavailable', 'insufficient_context', 'missing_year'] as const
@@ -22,6 +23,8 @@ const systemPrompt = [
   'An entity mention is the name span only: exclude honorifics and role nouns such as 選手, 投手, さん, 氏. Preserve the actual name text and do not infer missing given names.',
   'Entities identify named people, named clubs/leagues and named venues. Counts, universal quantifiers and output/group labels are not named entities. An all-club request leaves club entities empty and groups by team; an all-player request leaves player entities empty and groups by player.',
   'Club-level statistics must group by team. Do not substitute a list of individual players for club totals or club rates. Club batting average is the club hit total divided by the club at-bat total, not a mean of player averages.',
+  'A club season record (wins, losses, draws, win rate, league rank or a standings table) requests team_statistics. Club wins are not the pitching wins of individual players. Use fields wins/losses/draws/win_rate/rank/games as requested, or empty fields for an unspecified club season record. A standings table groups by team and orders rank ascending. Completed per-game results remain game_results; never use them as a substitute for annual club records.',
+  'A head-to-head record requests game_results with fields wins, losses, draws and aggregation count on games. Keep the subject club and opponent club distinct, with the full requested date bounds. A list of individual scores alone does not answer a head-to-head win/loss aggregate.',
   'For individual plays assign the stated actor role: batter for a player hitting, pitcher for a player pitching, runner for a player running. subject means participation in any role and must not replace a stated action role.',
   'Only explicit constraints and conditions actually inherited from history belong in the contract. An unspecified level is unspecified, NOT both. Use both only when the user explicitly requests both first-team and farm records.',
   'Do not repeat entities or temporal constraints in predicates. Predicates describe additional requested conditions. A text condition uses field result_text and operator contains. Do not add an implicit event_type predicate.',
@@ -31,7 +34,9 @@ const systemPrompt = [
   'For an entire NPB career use temporal_scope.relative="career" and no date/year bounds. A current-season request must resolve to the current Japan year. Never leave a stated relative period unresolved or replace a season request with a career total.',
   'Relative periods use the canonical enum supplied by the schema: current_season/previous_season for seasons, recent_appearances/latest_appearance for appearance-relative requests, and the calendar tokens for calendar-relative requests. Calendar tokens must also carry resolved date bounds. Do not emit an unstructured description instead of one of these tokens.',
   'For an exact date use equal date_from/date_to. A continuous date range uses its actual bounds. Do not silently replace a date range with one date.',
+  'A calendar month or month/day without an explicit year uses the current NPB season (the year of current_date_jst), unless the conversation establishes another target year. Inherit that established year for a follow-up and record its temporal context reference. Resolve the full requested date range; never ask for a year solely because it was omitted. Preserve both clubs and any other conditions for a month-scoped matchup.',
   'Season and career totals are batting_statistics or pitching_statistics; individual game/appearance lines are batting_records or pitching_records. Requests for both require both outputs.',
+  `Use the shared logical metric vocabulary for statistical fields. Batting: ${allStatisticMetrics('batting').map((metric) => metric.field).join(', ')}. Pitching: ${allStatisticMetrics('pitching').map((metric) => metric.field).join(', ')}. If a requested measure is unsupported, preserve it in unresolved_constraints instead of omitting it or substituting a default measure.`,
   'Recorded recent form or condition is executable historical performance, not news: request batting_records or pitching_records with relative recent_appearances. A singular latest/last appearance uses latest_appearance. Preserve an explicit last N in completeness bounded/limit=N; without an explicit N leave completeness unspecified/limit=null so the product default can be applied. Never fabricate calendar bounds or a current season for appearance-relative requests. A comparison preserves every player, each with the same appearance window.',
   'An opposing starting pitcher requested for a selected pitching appearance is the field opponentStarter on that pitching_records output. It is not another pitching_records output for the subject, not an opponent-team field, and not a conversation reference when its anchor is in this same question.',
   'When a recent-form/performance question does not specify batting or pitching, use appearance_records, not both batting_records and pitching_records. Do not choose a domain from knowledge of a player name: official position evidence selects the record domain after identity resolution. Explicit batting or pitching requests use the concrete corresponding record kind; both are requested only when both domains were actually asked for.',
@@ -82,6 +87,9 @@ export function createSemanticQueryLlm(config: ChatQueryLlmConfig, dependencies:
         const parsed = semanticRequestSchema.parse(JSON.parse(payload.choices?.[0]?.message?.content ?? ''))
         previousCandidate = parsed
         if (parsed.policy === 'execute' && (parsed.domain !== 'npb' || !parsed.query_contract)) throw new Error('Execution requires an NPB semantic contract')
+        if (parsed.query_contract?.requested_output.some((output) => output.kind === 'pitching_statistics') &&
+          !parsed.query_contract.entities.some((entity) => entity.kind === 'player') && parsed.query_contract.entities.some((entity) => entity.kind === 'team') &&
+          !parsed.query_contract.grouping.includes('player')) throw new Error('Distinguish the statistic subject: club season wins/losses/rank require team_statistics; a ranking of individual pitchers requires grouping by player. Preserve the requested subject instead of substituting individual pitcher rows for a club record.')
         const compact = (text: string) => text.normalize('NFKC').replace(/\s+/gu, '')
         const conversation = [message, ...(context.history ?? []).map((item) => item.content)].map(compact)
         const ungrounded = parsed.query_contract?.entities.filter((entity) => !conversation.some((text) => text.includes(compact(entity.mention)))) ?? []

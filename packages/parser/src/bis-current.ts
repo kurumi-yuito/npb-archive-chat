@@ -186,7 +186,19 @@ type ParsedRow = {
 }
 
 function parseDataTables(html: string, includeSummaryRows = false): Array<{ headers: string[]; rows: ParsedRow[] }> {
-  return extractTopLevelElements(html, 'table').map((tableHtml) => {
+  const dataTables = (fragment: string): string[] => extractTopLevelElements(fragment, 'table').flatMap((table) => {
+    const inner = table.replace(/^<table\b[^>]*>/iu, '').replace(/<\/table>\s*$/iu, '')
+    if (!/<table\b/iu.test(inner)) return [table]
+    const rows = extractTopLevelElements(table, 'tr').map(extractTopLevelCells)
+    const header = rows.find((cells) => cells.length > 1 && cells.every((cell) => /^<th\b/iu.test(cell.trim()))) ?? rows[0] ?? []
+    // A data cell can itself contain a formatting table (notably fractional
+    // innings). Keep that parent data table; recurse only through layout tables.
+    const hasOwnDataRows = header.length > 1 && rows.some((cells) => cells.length === header.length &&
+      cells.filter((cell) => !/<table\b/iu.test(cell)).length > cells.length / 2 &&
+      !cells.every((cell) => /^<th\b/iu.test(cell.trim())))
+    return hasOwnDataRows ? [table] : dataTables(inner)
+  })
+  return dataTables(html).map((tableHtml) => {
     const rawRows = extractTopLevelElements(tableHtml, 'tr')
       .map((rowHtml) => extractTopLevelCells(rowHtml).map((cellHtml) => ({ ...parseCell(cellHtml), isHeader: /^<th\b/iu.test(cellHtml.trim()) })))
       .filter((cells) => cells.length > 0)

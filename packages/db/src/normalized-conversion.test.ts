@@ -20,6 +20,21 @@ const migrationsDir = path.resolve(
 )
 
 describe('runNormalizeDatabase', () => {
+  it('uses normalized migrations when the CLI omits the optional migrations directory', () => {
+    const dir = mkdtempSync(path.join(tmpdir(), 'npb-normalized-default-'))
+    try {
+      const source = path.join(dir, 'source.sqlite'), target = path.join(dir, 'target.sqlite')
+      const legacy = openDatabase(source)
+      migrateDatabase(legacy)
+      legacy.close()
+      const result = runNormalizeDatabase({ source, target })
+      expect(result.parity.ok).toBe(true)
+      expect(result.rowCounts.game_facts).toBe(0)
+      const normalized = openDatabase(target)
+      try { expect(normalized.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='game_facts'").get()).toEqual({ name: 'game_facts' }) }
+      finally { normalized.close() }
+    } finally { rmSync(dir, { recursive: true, force: true }) }
+  })
   it('converts canonical facts into normalized facts with compatibility views', async () => {
     const dir = mkdtempSync(path.join(tmpdir(), 'npb-normalized-'))
     try {

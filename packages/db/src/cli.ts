@@ -31,6 +31,7 @@ const KNOWN_COMMANDS = new Set([
   'update:official-statistics',
   'update:official-roster',
   'update:official-profiles',
+  'update:official-team-history',
   'migrate',
   'update:bis-current',
   'update-bis-current',
@@ -73,6 +74,12 @@ function resolveCliCommand(): { command: string; tail: string[] } {
 
 async function main() {
   const { command, tail } = resolveCliCommand()
+  if (command === 'update:official-team-history') {
+    const { runOfficialTeamHistoryUpdate } = await import('./update-official-team-history')
+    const result = await runOfficialTeamHistoryUpdate(parseUpdateBisCurrentArgs(tail))
+    process.stdout.write(`${JSON.stringify(result, null, 2)}\n`)
+    return
+  }
   if (command === 'update:official-profiles') {
     const { runOfficialPlayerProfilesUpdate, parseOfficialPlayerProfilesArgs } = await import('./update-official-player-profiles')
     const result = await runOfficialPlayerProfilesUpdate(parseOfficialPlayerProfilesArgs(tail))

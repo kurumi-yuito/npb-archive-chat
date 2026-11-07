@@ -1,10 +1,32 @@
 import { describe, expect, it } from 'vitest'
+import { readFileSync } from 'node:fs'
 import {
   parseBisPlayerStatsHtml,
   parseBisTeamRosterHtml,
   parseBisPlayerProfileHtml,
   parseBisPlayerStatisticHistoryHtml,
+  parseBisGenericTeamTableHtml,
 } from './bis-current'
+
+describe('official nested yearly club table', () => {
+  it('keeps a parent pitching data table when nested tables only format fractional innings', () => {
+    const html = readFileSync(new URL('./__fixtures__/bis-player-nested-innings.html', import.meta.url), 'utf8')
+    const rows = parseBisPlayerStatisticHistoryHtml(html)
+    expect(rows.find((row) => row.kind === 'pitching' && row.scope === 'career')?.metrics).toMatchObject({ 登板: '579', 投球回: '1746 .1' })
+    expect(rows.find((row) => row.kind === 'pitching' && row.year === 1960)?.metrics).toMatchObject({ 登板: '2', 投球回: '3' })
+    expect(rows.some((row) => row.kind === 'batting' && row.scope === 'career')).toBe(true)
+  })
+  it('reads season rows from the real data table instead of flattening its layout container', () => {
+    const html = readFileSync(new URL('./__fixtures__/bis-team-yearly-giants.html', import.meta.url), 'utf8')
+    const rows = parseBisGenericTeamTableHtml(html, { year: 2026, teamId: 'g', teamName: '読売ジャイアンツ', sourceUrl: 'https://npb.jp/bis/teams/yearly_g.html' })
+      .filter((row) => /^\d{4}/u.test(row.values.年度 ?? ''))
+    expect(rows).toHaveLength(93)
+    expect(rows.filter((row) => row.values.年度 === '1937春')).toHaveLength(1)
+    expect(rows.find((row) => row.values.年度 === '2025')?.values).toMatchObject({ 試合: '143', 勝利: '70', 敗北: '69', 引分: '4' })
+    expect(rows.find((row) => row.values.年度 === '2026')?.values).toMatchObject({ 試合: '143', 勝利: '76', 敗北: '64', 引分: '3', 順位: '2' })
+    for (const row of rows) expect(Number(row.values.試合)).toBe(Number(row.values.勝利) + Number(row.values.敗北) + Number(row.values.引分))
+  })
+})
 
 const rosterHtml = `
 <html><body>

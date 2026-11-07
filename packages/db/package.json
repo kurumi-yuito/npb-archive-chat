@@ -39,6 +39,7 @@
     "update:official-statistics": "node --import tsx ./src/cli.ts update:official-statistics",
     "update:official-roster": "node --import tsx ./src/cli.ts update:official-roster",
     "update:official-profiles": "node --import tsx ./src/cli.ts update:official-profiles",
+    "update:official-team-history": "node --import tsx ./src/cli.ts update:official-team-history",
     "update:daily": "node --import tsx ./src/cli.ts update:daily",
     "update:year": "node --import tsx ./src/cli.ts update-year",
     "typecheck": "tsc -p tsconfig.json --noEmit",

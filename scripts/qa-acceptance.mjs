@@ -1,12 +1,19 @@
-import { mkdir, writeFile } from 'node:fs/promises'
+import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { createEvaluationD1Budget, parseD1ReadAudit } from './evaluation-d1-budget.mjs'
+import { matchesAcceptanceSummary } from './acceptance-summary.mjs'
+import { calendarAcceptanceIssues } from './acceptance-calendar.mjs'
 
 const baseUrl = process.env.NPB_ACCEPTANCE_BASE_URL ?? 'http://127.0.0.1:3000'
 const selection = process.argv.find((arg) => arg.startsWith('--cases='))?.slice('--cases='.length) ?? 'all'
 const continueOnFailure = process.argv.includes('--continue-on-failure')
 const explicitCaseIds = new Set(selection.split(',').filter(Boolean))
 const outputDir = path.resolve(process.env.NPB_ACCEPTANCE_OUTPUT_DIR ?? 'data/logs')
+const oracleYear = Number(new Intl.DateTimeFormat('en', { timeZone: 'Asia/Tokyo', year: 'numeric' }).format(new Date()))
+const calendarOracles = Object.fromEntries(await Promise.all(Object.entries({ B22: `${oracleYear}-05-home-runs.json`, B29: `${oracleYear}-08-orix-lotte.json` }).map(async ([id, filename]) => {
+  try { return [id, JSON.parse(await readFile(new URL(`../docs/eval-source-oracles/${filename}`, import.meta.url), 'utf8'))] }
+  catch { return [id, null] }
+})))
 
 const conversations = [
   single('B01', '昨日の巨人の試合結果を教えて', 'partial'),
@@ -90,14 +97,14 @@ const acceptancePatterns = {
   B19: /田中将大.*(?:\d+勝です|算出できません).*対象外/u,
   B20: /(?:予測|正確).*できません/u,
   B21: /(?:どの|対象).*(?:選手|質問)/u,
-  B22: /何年/u,
+  B22: /本塁打/u,
   B23: /\d+勝\d+敗.*日程.*確認でき/u,
   B24: /高校野球.*対応していません/u,
   B25: /1位.*6位/u,
   B26: /森下[\s\S]*打率/u,
   B27: /阪神.*\d+勝\d+敗/u,
   B28: /巨人.*\d+勝/u,
-  B29: /何年/u,
+  B29: /\d+勝\d+敗/u,
   B30: /(?:予測|正確).*できません/u,
   B31: /どの田中/u,
   B32: /山川.*\d+本/u,
@@ -156,7 +163,6 @@ acceptanceRun: for (const conversation of selected) {
         method: 'POST',
         headers: {
           'content-type': 'application/json',
-          'x-npb-user-id': `acceptance-${conversation.id.toLowerCase()}-${turn.id.toLowerCase()}`,
           'user-agent': `npb-acceptance/${turn.id}`,
         },
         body: JSON.stringify({ message: turn.message, ...(history.length ? { history } : {}) }),
@@ -180,14 +186,16 @@ acceptanceRun: for (const conversation of selected) {
       error: requestError,
     }
     const budgetIssue = readBudget.observe(result.id, result.d1ReadAudit)
+    const calendarIssues = calendarAcceptanceIssues(turn.id, body, undefined, calendarOracles[turn.id])
+    result.calendarScopeIssues = calendarIssues
     const pattern = acceptancePatterns[turn.id]
-    result.verdict = !budgetIssue && result.status === 200 && typeof result.summary === 'string' &&
+    result.verdict = !budgetIssue && !calendarIssues.length && result.status === 200 && typeof result.summary === 'string' &&
       !/^イベントです。?\s*該当数:/u.test(result.summary) &&
-      (!pattern || pattern.test(result.summary))
+      (!pattern || matchesAcceptanceSummary(pattern, result.summary))
       ? 'pass'
       : 'fail'
     result.failureReason = result.verdict === 'fail'
-      ? budgetIssue ?? getFailureReason(result, pattern)
+      ? budgetIssue ?? (calendarIssues.length ? calendarIssues.join(',') : getFailureReason(result, pattern))
       : null
     results.push(result)
     process.stdout.write(`${turn.id}\t${result.verdict.toUpperCase()}\tHTTP ${result.status}\t${result.durationMs}ms\t${result.intent ?? '-'}\t${oneLine(result.summary)}\n`)
@@ -246,7 +254,7 @@ function getFailureReason(result, pattern) {
   if (result.status !== 200) return `HTTP ${result.status}`
   if (typeof result.summary !== 'string') return 'summary null'
   if (/^イベントです。?\s*該当数:/u.test(result.summary)) return 'generic event summary'
-  if (pattern && !pattern.test(result.summary)) return 'acceptance pattern mismatch'
+  if (pattern && !matchesAcceptanceSummary(pattern, result.summary)) return 'acceptance pattern mismatch'
   return 'acceptance assertion failed'
 }
 
