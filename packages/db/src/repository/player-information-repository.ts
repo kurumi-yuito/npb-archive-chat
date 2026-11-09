@@ -2,9 +2,12 @@ import { annualPlayerHistoryRows, officialPlayerHistoryEvidenceSchema, verifiedP
 import type { QueryDatabase } from '../query-driver'
 import { matchesGameTeamFilter } from './team-name-utils'
 import { searchOfficialStatisticRows } from './official-statistics-repository'
+import { searchRegistrationInformation } from './registration-information-repository'
+import { officialProfileMemberships } from './official-profile-memberships'
 
 export type PlayerInformationRow = {
   playerId: string; name: string; fetchedAt: string; sourceUrls: string[]
+  profileAvailable?: boolean
   affiliations: Array<{ year: number; team: string }>
   registrations: Array<{ year: number; team: string; position: string | null; uniformNumber: string | null; bats: string | null; throws: string | null }>
   statistics?: Array<{ year: number; team: string; kind: 'batting' | 'pitching'; metrics: Record<string, string>; sourceUrl: string; fetchedAt: string }>
@@ -16,17 +19,23 @@ export type PlayerInformationFilters = Omit<PlayerAffiliationFilters, 'player_na
 /** A player introduction requires identity/registration facts, not every batting or pitching appearance. */
 export async function searchPlayerInformation(database: QueryDatabase, filters: PlayerInformationFilters): Promise<PlayerInformationRow[]> {
   if (!filters.player_id) return []
+  const historicalRegistrations = await searchRegistrationInformation(database, filters)
   const profile = await database.prepare('SELECT player_id,full_name,year_teams_json,source_url,fetched_at,metadata FROM player_profiles WHERE player_id=?')
     .get(filters.player_id) as { player_id: string; full_name: string; year_teams_json: string | null; source_url: string; fetched_at: string; metadata: string } | null
-  if (!profile || profile.source_url !== `https://npb.jp/bis/players/${profile.player_id}.html`) return []
+  if (!profile || profile.source_url !== `https://npb.jp/bis/players/${profile.player_id}.html`) {
+    if (!historicalRegistrations.length) return []
+    const latest = historicalRegistrations[0]!
+    return [{ playerId: filters.player_id, name: latest.playerName, fetchedAt: latest.fetchedAt, profileAvailable: false,
+      sourceUrls: [...new Set(historicalRegistrations.map((row) => row.sourceUrl))],
+      affiliations: historicalRegistrations.map((row) => ({ year: row.year, team: row.team })),
+      registrations: historicalRegistrations.map((row) => ({ year: row.year, team: row.team, position: row.position,
+        uniformNumber: row.uniformNumber, bats: null, throws: null })) }]
+  }
   const affiliations: PlayerInformationRow['affiliations'] = []
-  try {
-    for (const [text, teams] of Object.entries(JSON.parse(profile.year_teams_json ?? '{}') as Record<string, unknown>)) {
-      const year = Number(text)
+    for (const { year, team } of officialProfileMemberships(profile)) {
       if (!Number.isInteger(year) || year < 1936 || (filters.year && year !== filters.year) || (filters.year_from && year < filters.year_from) || (filters.year_to && year > filters.year_to)) continue
-      for (const team of Array.isArray(teams) ? teams : [teams]) if (typeof team === 'string' && team && (!filters.team || matchesGameTeamFilter(team, filters.team))) affiliations.push({ year, team })
+      if (!filters.team || matchesGameTeamFilter(team, filters.team)) affiliations.push({ year, team })
     }
-  } catch { /* Malformed historical metadata is not evidence. */ }
   const registrations = await database.prepare(`SELECT year,team_name AS team,position,uniform_number AS uniformNumber,bats,throws,source_url AS sourceUrl
     FROM current_team_roster WHERE player_id=? ORDER BY year DESC,team_id LIMIT 50`).all(profile.player_id) as Array<PlayerInformationRow['registrations'][number] & { sourceUrl: string }>
   // An unversioned roster page supports the collection year's listing. It is
@@ -67,9 +76,9 @@ export async function searchPlayerInformation(database: QueryDatabase, filters: 
     } catch { /* A missing, inconsistent or stale evidence block cannot certify a career. */ }
   }
   return [{ playerId: profile.player_id, name: profile.full_name, fetchedAt: profile.fetched_at,
-    sourceUrls: [...new Set([profile.source_url, ...verified.map((row) => row.sourceUrl), ...statistics.map((row) => row.sourceUrl)])],
-    affiliations: affiliations.sort((a, b) => b.year - a.year),
-    registrations: verified.map((row) => ({ year: row.year, team: row.team, position: row.position,
+    sourceUrls: [...new Set([profile.source_url, ...historicalRegistrations.map((row) => row.sourceUrl), ...verified.map((row) => row.sourceUrl), ...statistics.map((row) => row.sourceUrl)])],
+    affiliations: [...new Map([...affiliations, ...historicalRegistrations.map((row) => ({ year: row.year, team: row.team }))].map((row) => [`${row.year}:${row.team}`, row])).values()].sort((a, b) => b.year - a.year),
+    registrations: [...verified, ...historicalRegistrations.map((row) => ({ ...row, bats: null, throws: null }))].map((row) => ({ year: row.year, team: row.team, position: row.position,
       uniformNumber: row.uniformNumber, bats: row.bats, throws: row.throws })),
     statistics,
     ...(filters.includeCareer ? { careerStatistics, annualStatistics } : {}),

@@ -2,6 +2,7 @@ import type { ChatResponseCore, ChatStructuredQuery, QueryContract } from '@npb/
 import { statisticDomain, statisticMetric } from './chat-statistic-metrics'
 import { QueryContractCompileError } from './chat-contract-compiler'
 import { matchesGameTeamFilter } from '@npb/db'
+import { resolveContractTeamMention } from './chat-team-resolution'
 
 /** Compare the same numeric measure and source scope; identify clubs using the preserved mentions. */
 export function formatTeamStatisticComparison(contract: QueryContract, rows: ChatResponseCore['results']['aggregates'], summaries: string[]): string | null {
@@ -12,7 +13,7 @@ export function formatTeamStatisticComparison(contract: QueryContract, rows: Cha
   if (!metric || rows.some((row) => row.stats.subjectType !== 'team') ||
     new Set(rows.map((row) => row.stats.year)).size !== 1 || new Set(rows.map((row) => row.stats.level)).size !== 1) return null
   const values = teams.map((team) => {
-    const matching = rows.filter((row) => typeof row.stats.team === 'string' && matchesGameTeamFilter(row.stats.team, team.mention))
+    const matching = rows.filter((row) => typeof row.stats.team === 'string' && matchesGameTeamFilter(row.stats.team, resolveContractTeamMention(team.mention)))
     return { name: team.mention, value: matching.length === 1 ? matching[0]!.stats[metric.field] : null }
   })
   if (values.some(({ value }) => typeof value !== 'number' || !Number.isFinite(value))) return null

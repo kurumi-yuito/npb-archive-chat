@@ -1,8 +1,9 @@
 import type { ChatResponseCore, QueryContract } from '@npb/schemas'
-import { matchesGameTeamFilter } from '@npb/db'
+import { canonicalTeamName, matchesGameTeamFilter } from '@npb/db'
 import { QueryContractCompileError } from './chat-contract-compiler'
 import { teamStatisticMetric } from './chat-statistic-metrics'
 import { competitionLeague } from './chat-competition-scope'
+import { resolveContractTeamMention } from './chat-team-resolution'
 
 /** Club records retain the official year, source and published decision counts. */
 export function formatContractTeamStatistics(contract: QueryContract, rows: ChatResponseCore['results']['aggregates']): string {
@@ -15,11 +16,18 @@ export function formatContractTeamStatistics(contract: QueryContract, rows: Chat
   })).values()]
   if (!rows.length) return '指定された球団・年度の公式年度成績を確認できませんでした。収録済みの一部試合を年度全体の勝敗・順位としては回答しません。'
   const namedClubs = contract.entities.filter((entity) => entity.kind === 'team' && !competitionLeague(entity.mention))
-  const label = (row: typeof rows[number]) => namedClubs.find((club) => matchesGameTeamFilter(row.label, club.mention))?.mention ?? row.label
+  const label = (row: typeof rows[number]) => {
+    const club = namedClubs.find((entity) => matchesGameTeamFilter(row.label, resolveContractTeamMention(entity.mention)))
+    return club && canonicalTeamName(club.mention) === resolveContractTeamMention(club.mention) ? club.mention : row.label
+  }
+  const league = [...contract.competition_scope.competitions, ...contract.entities.filter((entity) => entity.kind === 'team').map((entity) => entity.mention)]
+    .map(competitionLeague).find((value) => value !== null)
   const time = contract.temporal_scope
   const seen = new Set<string>()
   const lines = rows.map((row) => {
     const year = row.stats.year, season = row.stats.seasonLabel
+    if ((namedClubs.length && !namedClubs.some((club) => matchesGameTeamFilter(row.label, resolveContractTeamMention(club.mention)))) ||
+      (league && !matchesGameTeamFilter(row.label, league))) throw new QueryContractCompileError(['team_statistic_subject_mismatch'])
     if (row.kind !== 'games' || row.stats.subjectType !== 'team' || row.stats.evidenceStatus !== 'official_complete_team_history' ||
       typeof year !== 'number' || !Number.isInteger(year) || typeof season !== 'string' || Number(season.slice(0, 4)) !== year ||
       (time.years.length && !time.years.includes(year)) || (time.year_from !== null && year < time.year_from) || (time.year_to !== null && year > time.year_to)) throw new QueryContractCompileError(['team_statistic_scope_mismatch'])

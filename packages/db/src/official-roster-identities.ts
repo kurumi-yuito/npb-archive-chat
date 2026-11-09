@@ -2,13 +2,14 @@ import { createHash } from 'node:crypto'
 import { parseBisTeamRosterHtml } from '@npb/parser'
 import type { SqliteDatabase } from './sqlite'
 import type { ObjectStorage } from './object-storage'
+import { verifiedOfficialRegistrationIdentities } from './official-registration-history'
 
 export type OfficialRosterIdentity = { playerId: string; fullName: string; year: number; teamName: string }
 
 /** Unversioned roster rows alone cannot establish the year: revalidate archived page identity. */
 export async function verifiedOfficialRosterIdentities(database: SqliteDatabase, storage: ObjectStorage): Promise<OfficialRosterIdentity[]> {
   const snapshots = database.prepare(`SELECT source_key,year,team_id,source_url,raw_path FROM bis_source_snapshots WHERE source_type='team_roster'`).all() as Array<{ source_key: string; year: number; team_id: string; source_url: string; raw_path: string | null }>
-  const result: OfficialRosterIdentity[] = []
+  const result: OfficialRosterIdentity[] = await verifiedOfficialRegistrationIdentities(database, storage)
   for (const snapshot of snapshots) {
     const prefix = `bis:${snapshot.year}:${snapshot.team_id}:rst_${snapshot.team_id}:`
     if (!snapshot.source_key.startsWith(prefix)) continue

@@ -97,6 +97,31 @@ export function canonicalLeagueTeamNames(team?: string): string[] {
   return [...new Set(aliases.map(canonicalTeamName))].filter((name) => name in japaneseToEnglishMap)
 }
 
+/** Resolve a user club mention against the existing official club/alias catalog.
+ * Short names require an exact match; one typo in a longer name is accepted
+ * only if it identifies a single club. This is not applied to stored evidence. */
+export function teamMentionCandidates(value: string): string[] {
+  const key = (name: string) => name.normalize('NFKC').replace(/\s+/gu, '').toLowerCase()
+  const aliases = new Map<string, string>()
+  for (const [alias, canonical] of Object.entries(aliasToCanonical)) aliases.set(key(alias), canonical)
+  for (const [canonical, english] of Object.entries(japaneseToEnglishMap)) aliases.set(key(english), canonical)
+  const input = key(value), exact = aliases.get(input)
+  if (exact) return [exact]
+  if (input.length < 4) return []
+  const oneEdit = (left: string, right: string) => {
+    if (Math.abs(left.length - right.length) > 1) return false
+    let a = 0, b = 0, edits = 0
+    while (a < left.length && b < right.length) {
+      if (left[a] === right[b]) { a++; b++; continue }
+      if (++edits > 1) return false
+      if (left.length >= right.length) a++
+      if (right.length >= left.length) b++
+    }
+    return edits + (left.length - a) + (right.length - b) <= 1
+  }
+  return [...new Set([...aliases].filter(([alias]) => alias.length >= 4 && oneEdit(input, alias)).map(([, canonical]) => canonical))]
+}
+
 /** Apply the same team/league alias expansion to returned evidence as to SQL filters. */
 export function matchesGameTeamFilter(team: string, filter: string): boolean {
   const aliases = toEnglishLeagueTeams(filter) ?? toGameTeamAliases(filter)

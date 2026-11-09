@@ -32,6 +32,7 @@ const KNOWN_COMMANDS = new Set([
   'update:official-roster',
   'update:official-profiles',
   'update:official-team-history',
+  'update:official-registration-history',
   'migrate',
   'update:bis-current',
   'update-bis-current',
@@ -91,6 +92,12 @@ async function main() {
   if (command === 'update:official-statistics') {
     const { runOfficialStatisticsUpdate } = await import('./update-official-statistics')
     const result = await runOfficialStatisticsUpdate(parseUpdateBisCurrentArgs(tail))
+    process.stdout.write(`${JSON.stringify(result, null, 2)}\n`)
+    return
+  }
+  if (command === 'update:official-registration-history') {
+    const { runOfficialRegistrationHistoryUpdate } = await import('./update-official-registration-history')
+    const result = await runOfficialRegistrationHistoryUpdate(parseUpdateBisCurrentArgs(tail))
     process.stdout.write(`${JSON.stringify(result, null, 2)}\n`)
     return
   }

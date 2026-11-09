@@ -1,0 +1,47 @@
+{
+  "environment": "independent_python_html_audit",
+  "humanReviewed": false,
+  "production": false,
+  "scope": {
+    "year": 2025,
+    "teamId": "h",
+    "kind": "pitching",
+    "level": "first"
+  },
+  "literalPlayerName": "*モイネロ",
+  "metric": "防御率",
+  "value": "1.46",
+  "source": {
+    "source_url": "https://npb.jp/bis/2025/stats/idp1_h.html",
+    "fetched_at": "2026-11-07T02:58:57.259Z",
+    "content_hash": "2fc08634504c2c43f81266108ae20e8c497927cfa5e4c09af0a137a8b04e2604",
+    "raw_key": "raw/bis-statistics/2025/2fc08634504c2c43f81266108ae20e8c497927cfa5e4c09af0a137a8b04e2604.html"
+  },
+  "literalCells": {
+    "選手": "*モイネロ",
+    "登板": "24",
+    "勝利": "12",
+    "敗北": "3",
+    "セーブ": "0",
+    "ホールド": "0",
+    "ＨＰ": "0",
+    "完投": "3",
+    "完封勝": "2",
+    "無四球": "1",
+    "勝率": ".800",
+    "打者": "639",
+    "投球回": "167",
+    "安打": "112",
+    "本塁打": "10",
+    "四球": "42",
+    "故意四": "0",
+    "死球": "3",
+    "三振": "172",
+    "暴投": "1",
+    "ボーク": "0",
+    "失点": "29",
+    "自責点": "27",
+    "防御率": "1.46"
+  },
+  "note": "Source metric reconciliation only. Does not resolve a name to an ID or certify a semantic oracle."
+}

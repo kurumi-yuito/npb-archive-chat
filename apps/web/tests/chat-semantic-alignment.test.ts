@@ -10,6 +10,17 @@ const accepted = () => completion({ equivalent: true, issues: [] })
 const rejected = () => completion({ equivalent: false, issues: [{ field: 'policy', reason: 'An event list is historical data, not external news.' }] })
 
 describe('semantic meaning verification (Q-183)', () => {
+  it.each(['セ・リーグ', 'パ・リーグ', '中日ドラゴンズ'])('checks the official catalog before attempting player resolution for %s', async (mention) => {
+    const contract = { ...oracle.meaning, requested_output: [{ kind: 'batting_statistics', fields: ['homeRuns'] }], predicates: [],
+      entities: [{ kind: 'team', role: 'subject', mention }], grouping: ['player'], ordering: [{ field: 'homeRuns', direction: 'desc' }], completeness: { mode: 'top_n', limit: 3 } }
+    const correct = { ...candidate, query_contract: contract }
+    const wrong = { ...correct, query_contract: { ...contract, entities: [{ ...contract.entities[0], kind: 'player' }] } }
+    const fetch = vi.fn().mockResolvedValueOnce(completion(wrong)).mockResolvedValueOnce(completion(correct)).mockResolvedValueOnce(accepted())
+    const result = await createSemanticQueryLlm(config, { fetch })(`2025年の${mention}の本塁打上位3人`)
+    expect(result.query_contract?.entities).toEqual(contract.entities)
+    expect(fetch).toHaveBeenCalledTimes(3)
+    expect(JSON.parse(fetch.mock.calls[1]![1].body).messages.at(-1).content).toContain('official club/league catalog')
+  })
   it.each(['/山田/', '山田哲人'])('rejects an invented name span %s before official identity resolution', async (mention) => {
     const changed = { ...candidate, query_contract: { ...oracle.meaning, entities: oracle.meaning.entities.map((entity: { kind: string }) => entity.kind === 'player' ? { ...entity, mention } : entity) } }
     const fetch = vi.fn().mockResolvedValueOnce(completion(changed)).mockResolvedValueOnce(completion(candidate)).mockResolvedValueOnce(accepted())

@@ -4,6 +4,8 @@ import {
 } from '@npb/schemas'
 import type { QueryDatabase } from '../query-driver'
 import { matchesGameTeamFilter } from './team-name-utils'
+import { searchRegistrationInformation } from './registration-information-repository'
+import { officialProfileMemberships } from './official-profile-memberships'
 
 export type PlayerAffiliationRow = {
   year: number
@@ -12,7 +14,7 @@ export type PlayerAffiliationRow = {
   team: string
   playerName: string
   playerId: string | null
-  sourceKind: 'official_profile' | 'bis_roster' | 'roster' | 'batting' | 'pitching' | 'event'
+  sourceKind: 'official_profile' | 'official_registration' | 'bis_roster' | 'roster' | 'batting' | 'pitching' | 'event'
   sourceUrl: string | null
 }
 
@@ -21,10 +23,12 @@ export async function searchPlayerAffiliations(
   filters: PlayerAffiliationFilters & { dictionaryOnly?: boolean },
 ): Promise<PlayerAffiliationRow[]> {
   const normalized = playerAffiliationFiltersSchema.parse(filters)
-  if (filters.dictionaryOnly) return officialProfileAffiliations(database, normalized)
+  const registrations: PlayerAffiliationRow[] = (await searchRegistrationInformation(database, normalized)).map((row) => ({ year: row.year, gameId: null, gameDate: null,
+    team: row.team, playerName: row.playerName, playerId: row.playerId, sourceKind: 'official_registration', sourceUrl: row.sourceUrl }))
+  if (filters.dictionaryOnly) return [...await officialProfileAffiliations(database, normalized), ...registrations]
   const rows: RankedPlayerAffiliationRow[] = []
   rows.push(...await queryAffiliationRows(database, normalized, {
-    sql: `SELECT current_team_roster.year AS year, 'bis:' || current_team_roster.year || ':' || current_team_roster.team_id || ':rst' AS gameId, printf('%04d-01-01', current_team_roster.year) AS gameDate, current_team_roster.team_name AS team, current_team_roster.player_name AS playerName, current_team_roster.player_id AS playerId, 'bis_roster' AS sourceKind, current_team_roster.source_url AS sourceUrl, 0 AS sourceRank FROM current_team_roster`,
+    sql: `SELECT current_team_roster.year AS year, 'bis:' || current_team_roster.year || ':' || current_team_roster.team_id || ':rst' AS gameId, NULL AS gameDate, current_team_roster.team_name AS team, current_team_roster.player_name AS playerName, current_team_roster.player_id AS playerId, 'bis_roster' AS sourceKind, current_team_roster.source_url AS sourceUrl, 0 AS sourceRank FROM current_team_roster WHERE current_team_roster.source_url LIKE 'https://npb.jp/bis/teams/rst_%'`,
     sourceKind: 'bis_roster',
     nameColumn: 'current_team_roster.player_name',
     playerIdExpression: 'current_team_roster.player_id',
@@ -78,6 +82,7 @@ export async function searchPlayerAffiliations(
     gameIdColumn: 'events.game_id',
   }))
 
+  rows.push(...registrations.map((row) => ({ ...row, sourceRank: 0 })))
   const deduped = new Map<string, RankedPlayerAffiliationRow>()
   for (const row of rows) {
     deduped.set(`${row.year}:${row.gameId}:${row.team}:${row.playerName}:${row.playerId ?? ''}:${row.sourceKind}:${row.sourceUrl ?? ''}`, row)
@@ -99,20 +104,14 @@ export async function searchPlayerAffiliations(
 
 async function officialProfileAffiliations(database: QueryDatabase, filters: PlayerAffiliationFilters): Promise<PlayerAffiliationRow[]> {
   if (!filters.player_id) return []
-  const row = await database.prepare('SELECT player_id,full_name,year_teams_json,source_url FROM player_profiles WHERE player_id=?')
-    .get(filters.player_id) as { player_id: string; full_name: string; year_teams_json: string | null; source_url: string } | null
+  const row = await database.prepare('SELECT player_id,full_name,year_teams_json,source_url,fetched_at,metadata FROM player_profiles WHERE player_id=?')
+    .get(filters.player_id) as { player_id: string; full_name: string; year_teams_json: string | null; source_url: string; fetched_at: string; metadata: string | null } | null
   if (!row || row.source_url !== `https://npb.jp/bis/players/${row.player_id}.html`) return []
   const result: PlayerAffiliationRow[] = []
-  let years: Record<string, unknown>
-  try { years = JSON.parse(row.year_teams_json ?? '{}') } catch { return [] }
-  if (!years || typeof years !== 'object' || Array.isArray(years)) return []
-  for (const [yearText, teams] of Object.entries(years)) {
-    const year = Number(yearText)
+  for (const { year, team } of officialProfileMemberships(row)) {
     if (!Number.isInteger(year) || year < 1936 || (filters.year && year !== filters.year) || (filters.year_from && year < filters.year_from) || (filters.year_to && year > filters.year_to)) continue
-    for (const team of Array.isArray(teams) ? teams : [teams]) {
-      if (typeof team !== 'string' || !team || (filters.team && !matchesGameTeamFilter(team, filters.team))) continue
-      result.push({ year, gameId: null, gameDate: null, team, playerName: row.full_name, playerId: row.player_id, sourceKind: 'official_profile', sourceUrl: row.source_url })
-    }
+    if (filters.team && !matchesGameTeamFilter(team, filters.team)) continue
+    result.push({ year, gameId: null, gameDate: null, team, playerName: row.full_name, playerId: row.player_id, sourceKind: 'official_profile', sourceUrl: row.source_url })
   }
   return result.sort((a, b) => b.year - a.year || a.team.localeCompare(b.team))
 }
@@ -161,7 +160,7 @@ async function queryAffiliationRows(
   }
 
   return await database
-    .prepare(`${source.sql} WHERE ${clauses.join(' AND ')} LIMIT ?`)
+    .prepare(`${source.sql} ${source.sql.includes(' WHERE ') ? 'AND' : 'WHERE'} ${clauses.join(' AND ')} LIMIT ?`)
     .all(...values, filters.limit ?? 200) as RankedPlayerAffiliationRow[]
 }
 

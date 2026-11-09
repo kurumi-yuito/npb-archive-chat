@@ -734,12 +734,15 @@ export const chatResponseSchema = z.object({
         team: z.string().min(1),
         playerName: z.string().min(1),
         playerId: z.string().nullable(),
-        sourceKind: z.enum(['official_profile', 'bis_roster', 'roster', 'batting', 'pitching', 'event']),
+        sourceKind: z.enum(['official_profile', 'official_registration', 'bis_roster', 'roster', 'batting', 'pitching', 'event']),
         sourceUrl: z.string().nullable(),
-      }).refine((row) => row.sourceKind === 'official_profile' ? row.gameId === null && row.gameDate === null : row.gameId !== null && row.gameDate !== null),
+      }).refine((row) => ['official_profile', 'official_registration'].includes(row.sourceKind)
+        ? row.gameId === null && row.gameDate === null
+        : row.sourceKind === 'bis_roster' ? row.gameId !== null && row.gameDate === null : row.gameId !== null && row.gameDate !== null),
     ),
     playerInformation: z.array(z.object({
       playerId: z.string().min(1), name: z.string().min(1), fetchedAt: z.string(), sourceUrls: z.array(z.string().url()),
+      profileAvailable: z.boolean().optional(),
       affiliations: z.array(z.object({ year: z.number().int(), team: z.string() })),
       registrations: z.array(z.object({ year: z.number().int(), team: z.string(), position: z.string().nullable(),
         uniformNumber: z.string().nullable(), bats: z.string().nullable(), throws: z.string().nullable() })),
@@ -1080,7 +1083,7 @@ export type ChatResponseCore = z.infer<typeof chatResponseCoreSchema>
 export type PublicApiErrorResponse = z.infer<typeof publicApiErrorResponseSchema>
 export type ChatApiResponse = z.infer<typeof chatApiResponseSchema>
 export type RichGame = z.infer<typeof richGameSchema>
-export { normalizePlayerNameKey } from './identity-text'
+export { normalizePlayerNameKey, officialPlayerNameCandidateKeys } from './identity-text'
 export { parseScoreTotal, readKnownGameScore } from './score-evidence'
 export { officialPlayerHistoryEvidenceSchema, verifiedPlayerCareerRows, annualPlayerHistoryRows, officialInningsOuts,
   type OfficialPlayerHistoryEvidence, type OfficialPlayerHistoryRow } from './official-player-history'

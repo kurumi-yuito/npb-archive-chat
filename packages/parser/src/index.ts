@@ -1211,3 +1211,4 @@ function toProjectRelative(filePath: string) {
   const relativePath = path.relative(workspaceRoot, filePath)
   return relativePath.startsWith('..') ? filePath : relativePath
 }
+export { parseOfficialRegistrationHistory, type RegistrationPageScope, type RegistrationHistoryEntry } from './registration-history'

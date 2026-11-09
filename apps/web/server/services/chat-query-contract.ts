@@ -1,11 +1,12 @@
 import { normalizePlayerNameKey, type ChatStructuredQuery, type QueryContract } from '@npb/schemas'
 import type { ChatDataRequirement } from './chat-query-plan'
-import { normalizeTeamName, normalizePosition, normalizeResultTextContains } from './chat-query-normalizer'
+import { normalizePosition, normalizeResultTextContains } from './chat-query-normalizer'
 import { subjectNameField } from './chat-contract-compiler'
 import { statisticSortField } from './chat-statistic-metrics'
 import { isStatisticIdentityProjection } from './chat-output-capabilities'
 import { competitionLeague, isRegularSeasonScope } from './chat-competition-scope'
 import { matchesGameTeamFilter } from '@npb/db'
+import { resolveContractTeamMention } from './chat-team-resolution'
 
 /** Plan by requested data, independently of the legacy operation label. */
 export function requirementsForContract(contract: QueryContract): ChatDataRequirement[] {
@@ -89,7 +90,7 @@ export function validateQueryContractExecution(
   for (const entity of contract.entities) {
     if (entity.kind === 'team') {
       const field = entity.role === 'opponent' ? 'opponent' : 'team'
-      if (normalizeTeamName(String(filters[field] ?? '')) !== normalizeTeamName(entity.mention)) issues.push(`entity_mismatch:${field}`)
+      if (resolveContractTeamMention(String(filters[field] ?? '')) !== resolveContractTeamMention(entity.mention)) issues.push(`entity_mismatch:${field}`)
     } else if (entity.kind === 'venue') {
       if (filters.venue !== entity.mention) issues.push('entity_mismatch:venue')
     } else {

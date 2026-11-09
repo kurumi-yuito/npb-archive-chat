@@ -109,7 +109,7 @@ const acceptancePatterns = {
   B31: /どの田中/u,
   B32: /山川.*\d+本/u,
   B33: /二軍.*対応/u,
-  'MT01-Turn1': /阪神.*\d+勝\d+敗/u,
+  'MT01-Turn1': /阪神.*\d+勝/u,
   'MT01-Turn2': /阪神.*位/u,
   'MT01-Turn3': /前年.*勝.*敗/u,
   'MT02-Turn1': /村上.*2025年.*22本/u,

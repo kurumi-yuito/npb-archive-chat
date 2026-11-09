@@ -12,3 +12,7 @@ python3 scripts/audit-captured-month-home-runs.py --capture-dir <capture> --year
 ```
 
 本塁打の名前は公式英字表記＋球団のまま集計し、未確認の同名統合は行わない。試合ヘッダーの表示順をホーム・ビジター順と仮定せず、両球団名を対応付けて勝敗を判定する。独立数値の照合と、実行結果の選手ID・期間・競技範囲・完全性の検証は別工程である。
+
+年度成績の単一指標は `scripts/audit-captured-season-statistics.py` で公式原本をPython標準HTMLパーサーから読む。入力SQLiteから使用するのは出典URL・対象年度/球団/区分・取得日時・原本キー・ハッシュだけで、保存済みの成績値やチャット出力は読まない。原本の見出しと選手行を対応させ、一意でなければ停止する。
+
+2025年度の `2025-h-moinelo-era.json` は防御率1.46、`2025-s-osuna-home-runs.json` は本塁打14を原本から確認した数値照合。選手IDの解決や質問の意味仕様を保証するデータとは区別し、こちらも `humanReviewed:false` を保持する。

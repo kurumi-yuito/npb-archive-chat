@@ -43,6 +43,13 @@ describe('Acceptance runner fail-fast contract', () => {
     expect(matchesAcceptanceSummary(condition, '増井の登板です。\n相手先発は加藤貴です。')).toBe(false)
     expect(matchesAcceptanceSummary(condition, '佐々木朗希の登板です。\n相手先発は未確認です。')).toBe(false)
   })
+  it('allows punctuation between numeric record fields while retaining every requested fact', () => {
+    const condition = /阪神.*79勝62敗/u
+    expect(matchesAcceptanceSummary(condition, '阪神：79勝、62敗、2分')).toBe(true)
+    expect(matchesAcceptanceSummary(condition, '阪神：79勝、63敗')).toBe(false)
+    expect(matchesAcceptanceSummary(condition, '巨人：79勝、62敗')).toBe(false)
+    expect(matchesAcceptanceSummary(condition, '阪神：79勝、敗北数は未確認')).toBe(false)
+  })
   it('stops at B01 and saves a resumable partial log', async () => {
     const requestedMessages: string[] = []
     const requestedUserAgents: string[] = []

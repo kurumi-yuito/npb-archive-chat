@@ -138,7 +138,7 @@ export function createContractChatService(databaseService: ChatQueryService, par
       if (operation.output.kind === 'team_statistics') metadata.dataRequirements = ['official_team_statistics', 'source_snapshots']
       if (career) metadata.dataRequirements = ['player_profiles', 'official_statistics', 'source_snapshots']
       if (results.aggregates.some((row) => row.stats.evidenceStatus === 'official_complete_scope')) metadata.dataRequirements = ['official_statistics', 'source_snapshots']
-      const profileAffiliation = results.affiliations.some((row) => row.sourceKind === 'official_profile')
+      const profileAffiliation = results.affiliations.some((row) => row.sourceKind === 'official_profile' || row.sourceKind === 'official_registration')
       const statisticSummary = operation.output.kind === 'team_statistics' ? formatContractTeamStatistics(operationContract, results.aggregates) : formatContractStatistics({ contract: operationContract, query, rows: results.aggregates, playerName: player?.name ?? undefined,
         careerVerified: career?.verified, asOf: career?.basisText })
       const answer: ChatResponseCore['answer'] = statisticSummary !== null ? {
@@ -151,7 +151,7 @@ export function createContractChatService(databaseService: ChatQueryService, par
         })])],
         resolved_player: player, execution_metadata: publicExecutionMetadata(metadata),
       } : profileAffiliation ? {
-        summary: `${player?.name ?? results.affiliations[0]!.playerName}の公式年度記録に基づく所属です。\n${results.affiliations.map((row) => `${row.year}年：${row.team}`).join('\n')}\n現在の契約状況は年度記録だけでは確認できません。`,
+        summary: `${player?.name ?? results.affiliations[0]!.playerName}の公式年度記録・登録公示に基づく所属です。\n${[...new Set(results.affiliations.map((row) => `${row.year}年：${row.team}`))].join('\n')}\n現在の契約状況は年度記録だけでは確認できません。`,
         result_count: results.affiliations.length, source_urls: [...new Set(results.affiliations.flatMap((row) => row.sourceUrl ? [row.sourceUrl] : []))],
         resolved_player: player, execution_metadata: publicExecutionMetadata(metadata),
       } : formatChatAnswer({ question: message, structuredQuery: query, results, sources, playerResolution: player, executionMetadata: metadata })
@@ -183,7 +183,7 @@ export function createContractChatService(databaseService: ChatQueryService, par
             const values = fields.flatMap((field) => /^\d*(?:\.\d+)?$/u.test(row.metrics[field] ?? '') && /\d/u.test(row.metrics[field] ?? '') ? [`${field} ${row.metrics[field]}`] : [])
             return values.length ? `${row.year}年度・${row.team}の公式${row.kind === 'batting' ? '打撃' : '投手'}成績：${values.join('、')}。` : ''
           }).filter(Boolean)
-          return `${profile.name}の公式プロフィールです。${details ? `\n${latestYear}年度の公式記録・選手一覧：${details}。` : '\n年度別の所属情報は確認できませんでした。'}${statistics.length ? `\n${statistics.join('\n')}` : ''}`
+          return `${profile.name}の${profile.profileAvailable === false ? '公式年度登録公示で確認できる選手情報' : '公式プロフィール'}です。${details ? `\n${latestYear}年度の公式記録・選手一覧：${details}。` : '\n年度別の所属情報は確認できませんでした。'}${statistics.length ? `\n${statistics.join('\n')}` : ''}${profile.profileAvailable === false ? '\n年度の登録公示は、現在の契約継続を示すものではありません。' : ''}`
         }).join('\n\n') : '指定された選手の公式プロフィール情報は収録データから確認できませんでした。'
         answer.result_count = profiles.length
         answer.source_urls = [...new Set(profiles.flatMap((row) => [...row.sourceUrls, ...(row.statistics ?? []).map((statistic) => statistic.sourceUrl)]))]

@@ -4,7 +4,9 @@ import path from 'node:path'
 import { openDatabase, withTransaction } from '../packages/db/src/sqlite'
 import { buildNormalizedDelta } from '../packages/db/src/normalized-d1-delta'
 import { parseOfficialStatisticPage, type OfficialStatisticPage } from '../packages/db/src/official-statistics'
-import { matchesGameTeamFilter } from '../packages/db/src/repository/team-name-utils'
+import { officialStatisticIdentityIndex } from '../packages/db/src/official-statistic-identities'
+import { verifiedOfficialRegistrationIdentities } from '../packages/db/src/official-registration-history'
+import { createObjectStorage } from '../packages/db/src/object-storage'
 
 const args = new Map(process.argv.slice(2).map((arg) => {
   const index = arg.indexOf('=')
@@ -25,18 +27,28 @@ await copyFile(baselinePath, rehearsalPath)
 const previous = openDatabase(rehearsalPath)
 const candidate = openDatabase(candidatePath)
 const source = openDatabase(sourcePath)
-const compact = (value: string) => value.normalize('NFKC').replace(/[\s\u3000]/gu, '')
 type Snapshot = { snapshot_id: string; source_url: string; target_year: number; team_id: string; team_name: string; level: 'first' | 'farm'; statistic_kind: OfficialStatisticPage['kind']; fetched_at: string; content_hash: string; raw_key: string; row_count: number }
 type Statistic = { row_index: number; player_id: string | null; player_name: string; metrics_json: string }
 try {
   candidate.exec(await readFile(path.join(workspace, 'packages/db/migrations-normalized/0003_official_statistic_snapshots.sql'), 'utf8'))
   candidate.exec(await readFile(path.join(workspace, 'packages/db/migrations-normalized/0004_official_dictionary_index.sql'), 'utf8'))
+  const registrationProof = await verifiedOfficialRegistrationIdentities(source, createObjectStorage({ workspaceRoot: workspace, mode: 'local' }))
+  const identityIndex = officialStatisticIdentityIndex(candidate, registrationProof)
+  const registrationSources = source.prepare("SELECT * FROM bis_source_snapshots WHERE source_type='official_registration'").all() as Array<{ source_key: string; source_url: string; raw_path: string; structured_path: string; year: number; team_id: string }>
+  const rawObjects = new Set<string>()
+  for (const snapshot of registrationSources) {
+    rawObjects.add(snapshot.raw_path.replace(/^data\//u, ''))
+    rawObjects.add(snapshot.structured_path.replace(/^data\//u, ''))
+    const record = JSON.parse(await readFile(path.resolve(workspace, snapshot.structured_path), 'utf8')) as { discovery: { rawKey: string } }
+    rawObjects.add(record.discovery.rawKey)
+  }
   const snapshots = source.prepare('SELECT * FROM official_statistic_snapshots').all() as Snapshot[]
   if (!snapshots.length) throw new Error('No official statistic sources to publish')
   for (const snapshot of snapshots) {
     const rawPath = path.resolve(workspace, 'data', snapshot.raw_key)
     if (!rawPath.startsWith(path.join(workspace, 'data', 'raw', 'bis-statistics') + path.sep)) throw new Error('Untrusted raw source key')
     const raw = await readFile(rawPath, 'utf8')
+    rawObjects.add(snapshot.raw_key)
     const hash = createHash('sha256').update(raw).digest('hex')
     if (hash !== snapshot.content_hash || createHash('sha256').update(`${snapshot.source_url}\n${hash}`).digest('hex') !== snapshot.snapshot_id) throw new Error('Source hash mismatch')
     if (!Number.isFinite(Date.parse(snapshot.fetched_at))) throw new Error('Invalid fetch timestamp')
@@ -49,19 +61,37 @@ try {
       const rawRow = parsed.rows[index]!
       if (row.row_index !== rawRow.rowIndex || row.player_name !== rawRow.playerName || row.metrics_json !== JSON.stringify(rawRow.values)) throw new Error('Stored statistic differs from its raw official source')
       if (!row.player_id || rawRow.playerId === row.player_id) continue
-      const profile = candidate.prepare('SELECT full_name,source_url,year_teams_json FROM player_profiles WHERE player_id=?').get(row.player_id) as { full_name: string; source_url: string; year_teams_json: string } | undefined
-      if (!profile || profile.source_url !== `https://npb.jp/bis/players/${row.player_id}.html` || compact(profile.full_name) !== compact(row.player_name)) throw new Error('Statistic identity lacks official profile proof')
-      const teams = JSON.parse(profile.year_teams_json ?? '{}')[String(snapshot.target_year)]
-      if (!(Array.isArray(teams) ? teams : [teams]).some((team: unknown) => typeof team === 'string' && matchesGameTeamFilter(team, snapshot.team_name))) throw new Error('Statistic identity lacks dated team proof')
+      if (identityIndex.resolve(row.player_name, page) !== row.player_id) throw new Error(`Statistic identity lacks unique dated official profile/registration proof: ${snapshot.source_url} row=${row.row_index} name=${row.player_name} id=${row.player_id}`)
     }
   }
   candidate.exec(`ATTACH DATABASE '${sourcePath.replaceAll("'", "''")}' AS official_source`)
   withTransaction(candidate, () => {
+    // Immutable source collisions must be identical; ignoring a collision can
+    // otherwise hide a stale ID or a changed metric behind a successful import.
+    for (const table of ['official_statistic_snapshots', 'official_player_statistics'] as const) {
+      const columns = (candidate.prepare(`PRAGMA table_info(${table})`).all() as Array<{ name: string }>).map((row) => row.name)
+      const key = table === 'official_statistic_snapshots' ? ['snapshot_id'] : ['snapshot_id', 'row_index']
+      for (const row of source.prepare(`SELECT ${columns.join(',')} FROM ${table}`).all() as Array<Record<string, string | number | null>>) {
+        const existing = candidate.prepare(`SELECT ${columns.join(',')} FROM ${table} WHERE ${key.map((column) => `${column}=?`).join(' AND ')}`).get(...key.map((column) => row[column]!))
+        if (existing && JSON.stringify(existing) !== JSON.stringify(row)) throw new Error(`Conflicting immutable official source: ${table}`)
+      }
+    }
+    for (const snapshot of registrationSources) {
+      // Retain unrelated BIS and historical membership sources.
+      candidate.prepare('DELETE FROM current_team_roster WHERE year=? AND team_id=? AND source_url=?').run(snapshot.year, snapshot.team_id, snapshot.source_url)
+      candidate.prepare('INSERT INTO current_team_roster SELECT * FROM official_source.current_team_roster WHERE year=? AND team_id=? AND source_url=?').run(snapshot.year, snapshot.team_id, snapshot.source_url)
+      const columns = (candidate.prepare('PRAGMA table_info(bis_source_snapshots)').all() as Array<{ name: string }>).map((row) => row.name)
+      const row = source.prepare(`SELECT ${columns.join(',')} FROM bis_source_snapshots WHERE source_key=?`).get(snapshot.source_key) as Record<string, string | number | null>
+      const existing = candidate.prepare(`SELECT ${columns.join(',')} FROM bis_source_snapshots WHERE source_key=?`).get(snapshot.source_key)
+      if (existing && JSON.stringify(existing) !== JSON.stringify(row)) throw new Error('Conflicting registration source observation')
+      candidate.prepare('INSERT OR IGNORE INTO bis_source_snapshots SELECT * FROM official_source.bis_source_snapshots WHERE source_key=?').run(snapshot.source_key)
+    }
     candidate.exec(`INSERT OR IGNORE INTO official_statistic_snapshots SELECT * FROM official_source.official_statistic_snapshots`)
     candidate.exec(`INSERT OR IGNORE INTO official_player_statistics SELECT * FROM official_source.official_player_statistics`)
   })
   candidate.exec('DETACH DATABASE official_source')
-  const delta = buildNormalizedDelta(previous, candidate, ['player_profiles', 'official_statistic_snapshots', 'official_player_statistics'])
+  await verifiedOfficialRegistrationIdentities(candidate, createObjectStorage({ workspaceRoot: workspace, mode: 'local' }))
+  const delta = buildNormalizedDelta(previous, candidate, ['player_profiles', 'bis_source_snapshots', 'current_team_roster', 'official_statistic_snapshots', 'official_player_statistics'])
   if (Object.values(delta.changes.player_profiles!).some((count) => count !== 0)) throw new Error('Official statistics publication must not change profile records')
   withTransaction(previous, () => {
     previous.exec(delta.sql)
@@ -72,6 +102,7 @@ try {
   await writeFile(path.join(directory, 'publication.sql'), delta.sql)
   await writeFile(path.join(directory, 'manifest.json'), JSON.stringify({ preparedAt: new Date().toISOString(), baselinePath, sourcePath,
     previousGeneration: delta.previousGeneration, generation: delta.generation, changes: delta.changes,
+    registrationSources: registrationSources.length, registrationIdentities: registrationProof.length, rawObjects: [...rawObjects],
     sources: snapshots.map((snapshot) => ({ url: snapshot.source_url, year: snapshot.target_year, level: snapshot.level, kind: snapshot.statistic_kind, fetchedAt: snapshot.fetched_at, hash: snapshot.content_hash, rows: snapshot.row_count })),
     rehearsal: 'passed', published: false }, null, 2) + '\n')
   console.log(JSON.stringify({ directory, previousGeneration: delta.previousGeneration, generation: delta.generation, changes: delta.changes, rehearsal: 'passed', published: false }))

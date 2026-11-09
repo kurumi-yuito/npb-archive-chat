@@ -8,6 +8,7 @@ import { sqliteDatabaseToQuery } from '../../../packages/db/src/query-driver'
 import { captureOfficialTeamHistory } from '../../../packages/db/src/official-team-history'
 import type { ObjectStorage } from '../../../packages/db/src/object-storage'
 import { createContractChatService } from '../server/services/chat-contract-service'
+import { formatContractTeamStatistics } from '../server/services/chat-team-statistic-answer'
 
 const meaning = queryContractSchema.parse(JSON.parse(readFileSync(new URL('../../../docs/eval-query-contracts.json', import.meta.url), 'utf8')).cases[0].meaning)
 const contract: QueryContract = { ...meaning, requested_output: [{ kind: 'team_statistics', fields: ['wins'] }],
@@ -33,6 +34,13 @@ describe('B28/B18 official club history to contract answer', () => {
       expect(result.answer.source_urls).toEqual(['https://npb.jp/bis/teams/yearly_g.html'])
       expect(result.answer.execution_metadata?.data_requirements).toContain('official_team_statistics')
       expect(result.answer.query_contract).toEqual(contract)
+      const misspelled: QueryContract = { ...contract, entities: [{ kind: 'team', role: 'subject', mention: '読売ジャイアンッ' }] }
+      const corrected = await createContractChatService(service, parse(misspelled)).answerQuestion('読売ジャイアンッの2026年の勝利数')
+      expect(corrected.structured_query?.filters).toMatchObject({ team: '巨人' })
+      expect(corrected.answer.query_contract?.entities[0]?.mention).toBe('読売ジャイアンッ')
+      expect(corrected.answer.summary).toContain('読売ジャイアンツ')
+      expect(() => formatContractTeamStatistics(contract, [{ ...result.results.aggregates[0]!, label: '阪神タイガース',
+        stats: { ...result.results.aggregates[0]!.stats, team: '阪神タイガース' } }])).toThrow('team_statistic_subject_mismatch')
       expect(sql.some((text) => /\bFROM\s+(?:games|game_facts|pitching_lines|pitching_line_facts)\b/iu.test(text))).toBe(false)
       const ranking: QueryContract = { ...contract, requested_output: [{ kind: 'team_statistics', fields: ['rank'] }], grouping: ['team'],
         ordering: [{ field: 'rank', direction: 'asc' }], competition_scope: { level: 'first', competitions: ['公式戦'] } }

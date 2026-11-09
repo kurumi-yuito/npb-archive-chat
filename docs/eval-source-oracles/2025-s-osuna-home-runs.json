@@ -1,0 +1,46 @@
+{
+  "environment": "independent_python_html_audit",
+  "humanReviewed": false,
+  "production": false,
+  "scope": {
+    "year": 2025,
+    "teamId": "s",
+    "kind": "batting",
+    "level": "first"
+  },
+  "literalPlayerName": "オスナ",
+  "metric": "本塁打",
+  "value": "14",
+  "source": {
+    "source_url": "https://npb.jp/bis/2025/stats/idb1_s.html",
+    "fetched_at": "2026-11-07T02:58:21.253Z",
+    "content_hash": "cd64e95c1d55d499ba0fa72b76630ed3261f7244b3fab5a419d79d7e25436b90",
+    "raw_key": "raw/bis-statistics/2025/cd64e95c1d55d499ba0fa72b76630ed3261f7244b3fab5a419d79d7e25436b90.html"
+  },
+  "literalCells": {
+    "選手": "オスナ",
+    "試合": "141",
+    "打席": "574",
+    "打数": "528",
+    "得点": "38",
+    "安打": "135",
+    "二塁打": "22",
+    "三塁打": "0",
+    "本塁打": "14",
+    "塁打": "199",
+    "打点": "67",
+    "盗塁": "4",
+    "盗塁刺": "1",
+    "犠打": "0",
+    "犠飛": "5",
+    "四球": "40",
+    "故意四": "6",
+    "死球": "1",
+    "三振": "76",
+    "併殺打": "13",
+    "打率": ".256",
+    "長打率": ".377",
+    "出塁率": ".307"
+  },
+  "note": "Source metric reconciliation only. Does not resolve a name to an ID or certify a semantic oracle."
+}

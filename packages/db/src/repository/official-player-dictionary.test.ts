@@ -4,8 +4,34 @@ import { migrateDatabase } from '../migrations'
 import { sqliteDatabaseToQuery } from '../query-driver'
 import { searchPlayerCandidates } from './player-repository'
 import { searchPlayerAffiliations } from './player-affiliation-repository'
+import { searchPlayerInformation } from './player-information-repository'
 
 describe('official dictionary identity planning', () => {
+  it('preserves both same-year team stints despite a legacy last-team value and an annual subtotal', async () => {
+    const database = openDatabase()
+    try {
+      migrateDatabase(database)
+      const sourceUrl = 'https://npb.jp/bis/players/transfer.html', fetchedAt = '2026-11-08T00:00:00.000Z'
+      const evidence = { version: 1, playerId: 'transfer', fullName: '移籍 検証', sourceUrl, fetchedAt,
+        contentHash: 'a'.repeat(64), rawKey: 'raw/profile.html', basisText: null,
+        rows: [
+          { kind: 'batting', scope: 'team_season', year: 2023, team: '中日', metrics: { 試合: '10' } },
+          { kind: 'batting', scope: 'team_season', year: 2023, team: '日本ハム', metrics: { 試合: '40' } },
+          { kind: 'batting', scope: 'season_total', year: 2023, team: null, metrics: { 試合: '50' } },
+        ] }
+      database.prepare(`INSERT INTO player_profiles(player_id,full_name,canonical_name,year_teams_json,source_url,fetched_at,metadata)
+        VALUES ('transfer','移籍 検証','移籍 検証','{"2023":"日本ハム"}',?,?,?)`).run(sourceUrl, fetchedAt, JSON.stringify({ official_profile_evidence: evidence }))
+      const query = sqliteDatabaseToQuery(database)
+      expect(await searchPlayerCandidates(query, { name: '移籍', year: 2023, team: '中日', dictionaryOnly: true })).toMatchObject([{ player_id: 'transfer', teams: ['中日'], years: [2023] }])
+      expect(await searchPlayerCandidates(query, { name: '移籍', year: 2024, team: '中日', dictionaryOnly: true })).toEqual([])
+      const affiliations = await searchPlayerAffiliations(query, { player_id: 'transfer', player_name: '移籍 検証', year: 2023, dictionaryOnly: true })
+      expect(affiliations.map((row) => row.team).sort()).toEqual(['中日', '日本ハム'])
+      expect((await searchPlayerInformation(query, { player_id: 'transfer', year: 2023 }))[0]!.affiliations.map((row) => row.team).sort()).toEqual(['中日', '日本ハム'])
+      database.prepare("UPDATE player_profiles SET metadata=? WHERE player_id='transfer'").run(JSON.stringify({ official_profile_evidence: 'malformed' }))
+      expect(await searchPlayerCandidates(query, { name: '移籍', year: 2023, team: '日本ハム', dictionaryOnly: true })).toEqual([])
+      expect(await searchPlayerAffiliations(query, { player_id: 'transfer', player_name: '移籍 検証', dictionaryOnly: true })).toEqual([])
+    } finally { database.close() }
+  })
   it('returns dated official affiliation proof without inventing a game or a transfer date', async () => {
     const database = openDatabase()
     try {
@@ -18,7 +44,7 @@ describe('official dictionary identity planning', () => {
       const rows = await searchPlayerAffiliations(query, { player_name: '検証 太郎', player_id: 'one', year: 2025, dictionaryOnly: true })
       expect(rows).toHaveLength(2)
       expect(rows.every((row) => row.gameDate === null && row.gameId === null && row.year === 2025 && row.sourceKind === 'official_profile')).toBe(true)
-      expect(queries).toHaveLength(1)
+      expect(queries.every((sql) => !/\b(?:games|roster_entries|batting_lines|pitching_lines|events)\b/u.test(sql))).toBe(true)
       expect(await searchPlayerAffiliations(query, { player_name: '検証 太郎', player_id: 'one', year: 2024, team: '阪神', dictionaryOnly: true })).toEqual([])
     } finally { database.close() }
   })

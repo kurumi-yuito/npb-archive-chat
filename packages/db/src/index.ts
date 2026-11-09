@@ -181,4 +181,4 @@ export {
   searchAwardWinners,
   getNormalizedRuntimeMetadata,
 }
-export { canonicalTeamName, matchesGameTeamFilter } from './repository/team-name-utils'
+export { canonicalTeamName, canonicalLeagueTeamNames, matchesGameTeamFilter, teamMentionCandidates } from './repository/team-name-utils'

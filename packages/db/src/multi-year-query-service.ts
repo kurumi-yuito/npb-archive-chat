@@ -347,6 +347,7 @@ export function createMultiYearQueryService({
 function affiliationSourceRank(sourceKind: PlayerAffiliationRow['sourceKind']): number {
   const ranks: Record<PlayerAffiliationRow['sourceKind'], number> = {
     official_profile: 0,
+    official_registration: 0,
     bis_roster: 0,
     roster: 1,
     batting: 2,

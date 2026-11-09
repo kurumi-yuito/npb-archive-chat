@@ -4,6 +4,8 @@ import { ChatQueryParserUnavailableError } from './chat-query-parser'
 import type { ChatQueryParserContext } from './chat-query-parser-prompt'
 import { verifySemanticAlignment } from './chat-semantic-alignment'
 import { allStatisticMetrics } from './chat-statistic-metrics'
+import { teamMentionCandidates } from '@npb/db'
+import { competitionLeague } from './chat-competition-scope'
 
 const policies = ['execute', 'clarify', 'news', 'realtime', 'prediction', 'capabilities', 'outside_npb', 'staff_information'] as const
 const reasons = ['missing_history', 'history_target_unavailable', 'insufficient_context', 'missing_year'] as const
@@ -87,6 +89,9 @@ export function createSemanticQueryLlm(config: ChatQueryLlmConfig, dependencies:
         const parsed = semanticRequestSchema.parse(JSON.parse(payload.choices?.[0]?.message?.content ?? ''))
         previousCandidate = parsed
         if (parsed.policy === 'execute' && (parsed.domain !== 'npb' || !parsed.query_contract)) throw new Error('Execution requires an NPB semantic contract')
+        const clubPlayers = parsed.query_contract?.entities.filter((entity) => entity.kind === 'player' &&
+          (competitionLeague(entity.mention) || teamMentionCandidates(entity.mention).length > 0)) ?? []
+        if (clubPlayers.length) throw new Error(`The official club/league catalog identifies these mentions as clubs or leagues, not players: ${clubPlayers.map((entity) => entity.mention).join(', ')}. Preserve the literal mention as kind team or the corresponding competition constraint. Do not pass it to player identity resolution.`)
         if (parsed.query_contract?.requested_output.some((output) => output.kind === 'pitching_statistics') &&
           !parsed.query_contract.entities.some((entity) => entity.kind === 'player') && parsed.query_contract.entities.some((entity) => entity.kind === 'team') &&
           !parsed.query_contract.grouping.includes('player')) throw new Error('Distinguish the statistic subject: club season wins/losses/rank require team_statistics; a ranking of individual pitchers requires grouping by player. Preserve the requested subject instead of substituting individual pitcher rows for a club record.')

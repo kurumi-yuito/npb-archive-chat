@@ -21,7 +21,7 @@ type Row = { row_index: number; player_id: string | null; player_name: string; m
 try {
   const roster = await verifiedOfficialRosterIdentities(database, createObjectStorage({ workspaceRoot: workspace, mode: 'local' }))
   const index = officialStatisticIdentityIndex(database, roster)
-  const changes: Array<{ snapshotId: string; rowIndex: number; playerId: string }> = []
+  const changes: Array<{ snapshotId: string; rowIndex: number; playerId: string | null; previousId: string | null; reason: string }> = []
   const snapshots = database.prepare('SELECT * FROM official_statistic_snapshots').all() as Snapshot[]
   for (const snapshot of snapshots) {
     const file = path.resolve(workspace, 'data', snapshot.raw_key)
@@ -37,12 +37,14 @@ try {
       if (row.row_index !== original.rowIndex || row.player_name !== original.playerName || row.metrics_json !== JSON.stringify(original.values)) throw new Error('Statistic values differ from raw')
       const playerId = original.playerId ?? index.resolve(row.player_name, page)
       if (row.player_id && playerId && row.player_id !== playerId) throw new Error('Conflicting existing statistic ID; manual source investigation required')
-      if (!row.player_id && playerId) changes.push({ snapshotId: snapshot.snapshot_id, rowIndex: row.row_index, playerId })
+      if (!row.player_id && playerId) changes.push({ snapshotId: snapshot.snapshot_id, rowIndex: row.row_index, playerId, previousId: null, reason: 'unique_official_year_team_evidence' })
+      if (row.player_id && !playerId && options.get('revalidate-existing-ids') === 'true') changes.push({ snapshotId: snapshot.snapshot_id, rowIndex: row.row_index,
+        playerId: null, previousId: row.player_id, reason: 'new_official_candidates_make_previous_inference_ambiguous' })
     }
   }
   withTransaction(database, () => {
-    const update = database.prepare('UPDATE official_player_statistics SET player_id=? WHERE snapshot_id=? AND row_index=? AND player_id IS NULL')
-    for (const row of changes) update.run(row.playerId, row.snapshotId, row.rowIndex)
+    const update = database.prepare('UPDATE official_player_statistics SET player_id=? WHERE snapshot_id=? AND row_index=? AND player_id IS ?')
+    for (const row of changes) update.run(row.playerId, row.snapshotId, row.rowIndex, row.previousId)
   })
   const unresolved = database.prepare(`SELECT snapshot.level,snapshot.statistic_kind,COUNT(*) AS count FROM official_player_statistics stat
     JOIN official_statistic_snapshots snapshot USING(snapshot_id) WHERE stat.player_id IS NULL GROUP BY snapshot.level,snapshot.statistic_kind`).all()

@@ -1,5 +1,5 @@
 import { chatStructuredQuerySchema, type ChatStructuredQuery, type QueryContract } from '@npb/schemas'
-import { normalizeTeamName } from './chat-query-normalizer'
+import { resolveContractTeamMention } from './chat-team-resolution'
 import { statisticSortField } from './chat-statistic-metrics'
 import { isStatisticIdentityProjection } from './chat-output-capabilities'
 import { competitionLeague, isRegularSeasonScope } from './chat-competition-scope'
@@ -31,7 +31,7 @@ export function identityFiltersForContract(contract: QueryContract) {
     ...(time.year_to !== null ? { year_to: time.year_to } : {}),
     ...(!time.years.length && time.year_from === null && time.date_from !== null ? { year_from: Number(time.date_from.slice(0, 4)) } : {}),
     ...(!time.years.length && time.year_to === null && time.date_to !== null ? { year_to: Number(time.date_to.slice(0, 4)) } : {}),
-    ...(team ? { team: normalizeTeamName(team) } : {}),
+    ...(team ? { team: resolveContractTeamMention(team) } : {}),
   }
 }
 
@@ -126,7 +126,7 @@ export function compileQueryContract(contract: QueryContract): ContractOperation
             : entity.role === 'batter' ? 'batter_name'
             : entity.role === 'pitcher' ? 'pitcher_name'
               : entity.role === 'runner' ? 'runner_name' : subjectNameField(intent)
-      const value = entity.kind === 'team' ? normalizeTeamName(entity.mention) : entity.mention
+      const value = entity.kind === 'team' ? resolveContractTeamMention(entity.mention) : entity.mention
       const pluralField = field === 'player_name' ? 'player_names' : field === 'pitcher_name' ? 'pitcher_names' : null
       if (pluralField && Array.isArray(filters[pluralField])) {
         filters[pluralField] = [...new Set([...(filters[pluralField] as string[]), String(value)])]
