@@ -1,0 +1,47 @@
+{
+  "environment": "independent_python_html_audit",
+  "humanReviewed": false,
+  "production": false,
+  "scope": {
+    "year": 2024,
+    "teamId": "s",
+    "kind": "batting",
+    "level": "first"
+  },
+  "literalPlayerName": "村上 宗隆",
+  "metric": "本塁打",
+  "value": "33",
+  "source": {
+    "source_url": "https://npb.jp/bis/2024/stats/idb1_s.html",
+    "fetched_at": "2026-11-09T03:58:25.426Z",
+    "content_hash": "281bfbe70cfc6e8e5497de8ad5b43c6b3abf020adaa6a74e0a613e0bf56f72fd",
+    "raw_key": "raw/bis-statistics/2024/281bfbe70cfc6e8e5497de8ad5b43c6b3abf020adaa6a74e0a613e0bf56f72fd.html"
+  },
+  "literalCells": {
+    "": "*",
+    "選手": "村上 宗隆",
+    "試合": "143",
+    "打席": "610",
+    "打数": "500",
+    "得点": "82",
+    "安打": "122",
+    "二塁打": "13",
+    "三塁打": "1",
+    "本塁打": "33",
+    "塁打": "236",
+    "打点": "86",
+    "盗塁": "10",
+    "盗塁刺": "5",
+    "犠打": "0",
+    "犠飛": "1",
+    "四球": "105",
+    "故意四": "9",
+    "死球": "4",
+    "三振": "180",
+    "併殺打": "6",
+    "打率": ".244",
+    "長打率": ".472",
+    "出塁率": ".379"
+  },
+  "note": "Source metric reconciliation only. Does not resolve a name to an ID or certify a semantic oracle."
+}

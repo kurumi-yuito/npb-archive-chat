@@ -3,7 +3,7 @@ import type { ChatDataRequirement } from './chat-query-plan'
 import { normalizePosition, normalizeResultTextContains } from './chat-query-normalizer'
 import { subjectNameField } from './chat-contract-compiler'
 import { statisticSortField } from './chat-statistic-metrics'
-import { isStatisticIdentityProjection } from './chat-output-capabilities'
+import { isStatisticIdentityProjection, requiresGameReduction } from './chat-output-capabilities'
 import { competitionLeague, isRegularSeasonScope } from './chat-competition-scope'
 import { matchesGameTeamFilter } from '@npb/db'
 import { resolveContractTeamMention } from './chat-team-resolution'
@@ -15,7 +15,7 @@ export function requirementsForContract(contract: QueryContract): ChatDataRequir
     switch (output.kind) {
       case 'player_information': return isStatisticIdentityProjection(contract, output) ? [] : ['player_profiles']
       case 'event_records': return [aggregate ? 'aggregate_events' : 'events']
-      case 'game_results': return [aggregate ? 'aggregate_games' : 'games']
+      case 'game_results': return [requiresGameReduction(contract, output) ? 'aggregate_games' : 'games']
       case 'team_statistics': return ['official_team_statistics']
       case 'game_details': return ['game_details', 'events', 'batting_lines', 'pitching_lines']
       case 'batting_records': return ['batting_lines']

@@ -10,6 +10,7 @@ import {
 import { chatResponseSchema } from '@npb/schemas'
 import { createChatService } from '../services/chat-service'
 import { createContractChatService } from '../services/chat-contract-service'
+import { issuePlayerSelectionChallenge, verifyPlayerSelectionChallenge, InvalidPlayerSelectionChallengeError } from '../utils/player-selection-challenge'
 import { createSemanticQueryLlm } from '../services/chat-semantic-llm'
 import { QueryContractCompileError } from '../services/chat-contract-compiler'
 import { EventEvidenceError } from '../services/chat-event-evidence'
@@ -185,8 +186,11 @@ export default defineEventHandler(async (event) => withD1ReadAudit(async () => {
             }, {
               allowFallback: allowHeuristicFallback,
             })
+      const selectedContract = body.selected_player?.challenge
+        ? await verifyPlayerSelectionChallenge({ token: body.selected_player.challenge, secret: authConfig.authSharedSecret,
+          userId: identity.userId, message: body.message, mention: body.selected_player.mention, playerId: body.selected_player.player_id }) : null
       const service = !fixtureMode.enabled && !allowHeuristicFallback
-        ? createContractChatService(queryService, createSemanticQueryLlm(chatQueryLlmConfig, {
+        ? createContractChatService(queryService, selectedContract ? async () => ({ domain: 'npb', policy: 'execute', query_contract: selectedContract, clarification_reason: null, subject: null }) : createSemanticQueryLlm(chatQueryLlmConfig, {
           onRequest: () => { openAiCalls.planner += 1 },
           onParsed: (request) => console.info('[chat-semantic-contract]', JSON.stringify({ caseId: getHeader(event, 'user-agent'), ...request })),
           onReview: (review) => console.info('[chat-semantic-alignment]', JSON.stringify({ caseId: getHeader(event, 'user-agent'), ...review })),
@@ -205,9 +209,8 @@ export default defineEventHandler(async (event) => withD1ReadAudit(async () => {
       })
       let core: Awaited<ReturnType<typeof service.answerQuestion>>
       try {
-        core = await service.answerQuestion(body.message, {
-          history: body.history,
-        })
+        const answerOptions = { history: body.history, selectedPlayer: body.selected_player }
+        core = await service.answerQuestion(body.message, answerOptions)
       } catch (plannerExecutionError) {
         if (fixtureMode.enabled || !allowHeuristicFallback) {
           throw plannerExecutionError
@@ -236,6 +239,11 @@ export default defineEventHandler(async (event) => withD1ReadAudit(async () => {
         throw createPublicApiError(503, 'query_contract_invalid', '質問の処理計画を検証できませんでした。時間をおいて再度お試しください。')
       }
       await assertSamePublication()
+      if (!fixtureMode.enabled && !allowHeuristicFallback && authConfig.authSharedSecret && core.answer.query_contract && core.answer.resolved_player?.status === 'ambiguous') {
+        core.answer.player_selection_challenge = await issuePlayerSelectionChallenge({ secret: authConfig.authSharedSecret,
+          userId: identity.userId, message: body.message, mention: core.answer.resolved_player.input,
+          candidateIds: core.answer.resolved_player.candidates.flatMap((candidate) => candidate.player_id ? [candidate.player_id] : []), contract: core.answer.query_contract })
+      }
       const usage = !account
         ? buildUnavailableUsageInfo(authConfig.defaultPlan ?? 'free', now)
         : !isEffectivePro(account) && effectiveBucket
@@ -254,6 +262,7 @@ export default defineEventHandler(async (event) => withD1ReadAudit(async () => {
   } catch (error) {
     publishOpenAiCallCounts()
     console.error('[chat.post] unhandled error', error)
+    if (error instanceof InvalidPlayerSelectionChallengeError) throw createPublicApiError(400, 'player_selection_invalid', error.message)
     if (error instanceof DataPublicationChangedError) {
       throw createPublicApiError(503, 'data_publication_changed', error.message)
     }

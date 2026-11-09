@@ -148,6 +148,9 @@ export const searchEventsFiltersSchema = z.object({
 
 export const playerCandidateSchema = z.object({
   matched_aliases: z.array(z.string()).optional(),
+  positions: z.array(z.string().min(1)).optional(),
+  uniform_numbers: z.array(z.string().min(1)).optional(),
+  source_urls: z.array(z.string().url()).optional(),
   player_id: z.string().min(1).nullable(),
   name: z.string().min(1),
   primary_team: z.string().min(1).nullable(),
@@ -338,6 +341,7 @@ export const chatHistoryMessageSchema = z.object({
 
 export const chatRequestSchema = z.object({
   message: z.string().trim().min(1).max(4000),
+  selected_player: z.object({ mention: z.string().trim().min(1).max(128), player_id: z.string().regex(/^\d{8}$/u), challenge: z.string().max(48000).optional() }).strict().optional(),
   history: z.array(chatHistoryMessageSchema).max(12).optional(),
   fixture_structured_query: z.lazy(() => chatStructuredQuerySchema).optional(),
 })
@@ -492,6 +496,7 @@ export const chatResponseSchema = z.object({
   message: z.string().min(1),
   structured_query: chatStructuredQuerySchema.nullable(),
   answer: z.object({
+    player_selection_challenge: z.string().max(48000).optional(),
     query_contract: queryContractSchema.optional(),
     scope_fallback: z.object({ requested_year: z.number().int(), evidence_year: z.number().int(),
       reason: z.literal('latest_verified_npb_season'), effective_contract: queryContractSchema }).optional(),
@@ -523,6 +528,7 @@ export const chatResponseSchema = z.object({
     applied_filters: z.record(z.unknown()).optional(),
     execution_metadata: z.object({
       query_contract: queryContractSchema.optional(),
+      scoped_query_contracts: z.array(queryContractSchema).max(8).optional(),
       data_requirements: z.array(z.string().min(1)),
       repositories: z.array(z.string().min(1)),
       player_id_required: z.boolean(),

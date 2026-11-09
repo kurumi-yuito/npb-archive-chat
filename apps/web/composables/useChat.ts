@@ -246,7 +246,7 @@ export function useChat() {
     })()
   }
 
-  async function sendMessage(text: string) {
+  async function sendMessage(text: string, options: { selectedPlayer?: ChatRequest['selected_player'] } = {}) {
     const trimmed = text.trim()
     if (!trimmed || loading.value) return
 
@@ -265,7 +265,7 @@ export function useChat() {
       const res = await fetch('/api/chat', {
         method: 'POST',
         headers: chatRequestHeaders(),
-        body: JSON.stringify({ message: trimmed, history }),
+        body: JSON.stringify({ message: trimmed, history, ...(options.selectedPlayer ? { selected_player: options.selectedPlayer } : {}) }),
       })
 
       if (!res.ok) {

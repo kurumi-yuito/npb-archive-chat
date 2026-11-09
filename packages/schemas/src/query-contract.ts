@@ -6,12 +6,7 @@ const year = z.number().int().min(1936).max(2200)
 const date = z.string().regex(/^\d{4}-\d{2}-\d{2}$/)
 
 /** Semantic request before identity resolution. IDs belong to execution evidence. */
-export const queryContractSchema = z.object({
-  version: z.literal(1),
-  requested_output: z.array(z.object({
-    kind: z.enum(outputKinds),
-    fields: z.array(z.string().min(1)),
-  }).strict()).min(1),
+const queryScopeSchema = z.object({
   entities: z.array(z.object({
     kind: z.enum(['player', 'team', 'venue']),
     role: z.enum(['subject', 'batter', 'pitcher', 'runner', 'opponent']),
@@ -48,6 +43,29 @@ export const queryContractSchema = z.object({
   unresolved_constraints: z.array(z.string().min(1)),
 }).strict()
 
+const scopedOutputSchema = z.preprocess((value) => {
+  if (value && typeof value === 'object' && !Array.isArray(value) && 'scope' in value && value.scope === null) {
+    const { scope: _scope, ...output } = value
+    void _scope
+    return output
+  }
+  return value
+}, z.object({ kind: z.enum(outputKinds), fields: z.array(z.string().min(1)), scope: queryScopeSchema.optional() }).strict())
+
+export const queryContractSchema = queryScopeSchema.extend({
+  version: z.literal(1), requested_output: z.array(scopedOutputSchema).min(1),
+}).strict().transform((contract) => {
+  const { version: _version, requested_output, ...common } = contract
+  void _version
+  const shared = JSON.stringify(common)
+  return { ...contract, requested_output: requested_output.map((output): z.infer<typeof scopedOutputSchema> => {
+    if (!output.scope || JSON.stringify(output.scope) !== shared) return output
+    const { scope: _scope, ...projection } = output
+    void _scope
+    return projection
+  }) }
+})
+
 export type QueryContract = z.infer<typeof queryContractSchema>
 
 // JSON schema for the provider. Runtime validation above remains authoritative.
@@ -62,9 +80,7 @@ const enumeration = (values: readonly string[]) => ({ type: 'string', enum: valu
 const nullableYear = { type: ['integer', 'null'], minimum: 1936, maximum: 2200 }
 const relativeTemporalKinds = ['career', 'current_season', 'previous_season', 'recent_appearances', 'latest_appearance',
   'today', 'yesterday', 'tomorrow', 'current_month', 'previous_month', 'current_week', 'previous_week'] as const
-export const queryContractJsonSchema = object({
-  version: { type: 'integer', enum: [1] },
-  requested_output: { ...array(object({ kind: enumeration(outputKinds), fields: strings })), minItems: 1 },
+const queryScopeJsonSchema = object({
   entities: array(object({ kind: enumeration(['player', 'team', 'venue']), role: enumeration(['subject', 'batter', 'pitcher', 'runner', 'opponent']), mention: text })),
   temporal_scope: object({ years: array({ type: 'integer', minimum: 1936, maximum: 2200 }), year_from: nullableYear, year_to: nullableYear, date_from: nullableText, date_to: nullableText, relative: { type: ['string', 'null'], enum: [...relativeTemporalKinds, null] } }),
   competition_scope: object({ level: enumeration(['first', 'farm', 'both', 'unspecified']), competitions: strings }),
@@ -75,4 +91,11 @@ export const queryContractJsonSchema = object({
   completeness: object({ mode: enumeration(['all', 'top_n', 'bounded', 'unspecified']), limit: { type: ['integer', 'null'], minimum: 1 } }),
   context_references: array(object({ field: text, reference: text })),
   unresolved_constraints: strings,
+})
+
+export const queryContractJsonSchema = object({
+  version: { type: 'integer', enum: [1] },
+  requested_output: { ...array(object({ kind: enumeration(outputKinds), fields: strings,
+    scope: { anyOf: [queryScopeJsonSchema, { type: 'null' }] } })), minItems: 1 },
+  ...queryScopeJsonSchema.properties,
 })

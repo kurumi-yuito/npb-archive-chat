@@ -1,7 +1,7 @@
 import { chatResponseCoreSchema, chatStructuredQuerySchema, normalizePlayerNameKey, type ChatRequest, type ChatResponseCore, type ChatStructuredQuery, type QueryContract } from '@npb/schemas'
 import type { ChatQueryService } from '@npb/db'
 import { matchesGameTeamFilter } from '@npb/db'
-import { compileQueryContract, identityFiltersForContract, subjectNameField, QueryContractCompileError } from './chat-contract-compiler'
+import { compileQueryContract, contractForOutput, identityFiltersForContract, subjectNameField, QueryContractCompileError } from './chat-contract-compiler'
 import { normalizeChatStructuredQuery, normalizeFreeText } from './chat-query-normalizer'
 import { formatChatAnswer, formatClarificationAnswer, publicExecutionMetadata } from './chat-answer-formatter'
 import { buildPlannerOutput } from './chat-planner'
@@ -11,7 +11,7 @@ import { inferDataRequirements, chatExecutionRepositorySchema } from './chat-que
 import { searchCompleteEventEvidence, validateEventEvidence, verifyOfficialHomeRunTotal, EventEvidenceError } from './chat-event-evidence'
 import type { PlayerResolution } from './player-resolution'
 import type { SemanticRequest } from './chat-semantic-llm'
-import { formatContractStatistics, formatTeamStatisticComparison } from './chat-statistic-answer'
+import { formatContractStatistics, formatScopedStatisticComparison, formatTeamStatisticComparison } from './chat-statistic-answer'
 import { officialProfileMetricStats, searchOfficialCareerEvidence } from './chat-career-evidence'
 import { searchOpponentStarters } from './chat-appearance-context'
 import { formatContractTeamStatistics } from './chat-team-statistic-answer'
@@ -21,7 +21,7 @@ type ResolvedEntity = { entity: QueryContract['entities'][number]; resolution: P
 
 /** Semantic extraction -> identity -> compilation -> execution. No question rewrites. */
 export function createContractChatService(databaseService: ChatQueryService, parse: SemanticParser) {
-  return { async answerQuestion(message: string, options: { history?: ChatRequest['history'] } = {}): Promise<ChatResponseCore> {
+  return { async answerQuestion(message: string, options: { history?: ChatRequest['history']; selectedPlayer?: ChatRequest['selected_player'] } = {}): Promise<ChatResponseCore> {
     const executedRepositories = new Set<string>()
     const queryService = new Proxy(databaseService, { get(target, key, receiver) {
       const value = Reflect.get(target, key, receiver)
@@ -30,21 +30,37 @@ export function createContractChatService(databaseService: ChatQueryService, par
         return Reflect.apply(value, target, args)
       } : value
     } })
-    const request = await parse(message, options)
+    const request = await parse(message, { history: options.history })
     if (request.policy !== 'execute') return policyResponse(message, request)
     const contract = request.query_contract!
-    const identities = await resolveContractPlayers(queryService, contract)
+    if (contract.requested_output.some((output) => output.scope)) {
+      if (contract.requested_output.length > 8) throw new QueryContractCompileError(['scoped_operation_budget_exceeded'])
+      const responses: ChatResponseCore[] = []
+      for (const output of contract.requested_output) {
+        const effective = contractForOutput(contract, output)
+        const response = await createContractChatService(databaseService, async () => ({ ...request, query_contract: effective })).answerQuestion(message, options)
+        const subjects = effective.entities.filter((entity) => entity.role !== 'opponent').map((entity) => entity.mention).join('・')
+        const time = effective.temporal_scope
+        const period = time.years.length ? `${time.years.join('・')}年` : time.date_from || time.date_to
+          ? `${time.date_from ?? ''}〜${time.date_to ?? ''}` : time.year_from || time.year_to ? `${time.year_from ?? ''}〜${time.year_to ?? ''}年` : ''
+        response.answer.summary = `${[period, subjects].filter(Boolean).join('・')}：\n${response.answer.summary}`
+        responses.push(response)
+      }
+      const resolutions = responses.flatMap((response) => response.answer.resolved_player ? [response.answer.resolved_player] : [])
+      return mergeContractResponses(contract, responses, resolutions)
+    }
+    const identities = await resolveContractPlayers(queryService, contract, options.selectedPlayer)
     const unresolved = identities.find(({ resolution }) => resolution.status !== 'resolved')
     if (unresolved) {
-      const supplemental = await latestVerifiedSeasonResponse(queryService, contract, message, unresolved)
+      const supplemental = options.selectedPlayer ? null : await latestVerifiedSeasonResponse(queryService, contract, message, unresolved)
       if (supplemental) return supplemental
       const resolution = unresolved.resolution
-      const choices = resolution.candidates.map((candidate) => `${candidate.name}${candidate.primary_team ? `（${candidate.primary_team}）` : ''}`).join('、')
+      const choices = resolution.candidates.map((candidate) => `${candidate.name}（${[candidate.primary_team, ...(candidate.positions ?? []), ...(candidate.uniform_numbers ?? []).map((number) => `背番号${number}`)].filter(Boolean).join('・')}）`).join('、')
       return chatResponseCoreSchema.parse({ message, structured_query: null,
         answer: { summary: resolution.status === 'ambiguous'
-          ? `どの${resolution.input}ですか。候補：${choices}。フルネームまたは球団・年度を指定してください。`
+          ? `どの${resolution.input}ですか。候補：${choices}。候補を選択してください。`
           : `${resolution.input}は、指定された条件の公式選手情報から特定できませんでした。名前・球団・年度をご確認ください。`,
-          query_contract: contract, result_count: 0, resolved_player: resolution, source_urls: [] },
+          query_contract: contract, result_count: 0, resolved_player: resolution, source_urls: [...new Set(resolution.candidates.flatMap((candidate) => candidate.source_urls ?? []))] },
         results: emptyResults(), sources: [],
       })
     }
@@ -109,7 +125,7 @@ export function createContractChatService(databaseService: ChatQueryService, par
         results.events.push(...appearanceContext.events)
         results.gameDetails.push(...appearanceContext.games)
       }
-      if (results.aggregates.some((row) => row.stats.evidenceStatus === 'official_identity_incomplete')) throw new QueryContractCompileError(['official_statistics_identity_incomplete'])
+      const incompleteStatisticIdentity = results.aggregates.some((row) => row.stats.evidenceStatus === 'official_identity_incomplete')
       const gameIds = [...new Set([
         ...results.events.map((row) => row.gameId), ...results.games.map((row) => row.gameId),
         ...results.batting.map((row) => row.gameId), ...results.pitching.map((row) => row.gameId),
@@ -137,18 +153,22 @@ export function createContractChatService(databaseService: ChatQueryService, par
       if (operation.output.kind === 'player_information') metadata.dataRequirements = ['player_profiles', 'official_statistics', 'source_snapshots']
       if (operation.output.kind === 'team_statistics') metadata.dataRequirements = ['official_team_statistics', 'source_snapshots']
       if (career) metadata.dataRequirements = ['player_profiles', 'official_statistics', 'source_snapshots']
-      if (results.aggregates.some((row) => row.stats.evidenceStatus === 'official_complete_scope')) metadata.dataRequirements = ['official_statistics', 'source_snapshots']
+      if (incompleteStatisticIdentity || results.aggregates.some((row) => row.stats.evidenceStatus === 'official_complete_scope')) metadata.dataRequirements = ['official_statistics', 'source_snapshots']
       const profileAffiliation = results.affiliations.some((row) => row.sourceKind === 'official_profile' || row.sourceKind === 'official_registration')
-      const statisticSummary = operation.output.kind === 'team_statistics' ? formatContractTeamStatistics(operationContract, results.aggregates) : formatContractStatistics({ contract: operationContract, query, rows: results.aggregates, playerName: player?.name ?? undefined,
+      const statisticUrls = [...new Set(results.aggregates.flatMap((row) => {
+        if (typeof row.stats.sourceUrls !== 'string') return []
+        const urls: unknown = JSON.parse(row.stats.sourceUrls)
+        if (!Array.isArray(urls) || !urls.every((url) => typeof url === 'string' && /^https:\/\/npb\.jp\/bis\//u.test(url))) throw new QueryContractCompileError(['invalid_statistic_sources'])
+        return urls as string[]
+      }))]
+      const statisticSummary = incompleteStatisticIdentity ? null : operation.output.kind === 'team_statistics' ? formatContractTeamStatistics(operationContract, results.aggregates) : formatContractStatistics({ contract: operationContract, query, rows: results.aggregates, playerName: player?.name ?? undefined,
         careerVerified: career?.verified, asOf: career?.basisText })
-      const answer: ChatResponseCore['answer'] = statisticSummary !== null ? {
+      const answer: ChatResponseCore['answer'] = incompleteStatisticIdentity ? {
+        summary: `${player?.name ?? '指定対象'}の指定条件に対応する公式成績表は取得できましたが、同名の記録と選手IDの対応に未確認の部分があります。未確認の行を除いた数値を完全な成績としては回答できません。`,
+        result_count: 0, source_urls: statisticUrls, resolved_player: player, execution_metadata: publicExecutionMetadata(metadata),
+      } : statisticSummary !== null ? {
         summary: statisticSummary, result_count: results.aggregates.length,
-        source_urls: [...new Set([...sources.map((row) => row.source_url), ...(career?.sourceUrls ?? []), ...results.aggregates.flatMap((row) => {
-          if (typeof row.stats.sourceUrls !== 'string') return []
-          const urls: unknown = JSON.parse(row.stats.sourceUrls)
-          if (!Array.isArray(urls) || !urls.every((url) => typeof url === 'string' && /^https:\/\/npb\.jp\/bis\//u.test(url))) throw new QueryContractCompileError(['invalid_statistic_sources'])
-          return urls as string[]
-        })])],
+        source_urls: [...new Set([...sources.map((row) => row.source_url), ...(career?.sourceUrls ?? []), ...statisticUrls])],
         resolved_player: player, execution_metadata: publicExecutionMetadata(metadata),
       } : profileAffiliation ? {
         summary: `${player?.name ?? results.affiliations[0]!.playerName}の公式年度記録・登録公示に基づく所属です。\n${[...new Set(results.affiliations.map((row) => `${row.year}年：${row.team}`))].join('\n')}\n現在の契約状況は年度記録だけでは確認できません。`,
@@ -156,6 +176,7 @@ export function createContractChatService(databaseService: ChatQueryService, par
         resolved_player: player, execution_metadata: publicExecutionMetadata(metadata),
       } : formatChatAnswer({ question: message, structuredQuery: query, results, sources, playerResolution: player, executionMetadata: metadata })
       answer.query_contract = contract
+      if (incompleteStatisticIdentity) results.aggregates = []
       if (player?.name && ['recent_appearances', 'latest_appearance'].includes(operationContract.temporal_scope.relative ?? '')) {
         answer.summary = `${player.name.replace(/\s+/gu, '')}：${answer.summary}`
       }
@@ -204,8 +225,13 @@ export function createContractChatService(databaseService: ChatQueryService, par
       }
       responses.push(chatResponseCoreSchema.parse({ message, structured_query: query, answer, results, sources }))
     }
+    return mergeContractResponses(contract, responses, identities.map(({ resolution }) => resolution))
+  } }
+}
+
+function mergeContractResponses(contract: QueryContract, responses: ChatResponseCore[], resolutions: PlayerResolution[]): ChatResponseCore {
     const first = responses[0]!
-    if (responses.length === 1) return first
+    if (responses.length === 1 && !contract.requested_output.some((output) => output.scope)) return first
     const merged = emptyResults()
     for (const response of responses) {
       for (const key of Object.keys(merged) as Array<keyof typeof merged>) {
@@ -214,20 +240,28 @@ export function createContractChatService(databaseService: ChatQueryService, par
         Object.assign(merged, { [key]: [...new Map(rows.map((row) => [JSON.stringify(row), row])).values()] })
       }
     }
+    const metadata = responses.find((response) => response.answer.execution_metadata)?.answer.execution_metadata
+    const scopedComparison = formatScopedStatisticComparison(contract, responses)
     return chatResponseCoreSchema.parse({ ...first,
-      structured_query: { ...first.structured_query, query_contract: contract }, results: merged,
+      structured_query: first.structured_query ? { ...first.structured_query, query_contract: contract } : null, results: merged,
       sources: responses.flatMap((response) => response.sources),
       answer: { ...first.answer, summary: contract.requested_output.every((output) => output.kind === 'team_statistics')
         ? formatContractTeamStatistics(contract, merged.aggregates)
-        : formatTeamStatisticComparison(contract, merged.aggregates, responses.map((response) => response.answer.summary)) ?? responses.map((response) => response.answer.summary).join('\n\n'),
-        resolved_player: identities.length === 1 ? identities[0]!.resolution : null,
+        : formatTeamStatisticComparison(contract, merged.aggregates, responses.map((response) => response.answer.summary)) ??
+          [responses.map((response) => response.answer.summary).join('\n\n'), scopedComparison].filter(Boolean).join('\n'),
+        query_contract: contract,
+        resolved_player: resolutions.length === 1 ? resolutions[0]! : null,
         result_count: responses.reduce((sum, response) => sum + response.answer.result_count, 0),
         source_urls: [...new Set(responses.flatMap((response) => response.answer.source_urls))],
-        execution_metadata: first.answer.execution_metadata ? { ...first.answer.execution_metadata, query_contract: contract,
-          data_requirements: [...new Set(responses.flatMap((response) => response.answer.execution_metadata?.data_requirements ?? []))] } : undefined,
+        execution_metadata: metadata ? { ...metadata, query_contract: contract,
+          data_requirements: [...new Set(responses.flatMap((response) => response.answer.execution_metadata?.data_requirements ?? []))],
+          repositories: [...new Set(responses.flatMap((response) => response.answer.execution_metadata?.repositories ?? []))],
+          resolved_players: resolutions,
+          scoped_query_contracts: contract.requested_output.some((output) => output.scope)
+            ? responses.flatMap((response) => response.answer.query_contract ? [response.answer.query_contract] : []) : undefined,
+        } : undefined,
       },
     })
-  } }
 }
 
 /** Generic form requests retain an unspecified domain until official identity/position evidence is available. */
@@ -323,7 +357,7 @@ async function latestVerifiedSeasonResponse(service: ChatQueryService, contract:
   } })
 }
 
-export async function resolveContractPlayers(service: Pick<ChatQueryService, 'searchPlayerCandidates'>, contract: QueryContract): Promise<ResolvedEntity[]> {
+export async function resolveContractPlayers(service: Pick<ChatQueryService, 'searchPlayerCandidates'>, contract: QueryContract, selection?: ChatRequest['selected_player']): Promise<ResolvedEntity[]> {
   const scope = identityFiltersForContract(contract)
   const resolutions: ResolvedEntity[] = []
   for (const entity of contract.entities.filter((entity) => entity.kind === 'player')) {
@@ -345,7 +379,9 @@ export async function resolveContractPlayers(service: Pick<ChatQueryService, 'se
       (!scope.year || year === scope.year) && (!scope.year_from || year >= scope.year_from) && (!scope.year_to || year <= scope.year_to) &&
       (contract.temporal_scope.years.length === 0 || contract.temporal_scope.years.includes(year))) && candidate.teams.some((team) => matchesGameTeamFilter(team, scope.team!)))
     candidates = [...new Map(candidates.map((candidate) => [candidate.player_id, candidate])).values()]
-    const unique = candidates.length === 1 && raw.length < 51 ? candidates[0]! : null
+    const selected = Boolean(selection && compact(selection.mention) === compact(entity.mention))
+    if (selected) candidates = candidates.filter((candidate) => candidate.player_id === selection!.player_id)
+    const unique = candidates.length === 1 && (selected || raw.length < 51) ? candidates[0]! : null
     resolutions.push({ entity, resolution: {
       input: entity.mention, status: unique ? 'resolved' : candidates.length ? 'ambiguous' : 'not_found',
       player_id: unique?.player_id ?? null, name: unique?.name ?? null, primary_team: unique?.primary_team ?? null, candidates,

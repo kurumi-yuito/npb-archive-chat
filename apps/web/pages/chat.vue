@@ -140,10 +140,9 @@ function showMoreEvents(response: ChatResponse) {
 
 async function selectPlayerCandidate(response: ChatResponse, question: string, candidate: PlayerCandidate) {
   const mention = response.answer.resolved_player?.input
-  const clarifiedQuestion = mention && question.includes(mention)
-    ? question.replace(mention, candidate.name)
-    : `対象選手は${candidate.name}です。${question}`
-  await sendMessage(clarifiedQuestion)
+  if (!mention || !candidate.player_id) return
+  await sendMessage(question, { selectedPlayer: { mention, player_id: candidate.player_id,
+    ...(response.answer.player_selection_challenge ? { challenge: response.answer.player_selection_challenge } : {}) } })
 }
 
 const sourceDisplayLimits = reactive(new WeakMap<ChatResponse, number>())
@@ -416,6 +415,8 @@ function toggleSidebar() {
                     >{{ candidate.name }}</button>
                     <small class="candidate-meta">
                       <template v-if="candidate.primary_team">{{ candidate.primary_team }}</template>
+                      <template v-if="candidate.positions?.length">・{{ candidate.positions.join('・') }}</template>
+                      <template v-if="candidate.uniform_numbers?.length">・背番号{{ candidate.uniform_numbers.join('・') }}</template>
                     </small>
                   </li>
                 </ul>

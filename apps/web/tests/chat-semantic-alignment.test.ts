@@ -10,6 +10,14 @@ const accepted = () => completion({ equivalent: true, issues: [] })
 const rejected = () => completion({ equivalent: false, issues: [{ field: 'policy', reason: 'An event list is historical data, not external news.' }] })
 
 describe('semantic meaning verification (Q-183)', () => {
+  it('does not let an executable scope bypass a declared unresolved condition', async () => {
+    const blocked = { ...candidate, query_contract: { ...oracle.meaning, unresolved_constraints: ['specific unresolved semantic condition'] } }
+    const fetch = vi.fn().mockResolvedValueOnce(completion(blocked)).mockResolvedValueOnce(completion(candidate)).mockResolvedValueOnce(accepted())
+    const result = await createSemanticQueryLlm(config, { fetch })(oracle.question)
+    expect(result.query_contract?.unresolved_constraints).toEqual([])
+    expect(fetch).toHaveBeenCalledTimes(3)
+    expect(JSON.parse(fetch.mock.calls[1]![1].body).messages.at(-1).content).toContain('Execution cannot retain unresolved semantic conditions')
+  })
   it.each(['セ・リーグ', 'パ・リーグ', '中日ドラゴンズ'])('checks the official catalog before attempting player resolution for %s', async (mention) => {
     const contract = { ...oracle.meaning, requested_output: [{ kind: 'batting_statistics', fields: ['homeRuns'] }], predicates: [],
       entities: [{ kind: 'team', role: 'subject', mention }], grouping: ['player'], ordering: [{ field: 'homeRuns', direction: 'desc' }], completeness: { mode: 'top_n', limit: 3 } }

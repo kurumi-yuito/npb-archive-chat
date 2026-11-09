@@ -1,7 +1,7 @@
 import { chatStructuredQuerySchema, type ChatStructuredQuery, type QueryContract } from '@npb/schemas'
 import { resolveContractTeamMention } from './chat-team-resolution'
 import { statisticSortField } from './chat-statistic-metrics'
-import { isStatisticIdentityProjection } from './chat-output-capabilities'
+import { isStatisticIdentityProjection, requiresGameReduction } from './chat-output-capabilities'
 import { competitionLeague, isRegularSeasonScope } from './chat-competition-scope'
 import { matchesGameTeamFilter } from '@npb/db'
 
@@ -13,6 +13,14 @@ export class QueryContractCompileError extends Error {
 }
 
 export type ContractOperation = { output: QueryContract['requested_output'][number]; query: ChatStructuredQuery }
+
+/** A scoped output is a complete semantic scope, never a bag of physical SQL
+ * filters. Global unresolved conditions cannot disappear in a subquery. */
+export function contractForOutput(contract: QueryContract, output: QueryContract['requested_output'][number]): QueryContract {
+  const { scope, ...projection } = output
+  return { ...contract, ...scope, requested_output: [projection],
+    unresolved_constraints: [...new Set([...contract.unresolved_constraints, ...(scope?.unresolved_constraints ?? [])])] }
+}
 
 /** Identity lookup does not require an executable statistical/competition plan. */
 export function identityFiltersForContract(contract: QueryContract) {
@@ -39,7 +47,7 @@ export function operationIntent(output: QueryContract['requested_output'][number
   switch (output.kind) {
     case 'player_information': return 'player_affiliation'
     case 'event_records': return contract.aggregation.length ? 'aggregate_events' : 'search_events'
-    case 'game_results': return contract.aggregation.length ? 'aggregate_games' : 'search_games'
+    case 'game_results': return requiresGameReduction(contract, output) ? 'aggregate_games' : 'search_games'
     case 'game_details': return 'game_detail'
     case 'team_statistics': return 'aggregate_games'
     case 'batting_records': return 'search_batting'
@@ -60,6 +68,7 @@ export function subjectNameField(intent: ChatStructuredQuery['intent']): string 
 
 /** The semantic contract is the only input. No natural-language keyword routing. */
 export function compileQueryContract(contract: QueryContract): ContractOperation[] {
+  if (contract.requested_output.some((output) => output.scope)) return contract.requested_output.flatMap((output) => compileQueryContract(contractForOutput(contract, output)))
   if (contract.unresolved_constraints.length) throw new QueryContractCompileError(['unresolved_constraints'])
   const appearanceRelative = ['recent_appearances', 'latest_appearance'].includes(contract.temporal_scope.relative ?? '')
   const subjectPlayers = contract.entities.filter((entity) => entity.kind === 'player')

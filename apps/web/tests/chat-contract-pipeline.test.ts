@@ -11,6 +11,19 @@ const meaning = queryContractSchema.parse(oracle.meaning)
 const request = (contract: QueryContract) => ({ domain: 'npb' as const, policy: 'execute' as const, query_contract: contract, clarification_reason: null, subject: null })
 
 describe('semantic-only compilation and execution', () => {
+  it('plans a win/loss reduction from requested fields even without a redundant aggregation declaration', async () => {
+    const contract: QueryContract = { ...meaning, requested_output: [{ kind: 'game_results', fields: ['wins', 'losses', 'draws'] }],
+      entities: [{ kind: 'team', role: 'subject', mention: 'オリックス' }, { kind: 'team', role: 'opponent', mention: 'ロッテ' }], predicates: [], aggregation: [],
+      temporal_scope: { years: [], year_from: null, year_to: null, date_from: '2026-08-01', date_to: '2026-08-31', relative: null } }
+    const query = { aggregateGameResults: vi.fn().mockResolvedValue([{ kind: 'games', label: 'オリックス', total: 3,
+      stats: { wins: 1, losses: 2, draws: 0, total_games: 3 } }]), searchGames: vi.fn() }
+    const response = await createContractChatService(query as unknown as ChatQueryService, async () => request(contract)).answerQuestion('期間内の対戦成績')
+    expect(query.aggregateGameResults).toHaveBeenCalledTimes(1)
+    expect(query.searchGames).not.toHaveBeenCalled()
+    expect(response.answer.summary).toContain('1勝2敗')
+    expect(response.answer.execution_metadata?.data_requirements).toContain('aggregate_games')
+    expect(compileQueryContract({ ...contract, requested_output: [{ kind: 'game_results', fields: ['score'] }] })[0]!.query.intent).toBe('search_games')
+  })
   it('cites only the games used in a date-bounded head-to-head aggregate and displays both clubs and dates', async () => {
     const contract: QueryContract = { ...meaning, requested_output: [{ kind: 'game_results', fields: ['wins', 'losses', 'draws'] }],
       entities: [{ kind: 'team', role: 'subject', mention: 'オリックス' }, { kind: 'team', role: 'opponent', mention: 'ロッテ' }], predicates: [],

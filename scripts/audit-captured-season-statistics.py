@@ -68,9 +68,11 @@ title = re.search(r'<title\b[^>]*>(.*?)</title>', raw.decode('utf-8'), re.I | re
 assert title and f'{args.year}年度' in title[1], 'Original source year disagreement'
 page = Rows()
 page.feed(raw.decode('utf-8'))
-headers = [row for row in page.rows if '選手' in row and args.metric in row]
+heading_key = lambda value: ''.join(unicodedata.normalize('NFKC', value).split())
+headers = [row for row in page.rows if '選手' in list(map(heading_key, row)) and args.metric in list(map(heading_key, row))]
 assert headers and all(row == headers[0] for row in headers), 'Missing or conflicting source headers'
-header = headers[0]
+literal_header = headers[0]
+header = list(map(heading_key, literal_header))
 matches = [row for row in page.rows if len(row) == len(header) and name_key(row[header.index('選手')]) == name_key(args.name)]
 assert len(matches) == 1, 'Name is absent or ambiguous in the original table'
 value = matches[0][header.index(args.metric)]

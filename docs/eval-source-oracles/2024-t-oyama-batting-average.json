@@ -1,0 +1,47 @@
+{
+  "environment": "independent_python_html_audit",
+  "humanReviewed": false,
+  "production": false,
+  "scope": {
+    "year": 2024,
+    "teamId": "t",
+    "kind": "batting",
+    "level": "first"
+  },
+  "literalPlayerName": "大山 悠輔",
+  "metric": "打率",
+  "value": ".259",
+  "source": {
+    "source_url": "https://npb.jp/bis/2024/stats/idb1_t.html",
+    "fetched_at": "2026-11-09T03:58:36.429Z",
+    "content_hash": "a601a5741b87db7a5ca373bea3a57cf1000816c86e3b4e241e0d6d5f96e445b8",
+    "raw_key": "raw/bis-statistics/2024/a601a5741b87db7a5ca373bea3a57cf1000816c86e3b4e241e0d6d5f96e445b8.html"
+  },
+  "literalCells": {
+    "": "",
+    "選手": "大山 悠輔",
+    "試合": "130",
+    "打席": "545",
+    "打数": "483",
+    "得点": "63",
+    "安打": "125",
+    "二塁打": "18",
+    "三塁打": "0",
+    "本塁打": "14",
+    "塁打": "185",
+    "打点": "68",
+    "盗塁": "0",
+    "盗塁刺": "4",
+    "犠打": "0",
+    "犠飛": "3",
+    "四球": "52",
+    "故意四": "3",
+    "死球": "7",
+    "三振": "88",
+    "併殺打": "19",
+    "打率": ".259",
+    "長打率": ".383",
+    "出塁率": ".338"
+  },
+  "note": "Source metric reconciliation only. Does not resolve a name to an ID or certify a semantic oracle."
+}

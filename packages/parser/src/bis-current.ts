@@ -145,7 +145,7 @@ export function parseBisPlayerStatsHtml(
         playerId: player.playerId,
         playerName: player.playerName || valueByHeader(row, ['選手', '選手名', '打者', '投手']) || row.cells[0]?.text || '',
         rowIndex: index + 1,
-        values: rowToValues(row),
+        values: { ...rowToValues(row), ...(row.sectionLabel ? { 区分: row.sectionLabel } : {}) },
         sourceUrl: input.sourceUrl,
       }
     }),
@@ -183,6 +183,7 @@ export function parseBisTeamMonthlyResultsHtml(
 type ParsedRow = {
   headers: string[]
   cells: ReturnType<typeof parseCell>[]
+  sectionLabel?: string
 }
 
 function parseDataTables(html: string, includeSummaryRows = false): Array<{ headers: string[]; rows: ParsedRow[] }> {
@@ -200,18 +201,30 @@ function parseDataTables(html: string, includeSummaryRows = false): Array<{ head
   })
   return dataTables(html).map((tableHtml) => {
     const rawRows = extractTopLevelElements(tableHtml, 'tr')
-      .map((rowHtml) => extractTopLevelCells(rowHtml).map((cellHtml) => ({ ...parseCell(cellHtml), isHeader: /^<th\b/iu.test(cellHtml.trim()) })))
+      .map((rowHtml) => extractTopLevelCells(rowHtml).map((cellHtml) => ({ ...parseCell(cellHtml), isHeader: /^<th\b/iu.test(cellHtml.trim()),
+        colspan: Math.min(100, Math.max(1, Number(cellHtml.match(/^<t[hd]\b[^>]*\bcolspan\s*=\s*["']?(\d+)/iu)?.[1] ?? 1))) })))
       .filter((cells) => cells.length > 0)
     const headerIndex = rawRows.findIndex((cells) => cells.every((cell) => cell.isHeader))
-    const headers = (headerIndex >= 0 ? rawRows[headerIndex] : rawRows[0] ?? [])
-      .map((cell, index) => cell.text || `col${index + 1}`)
+    const headerCells = (headerIndex >= 0 ? rawRows[headerIndex] : rawRows[0]) ?? []
+    const section = (cells: typeof headerCells) => cells.map((cell) => cell.text.match(/^【(.+)】$/u)?.[1]).find(Boolean)
+    const headings = (cells: typeof headerCells, previous: string[] = []) => {
+      let column = 0
+      return cells.flatMap((cell) => Array.from({ length: cell.colspan }, (_, offset) => {
+        const index = column++
+        const text = offset === cell.colspan - 1 ? cell.text.replace(/\s+/gu, '') : ''
+        return /^【.+】$/u.test(text) ? '選手' : text || previous[index] || `col${index + 1}`
+      }))
+    }
+    const headers = headings(headerCells)
+    let sectionLabel = section(headerCells)
     let activeHeaders = headers
     const bodyRows: ParsedRow[] = []
     for (const cells of rawRows.slice(headerIndex >= 0 ? headerIndex + 1 : 1)) {
       const summary = includeSummaryRows && cells.slice(0, 2).some((cell) => /^(?:通算|計)$/u.test(cell.text.replace(/\s+/gu, '')))
       if (cells.every((cell) => cell.isHeader) && !summary) {
-        activeHeaders = cells.map((cell, index) => cell.text || `col${index + 1}`)
-      } else if (cells.some((cell) => cell.text || cell.links.length > 0)) bodyRows.push({ headers: activeHeaders, cells })
+        sectionLabel = section(cells) ?? sectionLabel
+        activeHeaders = headings(cells, activeHeaders)
+      } else if (cells.some((cell) => cell.text || cell.links.length > 0)) bodyRows.push({ headers: activeHeaders, cells, ...(sectionLabel ? { sectionLabel } : {}) })
     }
     return { headers, rows: bodyRows }
   }).filter((table) => table.rows.length > 0)

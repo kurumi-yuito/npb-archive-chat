@@ -1,0 +1,46 @@
+{
+  "environment": "independent_python_html_audit",
+  "humanReviewed": false,
+  "production": false,
+  "scope": {
+    "year": 2025,
+    "teamId": "g",
+    "kind": "batting",
+    "level": "first"
+  },
+  "literalPlayerName": "岡本 和真",
+  "metric": "打率",
+  "value": ".327",
+  "source": {
+    "source_url": "https://npb.jp/bis/2025/stats/idb1_g.html",
+    "fetched_at": "2026-11-07T02:58:17.703Z",
+    "content_hash": "af721325bada8041dfbc3a4ad2ebbae40b4cdf2f3d4274066d67839c90e0669f",
+    "raw_key": "raw/bis-statistics/2025/af721325bada8041dfbc3a4ad2ebbae40b4cdf2f3d4274066d67839c90e0669f.html"
+  },
+  "literalCells": {
+    "選手": "岡本 和真",
+    "試合": "69",
+    "打席": "293",
+    "打数": "251",
+    "得点": "38",
+    "安打": "82",
+    "二塁打": "21",
+    "三塁打": "1",
+    "本塁打": "15",
+    "塁打": "150",
+    "打点": "49",
+    "盗塁": "1",
+    "盗塁刺": "1",
+    "犠打": "0",
+    "犠飛": "2",
+    "四球": "33",
+    "故意四": "2",
+    "死球": "7",
+    "三振": "33",
+    "併殺打": "5",
+    "打率": ".327",
+    "長打率": ".598",
+    "出塁率": ".416"
+  },
+  "note": "Source metric reconciliation only. Does not resolve a name to an ID or certify a semantic oracle."
+}

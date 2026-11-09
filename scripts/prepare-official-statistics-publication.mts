@@ -32,6 +32,7 @@ type Statistic = { row_index: number; player_id: string | null; player_name: str
 try {
   candidate.exec(await readFile(path.join(workspace, 'packages/db/migrations-normalized/0003_official_statistic_snapshots.sql'), 'utf8'))
   candidate.exec(await readFile(path.join(workspace, 'packages/db/migrations-normalized/0004_official_dictionary_index.sql'), 'utf8'))
+  candidate.exec(await readFile(path.join(workspace, 'packages/db/migrations-normalized/0006_official_source_observation_index.sql'), 'utf8'))
   const registrationProof = await verifiedOfficialRegistrationIdentities(source, createObjectStorage({ workspaceRoot: workspace, mode: 'local' }))
   const identityIndex = officialStatisticIdentityIndex(candidate, registrationProof)
   const registrationSources = source.prepare("SELECT * FROM bis_source_snapshots WHERE source_type='official_registration'").all() as Array<{ source_key: string; source_url: string; raw_path: string; structured_path: string; year: number; team_id: string }>

@@ -6,8 +6,8 @@ import { officialRegistrationScopeSql } from './official-registration-scope'
 import { officialProfileMembershipsJsonSql } from './official-profile-memberships'
 
 const nameSql = `LOWER(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(COALESCE(canonical_name,full_name),' ',''),char(12288),''),'・',''),'･',''),'.',''),'-',''),'_',''),'﨑','崎'),'髙','高'),'濵','浜'),'*',''),'+',''))`
-type Profile = { player_id: string; full_name: string; team_name: string | null; memberships_json: string; alias_match: number }
-type Roster = { player_id: string; player_name: string; year: number; team_name: string }
+type Profile = { player_id: string; full_name: string; team_name: string | null; memberships_json: string; alias_match: number; source_url: string }
+type Roster = { player_id: string; player_name: string; year: number; team_name: string; position: string | null; uniform_number: string | null; source_url: string }
 
 function rosterScope(filters: SearchPlayerCandidatesFilters) {
   const prefix = "'bis:' || roster.year || ':' || roster.team_id || ':rst_' || roster.team_id || ':'"
@@ -46,20 +46,26 @@ export async function searchOfficialDictionary(database: QueryDatabase, filters:
   const membership = scope.length ? `AND (EXISTS (SELECT 1 FROM json_each(${membershipJson}) membership WHERE ${scope.join(' AND ')})
     OR EXISTS (SELECT 1 FROM current_team_roster roster WHERE roster.player_id=player_profiles.player_id AND ${roster.sql}))` : ''
   const alias = `player_id IN (SELECT player_id FROM player_aliases WHERE normalized_alias=?)`
-  const select = `SELECT player_id,full_name,team_name,${membershipJson} AS memberships_json,(${alias}) AS alias_match FROM player_profiles
+  const select = `SELECT player_id,full_name,team_name,source_url,${membershipJson} AS memberships_json,(${alias}) AS alias_match FROM player_profiles
     WHERE source_url='https://npb.jp/bis/players/' || player_id || '.html' AND `
   const limit = Math.min(filters.limit ?? 51, 100)
   const candidateIdsSql = `player_id IN (SELECT player_id FROM player_profiles INDEXED BY idx_player_profiles_identity_key
     WHERE ${nameSql}>=? AND ${nameSql}<? UNION SELECT player_id FROM player_aliases WHERE normalized_alias=?)`
   const profiles = await database.prepare(`${select}${candidateIdsSql} ${membership} ORDER BY player_id LIMIT ?`)
     .all(input, input, `${input}\uffff`, input, ...values, ...(scope.length ? roster.values : []), limit) as Profile[]
-  const registrations = await database.prepare(`SELECT roster.player_id,roster.player_name,roster.year,roster.team_name FROM current_team_roster roster WHERE ${roster.sql}`)
+  const registrations = await database.prepare(`SELECT roster.player_id,roster.player_name,roster.year,roster.team_name,roster.position,roster.uniform_number,roster.source_url FROM current_team_roster roster WHERE ${roster.sql}`)
     .all(...roster.values) as Roster[]
   const registrationMatches = registrations.filter((row) => officialPlayerNameCandidateKeys(row.player_name).some((key) => key.startsWith(input)))
   const existingIds = new Set(profiles.map((profile) => profile.player_id))
   const additional = [...new Set(registrationMatches.map((row) => row.player_id))].filter((id) => !existingIds.has(id)).slice(0, limit)
-  if (additional.length) profiles.push(...await database.prepare(`SELECT player_id,full_name,team_name,${membershipJson} AS memberships_json,0 AS alias_match FROM player_profiles
+  if (additional.length) profiles.push(...await database.prepare(`SELECT player_id,full_name,team_name,source_url,${membershipJson} AS memberships_json,0 AS alias_match FROM player_profiles
     WHERE player_id IN (${additional.map(() => '?').join(',')}) AND source_url='https://npb.jp/bis/players/' || player_id || '.html'`).all(...additional) as Profile[])
+  const proof = (id: string) => {
+    const rows = registrations.filter((row) => row.player_id === id)
+    return { positions: [...new Set(rows.flatMap((row) => row.position ? [row.position] : []))],
+      uniform_numbers: [...new Set(rows.flatMap((row) => row.uniform_number ? [row.uniform_number] : []))],
+      source_urls: [...new Set([...profiles.filter((row) => row.player_id === id).map((row) => row.source_url), ...rows.map((row) => row.source_url)])] }
+  }
   const candidates: PlayerCandidate[] = profiles.slice(0, limit).map((profile) => {
     const pairs: Array<{ year: number; team: string }> = []
     try {
@@ -72,7 +78,7 @@ export async function searchOfficialDictionary(database: QueryDatabase, filters:
     pairs.sort((a, b) => a.year - b.year)
     return { player_id: profile.player_id, name: profile.full_name, primary_team: pairs.at(-1)?.team ?? profile.team_name,
       matched_aliases: [...new Set([...(profile.alias_match ? [filters.name] : []), ...registrationMatches.filter((row) => row.player_id === profile.player_id).map((row) => row.player_name)])],
-      roles: ['profile'], teams: [...new Set(pairs.map((pair) => pair.team))], years: [...new Set(pairs.map((pair) => pair.year))] }
+      roles: ['profile'], teams: [...new Set(pairs.map((pair) => pair.team))], years: [...new Set(pairs.map((pair) => pair.year))], ...proof(profile.player_id) }
   })
   const knownIds = new Set(candidates.map((candidate) => candidate.player_id))
   for (const id of [...new Set(registrationMatches.map((row) => row.player_id))]) {
@@ -80,7 +86,7 @@ export async function searchOfficialDictionary(database: QueryDatabase, filters:
     const rows = registrationMatches.filter((row) => row.player_id === id).sort((a, b) => a.year - b.year)
     candidates.push({ player_id: id, name: rows.at(-1)!.player_name, primary_team: rows.at(-1)!.team_name,
       roles: ['official_registration'], teams: [...new Set(rows.map((row) => row.team_name))], years: [...new Set(rows.map((row) => row.year))],
-      matched_aliases: [...new Set(rows.map((row) => row.player_name))] })
+      matched_aliases: [...new Set(rows.map((row) => row.player_name))], ...proof(id) })
   }
   return candidates
 }

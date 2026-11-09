@@ -9,6 +9,25 @@ import {
 } from './bis-current'
 
 describe('official nested yearly club table', () => {
+  it('aligns spanning fielding headings and retains blank repeated headings across position sections', () => {
+    const html = readFileSync(new URL('./__fixtures__/bis-fielding-2024-giants.html', import.meta.url), 'utf8')
+    const rows = parseBisPlayerStatsHtml(html, { year: 2024, teamId: 'g', teamName: '読売ジャイアンツ', sourceUrl: 'https://npb.jp/bis/2024/stats/idf1_g.html' })
+    const player = rows.filter((row) => row.playerName.replace(/\s+/gu, '') === '岡本和真')
+    expect(player.map((row) => row.values)).toEqual(expect.arrayContaining([
+      expect.objectContaining({ 区分: '一塁手', 試合: '130', 刺殺: '997', 補殺: '65', 失策: '4' }),
+      expect.objectContaining({ 区分: '三塁手', 試合: '29', 刺殺: '14', 補殺: '45', 失策: '2' }),
+      expect.objectContaining({ 区分: '外野手', 試合: '15', 刺殺: '9', 補殺: '3', 失策: '0' }),
+    ]))
+    expect(player).toHaveLength(3)
+  })
+  it('reads archived vertical column headings without changing player names or metric cells', () => {
+    const html = readFileSync(new URL('./__fixtures__/bis-batting-2024-giants.html', import.meta.url), 'utf8')
+    const rows = parseBisPlayerStatsHtml(html, { year: 2024, teamId: 'g', teamName: '読売ジャイアンツ', sourceUrl: 'https://npb.jp/bis/2024/stats/idb1_g.html' })
+    const player = rows.find((row) => row.playerName.replace(/\s+/gu, '') === '岡本和真')
+    expect(player?.values).toMatchObject({ 試合: '143', 打率: '.280', 本塁打: '27' })
+    expect(player?.playerName).toBe('岡本 和真')
+    expect(rows.filter((row) => '打数' in row.values && '安打' in row.values && '本塁打' in row.values).length).toBeGreaterThan(30)
+  })
   it('keeps a parent pitching data table when nested tables only format fractional innings', () => {
     const html = readFileSync(new URL('./__fixtures__/bis-player-nested-innings.html', import.meta.url), 'utf8')
     const rows = parseBisPlayerStatisticHistoryHtml(html)

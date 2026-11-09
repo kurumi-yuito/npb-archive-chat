@@ -4,6 +4,40 @@ import { QueryContractCompileError } from './chat-contract-compiler'
 import { matchesGameTeamFilter } from '@npb/db'
 import { resolveContractTeamMention } from './chat-team-resolution'
 
+/** Compare independently retrieved operands only when each has an exact ID,
+ * year and competition-level match. Supplemental fallback years cannot win a
+ * comparison against the requested year. */
+export function formatScopedStatisticComparison(contract: QueryContract, responses: ChatResponseCore[]): string | null {
+  if (!contract.requested_output.some((output) => output.scope) || responses.length < 2) return null
+  const outputs = contract.requested_output
+  const kind = outputs[0]?.kind
+  if (!['batting_statistics', 'pitching_statistics'].includes(kind ?? '') || outputs.some((output) => output.kind !== kind || output.fields.length !== 1)) return null
+  const domain = kind === 'batting_statistics' ? 'batting' : 'pitching'
+  const metric = statisticMetric(domain, outputs[0]!.fields[0]!)
+  if (!metric || outputs.some((output) => statisticMetric(domain, output.fields[0]!)?.field !== metric.field)) return null
+  const operands = responses.map((response, index) => {
+    const scope = outputs[index]?.scope ?? contract, rows = response.results.aggregates
+    const row = rows.length === 1 ? rows[0] : undefined
+    const player = response.answer.resolved_player
+    const years = scope.temporal_scope.years
+    const team = scope.entities.find((entity) => entity.kind === 'team' && entity.role === 'subject')?.mention
+    const value = row?.stats[metric.field]
+    if (!row || row.kind !== domain || typeof value !== 'number' || !Number.isFinite(value) || !player?.player_id ||
+      row.stats.playerId !== player.player_id || years.length !== 1 || row.stats.year !== years[0] ||
+      !['first', 'farm'].includes(String(row.stats.level)) ||
+      (scope.competition_scope.level !== 'unspecified' && scope.competition_scope.level !== row.stats.level) ||
+      (team && (typeof row.stats.team !== 'string' || !matchesGameTeamFilter(row.stats.team, resolveContractTeamMention(team))))) return null
+    return { label: `${years[0]}年・${scope.entities.find((entity) => entity.kind === 'player')?.mention ?? player.name}`,
+      value, level: row.stats.level }
+  })
+  if (operands.some((operand) => operand === null) || new Set(operands.map((operand) => operand?.level)).size !== 1) return '対象条件の一部を確認できないため、比較の結論は確定できません。'
+  const valid = operands.filter((operand): operand is NonNullable<typeof operand> => operand !== null)
+  const maximum = Math.max(...valid.map((operand) => operand.value)), minimum = Math.min(...valid.map((operand) => operand.value))
+  if (maximum === minimum) return `${metric.label}は同じ値です。`
+  const leaders = valid.filter((operand) => operand.value === maximum).map((operand) => operand.label).join('・')
+  return `${metric.label}の数値が最も高いのは${leaders}です。`
+}
+
 /** Compare the same numeric measure and source scope; identify clubs using the preserved mentions. */
 export function formatTeamStatisticComparison(contract: QueryContract, rows: ChatResponseCore['results']['aggregates'], summaries: string[]): string | null {
   const teams = contract.entities.filter((entity) => entity.kind === 'team' && entity.role === 'subject')

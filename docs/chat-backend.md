@@ -252,3 +252,10 @@ LLM が失敗した場合は deterministic formatter の summary を返す。DB�
 - source URL を全件返すか、`playbyplay` など優先順位を付けるか
 - dev/test fallback の利用をどう監視するか
 - query normalization 辞書をどの粒度で増やすか
+# 比較対象の検索範囲
+
+Query Contractの `requested_output[].scope` は、対象ごとに異なる年度・球団などの意味条件を保持する。共通条件だけで表現できる従来の質問はscopeなしとし、LLMの構造化出力でnullだった場合も既存の意味契約へ正規化する。
+
+scopeを持つ各出力は、entities・temporal_scope・competition_scope・predicates・aggregation・grouping・ordering・completeness・context_references・unresolved_constraintsの全条件を保持する。選手IDの解決も検索も各scopeで実行し、未解決条件を消さない。ルートの契約は回答へ残し、実行した各条件は `execution_metadata.scoped_query_contracts` で確認できる。同じAPI要求で独立scopeは最大8件、解析・意味照合の再試行上限は従来どおり。
+
+比較の結論は、同じ指標について各対象のID・年度・球団・一軍/二軍区分に対応する数値が確認できた場合だけ作る。指定年度がなく別年度を補足した結果や、一部対象の未確認を隠して結論を出さない。
