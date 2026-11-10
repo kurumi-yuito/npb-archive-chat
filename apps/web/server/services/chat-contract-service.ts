@@ -300,9 +300,18 @@ async function planGenericAppearances(service: ChatQueryService, contract: Query
     }
     if (!kind) throw new QueryContractCompileError(['appearance_role_ambiguous'])
     const resolvedKind = kind
+    // A generic appearance projection can resolve to a concrete projection
+    // already present in the same scope. Fetch it once, preserving every
+    // requested field instead of duplicating the query and answer paragraph.
+    const projections = new Map<QueryContract['requested_output'][number]['kind'], QueryContract['requested_output'][number]>()
+    for (const output of contract.requested_output) {
+      const concrete = output.kind === 'appearance_records' ? { ...output, kind: resolvedKind } : output
+      const previous = projections.get(concrete.kind)
+      projections.set(concrete.kind, previous ? { ...previous, fields: [...new Set([...previous.fields, ...concrete.fields])] } : concrete)
+    }
     const effective: QueryContract = { ...contract,
       entities: contract.entities.filter((entity) => entity.kind !== 'player' || entity === identity.entity),
-      requested_output: contract.requested_output.map((output) => output.kind === 'appearance_records' ? { ...output, kind: resolvedKind } : output) }
+      requested_output: [...projections.values()] }
     operations.push(...compileQueryContract(effective))
   }
   return operations

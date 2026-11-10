@@ -643,6 +643,25 @@ describe('chat-answer-formatter', () => {
     expect(answer.summary).toContain('5回')
   })
 
+  it('computes recent ERA from outs in exactly the displayed appearance window (MT04)', () => {
+    const results = emptyResults()
+    results.pitching = [
+      regularBoxRow('2026-07-11', 'r20260711db-g-12', 'DeNA', '検証投手', '1.1', 2, 1),
+      regularBoxRow('2026-07-01', 'r20260701db-g-11', 'DeNA', '検証投手', '0.2', 1, 0),
+      regularBoxRow('2026-06-21', 'r20260621db-g-10', 'DeNA', '検証投手', '9', 5, 9),
+    ]
+    const render = () => formatChatAnswer({ question: '最近の投球内容は',
+      structuredQuery: { intent: 'search_pitching', filters: { pitcher_name: '検証投手', recent: true, limit: 2 } }, results, sources: [] })
+    expect(render().summary).toContain('直近2登板の防御率は4.50')
+    expect(render().summary).not.toContain('2026年6月21日')
+    results.pitching[0]!.inningsPitched = '0'
+    results.pitching[1]!.inningsPitched = '0'
+    expect(render().summary).toContain('投球回が0回のため、防御率は算出できません')
+    expect(render().summary).not.toContain('Infinity')
+    results.pitching[0]!.inningsPitched = '-'
+    expect(render().summary).toContain('未確認の値があるため、直近の防御率は算出できません')
+  })
+
   it('keeps recent pitching gap notes within the displayed latest window', () => {
     const results = emptyResults()
     results.pitching = [

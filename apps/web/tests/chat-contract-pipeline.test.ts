@@ -41,7 +41,7 @@ describe('semantic-only compilation and execution', () => {
     expect(response.answer.source_urls).toEqual([source.source_url])
   })
   it('resolves unspecified recent performance from official positions for each identified player', async () => {
-    const contract: QueryContract = { ...meaning, requested_output: [{ kind: 'appearance_records', fields: [] }], predicates: [],
+    const contract: QueryContract = { ...meaning, requested_output: [{ kind: 'appearance_records', fields: ['gameDate'] }, { kind: 'pitching_records', fields: ['earnedRuns'] }], predicates: [],
       entities: [{ kind: 'player', role: 'subject', mention: '検証甲' }, { kind: 'player', role: 'subject', mention: '検証乙' }],
       temporal_scope: { ...meaning.temporal_scope, years: [], relative: 'recent_appearances' }, grouping: ['player'],
       completeness: { mode: 'bounded', limit: 3 } }
