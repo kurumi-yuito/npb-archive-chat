@@ -2052,20 +2052,27 @@ function formatPitchingEvaluationSummary(rows: PitchingLineRow[], limit = 5): st
   const teamPrefix = gameRows[0]?.team ? `${gameRows[0].team} ` : ''
   const latest = gameRows[0]
   const seasonRow = rows.find((row) => row.sourceKind === 'bis_pitching' || row.sourceKind === 'bis_pitching_farm')
-  let recentEra: string | undefined
-  if (gameRows.length) {
+  const recentEras: string[] = []
+  const levels = new Map<string, PitchingLineRow[]>()
+  for (const row of gameRows) {
+    const level = row.gameId.startsWith('f') ? '二軍' : '一軍'
+    levels.set(level, [...(levels.get(level) ?? []), row])
+  }
+  for (const [level, appearances] of levels) {
+    const scope = levels.size > 1 ? `直近${gameRows.length}登板のうち${level}${appearances.length}登板` : `直近${gameRows.length}登板`
     try {
-      if (gameRows.some((row) => !Number.isInteger(row.earnedRuns) || row.earnedRuns < 0)) throw new Error('Unconfirmed earned runs')
-      const outs = gameRows.reduce((sum, row) => sum + officialInningsOuts(row.inningsPitched), 0)
-      recentEra = outs > 0 ? `直近${gameRows.length}登板の防御率は${(totals.earnedRuns * 27 / outs).toFixed(2)}です。`
-        : '投球回が0回のため、防御率は算出できません。'
-    } catch { recentEra = '投球回・自責点に未確認の値があるため、直近の防御率は算出できません。' }
+      if (appearances.some((row) => !Number.isInteger(row.earnedRuns) || row.earnedRuns < 0)) throw new Error('Unconfirmed earned runs')
+      const outs = appearances.reduce((sum, row) => sum + officialInningsOuts(row.inningsPitched), 0)
+      const earnedRuns = appearances.reduce((sum, row) => sum + row.earnedRuns, 0)
+      recentEras.push(outs > 0 ? `${scope}の防御率は${(earnedRuns * 27 / outs).toFixed(2)}です。`
+        : `${scope}は投球回が0回のため、防御率は算出できません。`)
+    } catch { recentEras.push(`${scope}は投球回・自責点に未確認の値があるため、直近の防御率は算出できません。`) }
   }
   return [
     latest ? `${teamPrefix}${pitcherName}は${formatDateJa(latest.gameDate)}の${latest.gameId.startsWith('f') ? '二軍' : '一軍'}登板で、${formatInningsForDisplay(latest.inningsPitched)}、${latest.strikeouts}奪三振、自責点${latest.earnedRuns}${latest.pitchCount > 0 ? `、${latest.pitchCount}球` : ''}でした。` : undefined,
     ...(seasonRow ? [formatBisPitchingSummary(seasonRow, 1)] : []),
     ...(gameRows.length > 1 ? [`直近${gameRows.length}登板の合計は${positives.join('、')}です。`] : []),
-    recentEra,
+    ...recentEras,
     ...(gameRows.length > 1 ? [`登板日: ${gameRows.map((row) => formatDateJa(row.gameDate)).join('、')}`] : []),
     buildInternalRecentGapNote(gameRows.map((row) => row.gameDate)),
   ].filter(Boolean).join('\n')

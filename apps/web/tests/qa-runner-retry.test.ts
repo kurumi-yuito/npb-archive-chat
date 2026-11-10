@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { shouldRetryHttp } from '../../../scripts/qa-runner-retry.mjs'
+import { evaluationUpstreamStopReason, shouldRetryHttp } from '../../../scripts/qa-runner-retry.mjs'
 
 describe('QA runner HTTP retries', () => {
   it('stops before the final attempt so a persistent 503 is recorded as an error', () => {
@@ -39,5 +39,9 @@ describe('QA runner HTTP retries', () => {
       upstreamType: 'insufficient_quota',
       upstreamCode: 'credit_balance_exhausted',
     })).toBe(false)
+    expect(shouldRetryHttp({ attempt: 0, fetchRetryCount: 3, httpRetryCount: 4, status: 503, retryable: false })).toBe(false)
+    expect(evaluationUpstreamStopReason(503, { data: { code: 'chat_llm_unavailable', reason: 'upstream_quota_exhausted' } })).toBe('upstream_quota_exhausted')
+    expect(evaluationUpstreamStopReason(200, { data: { code: 'chat_llm_unavailable', reason: 'upstream_quota_exhausted' } })).toBeNull()
+    expect(evaluationUpstreamStopReason(503, { data: { code: 'query_contract_not_executable' } })).toBeNull()
   })
 })

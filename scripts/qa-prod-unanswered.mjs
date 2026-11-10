@@ -1,6 +1,7 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { setTimeout as delay } from 'node:timers/promises'
-import { shouldRetryHttp } from './qa-runner-retry.mjs'
+import { evaluationUpstreamStopReason, shouldRetryHttp } from './qa-runner-retry.mjs'
+import { createEvaluationD1Budget, isLocalEvaluationUrl, parseD1ReadAudit } from './evaluation-d1-budget.mjs'
 
 const baseUrl = process.env.QA_BASE_URL ?? 'https://npb-chat.dom9th-works.com'
 const docPath = process.argv[2] ?? 'docs/qa-test-cases.md'
@@ -12,8 +13,13 @@ const httpRetryDelaysMs = process.env.QA_DISABLE_HTTP_RETRIES === '1'
   ? []
   : [5000, 15000, 30000, 60000]
 
-function capabilityFetch(url, options = {}) {
-  return fetch(url, { ...options, signal: options.signal ?? AbortSignal.timeout(fetchTimeoutMs) })
+async function capabilityFetch(url, options = {}) {
+  if (stopReason) throw new Error(`Evaluation stopped: ${stopReason}`)
+  const response = await fetch(url, { ...options, signal: options.signal ?? AbortSignal.timeout(fetchTimeoutMs) })
+  stopReason = readBudget.observe(activeCaseId, parseD1ReadAudit(response)) ??
+    evaluationUpstreamStopReason(response.status, await response.clone().json().catch(() => null))
+  if (stopReason) throw new Error(`Evaluation stopped: ${stopReason}`)
+  return response
 }
 
 let startId = null
@@ -72,11 +78,11 @@ const usageCapabilityCases = new Set([
   'Q-172', 'Q-173', 'Q-174', 'Q-175', 'Q-176',
 ])
 const apiContractCases = new Set(['Q-182'])
+const interactiveCases = new Set(['Q-200', 'Q-201'])
 
 const text = await readFile(docPath, 'utf8')
 const cases = []
 const lines = text.split(/\r?\n/)
-let lastCaseLineIndex = -1
 for (let i = 0; i < lines.length; i += 1) {
   const q = lines[i].match(/^Q-(\d+)(?:\s+\[未実行\])?:\s*(.+)$/)
   if (!q) {
@@ -101,22 +107,20 @@ for (let i = 0; i < lines.length; i += 1) {
   const answer = answerLine.slice(2).trim()
   if (process.env.QA_ALL === '1' || answer === '' || (startNo !== null || endNo !== null) || process.env.QA_ALL !== '0') {
     cases.push({ id: caseId, question: question.trim() })
-    lastCaseLineIndex = i + 1
   }
 }
 
-const trailingContent = lines
-  .slice(lastCaseLineIndex + 1)
-  .find((line) => line.trim() !== '')
-if (!caseFilter && startNo === null && endNo === null && trailingContent) {
-  throw new Error(`Unexpected trailing content after last QA case: ${trailingContent}`)
-}
+// Expected contracts and source notes legitimately follow Q/A entries. They
+// must not be interpreted as another question or rejected as trailing garbage.
 
 const runId = `qa-prod-${Date.now()}`
 const results = []
 const runDir = `data/logs/qa-prod-run/${runId}`
 await mkdir(runDir, { recursive: true })
 const completedAnswers = new Map()
+const readBudget = await createEvaluationD1Budget({ baseUrl, caseIds: cases.map((entry) => entry.id) })
+let stopReason = fixtureMode && !isLocalEvaluationUrl(baseUrl) ? 'remote_fixture_evaluation_forbidden' : readBudget.preflightIssue
+let activeCaseId = '', lastExecutedCase = null, executedCount = 0
 
 const writeJson = async (path, value) => {
   await writeFile(path, `${JSON.stringify(value, null, 2)}\n`)
@@ -127,6 +131,21 @@ const saveState = async (state) => {
 }
 
 for (const [index, testCase] of cases.entries()) {
+  activeCaseId = testCase.id
+  if (stopReason) {
+    const record = { ...testCase, status: 'blocked', outcome: 'blocked', semantic_verdict: 'unreviewed', reason: stopReason,
+      request: null, summary: null, raw: null, saved_at: new Date().toISOString() }
+    results.push(record)
+    await writeJson(`${runDir}/${testCase.id}.json`, record)
+    continue
+  }
+  if (interactiveCases.has(testCase.id)) {
+    const record = { ...testCase, status: 'blocked', outcome: 'blocked', semantic_verdict: 'unreviewed',
+      reason: 'browser_or_controlled_fault_verification_required', request: null, summary: null, raw: null, saved_at: new Date().toISOString() }
+    results.push(record)
+    await writeJson(`${runDir}/${testCase.id}.json`, record)
+    continue
+  }
   const userId = `${runId}-${index + 1}`
   process.stderr.write(`[${index + 1}/${cases.length}] ${testCase.id} ${testCase.question}\n`)
   const fixture = fixtureMode ? fixturesByCase.get(testCase.id) : null
@@ -180,6 +199,8 @@ for (const [index, testCase] of cases.entries()) {
   }
   const capabilityRecord = await runCapabilityCheck(testCase, userId)
   if (capabilityRecord) {
+    lastExecutedCase = testCase.id
+    executedCount++
     results.push(capabilityRecord)
     await writeJson(`${runDir}/${testCase.id}.json`, capabilityRecord)
     await saveState({
@@ -192,7 +213,7 @@ for (const [index, testCase] of cases.entries()) {
       totalCases: cases.length,
       updatedAt: new Date().toISOString(),
     })
-    if (index + 1 < cases.length) await delay(delayMs)
+    if (!stopReason && index + 1 < cases.length) await delay(delayMs)
     continue
   }
   const controller = new AbortController()
@@ -200,9 +221,7 @@ for (const [index, testCase] of cases.entries()) {
   const requestUrl = `${baseUrl}/api/chat`
   const requestHeaders = {
     'content-type': 'application/json',
-    'x-npb-user-id': userId,
-    // Production ignores x-npb-user-id without internal auth. Isolate each QA case's
-    // guest guard bucket so the full regression suite represents independent users.
+    // Use the real guest flow; a development identity header is not authentication.
     'user-agent': `npb-production-qa/${testCase.id}`,
     ...(fixtureMode ? {
       'x-npb-qa-mode': 'fixture',
@@ -252,13 +271,14 @@ for (const [index, testCase] of cases.entries()) {
         })
         body = await response.text()
         status = response.status
-        responseHeaders = Object.fromEntries(response.headers.entries())
+        responseHeaders = Object.fromEntries([...response.headers.entries()].filter(([name]) => name !== 'set-cookie'))
         try {
           json = JSON.parse(body)
         } catch {
           // Keep the raw body for diagnostics.
         }
-        const canRetryHttp = shouldRetryHttp({
+        stopReason = readBudget.observe(testCase.id, parseD1ReadAudit(response)) ?? evaluationUpstreamStopReason(response.status, json)
+        const canRetryHttp = !stopReason && shouldRetryHttp({
           attempt,
           fetchRetryCount: fetchRetryDelaysMs.length,
           httpRetryCount: httpRetryDelaysMs.length,
@@ -266,6 +286,7 @@ for (const [index, testCase] of cases.entries()) {
           code: json?.data?.code,
           upstreamType: extractUpstreamErrorField(json, 'type'),
           upstreamCode: extractUpstreamErrorField(json, 'code'),
+          retryable: json?.data?.retryable,
         })
         if (canRetryHttp) {
           retryErrors.push({
@@ -324,6 +345,8 @@ for (const [index, testCase] of cases.entries()) {
     ...testCase,
     status,
     outcome,
+    semantic_verdict: 'unreviewed',
+    d1ReadAudit: parseD1ReadAudit(response),
     request: {
       url: requestUrl,
       headers: requestHeadersForLog,
@@ -369,6 +392,8 @@ for (const [index, testCase] of cases.entries()) {
     saved_at: new Date().toISOString(),
   }
   results.push(record)
+  lastExecutedCase = testCase.id
+  executedCount++
   if (record.summary) {
     completedAnswers.set(record.id, {
       question: message,
@@ -386,7 +411,7 @@ for (const [index, testCase] of cases.entries()) {
     totalCases: cases.length,
     updatedAt: new Date().toISOString(),
   })
-  if (index + 1 < cases.length) {
+  if (!stopReason && index + 1 < cases.length) {
     await delay(delayMs)
   }
 }
@@ -478,17 +503,24 @@ function extractTargetPeriod(structuredQuery) {
 
 await mkdir('data/logs', { recursive: true })
 const outPath = `data/logs/${runId}.json`
-await writeJson(outPath, { baseUrl, docPath, runDir, results })
+const remainingCaseIds = results.filter((row) => row.status === 'blocked').map((row) => row.id)
+await writeJson(outPath, { baseUrl, docPath, runDir, results, stopReason, readBudget: readBudget.snapshot(),
+  status: stopReason ? 'stopped' : 'captured_unreviewed', passCount: 0, releaseReady: false,
+  executedCount, unexecutedCount: cases.length - executedCount,
+  blockedCount: results.filter((row) => row.outcome === 'blocked').length,
+  resume: { nextCaseId: remainingCaseIds[0] ?? null, remainingCaseIds },
+})
 await saveState({
   runId,
   baseUrl,
   docPath,
   fixturePath,
-  lastSavedQ: cases.at(-1)?.id ?? null,
-  lastSavedIndex: cases.length,
+  lastSavedQ: lastExecutedCase,
+  lastSavedIndex: executedCount,
   totalCases: cases.length,
   updatedAt: new Date().toISOString(),
-  complete: true,
+  complete: !stopReason && executedCount === cases.length,
+  stopReason,
   summaryPath: outPath,
 })
 
@@ -694,6 +726,7 @@ function capabilityRecord(testCase, outcome, status, checkedUrls, evidence, erro
     ...testCase,
     status,
     outcome,
+    semantic_verdict: 'unreviewed',
     request: { mode: 'capability', urls: checkedUrls },
     structured_query: null,
     intent: null,
@@ -709,7 +742,7 @@ function capabilityRecord(testCase, outcome, status, checkedUrls, evidence, erro
     target_player_id: null,
     answer_mode: 'capability_verification',
     summary: outcome === 'success'
-      ? `Production capability check passed: ${checkedUrls.join(', ')}`
+      ? `Endpoint evidence captured; product QA remains unreviewed: ${checkedUrls.join(', ')}`
       : null,
     result_count: outcome === 'success' ? 1 : 0,
     suggested_questions: [],
@@ -759,3 +792,5 @@ async function readFixtureFile(path) {
   return fixtures
 }
 console.log(outPath)
+// This program captures transport evidence. It cannot certify semantic QA.
+if (stopReason || results.some((row) => row.semantic_verdict === 'unreviewed' || row.outcome !== 'success')) process.exitCode = 1

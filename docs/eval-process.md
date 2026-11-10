@@ -122,3 +122,11 @@ NPB_EVAL_BASE_URL=https://<target> node scripts/eval-query-contracts.mjs --split
 - team alias が DB の canonical 表記にちゃんと寄っているか
 - player 名の空白・全角半角・異体字の扱いが十分か
 - games / events / pitching の intent 判定に偏りがないか
+
+## 共有上流の停止と記録用runnerの扱い
+
+`qa-acceptance.mjs`は、上流の利用枠不足・レート制限・認証失敗等を安全な理由で受けた場合、`--continue-on-failure`指定でも次の質問を送らず停止し、未実行IDと再開位置を保存する。`eval-query-contracts.mjs`も後続をBlockedとして残す。これらをPassへ数えない。
+
+`qa-prod-unanswered.mjs`は通信・回答の記録用であり、意味的QAの合格判定器ではない。通常のHTTP200記録は`semantic_verdict: unreviewed`、全体も`passCount: 0 / releaseReady: false`とする。独立したQA正との照合が必要で、未確認の記録がある実行を終了コード0にしない。選択操作や障害再現などHTTP質問だけでは実行できないケースはBlockedと明示し、質問文としてLLMへ送らない。
+
+同runnerにも共有D1予算の事前確認を適用する。本番URLでは、対象ケースが成功し読み取り数も分かっている隔離ローカルの評価と、確認済みの残予算を必要とする。未計測のAPIを呼ぶ能力確認も本番では停止対象とする。各試行の読み取りを累計し、Cookieはログへ保存しない。開発用の利用者IDヘッダーや本番のfixture再生には依存しない。

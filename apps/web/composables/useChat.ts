@@ -17,16 +17,16 @@ function chatRequestHeaders(): Record<string, string> {
 async function parseErrorJson(res: Response): Promise<{
   statusMessage?: string
   message?: string
-  data?: { code?: string; usage?: ChatUsageInfo }
+  data?: { code?: string; usage?: ChatUsageInfo; retryable?: boolean }
 } | null> {
   return (await res.json().catch(() => null)) as {
     statusMessage?: string
     message?: string
-    data?: { code?: string; usage?: ChatUsageInfo }
+    data?: { code?: string; usage?: ChatUsageInfo; retryable?: boolean }
   } | null
 }
 
-export function userFacingChatError(status: number, usage?: ChatUsageInfo): string {
+export function userFacingChatError(status: number, usage?: ChatUsageInfo, retryable?: boolean): string {
   if (status === 429 && usage) {
     return usage.plan === 'free' && usage.limit !== null
       ? `質問回数を使い切りました。残り${usage.remaining ?? 0}回。次の質問まで${formatRemainingDuration(usage.nextTokenAt, usage.asOf)}です。`
@@ -36,6 +36,7 @@ export function userFacingChatError(status: number, usage?: ChatUsageInfo): stri
     return 'ログイン状態を確認してください。'
   }
   if (status === 503) {
+    if (retryable === false) return '現在チャットを利用できません。復旧までお待ちください。'
     return '現在チャットを利用できません。時間をおいて再度お試しください。'
   }
   if (status >= 500) {
@@ -90,15 +91,6 @@ function errorStatus(error: unknown): number | undefined {
 
 function withStatus(message: string, status: number): Error & { status: number } {
   return Object.assign(new Error(message), { status })
-}
-
-async function readUsageFromError(res: Response): Promise<ChatUsageInfo | undefined> {
-  const errBody = await parseErrorJson(res)
-  const usageFromError =
-    errBody?.data && typeof errBody.data === 'object' && 'usage' in errBody.data
-      ? (errBody.data as { usage: ChatUsageInfo }).usage
-      : undefined
-  return usageFromError
 }
 
 function buildChatRequestHistory(turns: ChatTurn[]): ChatRequest['history'] {
@@ -269,12 +261,13 @@ export function useChat() {
       })
 
       if (!res.ok) {
-        const usageFromError = await readUsageFromError(res)
+        const errorBody = await parseErrorJson(res)
+        const usageFromError = errorBody?.data?.usage
         if (res.status === 429 && usageFromError) {
           usageInfo.value = usageFromError
           throw withStatus(userFacingChatError(res.status, usageFromError), res.status)
         }
-        throw withStatus(userFacingChatError(res.status), res.status)
+        throw withStatus(userFacingChatError(res.status, undefined, errorBody?.data?.retryable), res.status)
       }
 
       const response = (await res.json()) as ChatResponse

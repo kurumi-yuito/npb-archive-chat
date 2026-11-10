@@ -3,6 +3,7 @@ import path from 'node:path'
 import { createEvaluationD1Budget, parseD1ReadAudit } from './evaluation-d1-budget.mjs'
 import { matchesAcceptanceSummary } from './acceptance-summary.mjs'
 import { calendarAcceptanceIssues } from './acceptance-calendar.mjs'
+import { evaluationUpstreamStopReason } from './qa-runner-retry.mjs'
 
 const baseUrl = process.env.NPB_ACCEPTANCE_BASE_URL ?? 'http://127.0.0.1:3000'
 const selection = process.argv.find((arg) => arg.startsWith('--cases='))?.slice('--cases='.length) ?? 'all'
@@ -186,6 +187,7 @@ acceptanceRun: for (const conversation of selected) {
       error: requestError,
     }
     const budgetIssue = readBudget.observe(result.id, result.d1ReadAudit)
+    const upstreamIssue = evaluationUpstreamStopReason(result.status, body)
     const calendarIssues = calendarAcceptanceIssues(turn.id, body, undefined, calendarOracles[turn.id])
     result.calendarScopeIssues = calendarIssues
     const pattern = acceptancePatterns[turn.id]
@@ -195,14 +197,14 @@ acceptanceRun: for (const conversation of selected) {
       ? 'pass'
       : 'fail'
     result.failureReason = result.verdict === 'fail'
-      ? budgetIssue ?? (calendarIssues.length ? calendarIssues.join(',') : getFailureReason(result, pattern))
+      ? budgetIssue ?? upstreamIssue ?? (calendarIssues.length ? calendarIssues.join(',') : getFailureReason(result, pattern))
       : null
     results.push(result)
     process.stdout.write(`${turn.id}\t${result.verdict.toUpperCase()}\tHTTP ${result.status}\t${result.durationMs}ms\t${result.intent ?? '-'}\t${oneLine(result.summary)}\n`)
     history.push({ role: 'user', content: turn.message })
     history.push({ role: 'assistant', content: result.summary ?? '回答を取得できませんでした。' })
-    if (budgetIssue) {
-      stopReason = budgetIssue
+    if (budgetIssue || upstreamIssue) {
+      stopReason = budgetIssue ?? upstreamIssue
       outputPath = await saveRunLog()
       break acceptanceRun
     }

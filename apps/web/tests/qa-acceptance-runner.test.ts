@@ -18,6 +18,35 @@ afterEach(async () => {
 })
 
 describe('Acceptance runner fail-fast contract', () => {
+  it('stops on provider credit exhaustion even with continue-on-failure and preserves unexecuted turns (Q-201)', async () => {
+    let chatRequests = 0
+    const server = createServer((request, response) => {
+      request.resume()
+      response.setHeader('content-type', 'application/json')
+      if (request.url === '/api/health') { response.end('{"ok":true}'); return }
+      chatRequests++
+      response.statusCode = 503
+      response.end(JSON.stringify({ data: { code: 'chat_llm_unavailable', reason: 'upstream_quota_exhausted', retryable: false, upstream_status: 429 } }))
+    })
+    await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve))
+    const address = server.address()
+    if (!address || typeof address === 'string') throw new Error('mock server did not bind')
+    const output = await mkdtemp(path.join(tmpdir(), 'npb-quota-stop-'))
+    temporaryDirectories.push(output)
+    try {
+      const run = spawn(process.execPath, [path.join(root, 'scripts/qa-acceptance.mjs'), '--cases=B01,B02', '--continue-on-failure'], {
+        cwd: root, env: { ...process.env, NPB_ACCEPTANCE_BASE_URL: `http://127.0.0.1:${address.port}`, NPB_ACCEPTANCE_OUTPUT_DIR: output },
+      })
+      const code = await new Promise<number | null>((resolve, reject) => { run.once('error', reject); run.once('exit', resolve) })
+      expect(code).toBe(1)
+      expect(chatRequests).toBe(1)
+      const files = await readdir(output)
+      expect(files).toHaveLength(1)
+      const log = JSON.parse(await readFile(path.join(output, files[0]!), 'utf8'))
+      expect(log).toMatchObject({ status: 'stopped', stopReason: 'upstream_quota_exhausted', passCount: 0, failCount: 1,
+        unexecutedCount: 1, resume: { nextCaseId: 'B02', remainingCaseIds: ['B02'] } })
+    } finally { await new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve())) }
+  })
   it('checks the owner-confirmed current-season month without accepting wrong years, opponents or a bare score list', () => {
     const body = { structured_query: { intent: 'aggregate_games', filters: { date_from: '2026-08-01', date_to: '2026-08-31', team: 'オリックス', opponent: 'ロッテ' } },
       answer: { summary: '2026年8月のオリックス対ロッテは2勝1敗です。', source_urls: ['https://npb.jp/bis/2026/games/example.html'] },

@@ -3,6 +3,7 @@ import type { ChatQueryLlmConfig } from './chat-query-llm'
 import type { ChatQueryParserContext } from './chat-query-parser-prompt'
 import type { SemanticRequest } from './chat-semantic-llm'
 import { ChatQueryParserUnavailableError } from './chat-query-parser'
+import { semanticUpstreamError } from './chat-semantic-upstream-error'
 
 const verdictSchema = z.object({ equivalent: z.boolean(), issues: z.array(z.object({ field: z.string().min(1), reason: z.string().min(1) }).strict()) }).strict()
 const prompt = [
@@ -58,7 +59,7 @@ export async function verifySemanticAlignment(config: ChatQueryLlmConfig, input:
       }) }],
     }),
   }).catch((error) => { throw new ChatQueryParserUnavailableError(`Semantic verification unavailable: ${String(error)}`) })
-  if (!response.ok) throw new ChatQueryParserUnavailableError(`Semantic verifier upstream HTTP ${response.status}`)
+  if (!response.ok) throw await semanticUpstreamError(response, 'verifier')
   try {
     const payload = await response.json() as { choices?: Array<{ finish_reason?: string; message?: { content?: string; refusal?: string | null } }> }
     const choice = payload.choices?.[0]

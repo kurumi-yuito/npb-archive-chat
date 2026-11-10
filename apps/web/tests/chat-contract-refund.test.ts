@@ -1,8 +1,10 @@
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { getChatUsageBucket, migrateDatabase, openDatabase, sqliteDatabaseToQuery } from '@npb/db'
+import { ChatQueryParserUnavailableError } from '../server/services/chat-query-parser'
 
-const mocks = vi.hoisted(() => ({ metaDatabase: vi.fn(), queryService: vi.fn() }))
+const mocks = vi.hoisted(() => ({ metaDatabase: vi.fn(), queryService: vi.fn(), parse: vi.fn() }))
+vi.mock('../server/services/chat-semantic-llm', () => ({ createSemanticQueryLlm: () => mocks.parse }))
 vi.mock('../server/utils/server-database', () => ({ getServerMetaDatabase: mocks.metaDatabase, getServerChatQueryService: mocks.queryService }))
 vi.mock('../server/utils/parse-chat-identity', () => ({ parseChatIdentity: () => ({ userId: 'contract-refund-user', guestGuardEligible: false }) }))
 vi.mock('h3', () => ({
@@ -25,10 +27,12 @@ describe('chat contract failures and quota accounting', () => {
     migrateDatabase(database)
     mocks.metaDatabase.mockReset().mockResolvedValue(query)
     mocks.queryService.mockReset()
+    mocks.parse.mockReset()
     vi.stubGlobal('defineEventHandler', (handler: unknown) => handler)
     vi.stubGlobal('useRuntimeConfig', () => ({
       npbDefaultPlan: 'free', npbFreeTokenCapacity: '10', npbFreeTokenRefillMinutes: '120',
       npbAuthSharedSecret: 'test-secret', npbAuthHeaderFallback: 'false', npbGuestGuardEnabled: 'false',
+      chatQueryLlmBaseUrl: 'https://example.test/v1', chatQueryLlmApiKey: 'test', chatQueryLlmModel: 'test',
     }))
   })
   afterEach(() => vi.unstubAllGlobals())
@@ -55,6 +59,19 @@ describe('chat contract failures and quota accounting', () => {
     await expect(handler(event)).rejects.toMatchObject({ statusCode: 503, data: { code: 'query_contract_invalid' } })
     const bucket = await getChatUsageBucket(query, 'account:contract-refund-user', { capacity: 10, refillIntervalSeconds: 7200 }, Math.floor(Date.now() / 1000))
     expect(bucket.tokens).toBe(10)
+    expect(mocks.queryService).not.toHaveBeenCalled()
+  })
+
+  it('refunds provider credit failures and exposes only the safe availability classification (Q-201)', async () => {
+    mocks.parse.mockRejectedValue(new ChatQueryParserUnavailableError('Semantic parser upstream HTTP 429', {
+      status: 429, reason: 'upstream_quota_exhausted', retryable: false, code: 'credit_balance_exhausted', type: 'insufficient_quota',
+    }))
+    await expect(handler({ context: {}, headers: {}, body: { message: '2025年の本塁打一覧' } })).rejects.toMatchObject({
+      statusCode: 503, data: { code: 'chat_llm_unavailable', reason: 'upstream_quota_exhausted', retryable: false, upstream_status: 429 },
+    })
+    const bucket = await getChatUsageBucket(query, 'account:contract-refund-user', { capacity: 10, refillIntervalSeconds: 7200 }, Math.floor(Date.now() / 1000))
+    expect(bucket.tokens).toBe(10)
+    expect(mocks.parse).toHaveBeenCalledTimes(1)
     expect(mocks.queryService).not.toHaveBeenCalled()
   })
 

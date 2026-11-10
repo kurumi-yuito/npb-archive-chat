@@ -12,6 +12,7 @@ describe('chat UI error messages', () => {
     expect(userFacingChatError(400)).toBe('質問を処理できませんでした。入力を変えて再度お試しください。')
     expect(userFacingChatError(500)).toBe('回答の生成中に問題が発生しました。時間をおいて再度お試しください。')
     expect(userFacingChatError(503)).toBe('現在チャットを利用できません。時間をおいて再度お試しください。')
+    expect(userFacingChatError(503, undefined, false)).toBe('現在チャットを利用できません。復旧までお待ちください。')
   })
 
   it('keeps usage limit messaging specific without using backend status messages', () => {

@@ -280,7 +280,8 @@ export default defineEventHandler(async (event) => withD1ReadAudit(async () => {
       })
     }
     if (error instanceof ChatQueryParserUnavailableError) {
-      throw createPublicApiError(503, 'chat_llm_unavailable', '質問の意味を確認できませんでした。時間をおいて再度お試しください。')
+      throw createPublicApiError(503, 'chat_llm_unavailable', '質問の意味を確認できませんでした。時間をおいて再度お試しください。',
+        error.upstream ? { reason: error.upstream.reason, retryable: error.upstream.retryable, upstream_status: error.upstream.status } : {})
     }
     if (error instanceof Error && error.message.includes('not set')) {
       throw createPublicApiError(503, 'missing_env', error.message)

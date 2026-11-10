@@ -26,7 +26,10 @@ type ChatQueryParserDependencies = {
 }
 
 export class ChatQueryParserUnavailableError extends Error {
-  constructor(message = 'Chat query LLM is not configured or unavailable') {
+  constructor(message = 'Chat query LLM is not configured or unavailable', public readonly upstream?: {
+    status: number; reason: 'upstream_quota_exhausted' | 'upstream_rate_limited' | 'upstream_authentication_failed' | 'upstream_unavailable';
+    retryable: boolean; code?: string; type?: string
+  }) {
     super(message)
     this.name = 'ChatQueryParserUnavailableError'
   }

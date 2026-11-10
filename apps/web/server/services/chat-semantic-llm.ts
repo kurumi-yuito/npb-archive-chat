@@ -6,6 +6,7 @@ import { verifySemanticAlignment } from './chat-semantic-alignment'
 import { allStatisticMetrics } from './chat-statistic-metrics'
 import { teamMentionCandidates } from '@npb/db'
 import { competitionLeague } from './chat-competition-scope'
+import { semanticUpstreamError } from './chat-semantic-upstream-error'
 
 const policies = ['execute', 'clarify', 'news', 'realtime', 'prediction', 'capabilities', 'outside_npb', 'staff_information'] as const
 const reasons = ['missing_history', 'history_target_unavailable', 'insufficient_context', 'missing_year'] as const
@@ -93,7 +94,7 @@ export function createSemanticQueryLlm(config: ChatQueryLlmConfig, dependencies:
           ],
         }),
       }).catch((error) => { throw new ChatQueryParserUnavailableError(`Semantic parsing unavailable: ${String(error)}`) })
-      if (!response.ok) throw new ChatQueryParserUnavailableError(`Semantic parser upstream HTTP ${response.status}`)
+      if (!response.ok) throw await semanticUpstreamError(response, 'parser')
       const payload = await response.json() as { choices?: Array<{ message?: { content?: string } }> }
       try {
         const parsed = semanticRequestSchema.parse(JSON.parse(payload.choices?.[0]?.message?.content ?? ''))

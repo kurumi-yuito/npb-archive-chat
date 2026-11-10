@@ -654,6 +654,11 @@ describe('chat-answer-formatter', () => {
       structuredQuery: { intent: 'search_pitching', filters: { pitcher_name: '検証投手', recent: true, limit: 2 } }, results, sources: [] })
     expect(render().summary).toContain('直近2登板の防御率は4.50')
     expect(render().summary).not.toContain('2026年6月21日')
+    results.pitching[1]!.gameId = 'f20260701db-g-11'
+    expect(render().summary).toContain('直近2登板のうち一軍1登板の防御率は6.75')
+    expect(render().summary).toContain('直近2登板のうち二軍1登板の防御率は0.00')
+    expect(render().summary).not.toContain('直近2登板の防御率は4.50')
+    results.pitching[1]!.gameId = 'r20260701db-g-11'
     results.pitching[0]!.inningsPitched = '0'
     results.pitching[1]!.inningsPitched = '0'
     expect(render().summary).toContain('投球回が0回のため、防御率は算出できません')

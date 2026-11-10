@@ -2,6 +2,7 @@ import { readFile, mkdir, writeFile } from 'node:fs/promises'
 import { isDeepStrictEqual } from 'node:util'
 import path from 'node:path'
 import { createEvaluationD1Budget, parseD1ReadAudit } from './evaluation-d1-budget.mjs'
+import { evaluationUpstreamStopReason } from './qa-runner-retry.mjs'
 
 const baseUrl = process.env.NPB_EVAL_BASE_URL ?? 'http://127.0.0.1:3000'
 const split = process.argv.find((arg) => arg.startsWith('--split='))?.slice(8) ?? 'regression'
@@ -28,6 +29,8 @@ for (const entry of cases) {
     result.httpStatus = response.status
     result.d1ReadAudit = parseD1ReadAudit(response)
     result.response = await response.json()
+    const upstreamIssue = evaluationUpstreamStopReason(response.status, result.response)
+    if (upstreamIssue) stopReason = upstreamIssue
     if (!response.ok) {
       result.reason = `HTTP ${response.status}; no stages counted as passing`
     } else {
