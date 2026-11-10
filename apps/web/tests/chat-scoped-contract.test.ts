@@ -19,6 +19,49 @@ const contract: QueryContract = { ...base, entities: [...first.entities, ...seco
   requested_output: [{ kind: 'batting_statistics', fields: ['homeRuns'], scope: first }, { kind: 'batting_statistics', fields: ['homeRuns'], scope: second }] }
 
 describe('independent semantic output scopes', () => {
+  it('does not look up a manager in the player dictionary (B15)', async () => {
+    const staff: QueryContract = { ...base, requested_output: [{ kind: 'staff_information', fields: ['name'] }],
+      entities: [{ kind: 'team', role: 'subject', mention: '中日ドラゴンズ' }], predicates: [] }
+    const query = new Proxy({}, { get: (_target, key) => { throw new Error(`Unexpected archive query: ${String(key)}`) } })
+    const response = await createContractChatService(query as ChatQueryService, async () => ({ domain: 'npb', policy: 'execute',
+      query_contract: staff, clarification_reason: null, subject: null })).answerQuestion('球団の監督は誰ですか')
+    expect(response.answer.summary).toContain('監督・コーチの情報は収録対象外')
+    expect(response.answer.query_contract).toEqual(staff)
+    expect(response.results.playerInformation).toEqual([])
+    expect(response.answer.source_urls).toEqual([])
+  })
+  it('keeps verified past matchup totals when a second operand asks for unsupported future fixtures (B23)', async () => {
+    const { version: _version, requested_output: _outputs, ...scope } = base
+    void _version; void _outputs
+    const shared = { ...scope, entities: [{ kind: 'team' as const, role: 'subject' as const, mention: '巨人' },
+      { kind: 'team' as const, role: 'opponent' as const, mention: '阪神' }], predicates: [], grouping: [], ordering: [],
+    completeness: { mode: 'unspecified' as const, limit: null } }
+    const past = { ...shared, temporal_scope: { ...base.temporal_scope, years: [2026] }, aggregation: [{ operation: 'count' as const, field: 'games' }] }
+    const future = { ...shared, temporal_scope: { ...base.temporal_scope, years: [], date_from: '2026-11-16', date_to: '2026-11-22', relative: 'next_week' },
+      aggregation: [], ordering: [{ field: 'gameDate', direction: 'asc' as const }] }
+    const mixed: QueryContract = { ...base, ...shared, requested_output: [
+      { kind: 'game_results', fields: ['wins', 'losses', 'draws'], scope: past },
+      { kind: 'game_schedule', fields: ['gameDate', 'opponent'], scope: future },
+    ] }
+    const query = { aggregateGameResults: vi.fn().mockResolvedValue([{ kind: 'games', label: '巨人', total: 3,
+      stats: { wins: 2, losses: 1, draws: 0, total_games: 3, evidenceGameIds: '["verified-game"]' } }]),
+    listSourceSnapshotsByGameIds: vi.fn().mockResolvedValue([{ game_id: 'verified-game', source_key: 'index', source_url: 'https://npb.jp/scores/verified-game/score.html' }]),
+    searchGames: vi.fn(), searchPlayerCandidates: vi.fn() }
+    const response = await createContractChatService(query as unknown as ChatQueryService, async () => ({ domain: 'npb', policy: 'execute', query_contract: mixed, clarification_reason: null, subject: null })).answerQuestion('対戦成績と来週の日程')
+    expect(query.aggregateGameResults).toHaveBeenCalledTimes(1)
+    expect(query.aggregateGameResults).toHaveBeenCalledWith(expect.objectContaining({ year: 2026, team: '巨人', opponent: '阪神' }))
+    expect(query.searchGames).not.toHaveBeenCalled()
+    expect(query.searchPlayerCandidates).not.toHaveBeenCalled()
+    expect(response.answer.summary).toContain('2勝1敗')
+    expect(response.answer.summary).toContain('未来の試合日程・登板予定は収録対象外')
+    expect(response.answer.query_contract).toEqual(mixed)
+    expect(response.answer.source_urls).toEqual(['https://npb.jp/scores/verified-game/score.html', 'https://npb.jp/games/'])
+    const scheduleOnly = await createContractChatService(query as unknown as ChatQueryService, async () => ({ domain: 'npb', policy: 'execute',
+      query_contract: contractForOutput(mixed, mixed.requested_output[1]!), clarification_reason: null, subject: null })).answerQuestion('来週の日程')
+    expect(scheduleOnly.results.games).toEqual([])
+    expect(query.aggregateGameResults).toHaveBeenCalledTimes(1)
+    expect(() => compileQueryContract(contractForOutput(mixed, mixed.requested_output[1]!))).toThrow('schedule_not_in_archive')
+  })
   it('keeps each player paired with the requested club and year during resolution, retrieval and transport', async () => {
     const parse = vi.fn(async () => ({ domain: 'npb' as const, policy: 'execute' as const, query_contract: contract, clarification_reason: null, subject: null }))
     const service = {

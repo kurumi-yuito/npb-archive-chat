@@ -87,6 +87,11 @@ export default defineEventHandler(async (event) => withD1ReadAudit(async () => {
     const usageConfig = resolveChatRuntimeUsageConfig(config, event)
     const billingConfig = resolveChatRuntimeStripeBillingConfig(config, event)
     const identity = parseChatIdentity(event, authConfig)
+    // Reject expired/forged choices before creating accounts or consuming and
+    // refunding quota rows. They require neither model calls nor DB writes.
+    const selectedContract = body.selected_player?.challenge
+      ? await verifyPlayerSelectionChallenge({ token: body.selected_player.challenge, secret: authConfig.authSharedSecret,
+        userId: identity.userId, message: body.message, mention: body.selected_player.mention, playerId: body.selected_player.player_id }) : null
     let metaDatabase: Awaited<ReturnType<typeof getServerMetaDatabase>> | null = null
     let account: Awaited<ReturnType<typeof getEffectiveChatAccount>> | null = null
     try {
@@ -186,9 +191,6 @@ export default defineEventHandler(async (event) => withD1ReadAudit(async () => {
             }, {
               allowFallback: allowHeuristicFallback,
             })
-      const selectedContract = body.selected_player?.challenge
-        ? await verifyPlayerSelectionChallenge({ token: body.selected_player.challenge, secret: authConfig.authSharedSecret,
-          userId: identity.userId, message: body.message, mention: body.selected_player.mention, playerId: body.selected_player.player_id }) : null
       const service = !fixtureMode.enabled && !allowHeuristicFallback
         ? createContractChatService(queryService, selectedContract ? async () => ({ domain: 'npb', policy: 'execute', query_contract: selectedContract, clarification_reason: null, subject: null }) : createSemanticQueryLlm(chatQueryLlmConfig, {
           onRequest: () => { openAiCalls.planner += 1 },

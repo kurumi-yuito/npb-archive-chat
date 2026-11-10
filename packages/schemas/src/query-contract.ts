@@ -1,6 +1,6 @@
 import { z } from 'zod'
 
-const outputKinds = ['player_information', 'event_records', 'game_results', 'game_details', 'team_statistics', 'appearance_records', 'batting_records', 'pitching_records', 'batting_statistics', 'pitching_statistics', 'fielding_statistics', 'affiliations', 'roster', 'awards'] as const
+const outputKinds = ['player_information', 'staff_information', 'event_records', 'game_results', 'game_schedule', 'game_details', 'team_statistics', 'appearance_records', 'batting_records', 'pitching_records', 'batting_statistics', 'pitching_statistics', 'fielding_statistics', 'affiliations', 'roster', 'awards'] as const
 const scalar = z.union([z.string(), z.number(), z.boolean()])
 const year = z.number().int().min(1936).max(2200)
 const date = z.string().regex(/^\d{4}-\d{2}-\d{2}$/)
@@ -79,7 +79,7 @@ const array = (items: unknown) => ({ type: 'array', items })
 const enumeration = (values: readonly string[]) => ({ type: 'string', enum: values })
 const nullableYear = { type: ['integer', 'null'], minimum: 1936, maximum: 2200 }
 const relativeTemporalKinds = ['career', 'current_season', 'previous_season', 'recent_appearances', 'latest_appearance',
-  'today', 'yesterday', 'tomorrow', 'current_month', 'previous_month', 'current_week', 'previous_week'] as const
+  'today', 'yesterday', 'tomorrow', 'current_month', 'previous_month', 'next_month', 'current_week', 'previous_week', 'next_week'] as const
 const queryScopeJsonSchema = object({
   entities: array(object({ kind: enumeration(['player', 'team', 'venue']), role: enumeration(['subject', 'batter', 'pitcher', 'runner', 'opponent']), mention: text })),
   temporal_scope: object({ years: array({ type: 'integer', minimum: 1936, maximum: 2200 }), year_from: nullableYear, year_to: nullableYear, date_from: nullableText, date_to: nullableText, relative: { type: ['string', 'null'], enum: [...relativeTemporalKinds, null] } }),

@@ -16,6 +16,8 @@ export function requirementsForContract(contract: QueryContract): ChatDataRequir
       case 'player_information': return isStatisticIdentityProjection(contract, output) ? [] : ['player_profiles']
       case 'event_records': return [aggregate ? 'aggregate_events' : 'events']
       case 'game_results': return [requiresGameReduction(contract, output) ? 'aggregate_games' : 'games']
+      case 'game_schedule': return [] // Capability response, never a past-results repository query.
+      case 'staff_information': return [] // Staff records must not enter the player repository.
       case 'team_statistics': return ['official_team_statistics']
       case 'game_details': return ['game_details', 'events', 'batting_lines', 'pitching_lines']
       case 'batting_records': return ['batting_lines']
@@ -42,6 +44,8 @@ export function validateQueryContractExecution(
   if (contract.completeness.mode === 'all' && contract.completeness.limit !== null) issues.push('contradictory_completeness')
   if (contract.unresolved_constraints.length > 0) issues.push('unresolved_constraints')
   if (contract.requested_output.some(({ kind }) => kind === 'fielding_statistics')) issues.push('unsupported_output')
+  if (contract.requested_output.some(({ kind }) => kind === 'game_schedule')) issues.push('schedule_not_in_archive')
+  if (contract.requested_output.some(({ kind }) => kind === 'staff_information')) issues.push('staff_not_in_archive')
   for (const requirement of requirementsForContract(contract)) {
     if (!available.includes(requirement)) issues.push(`missing_data:${requirement}`)
   }

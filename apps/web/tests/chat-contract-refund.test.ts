@@ -33,6 +33,15 @@ describe('chat contract failures and quota accounting', () => {
   })
   afterEach(() => vi.unstubAllGlobals())
 
+  it('rejects a forged candidate choice before account lookup or quota writes', async () => {
+    await expect(handler({ context: {}, headers: {}, body: {
+      message: '2025年の坂本勇人について教えて',
+      selected_player: { mention: '坂本勇人', player_id: '71075153', challenge: 'forged.invalid' },
+    } })).rejects.toMatchObject({ statusCode: 400, data: { code: 'player_selection_invalid' } })
+    expect(mocks.metaDatabase).not.toHaveBeenCalled()
+    expect(mocks.queryService).not.toHaveBeenCalled()
+  })
+
   it('refunds a consumed token when the semantic contract prevents execution', async () => {
     const meaning = JSON.parse(readFileSync(new URL('../../../docs/eval-query-contracts.json', import.meta.url), 'utf8')).cases[0].meaning
     const event = {

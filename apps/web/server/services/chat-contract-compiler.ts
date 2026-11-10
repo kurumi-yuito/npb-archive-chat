@@ -48,6 +48,8 @@ export function operationIntent(output: QueryContract['requested_output'][number
     case 'player_information': return 'player_affiliation'
     case 'event_records': return contract.aggregation.length ? 'aggregate_events' : 'search_events'
     case 'game_results': return requiresGameReduction(contract, output) ? 'aggregate_games' : 'search_games'
+    case 'game_schedule': throw new QueryContractCompileError(['schedule_not_in_archive'])
+    case 'staff_information': throw new QueryContractCompileError(['staff_not_in_archive'])
     case 'game_details': return 'game_detail'
     case 'team_statistics': return 'aggregate_games'
     case 'batting_records': return 'search_batting'

@@ -33,7 +33,19 @@ export function createContractChatService(databaseService: ChatQueryService, par
     const request = await parse(message, { history: options.history })
     if (request.policy !== 'execute') return policyResponse(message, request)
     const contract = request.query_contract!
-    if (contract.requested_output.some((output) => output.scope)) {
+    if (contract.requested_output.length === 1 && contract.requested_output[0]!.kind === 'game_schedule') {
+      return chatResponseCoreSchema.parse({ message, structured_query: null, results: emptyResults(), sources: [], answer: {
+        summary: '未来の試合日程・登板予定は収録対象外のため、収録済み記録からは確認できません。NPB公式サイトの試合日程をご確認ください。\nhttps://npb.jp/games/',
+        query_contract: contract, result_count: 0, source_urls: ['https://npb.jp/games/'],
+      } })
+    }
+    if (contract.requested_output.length === 1 && contract.requested_output[0]!.kind === 'staff_information') {
+      return chatResponseCoreSchema.parse({ message, structured_query: null, results: emptyResults(), sources: [], answer: {
+        summary: '監督・コーチの情報は収録対象外です。公式球団情報をご確認ください。',
+        query_contract: contract, result_count: 0, source_urls: [],
+      } })
+    }
+    if (contract.requested_output.some((output) => output.scope || ['game_schedule', 'staff_information'].includes(output.kind))) {
       if (contract.requested_output.length > 8) throw new QueryContractCompileError(['scoped_operation_budget_exceeded'])
       const responses: ChatResponseCore[] = []
       for (const output of contract.requested_output) {
