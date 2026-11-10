@@ -15,6 +15,7 @@ import { formatContractStatistics, formatScopedStatisticComparison, formatTeamSt
 import { officialProfileMetricStats, searchOfficialCareerEvidence } from './chat-career-evidence'
 import { searchOpponentStarters } from './chat-appearance-context'
 import { formatContractTeamStatistics } from './chat-team-statistic-answer'
+import { formatContractSeriesResults } from './chat-series-answer'
 
 type SemanticParser = (message: string, context: { history?: ChatRequest['history'] }) => Promise<SemanticRequest>
 type ResolvedEntity = { entity: QueryContract['entities'][number]; resolution: PlayerResolution }
@@ -173,7 +174,7 @@ export function createContractChatService(databaseService: ChatQueryService, par
         if (!Array.isArray(urls) || !urls.every((url) => typeof url === 'string' && /^https:\/\/npb\.jp\/bis\//u.test(url))) throw new QueryContractCompileError(['invalid_statistic_sources'])
         return urls as string[]
       }))]
-      const statisticSummary = incompleteStatisticIdentity ? null : operation.output.kind === 'team_statistics' ? formatContractTeamStatistics(operationContract, results.aggregates) : formatContractStatistics({ contract: operationContract, query, rows: results.aggregates, playerName: player?.name ?? undefined,
+      const statisticSummary = incompleteStatisticIdentity ? null : operation.output.kind === 'series_result' ? formatContractSeriesResults(operationContract, results.aggregates) : operation.output.kind === 'team_statistics' ? formatContractTeamStatistics(operationContract, results.aggregates) : formatContractStatistics({ contract: operationContract, query, rows: results.aggregates, playerName: player?.name ?? undefined,
         careerVerified: career?.verified, asOf: career?.basisText })
       const answer: ChatResponseCore['answer'] = incompleteStatisticIdentity ? {
         summary: `${player?.name ?? '指定対象'}の指定条件に対応する公式成績表は取得できましたが、同名の記録と選手IDの対応に未確認の部分があります。未確認の行を除いた数値を完全な成績としては回答できません。`,

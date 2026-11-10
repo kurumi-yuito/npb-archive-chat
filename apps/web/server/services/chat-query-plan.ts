@@ -7,6 +7,7 @@ export const chatDataRequirementSchema = z.enum([
   'player_profiles',
   'official_statistics',
   'official_team_statistics',
+  'official_series_results',
   'events',
   'games',
   'batting_lines',
@@ -298,7 +299,7 @@ export function inferDataRequirements(query: ChatStructuredQuery): ChatDataRequi
       case 'aggregate_events':
         return ['aggregate_events'] as ChatDataRequirement[]
       case 'aggregate_games':
-        return ['aggregate_games'] as ChatDataRequirement[]
+        return [query.filters.official_series_result ? 'official_series_results' : 'aggregate_games'] as ChatDataRequirement[]
       case 'award_winners':
         return ['award_winners'] as ChatDataRequirement[]
       case 'off_topic':

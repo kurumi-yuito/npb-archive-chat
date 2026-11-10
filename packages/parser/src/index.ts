@@ -1212,3 +1212,4 @@ function toProjectRelative(filePath: string) {
   return relativePath.startsWith('..') ? filePath : relativePath
 }
 export { parseOfficialRegistrationHistory, type RegistrationPageScope, type RegistrationHistoryEntry } from './registration-history'
+export { parseOfficialSeriesHistory, type OfficialSeriesSeason } from './series-history'

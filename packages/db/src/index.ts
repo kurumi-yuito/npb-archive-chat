@@ -182,3 +182,5 @@ export {
   getNormalizedRuntimeMetadata,
 }
 export { canonicalTeamName, canonicalLeagueTeamNames, matchesGameTeamFilter, teamMentionCandidates } from './repository/team-name-utils'
+export { saveOfficialSeriesCapture, OFFICIAL_SERIES_ENTRY_URL, type OfficialSeriesCapture } from './official-series-history'
+export { searchOfficialSeriesResults, type OfficialSeriesFilters } from './repository/official-series-repository'

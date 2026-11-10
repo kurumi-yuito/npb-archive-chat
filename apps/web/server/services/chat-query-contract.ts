@@ -16,6 +16,7 @@ export function requirementsForContract(contract: QueryContract): ChatDataRequir
       case 'player_information': return isStatisticIdentityProjection(contract, output) ? [] : ['player_profiles']
       case 'event_records': return [aggregate ? 'aggregate_events' : 'events']
       case 'game_results': return [requiresGameReduction(contract, output) ? 'aggregate_games' : 'games']
+      case 'series_result': return ['official_series_results']
       case 'game_schedule': return [] // Capability response, never a past-results repository query.
       case 'staff_information': return [] // Staff records must not enter the player repository.
       case 'team_statistics': return ['official_team_statistics']
@@ -61,7 +62,8 @@ export function validateQueryContractExecution(
     const naturalEventOrder = query.intent === 'search_events' && ['gameDate', 'game_date', 'date'].includes(order?.field ?? '') && order?.direction === 'asc'
     const naturalAppearanceOrder = ['search_batting', 'search_pitching'].includes(query.intent) && filters.recent === true && ['gameDate', 'game_date', 'date'].includes(order?.field ?? '') && order?.direction === 'desc'
     const officialTeamOrder = query.intent === 'aggregate_games' && filters.official_season === true && filters.sort_by === statisticSortField(query.intent, order?.field ?? '') && filters.sort_direction === order?.direction
-    if (contract.ordering.length !== 1 || (!naturalEventOrder && !naturalAppearanceOrder && !officialTeamOrder && (filters.sort_by !== statisticSortField(query.intent, order?.field ?? '') || order?.direction !== 'desc'))) issues.push('ordering_not_preserved')
+    const officialSeriesOrder = query.intent === 'aggregate_games' && filters.official_series_result === true && order?.field === 'year' && filters.series_order === order.direction
+    if (contract.ordering.length !== 1 || (!naturalEventOrder && !naturalAppearanceOrder && !officialTeamOrder && !officialSeriesOrder && (filters.sort_by !== statisticSortField(query.intent, order?.field ?? '') || order?.direction !== 'desc'))) issues.push('ordering_not_preserved')
   }
   if (['recent_appearances', 'latest_appearance'].includes(contract.temporal_scope.relative ?? '')) {
     const limit = contract.completeness.limit ?? (contract.temporal_scope.relative === 'latest_appearance' ? 1 : 5)
@@ -118,7 +120,7 @@ export function validateQueryContractExecution(
     if (!['eq', 'contains'].includes(predicate.operator) || filters[field] !== expected) issues.push(`predicate_not_preserved:${predicate.field}`)
   }
   const scope = contract.competition_scope
-  if (scope.level !== 'unspecified' && filters.level !== scope.level && !(scope.level === 'first' && (query.intent === 'search_events' || filters.official_season === true))) issues.push('level_not_preserved')
+  if (scope.level !== 'unspecified' && filters.level !== scope.level && !(scope.level === 'first' && (query.intent === 'search_events' || filters.official_season === true || filters.official_series_result === true))) issues.push('level_not_preserved')
   if (scope.competitions.length > 0) {
     const league = scope.competitions.length === 1 ? competitionLeague(scope.competitions[0]!) : null
     const mapped = league && (['aggregate_batting', 'aggregate_pitching'].includes(query.intent) || (query.intent === 'aggregate_games' && filters.official_season === true)) &&

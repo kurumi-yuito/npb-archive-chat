@@ -5,3 +5,4 @@ packages/parser/src/__fixtures__/bis-team-yearly-hawks.html -text whitespace=-bl
 packages/parser/src/__fixtures__/registration-2025-yakult.html -text whitespace=-blank-at-eol,-space-before-tab,cr-at-eol
 packages/parser/src/__fixtures__/bis-batting-2024-giants.html -text whitespace=-blank-at-eol,-space-before-tab,cr-at-eol
 packages/parser/src/__fixtures__/bis-fielding-2024-giants.html -text whitespace=-blank-at-eol,-space-before-tab,cr-at-eol
+packages/parser/src/__fixtures__/series-history-2020.html -text whitespace=-blank-at-eol,-space-before-tab,cr-at-eol

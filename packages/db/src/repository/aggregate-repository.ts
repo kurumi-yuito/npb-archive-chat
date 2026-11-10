@@ -17,6 +17,7 @@ import { aggregateOfficialBattingSeason } from './official-batting-aggregate'
 import { aggregateOfficialPitchingSeason } from './official-pitching-aggregate'
 import { canonicalPlayerFactCandidateSql, canonicalPlayerFactMatchSql, canonicalPlayerNameMatchSql } from './player-identity-link'
 import { searchOfficialTeamSeasons } from './official-team-history-repository'
+import { searchOfficialSeriesResults } from './official-series-repository'
 import { resolveSeasonFactIdentities } from './resolve-season-fact-identities'
 
 export type AggregateRow = {
@@ -819,6 +820,12 @@ export async function aggregateGameResults(
   filters: AggregateGamesFilters = {},
 ): Promise<AggregateRow[]> {
   const normalized = aggregateGamesFiltersSchema.parse(filters)
+  if (normalized.official_series_result) {
+    if (normalized.official_season || normalized.team || normalized.opponent || normalized.venue || normalized.game_date || normalized.date_from || normalized.date_to || normalized.sort_by ||
+      (normalized.group_by && normalized.group_by !== 'year') || !normalized.competition) throw new Error('Unsupported official series scope')
+    return searchOfficialSeriesResults(database, { competition: normalized.competition, year: normalized.year,
+      year_from: normalized.year_from, year_to: normalized.year_to, order: normalized.series_order, limit: normalized.limit })
+  }
   if (normalized.official_season) return searchOfficialTeamSeasons(database, normalized)
   const leagueTeams = leagueTeamList(normalized.team)
   if (leagueTeams) {

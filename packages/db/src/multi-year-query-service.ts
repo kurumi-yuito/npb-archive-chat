@@ -264,9 +264,20 @@ export function createMultiYearQueryService({
       await runAggregateAcrossYears(filters, (db) => aggregateEvents(db, filters)),
       filters.limit ?? 50,
     ),
-    aggregateGameResults: async (filters) => mergeGameResultAggregates(
-      await runAggregateAcrossYears(filters, (db) => aggregateGameResults(db, filters)),
-    ),
+    aggregateGameResults: async (filters) => {
+      // A source archive contains historical seasons independent of the year
+      // of the SQLite file holding it. Never prune it by the requested season.
+      const rows = await runAggregateAcrossYears(filters.official_series_result ? {} : filters, (db) => aggregateGameResults(db, filters))
+      if (!filters.official_series_result) return mergeGameResultAggregates(rows)
+      const years = new Map<number, AggregateRow>()
+      for (const row of rows) {
+        const year = Number(row.stats.year), previous = years.get(year)
+        if (previous && JSON.stringify(previous) !== JSON.stringify(row)) throw new Error('Conflicting official series evidence across databases')
+        years.set(year, row)
+      }
+      const ordered = [...years.values()].sort((a, b) => (Number(a.stats.year) - Number(b.stats.year)) * (filters.series_order === 'desc' ? -1 : 1))
+      return filters.limit ? ordered.slice(0, filters.limit) : ordered
+    },
     searchAwardWinners: async (filters) => {
       for (const year of [...availableYears({ year: filters.year })].reverse()) {
         const rows = await searchAwardWinners(openYear(year), filters)

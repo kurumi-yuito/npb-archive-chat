@@ -289,6 +289,8 @@ export const aggregateEventsFiltersSchema = searchEventsFiltersSchema.omit({
 })
 
 export const aggregateGamesFiltersSchema = z.object({
+  official_series_result: z.boolean().optional(),
+  series_order: z.enum(['asc', 'desc']).optional(),
   official_season: z.boolean().optional(),
   group_by: z.enum(['team', 'year']).optional(),
   sort_by: z.enum(['games', 'wins', 'losses', 'draws', 'winRate', 'rank', 'battingAverage', 'homeRuns', 'era']).optional(),
@@ -1091,5 +1093,6 @@ export type ChatApiResponse = z.infer<typeof chatApiResponseSchema>
 export type RichGame = z.infer<typeof richGameSchema>
 export { normalizePlayerNameKey, officialPlayerNameCandidateKeys } from './identity-text'
 export { parseScoreTotal, readKnownGameScore } from './score-evidence'
+export { officialSeriesResultSchema, type OfficialSeriesResult } from './official-series-result'
 export { officialPlayerHistoryEvidenceSchema, verifiedPlayerCareerRows, annualPlayerHistoryRows, officialInningsOuts,
   type OfficialPlayerHistoryEvidence, type OfficialPlayerHistoryRow } from './official-player-history'

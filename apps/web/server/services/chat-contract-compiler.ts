@@ -25,7 +25,7 @@ export function contractForOutput(contract: QueryContract, output: QueryContract
 /** Identity lookup does not require an executable statistical/competition plan. */
 export function identityFiltersForContract(contract: QueryContract) {
   const time = contract.temporal_scope
-  const implicitSeason = contract.requested_output.some((output) => ['team_statistics', 'batting_statistics', 'pitching_statistics', 'fielding_statistics'].includes(output.kind))
+  const implicitSeason = contract.requested_output.some((output) => ['series_result', 'team_statistics', 'batting_statistics', 'pitching_statistics', 'fielding_statistics'].includes(output.kind))
     && time.years.length === 0 && time.year_from === null && time.year_to === null && time.date_from === null && time.date_to === null && time.relative === null
   const relativeSeason = ['current_season', 'previous_season'].includes(time.relative ?? '') &&
     time.years.length === 0 && time.year_from === null && time.year_to === null && time.date_from === null && time.date_to === null
@@ -48,6 +48,7 @@ export function operationIntent(output: QueryContract['requested_output'][number
     case 'player_information': return 'player_affiliation'
     case 'event_records': return contract.aggregation.length ? 'aggregate_events' : 'search_events'
     case 'game_results': return requiresGameReduction(contract, output) ? 'aggregate_games' : 'search_games'
+    case 'series_result': return 'aggregate_games'
     case 'game_schedule': throw new QueryContractCompileError(['schedule_not_in_archive'])
     case 'staff_information': throw new QueryContractCompileError(['staff_not_in_archive'])
     case 'game_details': return 'game_detail'
@@ -100,6 +101,14 @@ export function compileQueryContract(contract: QueryContract): ContractOperation
     const intent = operationIntent(output, contract)
     const filters: Record<string, unknown> = { ...identityFiltersForContract(contract) }
     const issues: string[] = []
+    if (output.kind === 'series_result') {
+      filters.official_series_result = true
+      if (contract.entities.length || contract.predicates.length || contract.aggregation.length ||
+        contract.temporal_scope.date_from !== null || contract.temporal_scope.date_to !== null ||
+        contract.competition_scope.competitions.length !== 1 || ['farm', 'both'].includes(contract.competition_scope.level) ||
+        contract.grouping.some((field) => field !== 'year') || contract.grouping.length > 1 ||
+        output.fields.some((field) => !['year', 'winner', 'winnerName', 'loser', 'loserName', 'wins', 'losses', 'draws', 'winnerWins', 'loserWins', 'competition', 'sourceUrl'].includes(field))) issues.push('official_series_scope_required')
+    }
     if (output.kind === 'pitching_statistics' && !contract.entities.some((entity) => entity.kind === 'player') &&
       subjectTeams.length && !contract.grouping.includes('player')) issues.push('pitching_statistic_subject_required')
     if (output.kind === 'team_statistics') {
@@ -172,9 +181,11 @@ export function compileQueryContract(contract: QueryContract): ContractOperation
     else if (contract.grouping.length > 1) issues.push('multi_group_plan_required')
     if (contract.ordering.length === 1) {
       const order = contract.ordering[0]!
+      const naturalSeriesOrder = output.kind === 'series_result' && order.field === 'year'
+      if (naturalSeriesOrder) filters.series_order = order.direction
       const naturalEventOrder = intent === 'search_events' && ['gameDate', 'game_date', 'date'].includes(order.field) && order.direction === 'asc'
       const naturalAppearanceOrder = appearanceRelative && ['gameDate', 'game_date', 'date'].includes(order.field) && order.direction === 'desc'
-      if (!naturalEventOrder && !naturalAppearanceOrder) {
+      if (!naturalEventOrder && !naturalAppearanceOrder && !naturalSeriesOrder) {
         if (order.direction !== 'desc' && output.kind !== 'team_statistics') issues.push('ordering_plan_required')
         filters.sort_by = statisticSortField(intent, order.field)
         if (output.kind === 'team_statistics') filters.sort_direction = order.direction
@@ -184,7 +195,7 @@ export function compileQueryContract(contract: QueryContract): ContractOperation
       if (contract.completeness.limit === null) issues.push('missing_output_limit')
       else filters.limit = contract.completeness.limit
     }
-    if (contract.competition_scope.level !== 'unspecified' && !(output.kind === 'team_statistics' && contract.competition_scope.level === 'first')) filters.level = contract.competition_scope.level
+    if (contract.competition_scope.level !== 'unspecified' && !(['team_statistics', 'series_result'].includes(output.kind) && contract.competition_scope.level === 'first')) filters.level = contract.competition_scope.level
     if (contract.competition_scope.competitions.length === 1) {
       const competition = contract.competition_scope.competitions[0]!, league = competitionLeague(competition)
       if (league && (['aggregate_batting', 'aggregate_pitching'].includes(intent) || output.kind === 'team_statistics')) {

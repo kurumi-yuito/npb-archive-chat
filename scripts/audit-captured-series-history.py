@@ -97,7 +97,7 @@ if not years or years != list(range(years[0], years[-1] + 1)):
     raise ValueError("Official history has a duplicated or missing season")
 report = {"environment": "independent_python_html_audit", "production": False, "humanReviewed": False,
           "sourceObservationsVerified": len(manifest["observations"]), "seasons": records,
-          "note": "Reads only archived official HTML and capture metadata; no application parser, DB or chat output is used."}
+          "note": "Reads only archived official HTML and capture metadata; no application parser, stored series/statistic facts or chat output is used."}
 output = Path(args.output)
 output.parent.mkdir(parents=True, exist_ok=True)
 output.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n")
