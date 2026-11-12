@@ -41,7 +41,7 @@ export function formatClarificationAnswer(
     return '参照された以前の内容を会話履歴から確認できませんでした。対象となる選手名や質問内容をもう一度教えてください。'
   }
   if (policy.reason === 'insufficient_context') {
-    return 'どの内容についてのご質問ですか？対象となる選手名、試合、または質問内容を教えてください。'
+    return 'どの内容についてのご質問ですか？対象となる選手名、試合、または質問内容を指定してください。'
   }
   return 'どの内容について調べ直しますか？直前の質問が確認できないため、対象となる選手名や質問内容をもう一度教えてください。'
 }
@@ -455,9 +455,11 @@ function arrayStringFilter(value: unknown): string[] | null {
 }
 
 function formatUnconfirmedGameScope(query: ChatStructuredQuery): string {
-  if (query.intent !== 'search_games' && query.intent !== 'game_detail') throw new Error('Game scope requires a game query')
+  if (query.intent !== 'search_games' && query.intent !== 'game_detail' && query.intent !== 'aggregate_games') throw new Error('Game scope requires a game query')
   const filters = query.filters
-  const period = filters.game_date ? formatDateJa(filters.game_date)
+  const relative = query.query_contract?.temporal_scope.relative
+  const relativeLabel = relative === 'yesterday' ? '昨日' : relative === 'today' ? '今日' : ''
+  const period = filters.game_date ? `${relativeLabel ? `${relativeLabel}（` : ''}${formatDateJa(filters.game_date)}${relativeLabel ? '）' : ''}`
     : filters.date_from || filters.date_to ? `${filters.date_from ?? '開始日未指定'}〜${filters.date_to ?? '終了日未指定'}`
       : filters.year ? `${filters.year}年`
         : filters.year_from || filters.year_to ? `${filters.year_from ?? '開始年未指定'}〜${filters.year_to ?? '終了年未指定'}年` : ''
@@ -524,7 +526,7 @@ function buildSummary(
     } else if (structuredQuery.intent === 'aggregate_events') {
       notFoundMsg = '条件に一致するプレーはありませんでした。'
     } else if (structuredQuery.intent === 'aggregate_games') {
-      notFoundMsg = '条件に一致する試合結果は見つかりませんでした。'
+      notFoundMsg = formatUnconfirmedGameScope(structuredQuery)
     } else {
       notFoundMsg = '条件に一致するイベントは見つかりませんでした。'
     }
@@ -671,7 +673,10 @@ function buildSummary(
   if (structuredQuery.intent === 'aggregate_games') {
     const rows = results.aggregates as AggregateRow[]
     const filters = structuredQuery.filters
-    const yearLabel = filters.game_date ? formatDateJa(filters.game_date)
+    const recent = filters.recent_games ? rows[0]?.stats : undefined
+    const yearLabel = recent
+      ? `収録データの直近${rows[0]!.total}試合（${recent.firstGameDate}〜${recent.lastGameDate}）`
+      : filters.game_date ? formatDateJa(filters.game_date)
       : filters.date_from || filters.date_to ? `${filters.date_from ?? '開始日未指定'}〜${filters.date_to ?? '終了日未指定'}`
       : filters.year
       ? `${filters.year}年`

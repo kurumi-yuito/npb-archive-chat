@@ -11,7 +11,7 @@ export async function aggregateOfficialBattingSeason(database: QueryDatabase, fi
   // Independent farm clubs also participate; twelve parent-club pages alone
   // cannot certify an unspecified all-farm ranking.
   if (filters.level === 'farm' && !filters.team) return null
-  if (!year || filters.game_date || filters.date_from || filters.date_to || filters.game_id || filters.batting_order || filters.position || filters.result_text_contains || filters.recent || filters.group_by === 'year') return null
+  if (!year || filters.starter !== undefined || filters.game_date || filters.date_from || filters.date_to || filters.game_id || filters.batting_order || filters.position || filters.result_text_contains || filters.recent || filters.group_by === 'year') return null
   if ((filters.player_name || filters.player_names?.length) && !filters.player_id && !filters.player_ids?.length) return null
   if (filters.group_by !== 'team' && !filters.player_id && !filters.player_ids?.length && ['battingAverage', 'ops'].includes(filters.sort_by ?? '')) return null
   const evidence = await readOfficialStatisticSeason(database, filters, 'batting')

@@ -2,10 +2,17 @@ import { describe, expect, it, vi } from 'vitest'
 import {
   ChatQueryLlmContractError,
   createChatQueryLlm,
+  chatCompletionModelParameters,
   normalizeStructuredQueryFromLlmMessage,
 } from '../server/services/chat-query-llm'
 
 describe('chat-query-llm', () => {
+  it('uses supported sampling parameters for configured reasoning effort', () => {
+    const config = { baseUrl: 'https://example.test/v1', apiKey: 'test', model: 'test-model' }
+    expect(chatCompletionModelParameters(config)).toEqual({ model: 'test-model', temperature: 0 })
+    expect(chatCompletionModelParameters({ ...config, reasoningEffort: 'low' })).toEqual({ model: 'test-model', reasoning_effort: 'low' })
+    expect(chatCompletionModelParameters({ ...config, reasoningEffort: 'none' })).toEqual({ model: 'test-model', reasoning_effort: 'none', temperature: 0 })
+  })
   it('bounds planner fetches so the parser can fall back before the Worker request limit', async () => {
     const fetchMock = vi.fn((_url: Parameters<typeof fetch>[0], init?: RequestInit) => new Promise<Response>((_resolve, reject) => {
       init?.signal?.addEventListener('abort', () => reject(init.signal?.reason), { once: true })

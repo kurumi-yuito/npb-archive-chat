@@ -49,7 +49,7 @@ export async function searchOfficialDictionary(database: QueryDatabase, filters:
   const select = `SELECT player_id,full_name,team_name,source_url,${membershipJson} AS memberships_json,(${alias}) AS alias_match FROM player_profiles
     WHERE source_url='https://npb.jp/bis/players/' || player_id || '.html' AND `
   const limit = Math.min(filters.limit ?? 51, 100)
-  const candidateIdsSql = `player_id IN (SELECT player_id FROM player_profiles INDEXED BY idx_player_profiles_identity_key
+  const candidateIdsSql = `player_id IN (SELECT player_id FROM player_profiles
     WHERE ${nameSql}>=? AND ${nameSql}<? UNION SELECT player_id FROM player_aliases WHERE normalized_alias=?)`
   const profiles = await database.prepare(`${select}${candidateIdsSql} ${membership} ORDER BY player_id LIMIT ?`)
     .all(input, input, `${input}\uffff`, input, ...values, ...(scope.length ? roster.values : []), limit) as Profile[]

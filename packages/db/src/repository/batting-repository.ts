@@ -39,7 +39,7 @@ export async function searchBattingLines(
   // batting_order / position are box-score-only fields; BIS stats don't have them.
   // Skip BIS entirely when either is specified to avoid returning unfiltered season stats.
   const skipBis = normalized.game_date || normalized.date_from || normalized.date_to || normalized.game_id || normalized.recent
-    || normalized.batting_order !== undefined || normalized.position !== undefined
+    || normalized.starter !== undefined || normalized.batting_order !== undefined || normalized.position !== undefined
   // This compatibility adapter certifies one complete published team-season.
   // A partially collected league must not replace wider legacy search results.
   if (!skipBis && normalized.year && normalized.team && normalized.player_id && !normalized.result_text_contains && !normalized.player_names && !normalized.player_ids) {
@@ -111,6 +111,7 @@ export async function searchBattingLines(
     clauses.push('batting_lines.batting_order = ?')
     values.push(normalized.batting_order)
   }
+  if (normalized.starter !== undefined) clauses.push(`batting_lines.batting_order IS ${normalized.starter ? 'NOT ' : ''}NULL`)
   if (normalized.position) {
     // Match "(遊)" (starter), "遊" (bare), and composite forms like "打遊" (sub→SS).
     clauses.push("batting_lines.position LIKE ?")
@@ -200,6 +201,7 @@ async function searchNormalizedBattingLines(
     clauses.push('batting_line_facts.batting_order = ?')
     values.push(filters.batting_order)
   }
+  if (filters.starter !== undefined) clauses.push(`batting_line_facts.batting_order IS ${filters.starter ? 'NOT ' : ''}NULL`)
   if (filters.position) {
     clauses.push('positions.position LIKE ?')
     values.push(`%${filters.position}%`)

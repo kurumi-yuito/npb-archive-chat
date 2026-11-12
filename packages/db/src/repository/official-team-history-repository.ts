@@ -3,6 +3,7 @@ import type { QueryDatabase } from '../query-driver'
 import type { AggregateRow } from './aggregate-repository'
 import { hasRepositoryTable } from './schema-detection'
 import { canonicalLeagueTeamNames, canonicalTeamName } from './team-name-utils'
+import { officialSeasonInWindow } from './official-calendar-repository'
 
 type Snapshot = { snapshot_id: string; source_url: string; team_id: string; team_name: string; fetched_at: string; basis_text: string | null; content_hash: string; raw_key: string; row_count: number; stored_rows: number }
 type Season = { snapshot_id: string; season_label: string; year: number; metrics_json: string }
@@ -10,7 +11,7 @@ const fields = { games: '試合', wins: '勝利', losses: '敗北', draws: '引�
 
 /** Read complete official club histories, never totals from a partial game archive. */
 export async function searchOfficialTeamSeasons(database: QueryDatabase, filters: AggregateGamesFilters): Promise<AggregateRow[]> {
-  if (filters.date_from || filters.date_to || filters.game_date || filters.opponent || filters.venue || filters.competition) throw new Error('Official season scope cannot represent game-level conditions')
+  if (filters.game_date || filters.opponent || filters.venue || filters.competition || filters.result_text_contains) return []
   if (!await hasRepositoryTable(database, 'official_team_history_snapshots')) return []
   const teams = canonicalLeagueTeamNames(filters.team)
   if (!teams.length) return []
@@ -54,6 +55,19 @@ export async function searchOfficialTeamSeasons(database: QueryDatabase, filters
       (typeof stats.winRate !== 'number' || Math.abs(stats.winRate - Number(stats.wins) / (Number(stats.wins) + Number(stats.losses))) > 0.00050001)) throw new Error('Official team winning percentage mismatch')
     return { kind: 'games', label: source.team_name, total: Number(stats.games), stats }
   })
+  if (filters.date_from || filters.date_to) {
+    for (const row of result) {
+      const calendar = await officialSeasonInWindow(database, Number(row.stats.year), filters.date_from, filters.date_to)
+      const standing = calendar?.facts.standings.find((team) => canonicalTeamName(team.team) === canonicalTeamName(row.label))
+      if (!calendar || !standing) return []
+      for (const field of ['games', 'wins', 'losses', 'draws', 'winRate'] as const) {
+        if (row.stats[field] !== standing[field]) throw new Error('Official calendar and club season disagree')
+      }
+      row.stats.sourceUrls = JSON.stringify([...JSON.parse(String(row.stats.sourceUrls)), calendar.sourceUrl])
+      row.stats.calendarFrom = calendar.facts.calendarFrom
+      row.stats.calendarTo = calendar.facts.calendarTo
+    }
+  }
   if (filters.sort_by) {
     const field = filters.sort_by, direction = (filters.sort_direction ?? (field === 'rank' || field === 'era' ? 'asc' : 'desc')) === 'asc' ? 1 : -1
     result.sort((left, right) => {

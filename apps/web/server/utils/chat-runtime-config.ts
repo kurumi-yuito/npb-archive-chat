@@ -65,6 +65,7 @@ type CloudflareRuntimeEnv = {
   CHAT_QUERY_LLM_BASE_URL?: unknown
   CHAT_QUERY_LLM_API_KEY?: unknown
   CHAT_QUERY_LLM_MODEL?: unknown
+  CHAT_QUERY_LLM_REASONING_EFFORT?: unknown
   CHAT_ANSWER_LLM_BASE_URL?: unknown
   CHAT_ANSWER_LLM_API_KEY?: unknown
   CHAT_ANSWER_LLM_MODEL?: unknown

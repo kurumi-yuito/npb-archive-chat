@@ -1,0 +1,85 @@
+{
+  "environment": "independent_python_html_audit",
+  "humanReviewed": false,
+  "production": false,
+  "scope": {
+    "year": 2025,
+    "teamId": "s",
+    "kind": "batting",
+    "level": "first"
+  },
+  "excludedName": "村上宗隆",
+  "source": {
+    "source_url": "https://npb.jp/bis/2025/stats/idb1_s.html",
+    "fetched_at": "2026-11-07T02:58:21.253Z",
+    "content_hash": "cd64e95c1d55d499ba0fa72b76630ed3261f7244b3fab5a419d79d7e25436b90",
+    "raw_key": "raw/bis-statistics/2025/cd64e95c1d55d499ba0fa72b76630ed3261f7244b3fab5a419d79d7e25436b90.html"
+  },
+  "sourceRowCount": 62,
+  "expected": [
+    {
+      "name": "赤羽由紘",
+      "homeRuns": 2
+    },
+    {
+      "name": "伊藤琉偉",
+      "homeRuns": 3
+    },
+    {
+      "name": "内山壮真",
+      "homeRuns": 8
+    },
+    {
+      "name": "オスナ",
+      "homeRuns": 14
+    },
+    {
+      "name": "北村恵吾",
+      "homeRuns": 5
+    },
+    {
+      "name": "北村拓己",
+      "homeRuns": 3
+    },
+    {
+      "name": "古賀優大",
+      "homeRuns": 2
+    },
+    {
+      "name": "サンタナ",
+      "homeRuns": 3
+    },
+    {
+      "name": "澤井廉",
+      "homeRuns": 1
+    },
+    {
+      "name": "武岡龍世",
+      "homeRuns": 1
+    },
+    {
+      "name": "中村悠平",
+      "homeRuns": 1
+    },
+    {
+      "name": "並木秀尊",
+      "homeRuns": 3
+    },
+    {
+      "name": "濱田太貴",
+      "homeRuns": 4
+    },
+    {
+      "name": "増田珠",
+      "homeRuns": 1
+    },
+    {
+      "name": "茂木栄五郎",
+      "homeRuns": 5
+    },
+    {
+      "name": "山田哲人",
+      "homeRuns": 12
+    }
+  ]
+}

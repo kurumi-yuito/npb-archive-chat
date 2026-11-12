@@ -28,7 +28,7 @@ export function preservePublishedOfficialStatistics(previous: SqliteDatabase, ne
   // A season update may not have fetched historical competition or club pages.
   // Absence in that staging input is not a deletion of published evidence.
   for (const table of ['official_team_history_snapshots', 'official_team_seasons', 'official_series_history_snapshots',
-    'official_series_history_observations', 'official_series_results']) {
+    'official_series_history_observations', 'official_series_results', 'official_calendar_observations']) {
     if (!previous.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name=?").get(table)) continue
     const keys = (previous.prepare(`PRAGMA table_info(${table})`).all() as Array<{ name: string; pk: number }>).filter((column) => column.pk)
       .sort((left, right) => left.pk - right.pk).map((column) => column.name)

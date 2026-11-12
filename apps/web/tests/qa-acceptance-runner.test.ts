@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { afterEach, describe, expect, it } from 'vitest'
-import { matchesAcceptanceSummary } from '../../../scripts/acceptance-summary.mjs'
+import { matchesAcceptanceSummary, teamBattingComparisonPattern } from '../../../scripts/acceptance-summary.mjs'
 import { calendarAcceptanceIssues } from '../../../scripts/acceptance-calendar.mjs'
 
 const root = fileURLToPath(new URL('../../..', import.meta.url))
@@ -18,6 +18,16 @@ afterEach(async () => {
 })
 
 describe('Acceptance runner fail-fast contract', () => {
+  it('accepts both club batting-average label orders while retaining both clubs and the team measure (B08)', () => {
+    for (const summary of [
+      'チーム打率：巨人0.234、阪神0.246。阪神が高いです。',
+      '2026年 巨人：チーム打率0.234。2026年 阪神：チーム打率0.246。阪神が高いです。',
+      '阪神のチーム打率0.246、巨人のチーム打率0.234。阪神が高いです。',
+    ]) expect(matchesAcceptanceSummary(teamBattingComparisonPattern, summary)).toBe(true)
+    for (const summary of ['巨人のチーム打率0.234。', '阪神のチーム打率0.246。', '巨人と阪神の個人成績です。']) {
+      expect(matchesAcceptanceSummary(teamBattingComparisonPattern, summary)).toBe(false)
+    }
+  })
   it('stops on provider credit exhaustion even with continue-on-failure and preserves unexecuted turns (Q-201)', async () => {
     let chatRequests = 0
     const server = createServer((request, response) => {
@@ -64,6 +74,14 @@ describe('Acceptance runner fail-fast contract', () => {
       results: { aggregates: [{ kind: 'batting', label: '検証選手', stats: { homeRuns: 11 } }] } }
     const leaderOracle = { environment: 'independent_python_html_audit', scope: { year: 2026, month: 5 }, leaderboard: [{ homeRuns: 11 }] }
     expect(calendarAcceptanceIssues('B22', leader, 2026, leaderOracle)).toEqual([])
+    const qualified = { ...leader,
+      structured_query: { ...leader.structured_query, filters: { ...leader.structured_query.filters, limit: 100 } },
+      answer: { ...leader.answer, query_contract: { completeness: { mode: 'top_n', limit: 1 },
+        ordering: [{ field: 'homeRuns', direction: 'desc' }], predicates: [{ field: 'homeRuns', operator: 'gt', value: 0 }] } } }
+    expect(calendarAcceptanceIssues('B22', qualified, 2026, leaderOracle)).toEqual([])
+    expect(calendarAcceptanceIssues('B22', { ...qualified, answer: { ...qualified.answer,
+      query_contract: { ...qualified.answer.query_contract, predicates: [] } } }, 2026, leaderOracle)).toContain('home_run_leader_plan_missing')
+    expect(calendarAcceptanceIssues('B22', { ...qualified, results: { aggregates: [...leader.results.aggregates, ...leader.results.aggregates] } }, 2026, leaderOracle)).toContain('home_run_leader_evidence_missing')
     expect(calendarAcceptanceIssues('B22', { ...leader, results: { aggregates: [{ ...leader.results.aggregates[0], stats: { homeRuns: 6 } }] } }, 2026, leaderOracle)).toContain('independent_home_run_total_mismatch')
   })
   it('B09/B11 keep their subject and requested fact assertions across the allowed newline difference', () => {

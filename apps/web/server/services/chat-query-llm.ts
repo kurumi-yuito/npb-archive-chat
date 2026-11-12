@@ -66,10 +66,19 @@ const plannerResponseFormat = {
   },
 } as const
 
+export const chatReasoningEffortSchema = z.enum(['none', 'low', 'medium', 'high', 'xhigh', 'max']).optional()
+
 export type ChatQueryLlmConfig = {
   baseUrl: string
   apiKey: string
   model: string
+  reasoningEffort?: z.infer<typeof chatReasoningEffortSchema>
+}
+
+export function chatCompletionModelParameters(config: ChatQueryLlmConfig) {
+  if (!config.reasoningEffort) return { model: config.model, temperature: 0 }
+  if (config.reasoningEffort === 'none') return { model: config.model, reasoning_effort: config.reasoningEffort, temperature: 0 }
+  return { model: config.model, reasoning_effort: config.reasoningEffort }
 }
 
 export class ChatQueryLlmHttpError extends Error {
@@ -121,8 +130,7 @@ export function createChatQueryLlm(
       context: ChatQueryParserContext = {},
     ): Promise<ChatStructuredQuery> {
       const body = JSON.stringify({
-        model: config.model,
-        temperature: 0,
+        ...chatCompletionModelParameters(config),
         response_format: plannerResponseFormat,
         messages: [
           { role: 'system', content: chatQueryParserSystemPrompt },

@@ -68,6 +68,10 @@ describe('official dictionary identity planning', () => {
       expect(await searchPlayerCandidates(query, { ...filters, year: 2024, team: '阪神' })).toEqual([])
       expect(await searchPlayerCandidates(query, { ...filters, team: '阪神' })).toMatchObject([{ player_id: 'one', teams: ['阪 神'], years: [2025] }])
       expect(await searchPlayerCandidates(query, { name: '検証', dictionaryOnly: true })).toHaveLength(2)
+      // A code-only release must also work against the older published schema.
+      database.exec('DROP INDEX idx_player_profiles_identity_key')
+      expect(await searchPlayerCandidates(query, filters)).toMatchObject([{ player_id: 'one', teams: ['ヤクルト'], years: [2025] }])
+      expect(await searchPlayerCandidates(query, { ...filters, year: 2024, team: '阪神' })).toEqual([])
     } finally { database.close() }
   })
 

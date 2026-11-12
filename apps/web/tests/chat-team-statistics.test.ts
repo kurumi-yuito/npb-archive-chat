@@ -47,11 +47,33 @@ describe('B28/B18 official club history to contract answer', () => {
       const ranked = await createContractChatService(service, parse(ranking)).answerQuestion('対象球団のリーグ順位')
       expect(ranked.answer.summary).toContain('2位')
       expect(ranked.structured_query?.filters).toMatchObject({ official_season: true, sort_by: 'rank', sort_direction: 'asc' })
+      expect(await service.aggregateGameResults({ official_season: true, year: 2026, team: '巨人', game_date: '2026-11-11' })).toEqual([])
+      const league = { kind: 'team' as const, role: 'subject' as const, mention: 'セ・リーグ' }
+      for (const entities of [[league, ...contract.entities], [...contract.entities, league]]) {
+        const withinLeague = { ...contract, entities, requested_output: [{ kind: 'team_statistics' as const, fields: ['rank'] }] }
+        const standing = await createContractChatService(service, parse(withinLeague)).answerQuestion('巨人はセ・リーグで何位？')
+        expect(standing.results.aggregates).toHaveLength(1)
+        expect(standing.answer.summary).toContain('2位')
+        expect(standing.structured_query?.filters).toMatchObject({ team: '巨人', official_season: true })
+        expect(standing.answer.query_contract?.entities).toEqual(entities)
+      }
+      await expect(createContractChatService(service, parse({ ...contract,
+        entities: [...contract.entities, { ...league, mention: 'パ・リーグ' }],
+      })).answerQuestion('巨人はパ・リーグで何位？')).rejects.toThrow('contradictory_league_team')
       const years: QueryContract = { ...contract, requested_output: [{ kind: 'team_statistics', fields: ['wins', 'losses', 'win_rate'] }],
         temporal_scope: { ...contract.temporal_scope, years: [], year_from: 2025, year_to: 2026 }, grouping: ['team', 'year'] }
       const yearly = await createContractChatService(service, parse(years)).answerQuestion('2年度の球団成績を比較')
       expect(yearly.results.aggregates.map((row) => [row.stats.year, row.stats.wins])).toEqual([[2025, 70], [2026, 76]])
       expect(yearly.answer.query_contract?.grouping).toEqual(['team', 'year'])
+      const why: QueryContract = { ...years, requested_output: [
+        ...years.requested_output, { kind: 'causal_explanation', fields: ['reason'] },
+      ] }
+      const explained = await createContractChatService(service, parse(why)).answerQuestion('前年と比べた成績変化の理由は？')
+      expect(explained.results.aggregates.map((row) => [row.stats.year, row.stats.wins])).toEqual([[2025, 70], [2026, 76]])
+      expect(explained.answer.summary).toContain('76勝')
+      expect(explained.answer.summary).toContain('断定できません')
+      expect(explained.answer.query_contract).toEqual(why)
+      expect(explained.answer.source_urls).toEqual(['https://npb.jp/bis/teams/yearly_g.html'])
       const allClubs = { ...contract, entities: [] }
       const missing = await createContractChatService(service, parse(allClubs)).answerQuestion('全12球団の勝敗')
       expect(missing.answer.result_count).toBe(0)

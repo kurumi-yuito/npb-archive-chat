@@ -132,6 +132,7 @@ export const searchEventsFiltersSchema = z.object({
   inning: z.number().int().positive().optional(),
   half: inningHalfSchema.optional(),
   team: coercedText.optional(),
+  opponent: coercedText.optional(),
   batter_name: coercedName.optional(),
   batter_player_id: z.string().min(1).optional(),
   pitcher_name: coercedName.optional(),
@@ -163,6 +164,7 @@ export type PlayerCandidate = z.infer<typeof playerCandidateSchema>
 
 /** games テーブル向けの一覧検索 */
 export const searchGamesFiltersSchema = z.object({
+  result_text_contains: z.string().min(1).optional(),
   date_from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   date_to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   year: z.number().int().min(1936).optional(),
@@ -180,6 +182,7 @@ export const searchGamesFiltersSchema = z.object({
 
 /** pitching_lines 向け検索（名前・チームは完全一致） */
 export const searchPitchingLinesFiltersSchema = z.object({
+  starter: z.boolean().optional(),
   date_from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   date_to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   year: z.number().int().min(1936).optional(),
@@ -199,6 +202,7 @@ export const searchPitchingLinesFiltersSchema = z.object({
 })
 
 export const searchBattingLinesFiltersSchema = z.object({
+  starter: z.boolean().optional(),
   level: z.enum(['first', 'farm']).optional(),
   date_from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   date_to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
@@ -247,6 +251,7 @@ export const playerAffiliationFiltersSchema = z.object({
 })
 
 export const gameDetailFiltersSchema = z.object({
+  result_text_contains: z.string().min(1).optional(),
   date_from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   date_to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   year: z.number().int().min(1936).optional(),
@@ -289,6 +294,8 @@ export const aggregateEventsFiltersSchema = searchEventsFiltersSchema.omit({
 })
 
 export const aggregateGamesFiltersSchema = z.object({
+  result_text_contains: z.string().min(1).optional(),
+  recent_games: z.number().int().positive().max(500).optional(),
   official_series_result: z.boolean().optional(),
   series_order: z.enum(['asc', 'desc']).optional(),
   official_season: z.boolean().optional(),
@@ -501,7 +508,9 @@ export const chatResponseSchema = z.object({
     player_selection_challenge: z.string().max(48000).optional(),
     query_contract: queryContractSchema.optional(),
     scope_fallback: z.object({ requested_year: z.number().int(), evidence_year: z.number().int(),
-      reason: z.literal('latest_verified_npb_season'), effective_contract: queryContractSchema }).optional(),
+      reason: z.enum(['latest_verified_npb_season', 'verified_other_club']), requested_team: z.string().optional(), evidence_team: z.string().optional(), effective_contract: queryContractSchema }).optional(),
+    metric_fallback: z.object({ requested_metric: z.string().min(1), evidence_metric: z.literal('battingAverage'),
+      reason: z.literal('unavailable_situational_statistic'), effective_contract: queryContractSchema }).optional(),
     summary: z.string().min(1),
     result_count: z.number().int().nonnegative(),
     remaining_count: z.number().int().nonnegative().optional(),
@@ -1096,3 +1105,5 @@ export { parseScoreTotal, readKnownGameScore } from './score-evidence'
 export { officialSeriesResultSchema, type OfficialSeriesResult } from './official-series-result'
 export { officialPlayerHistoryEvidenceSchema, verifiedPlayerCareerRows, annualPlayerHistoryRows, officialInningsOuts,
   type OfficialPlayerHistoryEvidence, type OfficialPlayerHistoryRow } from './official-player-history'
+
+export { officialCalendarFactsSchema, type OfficialCalendarFacts } from './official-calendar'

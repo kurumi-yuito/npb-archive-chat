@@ -64,7 +64,7 @@ describe('@npb/db', () => {
         .prepare('SELECT version FROM schema_migrations ORDER BY version ASC')
         .all() as Array<{ version: string }>
 
-      expect(applied).toHaveLength(15)
+      expect(applied).toHaveLength(16)
       expect(migrations).toEqual([
         { version: '0001_initial.sql' },
         { version: '0002_chat_usage.sql' },
@@ -81,6 +81,7 @@ describe('@npb/db', () => {
         { version: '0013_official_team_history.sql' },
         { version: '0014_official_source_observation_index.sql' },
         { version: '0015_official_series_history.sql' },
+        { version: '0016_official_calendar.sql' },
       ])
     } finally {
       database.close()

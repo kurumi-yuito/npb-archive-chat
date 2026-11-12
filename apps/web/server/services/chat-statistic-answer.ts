@@ -1,5 +1,5 @@
 import type { ChatResponseCore, ChatStructuredQuery, QueryContract } from '@npb/schemas'
-import { statisticDomain, statisticMetric } from './chat-statistic-metrics'
+import { allStatisticMetrics, statisticDomain, statisticMetric } from './chat-statistic-metrics'
 import { QueryContractCompileError } from './chat-contract-compiler'
 import { matchesGameTeamFilter } from '@npb/db'
 import { resolveContractTeamMention } from './chat-team-resolution'
@@ -22,12 +22,15 @@ export function formatScopedStatisticComparison(contract: QueryContract, respons
     const years = scope.temporal_scope.years
     const team = scope.entities.find((entity) => entity.kind === 'team' && entity.role === 'subject')?.mention
     const value = row?.stats[metric.field]
+    const career = scope.temporal_scope.relative === 'career' && years.length === 0 && scope.temporal_scope.year_from === null &&
+      scope.temporal_scope.year_to === null && scope.temporal_scope.date_from === null && scope.temporal_scope.date_to === null &&
+      row?.stats.careerProof === 'official_profile_annual_reconciled' && typeof row.stats.yearFrom === 'number' && typeof row.stats.yearTo === 'number'
     if (!row || row.kind !== domain || typeof value !== 'number' || !Number.isFinite(value) || !player?.player_id ||
-      row.stats.playerId !== player.player_id || years.length !== 1 || row.stats.year !== years[0] ||
+      row.stats.playerId !== player.player_id || (!career && (years.length !== 1 || row.stats.year !== years[0])) ||
       !['first', 'farm'].includes(String(row.stats.level)) ||
       (scope.competition_scope.level !== 'unspecified' && scope.competition_scope.level !== row.stats.level) ||
       (team && (typeof row.stats.team !== 'string' || !matchesGameTeamFilter(row.stats.team, resolveContractTeamMention(team))))) return null
-    return { label: `${years[0]}年・${scope.entities.find((entity) => entity.kind === 'player')?.mention ?? player.name}`,
+    return { label: `${career ? `${team ?? 'NPB'}在籍期間（${row.stats.yearFrom}〜${row.stats.yearTo}年）` : `${years[0]}年`}・${scope.entities.find((entity) => entity.kind === 'player')?.mention ?? player.name}`,
       value, level: row.stats.level }
   })
   if (operands.some((operand) => operand === null) || new Set(operands.map((operand) => operand?.level)).size !== 1) return '対象条件の一部を確認できないため、比較の結論は確定できません。'
@@ -35,6 +38,10 @@ export function formatScopedStatisticComparison(contract: QueryContract, respons
   const maximum = Math.max(...valid.map((operand) => operand.value)), minimum = Math.min(...valid.map((operand) => operand.value))
   if (maximum === minimum) return `${metric.label}は同じ値です。`
   const leaders = valid.filter((operand) => operand.value === maximum).map((operand) => operand.label).join('・')
+  if (['era', 'whip'].includes(metric.field)) {
+    const lowest = valid.filter((operand) => operand.value === minimum).map((operand) => operand.label).join('・')
+    return `${metric.label}の数値が最も低いのは${lowest}です。最大と最小の差は${(maximum - minimum).toFixed(metric.precision ?? 2)}です。`
+  }
   return `${metric.label}の数値が最も高いのは${leaders}です。`
 }
 
@@ -69,7 +76,7 @@ export function formatContractStatistics(input: {
     ...input.contract.aggregation.map((aggregation) => aggregation.field)]
   const identityFields = new Set(['name', 'player', 'player_name', 'playerName', 'player_id', 'playerId', 'team', 'team_name', 'teamName', 'year', 'source_url', 'sourceUrl'])
   const requested = fields.filter((field) => !identityFields.has(field))
-  const defaults = domain === 'batting' ? ['games', 'battingAverage', 'homeRuns', 'runsBattedIn'] : ['games', 'wins', 'losses', 'era']
+  const defaults = allStatisticMetrics(domain).map((metric) => metric.field)
   const metrics = [...new Map((requested.length ? requested : defaults).map((field) => {
     const metric = statisticMetric(domain, field)
     if (!metric) throw new QueryContractCompileError([`unsupported_answer_metric:${domain}:${field}`])
@@ -82,7 +89,8 @@ export function formatContractStatistics(input: {
   }
   if (!input.rows.length) return `指定された対象・期間に一致する${domain === 'batting' ? '打撃' : '投手'}成績は確認できませんでした。`
   const time = input.contract.temporal_scope
-  const period = time.relative === 'career' ? `NPB通算${input.asOf ? `（${input.asOf}）` : ''}`
+  const careerTeam = input.contract.entities.find((entity) => entity.kind === 'team' && entity.role === 'subject')?.mention
+  const period = time.relative === 'career' ? `${careerTeam ? `${careerTeam}在籍期間` : 'NPB通算'}${input.contract.grouping.includes('year') ? 'の年度別' : ''}${input.asOf ? `（${input.asOf}）` : ''}`
     : time.date_from !== null || time.date_to !== null ? `${time.date_from ?? ''}〜${time.date_to ?? ''}`
     : time.years.length ? `${time.years.join('・')}年度`
     : time.year_from !== null || time.year_to !== null ? `${time.year_from ?? ''}〜${time.year_to ?? ''}年度`
@@ -104,10 +112,21 @@ export function formatContractStatistics(input: {
       if (metric.unitStyle === 'suffix') return `${label}${formatted}${metric.unit ?? ''}`
       return metric.unit ? `${label}は${formatted}${metric.unit}です` : `${label}${formatted}`
     })
-    const name = input.rows.length === 1 && input.playerName ? input.playerName.replace(/\s+/gu, '') : row.label
+    const name = input.contract.grouping.includes('year') && typeof row.stats.year === 'number'
+      ? `${row.stats.year}年：${input.playerName?.replace(/\s+/gu, '') ?? row.label}`
+      : input.rows.length === 1 && input.playerName ? input.playerName.replace(/\s+/gu, '') : row.label
     const team = row.stats.subjectType !== 'team' && typeof row.stats.team === 'string' ? `（${row.stats.team}）` : ''
     const rank = input.contract.ordering.length ? `${index + 1}位: ` : ''
     return `${rank}${name}${team}：${values.join('、')}。${time.relative === 'career' ? 'NPB以外のリーグでの成績は対象外です。' : ''}`
   })
-  return `${period}の${domain === 'batting' ? '打撃' : '投手'}成績です。\n${lines.join('\n')}`
+  const selectionRule = domain === 'batting' && input.contract.ordering.some((order) => statisticMetric('batting', order.field)?.field === 'ops') &&
+    metrics.some((metric) => metric.field === 'onBasePercentage') && metrics.some((metric) => metric.field === 'sluggingPercentage')
+    ? '\n比較の指標はOPS（出塁率＋長打率）です。' : ''
+  const appearanceScope = 'starter' in input.query.filters && input.query.filters.starter !== undefined
+    ? input.query.filters.starter ? domain === 'pitching' ? '（先発登板のみ）' : '（スタメン出場のみ）'
+      : domain === 'pitching' ? '（救援登板のみ）' : '（途中出場のみ）' : ''
+  const multiYear = time.years.length > 1 || time.year_from !== null || time.year_to !== null
+  const partialPeriod = multiYear && !input.careerVerified && !input.rows.every((row) => row.stats.evidenceStatus === 'official_complete_scope')
+  const coverage = partialPeriod ? '\n以下は収録済み試合の部分集計です。指定期間全体の網羅性は確認できておらず、全期間の公式通算や全選手の順位とは断定できません。' : ''
+  return `${period}の${domain === 'batting' ? '打撃' : '投手'}成績${appearanceScope}です。${coverage}\n${lines.join('\n')}${selectionRule}`
 }

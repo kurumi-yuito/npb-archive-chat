@@ -23,14 +23,15 @@ describe('provider availability and bounded evaluation cost (Q-201)', () => {
     expect(unavailable.message).not.toContain('private debug page')
   })
 
-  it.each(['parser', 'verifier'] as const)('does not regenerate or retry a contract after %s credit exhaustion', async (stage) => {
+  it.each(['facts', 'parser', 'verifier'] as const)('does not regenerate or retry a contract after %s credit exhaustion', async (stage) => {
     const meaning = JSON.parse(readFileSync(new URL('../../../docs/eval-query-contracts.json', import.meta.url), 'utf8')).cases[0].meaning
     const candidate = new Response(JSON.stringify({ choices: [{ message: { content: JSON.stringify({ domain: 'npb', policy: 'execute', query_contract: meaning, clarification_reason: null, subject: null }) } }] }))
     const fetch = vi.fn()
+    if (stage !== 'facts') fetch.mockResolvedValueOnce(new Response(JSON.stringify({ choices: [{ message: { content: JSON.stringify({ entity_mentions: [], requires_causal_explanation: false, comparison_period: 'none' }) } }] })))
     if (stage === 'verifier') fetch.mockResolvedValueOnce(candidate)
     fetch.mockResolvedValueOnce(quota())
     await expect(createSemanticQueryLlm({ baseUrl: 'https://example.test/v1', apiKey: 'test', model: 'test' }, { fetch })('2025年にヤクルトの山田が打ったホームラン一覧'))
       .rejects.toMatchObject({ upstream: { reason: 'upstream_quota_exhausted', retryable: false } })
-    expect(fetch).toHaveBeenCalledTimes(stage === 'parser' ? 1 : 2)
+    expect(fetch).toHaveBeenCalledTimes(stage === 'facts' ? 1 : stage === 'parser' ? 2 : 3)
   })
 })

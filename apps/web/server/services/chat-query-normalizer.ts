@@ -103,6 +103,7 @@ function normalizeLegacyStructuredQuery(
     const normalizedPlayerNamesCount = normalizedPlayerNames?.length ?? 0
     const filters = {
       ...structuredQuery.filters,
+      position: normalizePosition(structuredQuery.filters.position),
       ...(normalizedTeam ? { team: normalizedTeam } : {}),
       ...(normalizedPlayerName ? { player_name: normalizedPlayerName } : {}),
       ...(normalizedPlayerNamesCount > 0 ? { player_names: normalizedPlayerNames } : {}),

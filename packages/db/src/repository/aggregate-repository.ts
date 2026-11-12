@@ -10,7 +10,7 @@ import {
 } from '@npb/schemas'
 import type { QueryDatabase } from '../query-driver'
 import { isNormalizedFactsSchema } from './schema-detection'
-import { canonicalTeamName, toJapaneseTeamAliases, toEnglishLeagueTeams, toGameTeamAliases } from './team-name-utils'
+import { canonicalLeagueTeamNames, canonicalTeamName, toJapaneseTeamAliases, toEnglishLeagueTeams, toGameTeamAliases } from './team-name-utils'
 import { venueSearchValues } from './venue-aliases'
 import { appendDateBounds, appendCompetitionLevel, type DateBounds } from './date-scope'
 import { aggregateOfficialBattingSeason } from './official-batting-aggregate'
@@ -19,6 +19,7 @@ import { canonicalPlayerFactCandidateSql, canonicalPlayerFactMatchSql, canonical
 import { searchOfficialTeamSeasons } from './official-team-history-repository'
 import { searchOfficialSeriesResults } from './official-series-repository'
 import { resolveSeasonFactIdentities } from './resolve-season-fact-identities'
+import { appendGameEventCondition } from './game-event-condition'
 
 export type AggregateRow = {
   kind: 'batting' | 'pitching' | 'events' | 'games'
@@ -38,7 +39,7 @@ export async function aggregateBattingLines(
   const groupByYear = normalized.group_by === 'year'
   const careerPlayerQuery = (normalized.player_name || normalized.player_id) &&
     !normalized.year && !normalized.year_from && !normalized.year_to
-  if (!careerPlayerQuery && !groupByYear && !normalized.game_date && !normalized.date_from && !normalized.date_to && !normalized.batting_order && !normalized.position) {
+  if (!careerPlayerQuery && !groupByYear && normalized.starter === undefined && !normalized.game_date && !normalized.date_from && !normalized.date_to && !normalized.batting_order && !normalized.position) {
     const bisRows = await aggregateCurrentBattingStats(database, normalized)
     if (bisRows.length > 0) {
       return bisRows
@@ -69,6 +70,7 @@ export async function aggregateBattingLines(
     clauses.push('batting_lines.batting_order = ?')
     values.push(normalized.batting_order)
   }
+  if (normalized.starter !== undefined) clauses.push(`batting_lines.batting_order IS ${normalized.starter ? 'NOT ' : ''}NULL`)
   if (normalized.position) {
     clauses.push('batting_lines.position LIKE ?')
     values.push(`%${normalized.position}%`)
@@ -170,6 +172,9 @@ export async function aggregatePitchingLines(
   const clauses: string[] = []
   const values: Array<string | number> = []
   appendGameClauses(clauses, values, normalized)
+  if (normalized.starter !== undefined) {
+    clauses.push(`pitching_lines.row_index ${normalized.starter ? '=' : '>'} (SELECT MIN(first_pitcher.row_index) FROM pitching_lines first_pitcher WHERE first_pitcher.game_id=pitching_lines.game_id AND first_pitcher.team=pitching_lines.team)`)
+  }
   if (normalized.pitcher_player_id) {
     addPitchingLinePlayerIdFilter(clauses, values, normalized.pitcher_player_id)
   } else if (normalized.pitcher_name) {
@@ -312,6 +317,7 @@ async function aggregateNormalizedBattingLines(
     clauses.push('batting_line_facts.batting_order = ?')
     values.push(normalized.batting_order)
   }
+  if (normalized.starter !== undefined) clauses.push(`batting_line_facts.batting_order IS ${normalized.starter ? 'NOT ' : ''}NULL`)
   if (normalized.position) {
     clauses.push('positions.position LIKE ?')
     values.push(`%${normalized.position}%`)
@@ -481,14 +487,14 @@ export async function aggregateEvents(
   const values: Array<string | number> = []
   appendGameClauses(clauses, values, normalized)
   if (normalized.team) {
-    const leagueTeams = toEnglishLeagueTeams(normalized.team)
-    if (leagueTeams) {
-      clauses.push(`events.offense_team IN (${leagueTeams.map(() => '?').join(', ')})`)
-      values.push(...leagueTeams)
-    } else {
-      clauses.push('events.offense_team = ?')
-      values.push(normalized.team)
-    }
+    const aliases = toEnglishLeagueTeams(normalized.team) ?? toGameTeamAliases(normalized.team)
+    clauses.push(`events.offense_team IN (${aliases.map(() => '?').join(', ')})`)
+    values.push(...aliases)
+  }
+  if (normalized.opponent) {
+    const aliases = toEnglishLeagueTeams(normalized.opponent) ?? toGameTeamAliases(normalized.opponent)
+    clauses.push(`(CASE WHEN events.half='top' THEN games.home_team_name ELSE games.away_team_name END) IN (${aliases.map(() => '?').join(', ')})`)
+    values.push(...aliases)
   }
   if (normalized.batter_name && !normalized.batter_player_id) {
     clauses.push('events.batter_name = ?')
@@ -820,8 +826,12 @@ export async function aggregateGameResults(
   filters: AggregateGamesFilters = {},
 ): Promise<AggregateRow[]> {
   const normalized = aggregateGamesFiltersSchema.parse(filters)
+  const recent = normalized.recent_games
+  if (recent && (!normalized.team || canonicalLeagueTeamNames(normalized.team).length !== 1 || normalized.official_season || normalized.official_series_result || normalized.group_by)) {
+    throw new Error('A recent game result window requires one club')
+  }
   if (normalized.official_series_result) {
-    if (normalized.official_season || normalized.team || normalized.opponent || normalized.venue || normalized.game_date || normalized.date_from || normalized.date_to || normalized.sort_by ||
+    if (normalized.result_text_contains || normalized.official_season || normalized.team || normalized.opponent || normalized.venue || normalized.game_date || normalized.date_from || normalized.date_to || normalized.sort_by ||
       (normalized.group_by && normalized.group_by !== 'year') || !normalized.competition) throw new Error('Unsupported official series scope')
     return searchOfficialSeriesResults(database, { competition: normalized.competition, year: normalized.year,
       year_from: normalized.year_from, year_to: normalized.year_to, order: normalized.series_order, limit: normalized.limit })
@@ -846,6 +856,7 @@ export async function aggregateGameResults(
   const clauses: string[] = ["games.game_id NOT LIKE 'f%'"]
   const values: Array<string | number> = []
   appendDateBounds(clauses, values, normalized, 'games.date')
+  appendGameEventCondition(clauses, values, normalized)
   if (normalized.game_date) {
     clauses.push('games.date = ?')
     values.push(normalized.game_date)
@@ -882,7 +893,14 @@ export async function aggregateGameResults(
     values.push(`%${normalized.competition}%`)
   }
 
+  if (recent) {
+    clauses.push(`${scoreSql('home')} IS NOT NULL AND ${scoreSql('away')} IS NOT NULL`)
+    clauses.push("LOWER(COALESCE(games.status, '')) NOT IN ('cancelled', 'canceled', 'postponed', 'unconfirmed', '中止', '試合中止', 'ノーゲーム')")
+  }
   const whereClause = `WHERE ${clauses.join(' AND ')}`
+  const gamesSource = recent
+    ? `(SELECT * FROM games ${whereClause} ORDER BY games.date DESC, games.game_id DESC LIMIT ?) AS games`
+    : 'games'
   const teamSelect = teamNames.length > 0 && normalized.team
     ? sqlStringLiteral(canonicalTeamName(normalized.team))
     : `CASE
@@ -897,6 +915,8 @@ export async function aggregateGameResults(
       `SELECT
         ${teamSelect} AS label,
         COUNT(*) AS total_games,
+        MIN(games.date) AS first_game_date,
+        MAX(games.date) AS last_game_date,
         json_group_array(DISTINCT games.game_id) AS evidence_game_ids,
         SUM(CASE
           WHEN (${teamSideWinSql('home', teamNames)} OR ${teamSideWinSql('away', teamNames)})
@@ -908,14 +928,15 @@ export async function aggregateGameResults(
           WHEN ${scoreSql('home')} IS NOT NULL
             AND ${scoreSql('home')} = ${scoreSql('away')}
           THEN 1 ELSE 0 END) AS draws
-      FROM games
-      ${whereClause}
+      FROM ${gamesSource}
+      ${recent ? '' : whereClause}
       ${groupBy}
       ORDER BY wins DESC, losses ASC, label ASC
       LIMIT ?`,
     )
     .all(
       ...values,
+      ...(recent ? [recent] : []),
       limit,
     )
 
@@ -928,6 +949,7 @@ export async function aggregateGameResults(
       losses: Number(row.losses ?? 0),
       draws: Number(row.draws ?? 0),
       total_games: Number(row.total_games ?? 0),
+      ...(recent ? { firstGameDate: String(row.first_game_date), lastGameDate: String(row.last_game_date) } : {}),
       evidenceGameIds: String(row.evidence_game_ids ?? '[]'),
     },
   }))

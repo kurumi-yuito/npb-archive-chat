@@ -32,7 +32,7 @@ export async function searchPitchingLines(
   const normalized = searchPitchingLinesFiltersSchema.parse(filters)
   const limit = normalized.limit ?? 50
 
-  const currentRows = normalized.game_date || normalized.date_from || normalized.date_to || normalized.game_id || normalized.recent || normalized.sort_by === 'pitchCount' || normalized.sort_by === 'inningsPitched'
+  const currentRows = normalized.starter !== undefined || normalized.game_date || normalized.date_from || normalized.date_to || normalized.game_id || normalized.recent || normalized.sort_by === 'pitchCount' || normalized.sort_by === 'inningsPitched'
     ? []
     : await searchCurrentPitchingStats(database, normalized, limit)
   if (currentRows.length > 0) {
@@ -50,6 +50,9 @@ export async function searchPitchingLines(
   const values: Array<string | number> = []
 
   appendDateBounds(clauses, values, normalized, 'games.date')
+  if (normalized.starter !== undefined) {
+    clauses.push(`pitching_lines.row_index ${normalized.starter ? '=' : '>'} (SELECT MIN(first_pitcher.row_index) FROM pitching_lines first_pitcher WHERE first_pitcher.game_id=pitching_lines.game_id AND first_pitcher.team=pitching_lines.team)`)
+  }
   if (normalized.game_date) {
     clauses.push('games.date = ?')
     values.push(normalized.game_date)
@@ -172,6 +175,9 @@ async function searchNormalizedPitchingLines(
     const teams = toJapaneseTeamAliases(filters.team)
     clauses.push(`teams.team_name IN (${teams.map(() => '?').join(', ')})`)
     values.push(...teams)
+  }
+  if (filters.starter !== undefined) {
+    clauses.push(`pitching_line_facts.row_index ${filters.starter ? '=' : '>'} (SELECT MIN(first_pitcher.row_index) FROM pitching_line_facts first_pitcher WHERE first_pitcher.game_id=pitching_line_facts.game_id AND first_pitcher.team_id=pitching_line_facts.team_id)`)
   }
   const rows = await database
     .prepare(

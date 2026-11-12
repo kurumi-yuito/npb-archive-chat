@@ -1213,3 +1213,5 @@ function toProjectRelative(filePath: string) {
 }
 export { parseOfficialRegistrationHistory, type RegistrationPageScope, type RegistrationHistoryEntry } from './registration-history'
 export { parseOfficialSeriesHistory, type OfficialSeriesSeason } from './series-history'
+
+export { parseOfficialCalendar } from './official-calendar.js'

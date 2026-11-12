@@ -52,6 +52,7 @@ export default defineNuxtConfig({
     chatQueryLlmBaseUrl: process.env.CHAT_QUERY_LLM_BASE_URL ?? 'https://api.openai.com/v1',
     chatQueryLlmApiKey: process.env.CHAT_QUERY_LLM_API_KEY ?? '',
     chatQueryLlmModel: process.env.CHAT_QUERY_LLM_MODEL ?? '',
+    chatQueryLlmReasoningEffort: process.env.CHAT_QUERY_LLM_REASONING_EFFORT ?? '',
     npbQaReplayToken: process.env.NPB_QA_REPLAY_TOKEN ?? '',
     chatAllowHeuristicFallback:
       process.env.CHAT_ALLOW_HEURISTIC_FALLBACK ?? (isDev ? 'true' : 'false'),

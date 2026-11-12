@@ -1,5 +1,15 @@
 # QAテストケース一覧 - 現行本番との差分
 
+## 2026-11-13 サンプル質問の文言更新
+
+現行Worker Versionは`168e6ff6-1e74-4e53-b1c9-d095e2a7196d`（100%配信）。トップの4文言だけを更新し、本番配信JSの文言とビルドIDを確認した。有料API呼び出し0回。バックエンドは11月12日の版と同一で、以下の自然文QA未実行・Release Ready未達の状態は変わらない。証拠は`data/logs/redesign-20261102/sample-prompts-20261113/receipt.json`。
+
+## 2026-11-12 修正版の本番反映（有料QA未実行）
+
+現行Worker Versionは`e0d9838b-d2ca-414b-871e-e5fc84acb9af`（100%配信）。旧配信`c19d9daf-3d4b-4228-ae95-c7e9b6f80c3a`からコードのみ切り替えた。DB変更・同期・秘密情報の変更はしていない。反映後の`/chat`・`/api/health`・ビルド情報はHTTP 200で、配信ビルドIDはローカル出力と一致した。
+
+予算制約に従い、有料モデルAPI呼び出しは0回。最新本番の自然文QA182件・Acceptance47件は未実行であり、旧版・隔離版・単体試験のPassを最新本番の合格へ流用しない。許容外差分0件・復旧完了・Release Readyとは判定しない。以下の回答はそれぞれ記載された過去バージョンの実行結果として保持する。配信・確認の証拠は`data/logs/redesign-20261102/release-code-only-20261112.json`と同名ディレクトリに保存した。
+
 ## 2026-11-02 再設計開始時の本番確認
 
 `wrangler deployments list`で最新配信Version `c19d9daf-3d4b-4228-ae95-c7e9b6f80c3a`を確認。今回の再設計コードは、この記録時点では未デプロイ。`/api/health`はHTTP 200。`/api/account`はHTTP 200で`billingConfigured: true`・`googleAuthConfigured: true`を返したが、ログイン・実決済・権限同期のE2E合格を意味しない。

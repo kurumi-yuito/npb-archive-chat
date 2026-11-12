@@ -7,6 +7,7 @@ export const chatDataRequirementSchema = z.enum([
   'player_profiles',
   'official_statistics',
   'official_team_statistics',
+  'official_calendar',
   'official_series_results',
   'events',
   'games',
@@ -160,6 +161,7 @@ export const chatIdentityIntentMetadataSchema = z.object({
 export type ChatIdentityIntentMetadata = z.infer<typeof chatIdentityIntentMetadataSchema>
 
 export const chatExecutionRepositorySchema = z.enum([
+  'searchOfficialCalendarAbsence',
   'searchPlayerInformation',
   'searchEvents',
   'searchGames',
@@ -281,7 +283,7 @@ export function inferDataRequirements(query: ChatStructuredQuery): ChatDataRequi
       case 'search_events':
         return ['events'] as ChatDataRequirement[]
       case 'search_games':
-        return ['games'] as ChatDataRequirement[]
+        return ['games', ...(query.filters.result_text_contains ? ['events'] : [])] as ChatDataRequirement[]
       case 'search_batting':
         return ['batting_lines'] as ChatDataRequirement[]
       case 'search_pitching':
@@ -299,7 +301,7 @@ export function inferDataRequirements(query: ChatStructuredQuery): ChatDataRequi
       case 'aggregate_events':
         return ['aggregate_events'] as ChatDataRequirement[]
       case 'aggregate_games':
-        return [query.filters.official_series_result ? 'official_series_results' : 'aggregate_games'] as ChatDataRequirement[]
+        return [query.filters.official_series_result ? 'official_series_results' : 'aggregate_games', ...(query.filters.result_text_contains ? ['events'] : [])] as ChatDataRequirement[]
       case 'award_winners':
         return ['award_winners'] as ChatDataRequirement[]
       case 'off_topic':

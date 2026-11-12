@@ -1,4 +1,5 @@
 import { appendDateBounds } from './date-scope'
+import { appendGameEventCondition } from './game-event-condition'
 import { gameDetailFiltersSchema, type GameDetailFilters } from '@npb/schemas'
 import type { QueryDatabase } from '../query-driver'
 import { venueSearchValues } from './venue-aliases'
@@ -22,6 +23,7 @@ export async function searchGameDetails(
   const normalized = gameDetailFiltersSchema.parse(filters)
   const clauses: string[] = ["games.game_id NOT LIKE 'f%'"]
   const values: Array<string | number> = []
+  appendGameEventCondition(clauses, values, normalized)
 
   if (normalized.game_id) {
     clauses.push('games.game_id = ?')

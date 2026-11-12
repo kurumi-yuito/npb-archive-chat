@@ -27,6 +27,7 @@ export type NormalizeParityResult = {
 }
 
 const NORMALIZED_TABLES = [
+  'official_calendar_observations',
   'official_series_results',
   'official_series_history_observations',
   'official_series_history_snapshots',
@@ -608,7 +609,7 @@ function identityNameSql(expression: string): string {
 
 function insertBisCurrentTables(database: SqliteDatabase): void {
   for (const table of ['official_statistic_snapshots', 'official_player_statistics', 'official_team_history_snapshots', 'official_team_seasons',
-    'official_series_history_snapshots', 'official_series_history_observations', 'official_series_results']) {
+    'official_series_history_snapshots', 'official_series_history_observations', 'official_series_results', 'official_calendar_observations']) {
     if (database.prepare("SELECT 1 FROM legacy.sqlite_master WHERE type='table' AND name=?").get(table)) {
       database.exec(`INSERT INTO ${table} SELECT * FROM legacy.${table}`)
     }

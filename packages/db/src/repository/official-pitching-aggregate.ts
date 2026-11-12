@@ -3,13 +3,13 @@ import type { QueryDatabase } from '../query-driver'
 import type { AggregateRow } from './aggregate-repository'
 import { readOfficialStatisticSeason } from './official-statistic-scope'
 
-const counts = { games: '登板', wins: '勝利', losses: '敗北', saves: 'セーブ', strikeouts: '三振', hitsAllowed: '安打', homeRunsAllowed: '本塁打', walks: '四球', hitBatters: '死球', earnedRuns: '自責点', runsAllowed: '失点', battersFaced: '打者' } as const
+const counts = { games: '登板', wins: '勝利', losses: '敗北', saves: 'セーブ', strikeouts: '三振', hitsAllowed: '安打', homeRunsAllowed: '本塁打', walks: '四球', hitBatters: '死球', earnedRuns: '自責点', runsAllowed: '失点', shutouts: '完封勝', battersFaced: '打者' } as const
 
 export async function aggregateOfficialPitchingSeason(database: QueryDatabase, filters: AggregatePitchingFilters): Promise<AggregateRow[] | null> {
   // Counting-stat leaderboards need no innings qualification. League ERA/WHIP
   // leaderboards still require separately verified qualification rules.
   const ids = new Set([...(filters.pitcher_player_ids ?? []), ...(filters.pitcher_player_id ? [filters.pitcher_player_id] : [])])
-  if ((!ids.size && ['era', 'whip'].includes(filters.sort_by ?? '')) || filters.game_date || filters.date_from || filters.date_to || filters.game_id || filters.recent || filters.min_innings_per_start !== undefined || filters.max_earned_runs_per_start !== undefined || filters.max_runs_per_start !== undefined) return null
+  if (filters.starter !== undefined || (!ids.size && ['era', 'whip'].includes(filters.sort_by ?? '')) || filters.game_date || filters.date_from || filters.date_to || filters.game_id || filters.recent || filters.min_innings_per_start !== undefined || filters.max_earned_runs_per_start !== undefined || filters.max_runs_per_start !== undefined) return null
   const evidence = await readOfficialStatisticSeason(database, filters, 'pitching')
   if (!evidence) return null
   type Group = { name: string; playerId: string; teams: Set<string>; urls: Set<string>; outs: number; stats: Record<string, number | null> }

@@ -1,7 +1,8 @@
+import { playerComparisonIssues, otherPlayersIssues } from './acceptance-player-comparison.mjs'
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { createEvaluationD1Budget, parseD1ReadAudit } from './evaluation-d1-budget.mjs'
-import { matchesAcceptanceSummary } from './acceptance-summary.mjs'
+import { matchesAcceptanceSummary, teamBattingComparisonPattern } from './acceptance-summary.mjs'
 import { calendarAcceptanceIssues } from './acceptance-calendar.mjs'
 import { evaluationUpstreamStopReason } from './qa-runner-retry.mjs'
 
@@ -15,6 +16,12 @@ const calendarOracles = Object.fromEntries(await Promise.all(Object.entries({ B2
   try { return [id, JSON.parse(await readFile(new URL(`../docs/eval-source-oracles/${filename}`, import.meta.url), 'utf8'))] }
   catch { return [id, null] }
 })))
+
+let playerComparisonOracle = null
+try { playerComparisonOracle = JSON.parse(await readFile(new URL('../docs/eval-source-oracles/2025-okamoto-oyama-batting-averages.json', import.meta.url), 'utf8')) } catch { /* Checked as a missing oracle for the affected cases. */ }
+
+let otherPlayersOracle = null
+try { otherPlayersOracle = JSON.parse(await readFile(new URL('../docs/eval-source-oracles/2025-s-other-home-run-batters.json', import.meta.url), 'utf8')) } catch { /* Checked for MT02-Turn3. */ }
 
 const conversations = [
   single('B01', '昨日の巨人の試合結果を教えて', 'partial'),
@@ -84,7 +91,7 @@ const acceptancePatterns = {
   B05: /山本.*防御率/u,
   B06: /1位:.*本塁打/u,
   B07: /1位:[\s\S]*2位:[\s\S]*3位:[\s\S]*4位:[\s\S]*5位:/u,
-  B08: /チーム打率[\s\S]*巨人[\s\S]*阪神/u,
+  B08: teamBattingComparisonPattern,
   B09: /村上宗隆.*(?:判定できません|2025年)/u,
   B10: /断定.*できません/u,
   B11: /佐々木朗希.*加藤貴/u,
@@ -115,15 +122,15 @@ const acceptancePatterns = {
   'MT01-Turn3': /前年.*勝.*敗/u,
   'MT02-Turn1': /村上.*2025年.*22本/u,
   'MT02-Turn2': /2025年.*22本.*2024年/u,
-  'MT02-Turn3': /村上以外/u,
+  'MT02-Turn3': /村上(?:宗隆)?以外/u,
   'MT03-Turn1': /巨人対阪神.*(?:ありません|存在しない)/u,
   'MT03-Turn2': /巨人対阪神戦.*存在しない/u,
   'MT03-Turn3': /対象.*(?:確定していません|指定)/u,
   'MT04-Turn1': /山岡.*防御率/u,
   'MT04-Turn2': /未来.*確認できません/u,
-  'MT05-Turn1': /岡本.*\.326/u,
-  'MT05-Turn2': /大山.*\.253/u,
-  'MT05-Turn3': /岡本.*\.326.*大山.*\.253.*岡本のほうが高い/u,
+  'MT05-Turn1': /岡本.*2025年.*\.327/u,
+  'MT05-Turn2': /2025年度.*大山.*\.264/u,
+  'MT05-Turn3': /岡本.*\.327.*大山.*\.264|大山.*\.264.*岡本.*\.327/u,
 }
 
 const selected = conversations.filter((conversation) =>
@@ -188,7 +195,7 @@ acceptanceRun: for (const conversation of selected) {
     }
     const budgetIssue = readBudget.observe(result.id, result.d1ReadAudit)
     const upstreamIssue = evaluationUpstreamStopReason(result.status, body)
-    const calendarIssues = calendarAcceptanceIssues(turn.id, body, undefined, calendarOracles[turn.id])
+    const calendarIssues = [...calendarAcceptanceIssues(turn.id, body, undefined, calendarOracles[turn.id]), ...playerComparisonIssues(turn.id, body, playerComparisonOracle), ...otherPlayersIssues(turn.id, body, otherPlayersOracle)]
     result.calendarScopeIssues = calendarIssues
     const pattern = acceptancePatterns[turn.id]
     result.verdict = !budgetIssue && !calendarIssues.length && result.status === 200 && typeof result.summary === 'string' &&

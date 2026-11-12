@@ -1,6 +1,7 @@
 import type { ChatQueryService } from '@npb/db'
 
 const methods = new Set<keyof ChatQueryService>([
+  'searchOfficialCalendarAbsence',
   'searchEvents', 'searchGames', 'searchBattingLines', 'searchPitchingLines',
   'searchRosterEntries', 'searchPlayerAffiliations', 'searchGameDetails',
   'searchPlayerInformation',
@@ -21,7 +22,9 @@ export function lazyChatQueryService(load: () => Promise<ChatQueryService>): Cha
       return async (...args: unknown[]) => {
         pending ??= load()
         const service = await pending
-        return Reflect.apply(Reflect.get(service, key), service, args)
+        const method = Reflect.get(service, key)
+        if (key === 'searchOfficialCalendarAbsence' && method === undefined) return null
+        return Reflect.apply(method, service, args)
       }
     },
   })

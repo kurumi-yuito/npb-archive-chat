@@ -12,6 +12,7 @@ import { createChatService } from '../services/chat-service'
 import { createContractChatService } from '../services/chat-contract-service'
 import { issuePlayerSelectionChallenge, verifyPlayerSelectionChallenge, InvalidPlayerSelectionChallengeError } from '../utils/player-selection-challenge'
 import { createSemanticQueryLlm } from '../services/chat-semantic-llm'
+import { chatReasoningEffortSchema } from '../services/chat-query-llm'
 import { QueryContractCompileError } from '../services/chat-contract-compiler'
 import { EventEvidenceError } from '../services/chat-event-evidence'
 import {
@@ -154,7 +155,11 @@ export default defineEventHandler(async (event) => withD1ReadAudit(async () => {
     }
 
     try {
+      const reasoningValue = cloudflareEnv?.CHAT_QUERY_LLM_REASONING_EFFORT ?? config.chatQueryLlmReasoningEffort
+      const reasoningEffort = chatReasoningEffortSchema.safeParse(reasoningValue === '' ? undefined : reasoningValue)
+      if (!reasoningEffort.success) throw createPublicApiError(503, 'chat_llm_configuration_invalid', '質問解析の設定を確認できませんでした。')
       const chatQueryLlmConfig = {
+        reasoningEffort: reasoningEffort.data,
         baseUrl:
           typeof cloudflareEnv?.CHAT_QUERY_LLM_BASE_URL === 'string'
             ? cloudflareEnv.CHAT_QUERY_LLM_BASE_URL

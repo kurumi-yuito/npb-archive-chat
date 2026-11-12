@@ -12,6 +12,8 @@ const batting: StatisticMetric[] = [
   { field: 'walks', label: '四球', aliases: ['walks'] },
   { field: 'strikeouts', label: '三振', aliases: ['strikeouts'] },
   { field: 'battingAverage', label: '打率', aliases: ['batting_average', 'average', 'avg'], precision: 3 },
+  { field: 'onBasePercentage', label: '出塁率', aliases: ['on_base_percentage', 'obp'], precision: 3 },
+  { field: 'sluggingPercentage', label: '長打率', aliases: ['slugging_percentage', 'slg'], precision: 3 },
   { field: 'ops', label: 'OPS', aliases: ['ops'], precision: 3 },
   { field: 'isoP', label: 'IsoP', aliases: ['iso_p'], precision: 3 },
   { field: 'bbRate', label: '四球率', aliases: ['bb_rate'], precision: 3 },
@@ -26,6 +28,8 @@ const pitching: StatisticMetric[] = [
   { field: 'hitsAllowed', label: '被安打', aliases: ['hits_allowed', '安打'] },
   { field: 'walks', label: '与四球', aliases: ['walks', '四球'] },
   { field: 'earnedRuns', label: '自責点', aliases: ['earned_runs'] },
+  { field: 'runsAllowed', label: '失点', aliases: ['runs_allowed', 'runs'] },
+  { field: 'shutouts', label: '完封勝', aliases: ['shutouts', '完封勝利'] },
   { field: 'era', label: '防御率', aliases: ['era', 'earned_run_average'], precision: 2 },
   { field: 'whip', label: 'WHIP', aliases: ['whip'], precision: 2 },
 ]

@@ -110,6 +110,7 @@ export function validateEventEvidence(row: EventRow, filters: SearchEventsFilter
   if (filters.date_to && row.gameDate > filters.date_to) issues.push('date_to_mismatch')
   if (filters.game_id && row.gameId !== filters.game_id) issues.push('game_mismatch')
   if (filters.team && !matchesGameTeamFilter(row.offenseTeam, filters.team)) issues.push('team_mismatch')
+  if (filters.opponent && (!row.opponentTeam || !matchesGameTeamFilter(row.opponentTeam, filters.opponent))) issues.push('opponent_mismatch')
   if (row.gameId.startsWith('f')) issues.push('competition_level_mismatch')
   if (filters.event_type && row.eventType !== filters.event_type) issues.push('event_type_mismatch')
   if (filters.event_subtype && row.eventSubtype !== filters.event_subtype) issues.push('event_subtype_mismatch')

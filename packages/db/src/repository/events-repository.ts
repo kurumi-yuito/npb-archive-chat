@@ -7,7 +7,7 @@ import {
   type SearchEventsFilters,
 } from '@npb/schemas'
 import type { QueryDatabase } from '../query-driver'
-import { toEnglishLeagueTeams } from './team-name-utils'
+import { toEnglishLeagueTeams, toGameTeamAliases } from './team-name-utils'
 import { isNormalizedFactsSchema } from './schema-detection'
 
 export type EventRow = {
@@ -127,14 +127,14 @@ export async function searchEvents(
   }
 
   if (normalizedFilters.team) {
-    const leagueTeams = toEnglishLeagueTeams(normalizedFilters.team)
-    if (leagueTeams) {
-      clauses.push(`events.offense_team IN (${leagueTeams.map(() => '?').join(', ')})`)
-      values.push(...leagueTeams)
-    } else {
-      clauses.push('events.offense_team = ?')
-      values.push(normalizedFilters.team)
-    }
+    const aliases = toEnglishLeagueTeams(normalizedFilters.team) ?? toGameTeamAliases(normalizedFilters.team)
+    clauses.push(`events.offense_team IN (${aliases.map(() => '?').join(', ')})`)
+    values.push(...aliases)
+  }
+  if (normalizedFilters.opponent) {
+    const aliases = toEnglishLeagueTeams(normalizedFilters.opponent) ?? toGameTeamAliases(normalizedFilters.opponent)
+    clauses.push(`(CASE WHEN events.half='top' THEN games.home_team_name ELSE games.away_team_name END) IN (${aliases.map(() => '?').join(', ')})`)
+    values.push(...aliases)
   }
 
   if (normalizedFilters.batter_name && !normalizedFilters.batter_player_id) {
@@ -302,14 +302,14 @@ async function searchNormalizedEvents(
     values.push(normalizedFilters.half === 'top' ? 1 : 2)
   }
   if (normalizedFilters.team) {
-    const leagueTeams = toEnglishLeagueTeams(normalizedFilters.team)
-    if (leagueTeams) {
-      clauses.push(`offense_team.team_name IN (${leagueTeams.map(() => '?').join(', ')})`)
-      values.push(...leagueTeams)
-    } else {
-      clauses.push('offense_team.team_name = ?')
-      values.push(normalizedFilters.team)
-    }
+    const aliases = toEnglishLeagueTeams(normalizedFilters.team) ?? toGameTeamAliases(normalizedFilters.team)
+    clauses.push(`offense_team.team_name IN (${aliases.map(() => '?').join(', ')})`)
+    values.push(...aliases)
+  }
+  if (normalizedFilters.opponent) {
+    const aliases = toEnglishLeagueTeams(normalizedFilters.opponent) ?? toGameTeamAliases(normalizedFilters.opponent)
+    clauses.push(`(CASE WHEN event_facts.half_code=1 THEN home_team.team_name ELSE away_team.team_name END) IN (${aliases.map(() => '?').join(', ')})`)
+    values.push(...aliases)
   }
   if (normalizedFilters.batter_player_id) {
     clauses.push('event_facts.batter_player_id = ?')

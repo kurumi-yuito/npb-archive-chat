@@ -5,7 +5,8 @@ import { createChatService } from '../server/services/chat-service'
 
 it('does no initialization until a query and shares initialization for concurrent queries', async () => {
   const searchGames = vi.fn(async () => [])
-  const load = vi.fn(async () => ({ searchGames }) as unknown as ChatQueryService)
+  const searchOfficialCalendarAbsence = vi.fn(async () => null)
+  const load = vi.fn(async () => ({ searchGames, searchOfficialCalendarAbsence }) as unknown as ChatQueryService)
   const service = await lazyChatQueryService(load)
   expect('searchBattingLines' in service && 'aggregateEvents' in service).toBe(true)
   expect('prepare' in service).toBe(false)
@@ -13,6 +14,8 @@ it('does no initialization until a query and shares initialization for concurren
   await Promise.all([service.searchGames({ year: 2025 }), service.searchGames({ year: 2026 })])
   expect(load).toHaveBeenCalledTimes(1)
   expect(searchGames.mock.calls).toHaveLength(2)
+  await service.searchOfficialCalendarAbsence!({ game_date: '2025-06-10', team: '巨人', opponent: '阪神' })
+  expect(searchOfficialCalendarAbsence).toHaveBeenCalledOnce()
 })
 
 it('is consumed as a query service by the chat service, not as a raw database', async () => {

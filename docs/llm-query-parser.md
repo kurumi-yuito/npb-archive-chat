@@ -141,6 +141,7 @@ fallback の責務は「ローカルの構成確認やユニットテストで�
   既定値は `https://api.openai.com/v1`
 - `CHAT_QUERY_LLM_API_KEY`
 - `CHAT_QUERY_LLM_MODEL`
+- `CHAT_QUERY_LLM_REASONING_EFFORT` は任意。`none`、`low`、`medium`、`high`、`xhigh`、`max`を受け付ける。使用するモデルが対応する値を設定する。`none`以外の推論設定ではAPI要求の`temperature`を省略する。[OpenAI公式のモデル移行ガイド](https://developers.openai.com/api/docs/guides/latest-model#gpt-61-sol)
 
 production では未設定時に 503 を返す。
 dev/test では `CHAT_ALLOW_HEURISTIC_FALLBACK=true` のときだけ fallback parser で動く。
@@ -187,3 +188,11 @@ Done:
 
 - 外部 LLM eval の CI 固定化
 - provider ごとの本番運用設定
+
+## 契約経路の回帰修正（2026-11-12）
+
+現在の契約経路では、独立した意味抽出・契約生成・意味照合を行う。「NPB」はアーカイブのドメインとして扱い、固有の大会指定へ追加しない。「直近N試合」の選手間比較へ年度別の同日カレンダー窓を要求しない。敬称を含む選手名、球団と選手の組み合わせ、年別・球団別の条件は、候補解決から各出力の検索まで保持する。
+
+投打未指定の成績は内部出力 `player_statistics` に残し、解決した公式プロフィールの根拠から具体化する。利用可能な履歴のない「それ詳しく」「答えになっていない」は `unresolved_request` と欠落条件を持つclarifyとして扱い、架空の選手・試合を作らない。これらは既存QAの要求を保持するための内部表現であり、実行できる新規検索種別ではない。
+
+この節の修正後の実モデル再評価は、評価用上流の残高不足で未完了。保存済み契約の再実行や単体試験は、自然文解析・正式本番QAのPassには数えない。

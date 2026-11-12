@@ -34,6 +34,13 @@ describe('contract statistic answers', () => {
     expect(text).not.toContain('9')
   })
 
+  it('labels unverified multiple-season sums as captured subsets (Q53)', () => {
+    const period: QueryContract = { ...contract, temporal_scope: { ...contract.temporal_scope, years: [], year_from: 2023, year_to: 2025, relative: null } }
+    const query = compileQueryContract(period)[0]!.query
+    expect(formatContractStatistics({ contract: period, query, rows })).toContain('収録済み試合の部分集計')
+    expect(formatContractStatistics({ contract: period, query, rows, careerVerified: true })).not.toContain('部分集計')
+  })
+
   it('rejects missing-domain or invalid numeric evidence instead of repeating it', () => {
     const query = compileQueryContract(contract)[0]!.query
     expect(() => formatContractStatistics({ contract, query, rows: [{ ...rows[0]!, kind: 'batting' }] })).toThrow('statistic_result_domain_mismatch')

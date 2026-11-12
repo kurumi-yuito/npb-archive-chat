@@ -14,8 +14,12 @@ import type { SemanticRequest } from './chat-semantic-llm'
 import { formatContractStatistics, formatScopedStatisticComparison, formatTeamStatisticComparison } from './chat-statistic-answer'
 import { officialProfileMetricStats, searchOfficialCareerEvidence } from './chat-career-evidence'
 import { searchOpponentStarters } from './chat-appearance-context'
-import { formatContractTeamStatistics } from './chat-team-statistic-answer'
+import { formatContractTeamStatistics, formatRecordedVenueStatistics } from './chat-team-statistic-answer'
+import { filterStatisticRows, isPlayerExclusion } from './chat-statistic-predicates'
 import { formatContractSeriesResults } from './chat-series-answer'
+import { isDirectMatchupPredicate, isUnavailableScoringPositionAverage, isUnverifiedForeignRegistration, projectsEventPlayers } from './chat-output-capabilities'
+import { resolveContractTeamMention } from './chat-team-resolution'
+import { completeOfficialStatisticPopulation } from './chat-statistic-population'
 
 type SemanticParser = (message: string, context: { history?: ChatRequest['history'] }) => Promise<SemanticRequest>
 type ResolvedEntity = { entity: QueryContract['entities'][number]; resolution: PlayerResolution }
@@ -32,8 +36,48 @@ export function createContractChatService(databaseService: ChatQueryService, par
       } : value
     } })
     const request = await parse(message, { history: options.history })
-    if (request.policy !== 'execute') return policyResponse(message, request)
+    if (request.policy !== 'execute') {
+      const response = policyResponse(message, request)
+      const known = request.query_contract
+      if (request.policy === 'clarify' && known && !['farm', 'both'].includes(known.competition_scope.level)) {
+        const teams = known.entities.filter((entity) => entity.kind === 'team')
+        const time = known.temporal_scope
+        if (teams.length === 2 && time.date_from && time.date_from === time.date_to) {
+          const absence = await queryService.searchOfficialCalendarAbsence?.({ game_date: time.date_from,
+            team: teams[0]!.mention, opponent: teams[1]!.mention })
+          if (absence) {
+            response.answer.summary = `${absence.date}の${absence.team}対${absence.opponent}戦は、NPB公式戦カレンダーに存在しないため、その試合の選手は特定できません。対象となる試合や選手名を指定してください。`
+            response.answer.source_urls = [absence.sourceUrl]
+          }
+        }
+      }
+      return response
+    }
     const contract = request.query_contract!
+    if (contract.predicates.some(isUnverifiedForeignRegistration)) {
+      return chatResponseCoreSchema.parse({ message, structured_query: null, results: emptyResults(), sources: [], answer: {
+        summary: '外国人登録区分を確認できる公式根拠が収録されていないため、その条件に該当する選手や順位は確定できません。名前の表記や出生地だけで外国人登録を推測することはできません。',
+        query_contract: contract, result_count: 0, source_urls: [],
+      } })
+    }
+    const onlyOutput = contract.requested_output.length === 1 ? contract.requested_output[0] : undefined
+    if (onlyOutput?.kind === 'batting_statistics' && !onlyOutput.scope && onlyOutput.fields.some(isUnavailableScoringPositionAverage)) {
+      const requestedMetric = onlyOutput.fields.find(isUnavailableScoringPositionAverage)!
+      if (contract.predicates.some((predicate) => isUnavailableScoringPositionAverage(predicate.field))) {
+        return chatResponseCoreSchema.parse({ message, structured_query: null, results: emptyResults(), sources: [], answer: {
+          summary: '得点圏打率は収録済みデータから算出できないため、その条件に該当する選手は確定できません。通常打率を得点圏打率として扱うことはできません。',
+          query_contract: contract, result_count: 0, source_urls: [],
+        } })
+      }
+      const effective: QueryContract = { ...contract, requested_output: [{ ...onlyOutput,
+        fields: [...new Set(onlyOutput.fields.map((field) => isUnavailableScoringPositionAverage(field) ? 'battingAverage' : field))] }],
+      ordering: contract.ordering.map((order) => isUnavailableScoringPositionAverage(order.field) ? { ...order, field: 'battingAverage' } : order) }
+      const alternative = await createContractChatService(queryService, async () => ({ ...request, query_contract: effective })).answerQuestion(message, options)
+      return chatResponseCoreSchema.parse({ ...alternative, answer: { ...alternative.answer, query_contract: contract,
+        metric_fallback: { requested_metric: requestedMetric, evidence_metric: 'battingAverage', reason: 'unavailable_situational_statistic', effective_contract: effective },
+        summary: `得点圏打率は収録済みデータから直接算出できません。以下は代替としての通常打率であり、得点圏打率の順位ではありません。\n${alternative.answer.summary}`,
+      } })
+    }
     if (contract.requested_output.length === 1 && contract.requested_output[0]!.kind === 'game_schedule') {
       return chatResponseCoreSchema.parse({ message, structured_query: null, results: emptyResults(), sources: [], answer: {
         summary: '未来の試合日程・登板予定は収録対象外のため、収録済み記録からは確認できません。NPB公式サイトの試合日程をご確認ください。\nhttps://npb.jp/games/',
@@ -46,7 +90,13 @@ export function createContractChatService(databaseService: ChatQueryService, par
         query_contract: contract, result_count: 0, source_urls: [],
       } })
     }
-    if (contract.requested_output.some((output) => output.scope || ['game_schedule', 'staff_information'].includes(output.kind))) {
+    if (contract.requested_output.length === 1 && contract.requested_output[0]!.kind === 'causal_explanation') {
+      return chatResponseCoreSchema.parse({ message, structured_query: null, results: emptyResults(), sources: [], answer: {
+        summary: '順位や成績が変化した理由は、収録済みの試合結果・成績だけでは断定できません。数値の比較と、変化の原因の確認は分けて扱う必要があります。',
+        query_contract: contract, result_count: 0, source_urls: [],
+      } })
+    }
+    if (contract.requested_output.some((output) => output.scope || ['game_schedule', 'staff_information', 'causal_explanation'].includes(output.kind))) {
       if (contract.requested_output.length > 8) throw new QueryContractCompileError(['scoped_operation_budget_exceeded'])
       const responses: ChatResponseCore[] = []
       for (const output of contract.requested_output) {
@@ -56,7 +106,8 @@ export function createContractChatService(databaseService: ChatQueryService, par
         const time = effective.temporal_scope
         const period = time.years.length ? `${time.years.join('・')}年` : time.date_from || time.date_to
           ? `${time.date_from ?? ''}〜${time.date_to ?? ''}` : time.year_from || time.year_to ? `${time.year_from ?? ''}〜${time.year_to ?? ''}年` : ''
-        response.answer.summary = `${[period, subjects].filter(Boolean).join('・')}：\n${response.answer.summary}`
+        const heading = [period, subjects].filter(Boolean).join('・')
+        if (heading) response.answer.summary = `${heading}：\n${response.answer.summary}`
         responses.push(response)
       }
       const resolutions = responses.flatMap((response) => response.answer.resolved_player ? [response.answer.resolved_player] : [])
@@ -67,6 +118,8 @@ export function createContractChatService(databaseService: ChatQueryService, par
     if (unresolved) {
       const supplemental = options.selectedPlayer ? null : await latestVerifiedSeasonResponse(queryService, contract, message, unresolved)
       if (supplemental) return supplemental
+      const otherClub = options.selectedPlayer ? null : await verifiedOtherClubResponse(databaseService, contract, message, unresolved)
+      if (otherClub) return otherClub
       const resolution = unresolved.resolution
       const choices = resolution.candidates.map((candidate) => `${candidate.name}（${[candidate.primary_team, ...(candidate.positions ?? []), ...(candidate.uniform_numbers ?? []).map((number) => `背番号${number}`)].filter(Boolean).join('・')}）`).join('、')
       return chatResponseCoreSchema.parse({ message, structured_query: null,
@@ -79,7 +132,7 @@ export function createContractChatService(databaseService: ChatQueryService, par
     }
     let operations
     try {
-      operations = contract.requested_output.some((output) => output.kind === 'appearance_records')
+      operations = contract.requested_output.some((output) => ['appearance_records', 'player_statistics'].includes(output.kind))
         ? await planGenericAppearances(queryService, contract, identities) : compileQueryContract(contract)
     } catch (error) {
       if (!(error instanceof QueryContractCompileError) || !error.issues.some((issue) => ['appearance_role_ambiguous', 'appearance_role_evidence_required'].includes(issue))) throw error
@@ -92,29 +145,34 @@ export function createContractChatService(databaseService: ChatQueryService, par
     for (const operation of operations) {
       const query = applyResolvedIds(normalizeChatStructuredQuery(operation.query), identities)
       const operationContract = query.query_contract!
+      const officialTeamSeason = operation.output.kind === 'team_statistics' && query.intent === 'aggregate_games' && query.filters.official_season === true
       const opponentStarterRequested = operation.output.kind === 'pitching_records' && operation.output.fields.includes('opponentStarter')
       // Identity IDs are additional proof; the original mention and scopes remain unchanged.
       const available = operation.output.kind === 'player_information'
-        ? ['player_profiles', 'source_snapshots'] as const : operation.output.kind === 'team_statistics'
+        ? ['player_profiles', 'source_snapshots'] as const : officialTeamSeason
           ? ['official_team_statistics', 'source_snapshots'] as const : inferDataRequirements(query)
-      const issues = validateQueryContractExecution(operationContract, query, [...available, ...(opponentStarterRequested ? ['game_details', 'events'] as const : [])])
+      const issues = validateQueryContractExecution(operationContract, query, [...available, ...(opponentStarterRequested ? ['game_details', 'events'] as const : [])], operation.statisticPredicates)
       if (issues.length) throw new QueryContractCompileError(issues)
       const results = emptyResults()
       let completeness
-      const career = operationContract.temporal_scope.relative === 'career' && identities.length === 1 &&
+      const profilePeriod = operationContract.temporal_scope
+      const profileStatistic = (profilePeriod.relative === 'career' || !profilePeriod.relative &&
+        (profilePeriod.years.length > 1 || profilePeriod.year_from !== null || profilePeriod.year_to !== null)) && identities.length === 1 &&
         ['batting_statistics', 'pitching_statistics'].includes(operation.output.kind)
         ? await searchOfficialCareerEvidence(queryService, { contract: operationContract,
           domain: operation.output.kind === 'batting_statistics' ? 'batting' : 'pitching',
           playerId: identities[0]!.resolution.player_id!, playerName: identities[0]!.resolution.name ?? identities[0]!.entity.mention }) : null
+      const career = profileStatistic?.verified || profilePeriod.relative === 'career' ? profileStatistic : null
       if (career) results.aggregates = career.rows
       else switch (query.intent) {
         case 'search_events': {
-          results.events = operationContract.completeness.mode === 'all'
+          const completeEvents = operationContract.completeness.mode === 'all' || projectsEventPlayers(operationContract)
+          results.events = completeEvents
             ? await searchCompleteEventEvidence(queryService, query.filters)
             : await queryService.searchEvents(query.filters)
           const invalid = results.events.flatMap((row) => validateEventEvidence(row as Parameters<typeof validateEventEvidence>[0], query.filters))
           if (invalid.length) throw new EventEvidenceError([...new Set(invalid)])
-          if (operationContract.completeness.mode === 'all') completeness = await verifyOfficialHomeRunTotal(queryService, query.filters, results.events as Awaited<ReturnType<typeof queryService.searchEvents>>)
+          if (completeEvents) completeness = await verifyOfficialHomeRunTotal(queryService, query.filters, results.events as Awaited<ReturnType<typeof queryService.searchEvents>>)
           break
         }
         case 'search_games': results.games = await queryService.searchGames(query.filters); break
@@ -125,7 +183,14 @@ export function createContractChatService(databaseService: ChatQueryService, par
           if (operation.output.kind === 'player_information') results.playerInformation = await queryService.searchPlayerInformation(query.filters)
           else results.affiliations = await queryService.searchPlayerAffiliations({ ...query.filters, dictionaryOnly: true })
           break
-        case 'game_detail': results.gameDetails = await queryService.searchGameDetails(query.filters); break
+        case 'game_detail':
+          results.gameDetails = await queryService.searchGameDetails(query.filters)
+          for (const game of results.gameDetails) {
+            results.events.push(...await queryService.searchEvents({ game_id: game.gameId, limit: 500 }))
+            results.batting.push(...await queryService.searchBattingLines({ game_id: game.gameId, limit: 500 }))
+            results.pitching.push(...await queryService.searchPitchingLines({ game_id: game.gameId, limit: 500 }))
+          }
+          break
         case 'aggregate_batting': results.aggregates = await queryService.aggregateBattingLines(query.filters); break
         case 'aggregate_pitching': results.aggregates = await queryService.aggregatePitchingLines(query.filters); break
         case 'aggregate_events': results.aggregates = await queryService.aggregateEvents(query.filters); break
@@ -133,11 +198,38 @@ export function createContractChatService(databaseService: ChatQueryService, par
         case 'award_winners': results.awards = await queryService.searchAwardWinners({ year: query.filters.year!, award_type: query.filters.award_type ?? 'rookie_of_the_year' }); break
         case 'off_topic': throw new QueryContractCompileError(['unexpected_off_topic_execution'])
       }
+      if (operation.statisticPredicates?.length) {
+        try {
+          let completePopulation = false
+          if (results.aggregates.length >= 100 && results.aggregates.every((row) => row.stats.evidenceStatus === 'official_complete_scope')) {
+            results.aggregates = await completeOfficialStatisticPopulation(queryService, query)
+            completePopulation = true
+          }
+          const excludedPlayers = new Map<string, string>()
+          for (const predicate of operation.statisticPredicates.filter(isPlayerExclusion)) {
+            const mention = String(predicate.value)
+            const exclusions = await resolveContractPlayers(queryService, { ...operationContract,
+              entities: [...operationContract.entities.filter((entity) => entity.kind !== 'player'), { kind: 'player', role: 'subject', mention }],
+              predicates: [], requested_output: [{ kind: 'player_information', fields: ['name'] }] })
+            const resolution = exclusions[0]?.resolution
+            if (resolution?.status !== 'resolved' || !resolution.player_id) throw new Error('statistic_exclusion_identity_unverified')
+            excludedPlayers.set(mention, resolution.player_id)
+          }
+          results.aggregates = filterStatisticRows(query, operation.statisticPredicates, results.aggregates, excludedPlayers, completePopulation)
+          if (['top_n', 'bounded'].includes(operationContract.completeness.mode)) results.aggregates = results.aggregates.slice(0, operationContract.completeness.limit!)
+        } catch (error) {
+          throw new QueryContractCompileError([error instanceof Error ? error.message : 'statistic_predicate_failed'])
+        }
+      }
       const appearanceContext = opponentStarterRequested ? await searchOpponentStarters(queryService, results.pitching) : null
       if (appearanceContext) {
         results.events.push(...appearanceContext.events)
         results.gameDetails.push(...appearanceContext.games)
       }
+      const calendarAbsence = (query.intent === 'search_games' || query.intent === 'game_detail' || query.intent === 'aggregate_games') &&
+        !results.games.length && !results.gameDetails.length && results.aggregates.every((row) => row.total === 0) &&
+        !['farm', 'both'].includes(operationContract.competition_scope.level)
+        ? await queryService.searchOfficialCalendarAbsence?.(query.filters) : null
       const incompleteStatisticIdentity = results.aggregates.some((row) => row.stats.evidenceStatus === 'official_identity_incomplete')
       const gameIds = [...new Set([
         ...results.events.map((row) => row.gameId), ...results.games.map((row) => row.gameId),
@@ -158,13 +250,14 @@ export function createContractChatService(databaseService: ChatQueryService, par
       const player = operationIdentities.length === 1 ? operationIdentities[0]!.resolution : null
       const metadata = buildChatExecutionMetadata(query, player, buildPlannerOutput(query, false), identities.map(({ resolution }) => resolution))
       if (opponentStarterRequested) metadata.dataRequirements = requirementsForContract(operationContract)
-      if (contract.requested_output.some((output) => output.kind === 'appearance_records')) metadata.dataRequirements = [...new Set([...metadata.dataRequirements, 'player_profiles' as const])]
+      if (identities.length && contract.requested_output.some((output) => ['appearance_records', 'player_statistics'].includes(output.kind))) metadata.dataRequirements = [...new Set([...metadata.dataRequirements, 'player_profiles' as const])]
       metadata.repositories = [...executedRepositories].flatMap((name) => {
         const parsed = chatExecutionRepositorySchema.safeParse(name)
         return parsed.success ? [parsed.data] : []
       })
       if (operation.output.kind === 'player_information') metadata.dataRequirements = ['player_profiles', 'official_statistics', 'source_snapshots']
-      if (operation.output.kind === 'team_statistics') metadata.dataRequirements = ['official_team_statistics', 'source_snapshots']
+      if (officialTeamSeason) metadata.dataRequirements = ['official_team_statistics', 'source_snapshots']
+      if (calendarAbsence) metadata.dataRequirements = [...metadata.dataRequirements, 'official_calendar']
       if (career) metadata.dataRequirements = ['player_profiles', 'official_statistics', 'source_snapshots']
       if (incompleteStatisticIdentity || results.aggregates.some((row) => row.stats.evidenceStatus === 'official_complete_scope')) metadata.dataRequirements = ['official_statistics', 'source_snapshots']
       const profileAffiliation = results.affiliations.some((row) => row.sourceKind === 'official_profile' || row.sourceKind === 'official_registration')
@@ -174,7 +267,7 @@ export function createContractChatService(databaseService: ChatQueryService, par
         if (!Array.isArray(urls) || !urls.every((url) => typeof url === 'string' && /^https:\/\/npb\.jp\/bis\//u.test(url))) throw new QueryContractCompileError(['invalid_statistic_sources'])
         return urls as string[]
       }))]
-      const statisticSummary = incompleteStatisticIdentity ? null : operation.output.kind === 'series_result' ? formatContractSeriesResults(operationContract, results.aggregates) : operation.output.kind === 'team_statistics' ? formatContractTeamStatistics(operationContract, results.aggregates) : formatContractStatistics({ contract: operationContract, query, rows: results.aggregates, playerName: player?.name ?? undefined,
+      const statisticSummary = incompleteStatisticIdentity ? null : operation.output.kind === 'series_result' ? formatContractSeriesResults(operationContract, results.aggregates) : operation.output.kind === 'team_statistics' ? officialTeamSeason ? formatContractTeamStatistics(operationContract, results.aggregates) : formatRecordedVenueStatistics(operationContract, results.aggregates, query.intent === 'aggregate_games' ? query.filters.year : undefined) : formatContractStatistics({ contract: operationContract, query, rows: results.aggregates, playerName: player?.name ?? undefined,
         careerVerified: career?.verified, asOf: career?.basisText })
       const answer: ChatResponseCore['answer'] = incompleteStatisticIdentity ? {
         summary: `${player?.name ?? '指定対象'}の指定条件に対応する公式成績表は取得できましたが、同名の記録と選手IDの対応に未確認の部分があります。未確認の行を除いた数値を完全な成績としては回答できません。`,
@@ -188,6 +281,21 @@ export function createContractChatService(databaseService: ChatQueryService, par
         result_count: results.affiliations.length, source_urls: [...new Set(results.affiliations.flatMap((row) => row.sourceUrl ? [row.sourceUrl] : []))],
         resolved_player: player, execution_metadata: publicExecutionMetadata(metadata),
       } : formatChatAnswer({ question: message, structuredQuery: query, results, sources, playerResolution: player, executionMetadata: metadata })
+      const exclusions = operation.statisticPredicates?.filter(isPlayerExclusion) ?? []
+      if (projectsEventPlayers(operationContract)) {
+        const grouped = formatEventPlayerGroups(results.events)
+        answer.summary = grouped.summary
+        answer.result_count = grouped.count
+      }
+      if (calendarAbsence) {
+        const card = `${calendarAbsence.team}${calendarAbsence.opponent ? `対${calendarAbsence.opponent}` : ''}`
+        answer.summary = `${calendarAbsence.date}の${card}戦は、NPB公式戦カレンダーに存在しないため、該当する公式戦はありません。`
+        answer.source_urls = [calendarAbsence.sourceUrl]
+        answer.result_count = 0
+        results.aggregates = []
+      }
+      if (exclusions.length) answer.summary = `${exclusions.map((predicate) => String(predicate.value)).join('・')}以外の指定条件に一致する成績です。
+${answer.summary}`
       answer.query_contract = contract
       if (incompleteStatisticIdentity) results.aggregates = []
       if (player?.name && ['recent_appearances', 'latest_appearance'].includes(operationContract.temporal_scope.relative ?? '')) {
@@ -238,8 +346,33 @@ export function createContractChatService(databaseService: ChatQueryService, par
       }
       responses.push(chatResponseCoreSchema.parse({ message, structured_query: query, answer, results, sources }))
     }
-    return mergeContractResponses(contract, responses, identities.map(({ resolution }) => resolution))
+    const merged = mergeContractResponses(contract, responses, identities.map(({ resolution }) => resolution))
+    if (contract.predicates.some(isDirectMatchupPredicate)) {
+      const names = contract.entities.filter((entity) => entity.kind === 'player').map((entity) => entity.mention).join('と')
+      merged.answer.summary = merged.results.events.length
+        ? `${names}の直接対決として確認できた記録です。\n${responses.filter((response) => response.results.events.length).map((response) => response.answer.summary).join('\n')}`
+        : `${names}の直接対決に該当する記録は収録データから確認できませんでした。別の試合への出場だけを直接対決の根拠にはしません。`
+      merged.answer.query_contract = contract
+    }
+    return merged
   } }
+}
+
+function formatEventPlayerGroups(events: ChatResponseCore['results']['events']): { summary: string; count: number } {
+  if (!events.length) return { summary: '指定された条件に一致する選手の記録は、収録データから確認できませんでした。', count: 0 }
+  const groups = new Map<string, { name: string; events: typeof events }>()
+  for (const row of events) {
+    const actor = row.eventType === 'plate_appearance' ? { name: row.batterName, url: row.batterUrl }
+      : row.eventType === 'runner_event' ? { name: row.runnerName, url: row.runnerUrl } : null
+    if (!actor?.name || !actor.url || !/^https:\/\/npb\.jp\/bis\/players\/[^/]+\.html$/u.test(actor.url)) {
+      return { summary: '指定条件に一致する記録はありますが、選手IDの対応を確認できないため、一意な選手別の一覧は確定できません。出典付きの個別記録をご確認ください。', count: 0 }
+    }
+    const group: { name: string; events: typeof events } = groups.get(actor.url) ?? { name: actor.name, events: [] }
+    group.events.push(row)
+    groups.set(actor.url, group)
+  }
+  const lines = [...groups.values()].map((group) => `${group.name}：\n${group.events.map((row) => `${row.gameDate}${row.opponentTeam ? `・対${row.opponentTeam}` : ''}：${row.resultText}`).join('\n')}`)
+  return { summary: `指定条件の記録を選手IDごとにまとめた一覧です。\n${lines.join('\n\n')}`, count: groups.size }
 }
 
 function mergeContractResponses(contract: QueryContract, responses: ChatResponseCore[], resolutions: PlayerResolution[]): ChatResponseCore {
@@ -279,7 +412,14 @@ function mergeContractResponses(contract: QueryContract, responses: ChatResponse
 
 /** Generic form requests retain an unspecified domain until official identity/position evidence is available. */
 async function planGenericAppearances(service: ChatQueryService, contract: QueryContract, identities: ResolvedEntity[]) {
-  if (!identities.length || !['recent_appearances', 'latest_appearance'].includes(contract.temporal_scope.relative ?? '')) {
+  if (!identities.length && contract.entities.some((entity) => entity.kind === 'team') &&
+    contract.aggregation.some((item) => item.operation === 'count' && item.field === 'games') &&
+    contract.predicates.some((predicate) => ['position', 'battingOrder', 'batting_order'].includes(predicate.field))) {
+    return compileQueryContract({ ...contract, requested_output: contract.requested_output.map((output) =>
+      output.kind === 'appearance_records' ? { ...output, kind: 'batting_records' } : output) })
+  }
+  const genericStatistics = contract.requested_output.some((output) => output.kind === 'player_statistics')
+  if (!identities.length || (!genericStatistics && !['recent_appearances', 'latest_appearance'].includes(contract.temporal_scope.relative ?? ''))) {
     throw new QueryContractCompileError(['appearance_player_scope_required'])
   }
   const operations = []
@@ -287,26 +427,16 @@ async function planGenericAppearances(service: ChatQueryService, contract: Query
     const profiles = await service.searchPlayerInformation({ ...identityFiltersForContract(contract), player_id: identity.resolution.player_id!, includeCareer: true })
     if (profiles.length !== 1 || profiles[0]!.playerId !== identity.resolution.player_id) throw new QueryContractCompileError(['appearance_role_evidence_required'])
     const profile = profiles[0]!
-    const latestYear = Math.max(...profile.registrations.map((row) => row.year))
-    const positions = [...new Set(profile.registrations.filter((row) => row.year === latestYear).map((row) => row.position).filter(Boolean))]
-    let kind: 'batting_records' | 'pitching_records' | null = null
-    if (positions.length === 1) {
-      if (positions[0] === '投手') kind = 'pitching_records'
-      else if (['捕手', '内野手', '外野手'].includes(positions[0]!)) kind = 'batting_records'
-    }
-    if (!positions.length) {
-      const domains = [...new Set((profile.annualStatistics ?? []).filter((row) => row.sourceUrl === `https://npb.jp/bis/players/${profile.playerId}.html` &&
-        Number(row.metrics[row.kind === 'batting' ? '試合' : '登板']) > 0).map((row) => row.kind))]
-      if (domains.length === 1) kind = domains[0] === 'batting' ? 'batting_records' : 'pitching_records'
-    }
-    if (!kind) throw new QueryContractCompileError(['appearance_role_ambiguous'])
-    const resolvedKind = kind
+    const domain = verifiedProfileStatisticDomain(profile)
+    if (!domain) throw new QueryContractCompileError(['appearance_role_ambiguous'])
+    const resolvedKind = domain === 'batting' ? 'batting_records' as const : 'pitching_records' as const
     // A generic appearance projection can resolve to a concrete projection
     // already present in the same scope. Fetch it once, preserving every
     // requested field instead of duplicating the query and answer paragraph.
     const projections = new Map<QueryContract['requested_output'][number]['kind'], QueryContract['requested_output'][number]>()
     for (const output of contract.requested_output) {
-      const concrete = output.kind === 'appearance_records' ? { ...output, kind: resolvedKind } : output
+      const concrete = output.kind === 'appearance_records' ? { ...output, kind: resolvedKind }
+        : output.kind === 'player_statistics' ? { ...output, kind: resolvedKind === 'batting_records' ? 'batting_statistics' as const : 'pitching_statistics' as const } : output
       const previous = projections.get(concrete.kind)
       projections.set(concrete.kind, previous ? { ...previous, fields: [...new Set([...previous.fields, ...concrete.fields])] } : concrete)
     }
@@ -316,6 +446,69 @@ async function planGenericAppearances(service: ChatQueryService, contract: Query
     operations.push(...compileQueryContract(effective))
   }
   return operations
+}
+
+function verifiedProfileStatisticDomain(profile: NonNullable<ChatResponseCore['results']['playerInformation']>[number]): 'batting' | 'pitching' | null {
+  const latestYear = Math.max(...profile.registrations.map((row) => row.year))
+  const positions = [...new Set(profile.registrations.filter((row) => row.year === latestYear).map((row) => row.position).filter(Boolean))]
+  if (positions.length === 1) {
+    if (positions[0] === '投手') return 'pitching'
+    if (['捕手', '内野手', '外野手'].includes(positions[0]!)) return 'batting'
+  }
+  if (!positions.length) {
+    const domains = [...new Set((profile.annualStatistics ?? []).filter((row) => row.sourceUrl === `https://npb.jp/bis/players/${profile.playerId}.html` &&
+      Number(row.metrics[row.kind === 'batting' ? '試合' : '登板']) > 0).map((row) => row.kind))]
+    if (domains.length === 1) return domains[0]!
+  }
+  return null
+}
+
+/** Explain an unmatched club condition before supplying separately verified current-season evidence. */
+async function verifiedOtherClubResponse(service: ChatQueryService, contract: QueryContract, message: string, unresolved: ResolvedEntity): Promise<ChatResponseCore | null> {
+  const time = contract.temporal_scope
+  const requestedYear = identityFiltersForContract(contract).year
+  const currentYear = Number(new Intl.DateTimeFormat('en', { timeZone: 'Asia/Tokyo', year: 'numeric' }).format(new Date()))
+  const clubs = contract.entities.filter((entity) => entity.kind === 'team')
+  const players = contract.entities.filter((entity) => entity.kind === 'player')
+  if (unresolved.resolution.status !== 'not_found' || requestedYear !== currentYear || clubs.length !== 1 || clubs[0]!.role !== 'subject' ||
+    players.length !== 1 || contract.entities.length !== 2 || contract.predicates.length || contract.requested_output.length !== 1 ||
+    !['player_statistics', 'batting_statistics', 'pitching_statistics'].includes(contract.requested_output[0]!.kind) ||
+    time.date_from || time.date_to || (time.relative !== null && time.relative !== 'current_season') ||
+    ['farm', 'both'].includes(contract.competition_scope.level) || contract.competition_scope.competitions.length) return null
+  const currentContract: QueryContract = { ...contract, entities: players }
+  const current = (await resolveContractPlayers(service, currentContract))[0]
+  if (current?.resolution.status !== 'resolved' || !current.resolution.player_id || !current.resolution.name) return null
+  const historical = (await resolveContractPlayers(service, { ...contract,
+    entities: [clubs[0]!, { ...players[0]!, mention: current.resolution.name }],
+    temporal_scope: { ...time, years: [], year_from: null, year_to: null, relative: null },
+    requested_output: [{ kind: 'player_information', fields: ['name'] }],
+  }))[0]
+  if (historical?.resolution.status !== 'resolved' || historical.resolution.player_id !== current.resolution.player_id) return null
+  const profiles = await service.searchPlayerInformation({ player_id: current.resolution.player_id, includeCareer: true })
+  if (profiles.length !== 1 || profiles[0]!.playerId !== current.resolution.player_id) return null
+  const profileUrl = `https://npb.jp/bis/players/${current.resolution.player_id}.html`
+  if (!profiles[0]!.sourceUrls.includes(profileUrl) || !profiles[0]!.affiliations.some((row) =>
+    row.year < requestedYear && matchesGameTeamFilter(row.team, clubs[0]!.mention))) return null
+  const domain = contract.requested_output[0]!.kind === 'player_statistics' ? verifiedProfileStatisticDomain(profiles[0]!)
+    : contract.requested_output[0]!.kind === 'batting_statistics' ? 'batting' : 'pitching'
+  if (!domain) return null
+  const records = (profiles[0]!.annualStatistics ?? []).filter((row) => row.kind === domain && row.year === requestedYear &&
+    row.sourceUrl === `https://npb.jp/bis/players/${current.resolution.player_id}.html`)
+  if (records.length !== 1 || !records[0]!.team || matchesGameTeamFilter(records[0]!.team, clubs[0]!.mention)) return null
+  const evidenceTeam = records[0]!.team
+  const effective: QueryContract = { ...contract, entities: contract.entities.map((entity) => entity.kind === 'team' ? { ...entity, mention: evidenceTeam } : entity) }
+  const response = await createContractChatService(service, async () => ({ domain: 'npb', policy: 'execute', query_contract: effective,
+    clarification_reason: null, subject: null })).answerQuestion(message)
+  if (response.answer.scope_fallback || response.answer.resolved_player?.player_id !== current.resolution.player_id ||
+    response.results.aggregates.length !== 1 || response.results.aggregates[0]!.stats.evidenceStatus !== 'official_complete_scope' ||
+    response.results.aggregates[0]!.stats.year !== requestedYear) return null
+  return chatResponseCoreSchema.parse({ ...response, structured_query: null, answer: { ...response.answer, query_contract: contract,
+    source_urls: [...new Set([...response.answer.source_urls, profileUrl])],
+    scope_fallback: { requested_year: requestedYear, evidence_year: requestedYear, reason: 'verified_other_club',
+      requested_team: clubs[0]!.mention, evidence_team: evidenceTeam, effective_contract: effective },
+    summary: `${clubs[0]!.mention}・${requestedYear}年度の条件では${players[0]!.mention}を特定できませんでした。過去の${clubs[0]!.mention}在籍と同じ公式IDを確認できた${current.resolution.name.replace(/\s+/gu, '')}について、参考として${evidenceTeam}での${requestedYear}年度の公式成績を示します。
+${response.answer.summary}`,
+  } })
 }
 
 /** Preserve the requested scope, and label a verified earlier NPB season as supplemental evidence. */
@@ -343,17 +536,26 @@ async function latestVerifiedSeasonResponse(service: ChatQueryService, contract:
   const output = contract.requested_output[0]
   if (unresolved.resolution.status !== 'not_found' || requestedYear !== currentYear || contract.entities.filter((entity) => entity.kind === 'player').length !== 1 ||
     contract.entities.some((entity) => entity.kind !== 'player' && !(entity.kind === 'team' && entity.role === 'subject')) ||
-    contract.requested_output.length !== 1 || !output || !['batting_statistics', 'pitching_statistics'].includes(output.kind) ||
+    contract.requested_output.length !== 1 || !output || !['player_statistics', 'batting_statistics', 'pitching_statistics'].includes(output.kind) ||
     time.date_from !== null || time.date_to !== null || (time.relative !== null && time.relative !== 'current_season') || contract.predicates.length ||
-    contract.competition_scope.level === 'farm' || contract.competition_scope.competitions.length) return null
+    ['farm', 'both'].includes(contract.competition_scope.level) || contract.competition_scope.competitions.length) return null
   const historicalContract: QueryContract = { ...contract, requested_output: [{ kind: 'player_information', fields: ['name'] }],
     temporal_scope: { ...time, years: [], year_from: null, year_to: null, relative: null } }
-  const historical = (await resolveContractPlayers(service, historicalContract))[0]
+  // Check the most recent prior season with the original club constraint
+  // before considering the undated dictionary across unrelated generations.
+  const previousSeason = identityFiltersForContract(contract).team
+    ? (await resolveContractPlayers(service, { ...historicalContract,
+      temporal_scope: { ...historicalContract.temporal_scope, years: [requestedYear - 1] } }))[0] : undefined
+  if (previousSeason?.resolution.status === 'ambiguous') return null
+  const historical = previousSeason?.resolution.status === 'resolved'
+    ? previousSeason : (await resolveContractPlayers(service, historicalContract))[0]
   if (!historical || historical.resolution.status !== 'resolved' || !historical.resolution.player_id) return null
   const player = historical.resolution
   const profiles = await service.searchPlayerInformation({ player_id: player.player_id!, player_name: player.name ?? player.input, includeCareer: true })
   if (profiles.length !== 1 || profiles[0]!.playerId !== player.player_id) return null
-  const profile = profiles[0]!, domain = output.kind === 'batting_statistics' ? 'batting' : 'pitching'
+  const profile = profiles[0]!, domain = output.kind === 'player_statistics' ? verifiedProfileStatisticDomain(profile)
+    : output.kind === 'batting_statistics' ? 'batting' : 'pitching'
+  if (!domain) return null
   const records = (profile.annualStatistics ?? []).filter((row) => row.kind === domain && row.sourceUrl === `https://npb.jp/bis/players/${player.player_id}.html`)
   const latestYear = Math.max(...records.map((row) => row.year))
   if (!Number.isInteger(latestYear) || latestYear >= requestedYear) return null
@@ -364,12 +566,15 @@ async function latestVerifiedSeasonResponse(service: ChatQueryService, contract:
   const team = identityFiltersForContract(contract).team
   if (team && (!record.team || !matchesGameTeamFilter(record.team, team))) return null
   if (!Number.isInteger(stats.games) || stats.games! < 0) return null
-  const effective: QueryContract = { ...contract, temporal_scope: { ...time, years: [latestYear], year_from: null, year_to: null, relative: null } }
+  const effective: QueryContract = { ...contract,
+    requested_output: contract.requested_output.map((item) => item.kind === 'player_statistics'
+      ? { ...item, kind: domain === 'batting' ? 'batting_statistics' as const : 'pitching_statistics' as const } : item),
+    temporal_scope: { ...time, years: [latestYear], year_from: null, year_to: null, relative: null } }
   const operations = compileQueryContract(effective)
   if (operations.length !== 1) return null
   const query = applyResolvedIds(operations[0]!.query, [historical])
   const results = emptyResults()
-  results.aggregates = [{ kind: domain, label: profile.name, total: stats.games!, stats: { ...stats, playerId: profile.playerId, year: latestYear, team: record.team } }]
+  results.aggregates = [{ kind: domain, label: profile.name, total: stats.games!, stats: { ...stats, playerId: profile.playerId, year: latestYear, team: record.team, level: 'first' } }]
   const summary = formatContractStatistics({ contract: effective, query, rows: results.aggregates, playerName: profile.name })
   if (!summary) return null
   return chatResponseCoreSchema.parse({ message, structured_query: null, results, sources: [], answer: {
@@ -380,9 +585,16 @@ async function latestVerifiedSeasonResponse(service: ChatQueryService, contract:
 }
 
 export async function resolveContractPlayers(service: Pick<ChatQueryService, 'searchPlayerCandidates'>, contract: QueryContract, selection?: ChatRequest['selected_player']): Promise<ResolvedEntity[]> {
-  const scope = identityFiltersForContract(contract)
+  const commonScope = identityFiltersForContract(contract)
   const resolutions: ResolvedEntity[] = []
   for (const entity of contract.entities.filter((entity) => entity.kind === 'player')) {
+    const eventOutput = contract.requested_output.some((output) => output.kind === 'event_records')
+    const roleTeam = eventOutput ? contract.entities.find((candidate) => candidate.kind === 'team' &&
+      (candidate.role === entity.role || (entity.role === 'pitcher' && candidate.role === 'opponent') ||
+      (['batter', 'runner'].includes(entity.role) && candidate.role === 'subject'))) : undefined
+    const { team: commonTeam, ...scopeWithoutTeam } = commonScope
+    const scope: ReturnType<typeof identityFiltersForContract> = roleTeam ? { ...commonScope, team: resolveContractTeamMention(roleTeam.mention) }
+      : eventOutput && entity.role === 'pitcher' ? scopeWithoutTeam : { ...scopeWithoutTeam, ...(commonTeam ? { team: commonTeam } : {}) }
     const input = normalizeFreeText(entity.mention) ?? entity.mention
     const datedTeam = Boolean(scope.team && (scope.year || scope.year_from || scope.year_to))
     const raw = await service.searchPlayerCandidates({ ...scope, name: input, aliases: [input],
@@ -416,7 +628,8 @@ function applyResolvedIds(query: ChatStructuredQuery, identities: ResolvedEntity
   const filters: Record<string, unknown> = { ...query.filters }
   const names: string[] = []
   const ids: string[] = []
-  for (const { entity, resolution } of identities) {
+  for (const { entity: originalEntity, resolution } of identities) {
+    const entity = query.query_contract?.entities.find((candidate) => candidate.kind === 'player' && candidate.mention === originalEntity.mention) ?? originalEntity
     const eventOperation = query.intent === 'search_events' || query.intent === 'aggregate_events'
     const field = eventOperation ? (entity.role === 'batter' ? 'batter_name' : entity.role === 'pitcher' ? 'pitcher_name' : entity.role === 'runner' ? 'runner_name' : 'player_name') : subjectNameField(query.intent)
     if (typeof filters[field] === 'string' && compact(String(filters[field])) === compact(entity.mention)) filters[field.replace(/_name$/u, field === 'player_name' ? '_id' : '_player_id')] = resolution.player_id
@@ -434,7 +647,9 @@ function emptyResults(): ChatResponseCore['results'] {
 
 function policyResponse(message: string, request: SemanticRequest): ChatResponseCore {
   const source = 'https://baseball.yahoo.co.jp/npb/'
-  const summary = request.policy === 'clarify' ? formatClarificationAnswer({ action: 'clarify', reason: request.clarification_reason! })
+  const missingReference = request.policy === 'clarify' && ['missing_history', 'history_target_unavailable'].includes(request.clarification_reason ?? '')
+  const summary = missingReference ? '参照先の対象が確定していません。対象となる選手名や試合を指定してください。'
+    : request.policy === 'clarify' ? formatClarificationAnswer({ action: 'clarify', reason: request.clarification_reason! })
     : request.policy === 'news' ? `ニュース・公示・契約などの最新情報には対応していません。スポーツナビをご確認ください。\n${source}`
       : request.policy === 'realtime' ? `試合速報などリアルタイム情報には対応していません。\n${source}`
         : request.policy === 'prediction' ? '優勝や将来の成績は、収録済みデータだけでは正確に予測できません。'

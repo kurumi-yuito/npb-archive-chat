@@ -17,9 +17,14 @@ export function calendarAcceptanceIssues(id, body, year = Number(new Intl.DateTi
   if (!summary.includes(String(year)) || !(summary.includes(`${Number(month)}月`) || summary.includes(`${year}-${month}`))) issues.push('calendar_scope_not_disclosed')
   if (!body?.answer?.source_urls?.some((url) => /^https:\/\/npb\.jp\//u.test(url))) issues.push('official_source_missing')
   if (id === 'B22') {
-    if (body?.structured_query?.intent !== 'aggregate_batting' || filters.sort_by !== 'homeRuns' || filters.limit !== 1) issues.push('home_run_leader_plan_missing')
+    const contract = body?.answer?.query_contract
+    const scope = contract?.requested_output?.[0]?.scope ?? contract
+    const qualifiedTopOne = filters.limit === 100 && scope?.completeness?.mode === 'top_n' && scope.completeness.limit === 1 &&
+      scope.ordering?.length === 1 && ['homeRuns', 'home_runs'].includes(scope.ordering[0].field) && scope.ordering[0].direction === 'desc' &&
+      scope.predicates?.some((predicate) => ['homeRuns', 'home_runs'].includes(predicate.field) && predicate.operator === 'gt' && predicate.value === 0)
+    if (body?.structured_query?.intent !== 'aggregate_batting' || filters.sort_by !== 'homeRuns' || (filters.limit !== 1 && !qualifiedTopOne)) issues.push('home_run_leader_plan_missing')
     const rows = body?.results?.aggregates ?? []
-    if (!rows.length || rows.some((row) => row.kind !== 'batting' || !row.label || !Number.isInteger(row.stats?.homeRuns) || row.stats.homeRuns < 0)) issues.push('home_run_leader_evidence_missing')
+    if (rows.length !== 1 || rows.some((row) => row.kind !== 'batting' || !row.label || !Number.isInteger(row.stats?.homeRuns) || row.stats.homeRuns < 0)) issues.push('home_run_leader_evidence_missing')
     if (hasOracle) {
       const expected = oracle.leaderboard?.[0]?.homeRuns
       if (!Number.isInteger(expected) || !rows.length || rows.some((row) => row.stats?.homeRuns !== expected) || !summary.includes(`本塁打${expected}本`)) issues.push('independent_home_run_total_mismatch')

@@ -1,4 +1,5 @@
 import fs from 'node:fs'
+import { searchOfficialCalendarAbsence, type CalendarFixtureScope, type OfficialCalendarAbsence } from './repository/official-calendar-repository'
 import { searchPlayerInformation, type PlayerInformationRow, type PlayerInformationFilters } from './repository/player-information-repository'
 import path from 'node:path'
 import {
@@ -61,6 +62,7 @@ type YearFilter = {
 }
 
 export type ChatQueryService = {
+  searchOfficialCalendarAbsence?: (filters: CalendarFixtureScope) => Promise<OfficialCalendarAbsence | null>
   searchEvents: (filters: SearchEventsFilters) => Promise<EventRow[]>
   searchGames: (filters: SearchGamesFilters) => Promise<GameSummaryRow[]>
   searchBattingLines: (filters: SearchBattingLinesFilters) => Promise<BattingLineRow[]>
@@ -87,6 +89,7 @@ type MultiYearQueryServiceOptions = {
 
 export function createSingleDatabaseQueryService(database: QueryDatabase): ChatQueryService {
   return {
+    searchOfficialCalendarAbsence: (filters) => searchOfficialCalendarAbsence(database, filters),
     searchEvents: (filters) => searchEvents(database, filters),
     searchGames: (filters) => searchGames(database, filters),
     searchBattingLines: (filters) => searchBattingLines(database, filters),
@@ -160,6 +163,12 @@ export function createMultiYearQueryService({
   }
 
   return {
+    searchOfficialCalendarAbsence: async (filters) => {
+      const date = filters.game_date ?? filters.date_from
+      if (!date) return null
+      const year = Number(date.slice(0, 4))
+      return availableYears({ year }).includes(year) ? searchOfficialCalendarAbsence(openYear(year), filters) : null
+    },
     searchEvents: (filters) =>
       runAcrossYears(
         filters,
@@ -265,6 +274,21 @@ export function createMultiYearQueryService({
       filters.limit ?? 50,
     ),
     aggregateGameResults: async (filters) => {
+      if (filters.recent_games !== undefined) {
+        let remaining = filters.recent_games
+        const rows: AggregateRow[] = []
+        for (const year of [...availableYears(filters)].sort((a, b) => b - a)) {
+          const part = await aggregateGameResults(openYear(year), { ...filters, year, recent_games: remaining })
+          rows.push(...part)
+          remaining -= part.reduce((sum, row) => sum + row.total, 0)
+          if (remaining <= 0) break
+        }
+        const [merged] = mergeGameResultAggregates(rows)
+        if (!merged) return []
+        merged.stats.evidenceGameIds = JSON.stringify(rows.flatMap((row) => JSON.parse(String(row.stats.evidenceGameIds)) as string[]))
+        merged.stats.firstGameDate = rows.at(-1)!.stats.firstGameDate ?? null
+        return [merged]
+      }
       // A source archive contains historical seasons independent of the year
       // of the SQLite file holding it. Never prune it by the requested season.
       const rows = await runAggregateAcrossYears(filters.official_series_result ? {} : filters, (db) => aggregateGameResults(db, filters))
