@@ -98,6 +98,7 @@ export async function searchGames(
 
   const whereClause = clauses.length > 0 ? `WHERE ${clauses.join(' AND ')}` : ''
   const limit = normalized.limit ?? 50
+  const direction = normalized.sort_direction === 'desc' ? 'DESC' : 'ASC'
 
   const rows = await database
     .prepare(
@@ -111,7 +112,7 @@ export async function searchGames(
         games.linescore_json AS linescoreJson
       FROM games
       ${whereClause}
-      ORDER BY games.date ASC, games.game_id ASC
+      ORDER BY games.date ${direction}, games.game_id ${direction}
       LIMIT ?`,
     )
     .all(...values, limit)

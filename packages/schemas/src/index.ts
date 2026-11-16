@@ -164,6 +164,7 @@ export type PlayerCandidate = z.infer<typeof playerCandidateSchema>
 
 /** games テーブル向けの一覧検索 */
 export const searchGamesFiltersSchema = z.object({
+  sort_direction: z.enum(['asc', 'desc']).optional(),
   result_text_contains: z.string().min(1).optional(),
   date_from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   date_to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
@@ -318,6 +319,7 @@ export const aggregateGamesFiltersSchema = z.object({
 export const awardWinnersFiltersSchema = z.object({
   year: z.number().int().min(1936).max(2099).optional(),
   award_type: z.enum(['rookie_of_the_year']).optional(),
+  league: z.enum(['セ・リーグ', 'パ・リーグ']).optional(),
 })
 
 export const clarificationReasonSchema = z.enum([

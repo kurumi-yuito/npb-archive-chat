@@ -182,6 +182,7 @@ export function createMultiYearQueryService({
         searchGames,
         (row) => `${row.date}:${row.gameId}`,
         filters.limit ?? 50,
+        filters.sort_direction === 'desc',
       ),
     searchBattingLines: (filters) =>
       runAcrossYears(

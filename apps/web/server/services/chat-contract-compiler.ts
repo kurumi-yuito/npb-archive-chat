@@ -201,6 +201,12 @@ export function compileQueryContract(contract: QueryContract): ContractOperation
     }
     for (const entity of contract.entities) {
       const league = entity.kind === 'team' && entity.role !== 'opponent' ? competitionLeague(entity.mention) : null
+      if (league && intent === 'award_winners') {
+        if (filters.league && filters.league !== league) issues.push('contradictory_award_league')
+        else filters.league = league
+        if (competitionLeague(String(filters.team ?? '')) === league) delete filters.team
+        continue
+      }
       if (league && (intent === 'aggregate_batting' || intent === 'aggregate_pitching' || output.kind === 'team_statistics')) {
         if (filters.team && filters.team !== league && !matchesGameTeamFilter(String(filters.team), league)) issues.push('contradictory_league_team')
         else filters.team ??= league
@@ -262,7 +268,9 @@ export function compileQueryContract(contract: QueryContract): ContractOperation
       const naturalAppearanceOrder = appearanceRelative && ['gameDate', 'game_date', 'date'].includes(order.field) && order.direction === 'desc'
       const naturalAnnualOrder = intent === 'aggregate_batting' && grouping.includes('year') && order.field === 'year' && order.direction === 'asc'
       const naturalGameDetailOrder = intent === 'game_detail' && ['gameDate', 'game_date', 'date'].includes(order.field) && order.direction === 'desc'
-      if (!naturalEventOrder && !naturalAppearanceOrder && !naturalSeriesOrder && !naturalAnnualOrder && !naturalGameDetailOrder) {
+      const gameResultOrder = intent === 'search_games' && ['gameDate', 'game_date', 'date'].includes(order.field)
+      if (gameResultOrder) filters.sort_direction = order.direction
+      if (!naturalEventOrder && !naturalAppearanceOrder && !naturalSeriesOrder && !naturalAnnualOrder && !naturalGameDetailOrder && !gameResultOrder) {
         if (order.direction !== statisticOrderDirection(intent, order.field) && output.kind !== 'team_statistics') issues.push('ordering_plan_required')
         filters.sort_by = statisticSortField(intent, order.field)
         if (output.kind === 'team_statistics') filters.sort_direction = order.direction
@@ -276,7 +284,10 @@ export function compileQueryContract(contract: QueryContract): ContractOperation
     if (contract.competition_scope.level !== 'unspecified' && !combinedAppearanceLevels && !(contract.competition_scope.level === 'first' && usesFirstTeamGameRepository(intent, filters))) filters.level = contract.competition_scope.level
     if (contract.competition_scope.competitions.length === 1) {
       const competition = contract.competition_scope.competitions[0]!, league = competitionLeague(competition)
-      if (league && (['aggregate_batting', 'aggregate_pitching'].includes(intent) || output.kind === 'team_statistics')) {
+      if (league && intent === 'award_winners') {
+        if (filters.league && filters.league !== league) issues.push('contradictory_award_league')
+        else filters.league = league
+      } else if (league && (['aggregate_batting', 'aggregate_pitching'].includes(intent) || output.kind === 'team_statistics')) {
         if (filters.team && filters.team !== league && !matchesGameTeamFilter(String(filters.team), league)) issues.push('contradictory_league_team')
         else if (!filters.team) filters.team = league
         if (filters.level === 'farm') issues.push('contradictory_league_level')

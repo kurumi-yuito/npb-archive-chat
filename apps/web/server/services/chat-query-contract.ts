@@ -73,7 +73,8 @@ export function validateQueryContractExecution(
     const officialSeriesOrder = query.intent === 'aggregate_games' && filters.official_series_result === true && order?.field === 'year' && filters.series_order === order.direction
     const naturalAnnualOrder = query.intent === 'aggregate_batting' && filters.group_by === 'year' && order?.field === 'year' && order?.direction === 'asc'
     const naturalGameDetailOrder = query.intent === 'game_detail' && ['gameDate', 'game_date', 'date'].includes(order?.field ?? '') && order?.direction === 'desc'
-    if (contract.ordering.length !== 1 || (!naturalEventOrder && !naturalAppearanceOrder && !officialTeamOrder && !officialSeriesOrder && !naturalAnnualOrder && !naturalGameDetailOrder && (filters.sort_by !== statisticSortField(query.intent, order?.field ?? '') || order?.direction !== statisticOrderDirection(query.intent, order?.field ?? '')))) issues.push('ordering_not_preserved')
+    const gameResultOrder = query.intent === 'search_games' && ['gameDate', 'game_date', 'date'].includes(order?.field ?? '') && filters.sort_direction === order?.direction
+    if (contract.ordering.length !== 1 || (!naturalEventOrder && !naturalAppearanceOrder && !officialTeamOrder && !officialSeriesOrder && !naturalAnnualOrder && !naturalGameDetailOrder && !gameResultOrder && (filters.sort_by !== statisticSortField(query.intent, order?.field ?? '') || order?.direction !== statisticOrderDirection(query.intent, order?.field ?? '')))) issues.push('ordering_not_preserved')
   }
   if (['recent_appearances', 'latest_appearance'].includes(contract.temporal_scope.relative ?? '')) {
     const limit = contract.completeness.limit ?? (contract.temporal_scope.relative === 'latest_appearance' ? 1 : 5)
@@ -111,7 +112,8 @@ export function validateQueryContractExecution(
       const league = field === 'team' ? competitionLeague(entity.mention) : null
       const membership = league && (['aggregate_batting', 'aggregate_pitching'].includes(query.intent) || filters.official_season === true) &&
         typeof filters.team === 'string' && matchesGameTeamFilter(filters.team, league) && (filters.level === 'first' || filters.official_season === true)
-      if (!membership && resolveContractTeamMention(String(filters[field] ?? '')) !== resolveContractTeamMention(entity.mention)) issues.push(`entity_mismatch:${field}`)
+      const awardLeague = query.intent === 'award_winners' && league && filters.league === league
+      if (!membership && !awardLeague && resolveContractTeamMention(String(filters[field] ?? '')) !== resolveContractTeamMention(entity.mention)) issues.push(`entity_mismatch:${field}`)
     } else if (entity.kind === 'venue') {
       if (filters.venue !== entity.mention) issues.push('entity_mismatch:venue')
     } else {
@@ -151,7 +153,8 @@ export function validateQueryContractExecution(
     const mapped = league && (['aggregate_batting', 'aggregate_pitching'].includes(query.intent) || (query.intent === 'aggregate_games' && filters.official_season === true)) &&
       typeof filters.team === 'string' && (filters.team === league || matchesGameTeamFilter(filters.team, league)) && (filters.level === 'first' || filters.official_season === true)
     const regularTeamSeason = filters.official_season === true && scope.competitions.length === 1 && isRegularSeasonScope(scope.competitions[0]!)
-    if (!mapped && !regularTeamSeason && (scope.competitions.length !== 1 || filters.competition !== scope.competitions[0])) issues.push('competition_not_preserved')
+    const awardLeague = query.intent === 'award_winners' && league && filters.league === league
+    if (!mapped && !regularTeamSeason && !awardLeague && (scope.competitions.length !== 1 || filters.competition !== scope.competitions[0])) issues.push('competition_not_preserved')
   }
   return [...new Set(issues)]
 }

@@ -74,6 +74,33 @@ describe('semantic-only compilation and execution', () => {
     expect(operation.query.filters).toMatchObject({ award_type: 'rookie_of_the_year' })
     expect(validateQueryContractExecution(contract, operation.query, ['award_winners', 'source_snapshots'])).toEqual([])
   })
+  it.each(['gameDate', 'game_date', 'date'])('preserves final-game date ordering using %s (Q214)', (field) => {
+    const contract: QueryContract = { ...meaning, entities: [], predicates: [],
+      competition_scope: { level: 'unspecified', competitions: ['日本シリーズ'] },
+      requested_output: [{ kind: 'game_results', fields: [] }], ordering: [{ field, direction: 'desc' }],
+      completeness: { mode: 'bounded', limit: 1 } }
+    const operation = compileQueryContract(contract)[0]!
+    expect(operation.query).toMatchObject({ intent: 'search_games', filters: { competition: '日本シリーズ', sort_direction: 'desc', limit: 1 } })
+    expect(validateQueryContractExecution(contract, operation.query, ['games', 'source_snapshots'])).toEqual([])
+  })
+  it.each(['competition', 'entity'] as const)('retains a requested award league expressed as %s (Q213)', async (representation) => {
+    const contract: QueryContract = { ...meaning,
+      entities: representation === 'entity' ? [{ kind: 'team', role: 'subject', mention: 'セ・リーグ' }] : [],
+      competition_scope: { level: 'unspecified', competitions: representation === 'competition' ? ['セ・リーグ'] : [] },
+      requested_output: [{ kind: 'awards', fields: ['player_name'] }],
+      predicates: [{ field: 'award', operator: 'eq', value: '新人王' }], completeness: { mode: 'unspecified', limit: null } }
+    const operation = compileQueryContract(contract)[0]!
+    expect(operation.query.filters).toMatchObject({ league: 'セ・リーグ', award_type: 'rookie_of_the_year' })
+    expect(validateQueryContractExecution(contract, operation.query, ['award_winners', 'source_snapshots'])).toEqual([])
+    const query = { searchAwardWinners: vi.fn().mockResolvedValue([
+      { year: 2025, awardType: 'rookie_of_the_year', league: 'セ・リーグ', playerName: '検証甲', team: 'ヤクルト', sourceUrl: 'https://npb.jp/award/2025/' },
+      { year: 2025, awardType: 'rookie_of_the_year', league: 'パ・リーグ', playerName: '検証乙', team: 'ロッテ', sourceUrl: 'https://npb.jp/award/2025/' },
+    ]) }
+    const response = await createContractChatService(query as unknown as ChatQueryService, async () => request(contract)).answerQuestion('2025年のセ・リーグ新人王は誰？')
+    expect(response.results.awards?.map((row) => row.playerName)).toEqual(['検証甲'])
+    expect(response.answer.summary).toContain('検証甲')
+    expect(response.answer.summary).not.toContain('検証乙')
+  })
   it('checks both direct-matchup roles with resolved IDs instead of guessing from player names (Q88)', async () => {
     const contract: QueryContract = { ...meaning, entities: ['検証甲', '検証乙'].map((mention) => ({ kind: 'player', role: 'subject', mention })),
       temporal_scope: { ...meaning.temporal_scope, years: [], relative: 'career' },

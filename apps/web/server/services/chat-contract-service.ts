@@ -195,7 +195,11 @@ export function createContractChatService(databaseService: ChatQueryService, par
         case 'aggregate_pitching': results.aggregates = await queryService.aggregatePitchingLines(query.filters); break
         case 'aggregate_events': results.aggregates = await queryService.aggregateEvents(query.filters); break
         case 'aggregate_games': results.aggregates = await queryService.aggregateGameResults(query.filters); break
-        case 'award_winners': results.awards = await queryService.searchAwardWinners({ year: query.filters.year!, award_type: query.filters.award_type ?? 'rookie_of_the_year' }); break
+        case 'award_winners': {
+          const awards = await queryService.searchAwardWinners({ year: query.filters.year!, award_type: query.filters.award_type ?? 'rookie_of_the_year' })
+          results.awards = awards.filter((row) => !query.filters.league || row.league === query.filters.league)
+          break
+        }
         case 'off_topic': throw new QueryContractCompileError(['unexpected_off_topic_execution'])
       }
       if (operation.statisticPredicates?.length) {

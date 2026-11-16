@@ -39,6 +39,8 @@ describe('inclusive date scope across source adapters', () => {
         const database = openDatabase(file)
         try {
           const query = sqliteDatabaseToQuery(database)
+          expect((await searchGames(query, { year: 2025, sort_direction: 'desc', limit: 1 }))[0]?.gameId).toBe('r20250815b-l-17')
+          expect((await searchGames(query, { year: 2025, sort_direction: 'asc', limit: 1 }))[0]).toMatchObject({ gameId: 'db-g-11', date: '2025-07-11' })
           const filters = { date_from: '2025-08-01', date_to: '2025-08-31' }
           const games = await searchGames(query, filters)
           expect(games.map((row) => row.gameId)).toEqual(['r20250815b-l-17'])
